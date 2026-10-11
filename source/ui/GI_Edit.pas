@@ -92,6 +92,7 @@ end;
 
 destructor TEditGI.Destroy;
 begin
+  if MessageLoop <> nil then MessageLoop.ForgetOnScreenKeyboardTarget(Self);
   FontCache.Free;
   FontCache := nil;
   BackgroundCache.Free;
@@ -203,7 +204,10 @@ procedure TEditGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 begin
   inherited ProcessLeftButtonDown(KeyState, Point);
   if Active = True then
+  begin
     MessageLoop.SetFocusedControl(Self);
+    if OnScreenKeyboardEnabled then MessageLoop.OpenOnScreenKeyboard(Self);
+  end;
 end;
 
 procedure TEditGI.OnFocusGained;
@@ -343,7 +347,7 @@ begin
       begin
         SetLength(Text, N + 1);
         I := N;
-        while I >= CaretPosition do
+        while I > CaretPosition do
         begin
           Text[I + 1] := Text[I];
           Dec(I);

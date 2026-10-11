@@ -210,6 +210,7 @@ type
     OverlayPanel: TObjectGI;
     CursorControl: TObjectGI;
     FocusedControl: TObjectGI;
+    OnScreenKeyboard: TObjectGI;
     HoveredControl: TObjectGI;
     HelpLabel: TObjectGI;
     RegionDrawControl: TObjectGI;
@@ -301,6 +302,9 @@ type
     function GetByName(const Name: WideString): TObjectGI;
     function FindControlByPath(const Path: WideString): TObjectGI;
     procedure SetFocusedControl(Control: TObjectGI);
+    procedure OpenOnScreenKeyboard(Control: TObjectGI);
+    procedure CloseOnScreenKeyboard(Confirm: Boolean);
+    procedure ForgetOnScreenKeyboardTarget(Control: TObjectGI);
     procedure SetHoveredControl(Control: TObjectGI);
     function ScheduleCallbackTimer(
         DelayMs: Integer;
@@ -356,6 +360,8 @@ procedure PopMessageLoop(Loop: TMessageLoopGI);
 procedure LinkRecoveredTypes;
 implementation
 uses
+  GI_Edit,
+  GI_OnScreenKeyboard,
   Math,
   GameNative,
   PopUp,
@@ -1505,6 +1511,7 @@ var
   Index: Integer;
   Item: TObject;
 begin
+  FreeAndNil(OnScreenKeyboard);
   FreeSecondaryPixelBuffer;
   FreeSavedLines;
   if SoundGroupList <> nil then
@@ -1590,6 +1597,11 @@ begin
     RootUiObject.Draw(RectNode.Bounds);
     RectNode := RectNode.Next;
   end;
+  if OnScreenKeyboard <> nil then
+  begin
+    OnScreenKeyboard.Draw(GameScreenRect);
+    if CursorControl.Active then CursorControl.Draw(GameScreenRect);
+  end;
 end;
 procedure TMessageLoopGI.DrawQueuedControlRects;
 begin
@@ -1597,6 +1609,11 @@ begin
   begin
     PendingRedraw := True;
     RootUiObject.DrawUpdateRects(Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight));
+    if OnScreenKeyboard <> nil then
+    begin
+      OnScreenKeyboard.Draw(GameScreenRect);
+      if CursorControl.Active then CursorControl.Draw(GameScreenRect);
+    end;
   end;
 end;
 procedure TMessageLoopGI.FinishQueuedDraw;
@@ -2127,6 +2144,25 @@ begin
     Exit;
   Stage := 0;
   try
+    if (OnScreenKeyboard <> nil) then
+    begin
+      Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+      ConvertMousePointToViewport;
+      if Message = WM_MOUSEMOVE then
+      begin
+        LastMousePosition := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+        CursorControl.SetPosition(Point);
+      end;
+      if (Message in [WM_KEYDOWN, WM_SYSKEYDOWN]) and (WParam in [VK_SHIFT, VK_CAPITAL])
+          and ((Cardinal(LParam) and (Cardinal(1) shl 30)) <> 0) then Exit;
+      if TOnScreenKeyboardGI(OnScreenKeyboard).HandleMessage(Message, WParam, Point) then Exit;
+    end;
+    if OnScreenKeyboardEnabled and (Message = WM_KEYDOWN) and (WParam = VK_F6)
+        and (FocusedControl is TEditGI) then
+    begin
+      OpenOnScreenKeyboard(FocusedControl);
+      Exit;
+    end;
     if Message = WM_MOUSEMOVE then
     begin
       Point.X := SmallInt(LParam);
@@ -2538,6 +2574,38 @@ begin
   FocusedControl := Control;
   if FocusedControl <> nil then
     FocusedControl.OnFocusGained;
+end;
+
+procedure TMessageLoopGI.OpenOnScreenKeyboard(Control: TObjectGI);
+begin
+  if (OnScreenKeyboard <> nil) or not (Control is TEditGI) or not Control.Active then Exit;
+  OnScreenKeyboard := TOnScreenKeyboardGI.CreateForEdit(Self, TEditGI(Control));
+  InvalidateViewport;
+end;
+
+procedure TMessageLoopGI.CloseOnScreenKeyboard(Confirm: Boolean);
+var
+  Keyboard: TOnScreenKeyboardGI;
+begin
+  if OnScreenKeyboard = nil then Exit;
+  Keyboard := TOnScreenKeyboardGI(OnScreenKeyboard);
+  OnScreenKeyboard := nil;
+  try
+    if Confirm then Keyboard.Apply;
+  finally
+    Keyboard.Free;
+    SetFocusedControl(nil);
+    InvalidateViewport;
+  end;
+end;
+
+procedure TMessageLoopGI.ForgetOnScreenKeyboardTarget(Control: TObjectGI);
+begin
+  if (OnScreenKeyboard <> nil) and (TOnScreenKeyboardGI(OnScreenKeyboard).Target = Control) then
+  begin
+    FreeAndNil(OnScreenKeyboard);
+    InvalidateViewport;
+  end;
 end;
 procedure TMessageLoopGI.SetHoveredControl(Control: TObjectGI);
 var

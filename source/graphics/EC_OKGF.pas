@@ -9,6 +9,16 @@ uses
   GR_GraphBuf,
   Types;
 type
+  // AAPCS requires unsigned narrow C arguments to be zero-extended to a word.
+  // The native FPC ARM backend writes only a byte/halfword to stack arguments;
+  // use word-sized declarations so the C callee receives all 32 bits initialized.
+  {$IFDEF CPUARM}
+  TOkgfByteArgument = Cardinal;
+  TOkgfWordArgument = Cardinal;
+  {$ELSE}
+  TOkgfByteArgument = Byte;
+  TOkgfWordArgument = Word;
+  {$ENDIF}
   PointerToTOkgfReadContext = ^TOkgfReadContext;
   {$Z4}
   TOkgfImageKind = (
@@ -128,7 +138,7 @@ procedure OKGR_Fill_WORD(
     Pitch: Integer;
     Width: Integer;
     Height: Integer;
-    Color: Word
+    Color: TOkgfWordArgument
 ); cdecl; external 'okgf' name 'OKGR_Fill_WORD';
 procedure OKGF_ConvertRGBto565(
     Source: Pointer;
@@ -159,7 +169,7 @@ procedure OKGR_Line_Draw_WORD(
     Y1: Integer;
     X2: Integer;
     Y2: Integer;
-    Color: Word
+    Color: TOkgfWordArgument
 ); cdecl; external 'okgf' name 'OKGR_Line_Draw_WORD';
 procedure OKGR_Line_DrawClip_WORD(
     Pixels: Pointer;
@@ -168,7 +178,7 @@ procedure OKGR_Line_DrawClip_WORD(
     Y1: Integer;
     X2: Integer;
     Y2: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Line_DrawClip_WORD';
 procedure OKGR_Line_DrawClip_Alpha_16(
@@ -178,8 +188,8 @@ procedure OKGR_Line_DrawClip_Alpha_16(
     Y1: Integer;
     X2: Integer;
     Y2: Integer;
-    Color: Word;
-    Alpha: Byte;
+    Color: TOkgfWordArgument;
+    Alpha: TOkgfByteArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Line_DrawClip_Alpha_16';
 procedure OKGR_AnimLine_Draw_16(
@@ -189,7 +199,7 @@ procedure OKGR_AnimLine_Draw_16(
     Y1: Integer;
     X2: Integer;
     Y2: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     Phase: Integer;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_AnimLine_Draw_16';
@@ -200,7 +210,7 @@ procedure OKGR_AnimShadowLine_Draw_16(
     Y1: Integer;
     X2: Integer;
     Y2: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     Phase: Integer;
     constref Clip: TRect;
     ShadowPixels: Pointer;
@@ -215,7 +225,7 @@ procedure OKGR_Alpha64Trapezium_16(
     Y2: Integer;
     X3: Integer;
     X4: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Alpha64Trapezium_16';
 procedure OKGR_Alpha128Trapezium_16(
@@ -227,7 +237,7 @@ procedure OKGR_Alpha128Trapezium_16(
     Y2: Integer;
     X3: Integer;
     X4: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Alpha128Trapezium_16';
 procedure OKGR_Circle_DrawClip_WORD(
@@ -236,7 +246,7 @@ procedure OKGR_Circle_DrawClip_WORD(
     X: Integer;
     Y: Integer;
     Radius: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Circle_DrawClip_WORD';
 procedure OKGR_Circle_DrawClip_BYTE(
@@ -245,7 +255,7 @@ procedure OKGR_Circle_DrawClip_BYTE(
     X: Integer;
     Y: Integer;
     Radius: Integer;
-    Color: Byte;
+    Color: TOkgfByteArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Circle_DrawClip_BYTE';
 procedure OKGR_Circle_DrawFillClip_WORD(
@@ -254,7 +264,7 @@ procedure OKGR_Circle_DrawFillClip_WORD(
     X: Integer;
     Y: Integer;
     Radius: Integer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Circle_DrawFillClip_WORD';
 procedure OKGR_Circle_DrawFillClip_BYTE(
@@ -263,7 +273,7 @@ procedure OKGR_Circle_DrawFillClip_BYTE(
     X: Integer;
     Y: Integer;
     Radius: Integer;
-    Color: Byte;
+    Color: TOkgfByteArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_Circle_DrawFillClip_BYTE';
 procedure OKGR_FillTrapezium_DWORD(
@@ -429,7 +439,7 @@ procedure OKGR_AlphaIndexed_CopyDrawClip_Alpha_16(
     Y: Integer;
     Source: Pointer;
     constref Clip: TRect;
-    Alpha: Byte
+    Alpha: TOkgfByteArgument
 ); cdecl; external 'okgf' name 'OKGR_AlphaIndexed_CopyDrawClip_Alpha_16';
 procedure OKGR_AlphaIndexed_AlphaDrawClip_16(
     Dest: Pointer;
@@ -446,7 +456,7 @@ procedure OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16(
     Y: Integer;
     Source: Pointer;
     constref Clip: TRect;
-    Alpha: Byte
+    Alpha: TOkgfByteArgument
 ); cdecl; external 'okgf' name 'OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16';
 procedure OKGR_PalCopy_XY_XY_WORD(
     Dest: Pointer;
@@ -514,7 +524,7 @@ procedure OKGR_MaskBuf_DrawClip_WORD(
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    Color: Word;
+    Color: TOkgfWordArgument;
     constref Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_MaskBuf_DrawClip_WORD';
 procedure OKGR_TransBuf_FillAlphaClip_RGBA(
@@ -533,7 +543,7 @@ procedure OKGR_TransBuf_FillAlphaClip_16(
     Y: Integer;
     Source: Pointer;
     constref Clip: TRect;
-    Color: Word
+    Color: TOkgfWordArgument
 ); cdecl; external 'okgf' name 'OKGR_TransBuf_FillAlphaClip_16';
 function OKGR_TransBuf_Build_WORD(
     Source: Pointer;
@@ -541,7 +551,7 @@ function OKGR_TransBuf_Build_WORD(
     Width: Integer;
     Height: Integer;
     Dest: Pointer;
-    TransparentColor: Word
+    TransparentColor: TOkgfWordArgument
 ): Integer; cdecl; external 'okgf' name 'OKGR_TransBuf_Build_WORD';
 function OKGR_RotateBuf_Build(
     Width: Integer;
@@ -583,7 +593,7 @@ procedure OKGR_CopyTrans_XY_XY_WORD(
     SourceY: Integer;
     Width: Integer;
     Height: Integer;
-    TransparentColor: Word
+    TransparentColor: TOkgfWordArgument
 ); cdecl; external 'okgf' name 'OKGR_CopyTrans_XY_XY_WORD';
 function OKGF_DXVersion: Cardinal; cdecl; external 'okgf' name 'DXVersion';
 procedure OKGR_RotateBuf_Draw_BYTE(
@@ -593,7 +603,7 @@ procedure OKGR_RotateBuf_Draw_BYTE(
     SourcePitch: Integer;
     Width: Integer;
     Height: Integer;
-    Angle: Byte;
+    Angle: TOkgfByteArgument;
     RotationMap: Pointer
 ); cdecl; external 'okgf' name 'OKGR_RotateBuf_Draw_BYTE';
 procedure OKGR_Light_BYTE(
@@ -602,7 +612,7 @@ procedure OKGR_Light_BYTE(
     Pitch: Integer;
     Width: Integer;
     Height: Integer;
-    Alpha: Byte
+    Alpha: TOkgfByteArgument
 ); cdecl; external 'okgf' name 'OKGR_Light_BYTE';
 procedure OKGR_AlphaSimpleBufPalAlpha_Draw_16(
     Dest: Pointer;
@@ -664,7 +674,7 @@ procedure OKGR_LightBuf_SetSme(
 ); cdecl; external 'okgf' name 'OKGR_LightBuf_SetSme';
 procedure OKGR_LightBuf_Init(
     Buffer: Pointer;
-    Value: Byte
+    Value: TOkgfByteArgument
 ); cdecl; external 'okgf' name 'OKGR_LightBuf_Init';
 procedure OKGR_LightBuf_LoadFromPalBuf(
     Buffer: Pointer;
@@ -678,7 +688,7 @@ procedure OKGR_LightBuf_Rotate(
     Dest: Pointer;
     Source: Pointer;
     RotationMap: Pointer;
-    Angle: Byte
+    Angle: TOkgfByteArgument
 ); cdecl; external 'okgf' name 'OKGR_LightBuf_Rotate';
 procedure OKGR_Planet2_DrawAndLight_32(
     Dest: Pointer;
@@ -768,13 +778,13 @@ procedure OKGR_RotateBuf_Draw_DWORD(
     SourcePitch: Integer;
     CenterX: Integer;
     CenterY: Integer;
-    Angle: Byte;
+    Angle: TOkgfByteArgument;
     RotationMap: Pointer
 ); cdecl; external 'okgf' name 'OKGR_RotateBuf_Draw_DWORD';
 procedure OKGR_RotateBuf_Size(
     X: Integer;
     Y: Integer;
-    Angle: Byte;
+    Angle: TOkgfByteArgument;
     RotationMap: Pointer;
     var Bounds: TRect
 ); cdecl; external 'okgf' name 'OKGR_RotateBuf_Size';
@@ -785,7 +795,7 @@ procedure OKGR_RotateBuf_DrawTransClip_WORD(
     SourcePitch: Integer;
     CenterX: Integer;
     CenterY: Integer;
-    Angle: Byte;
+    Angle: TOkgfByteArgument;
     RotationMap: Pointer;
     const Clip: TRect
 ); cdecl; external 'okgf' name 'OKGR_RotateBuf_DrawTransClip_WORD';

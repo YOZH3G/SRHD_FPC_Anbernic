@@ -17,27 +17,32 @@ function OKGF_ZLib_UnCompress2(
 ): Integer; stdcall;
 implementation
 uses
-  SysUtils;
+  SysUtils,
+  ctypes;
+
+// CHANGE: PORTABILITY - zlib sizes use C unsigned long: 32 bits on ARMHF, 64 on AArch64.
+type
+  TZLibSize = culong;
 
 function uncompress(
     Dest: Pointer;
-    var DestSize: QWord;
+    var DestSize: TZLibSize;
     Source: Pointer;
-    SourceSize: QWord
+    SourceSize: TZLibSize
 ): Integer; cdecl; external 'z';
 function compress2(
     Dest: Pointer;
-    var DestSize: QWord;
+    var DestSize: TZLibSize;
     Source: Pointer;
-    SourceSize: QWord;
+    SourceSize: TZLibSize;
     Level: Integer
 ): Integer; cdecl; external 'z';
-function compressBound(Size: QWord): QWord; cdecl; external 'z';
+function compressBound(Size: TZLibSize): TZLibSize; cdecl; external 'z';
 
 function OKGF_ZLib_Compress(Dest, Source: Pointer; SourceSize, Mode: Integer): Integer; stdcall;
 
 var
-  N: QWord;
+  N: TZLibSize;
   Temp: Pointer;
   Level: Integer;
 
@@ -75,7 +80,7 @@ function OKGF_ZLib_UnCompress(
 ): Integer; stdcall;
 
 var
-  N: QWord;
+  N: TZLibSize;
   Expected: Cardinal;
   Magic: Cardinal;
 

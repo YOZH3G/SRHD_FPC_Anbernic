@@ -325,9 +325,9 @@ function MultiplyMatrix4D(const Left: TMatrix4D; const Right: TMatrix4D): TMatri
 function ProjectPointByMatrix(const Matrix: TMatrix4D; const Source: TVector3D): TVector3D;
 
 function TryIntersectRayWithSphere(
-    RayOrigin: TVector3D;
-    RayPointOnRay: TVector3D;
-    SphereCenter: TVector3D;
+    constref RayOrigin: TVector3D;
+    constref RayPointOnRay: TVector3D;
+    constref SphereCenter: TVector3D;
     SphereRadius: Double;
     var HitPoint: TVector3D
 ): Boolean;
@@ -933,7 +933,8 @@ end;
 
 { @routine $4EDF2C TryIntersectRayWithSphere }
 function TryIntersectRayWithSphere(
-    RayOrigin, RayPointOnRay, SphereCenter: TVector3D;
+    // CHANGE: PORTABILITY - Avoid ARMHF record argument code generation failures.
+    constref RayOrigin, RayPointOnRay, SphereCenter: TVector3D;
     SphereRadius: Double;
     var HitPoint: TVector3D
 ): Boolean;

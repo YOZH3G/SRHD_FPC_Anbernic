@@ -71,6 +71,7 @@ type
   );
   TGameScreenTable = array[0..41] of TObject;
 var
+  OnScreenKeyboardEnabled: Boolean = False;
   DumpLoadedConfig: Boolean = False;
   HalfGovAnim: Boolean = False;
   QuestStyleIndex: Integer = 0;

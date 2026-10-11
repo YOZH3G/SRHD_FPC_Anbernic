@@ -396,7 +396,7 @@ begin
   Result := False;
 end;
 function NativePath(const Path: string): string;
-{$IFDEF ANDROID}
+{$IF Defined(ANDROID) or Defined(LINUX)}
 var
   Parts: TStringList;
   Search: TSearchRec;
@@ -405,7 +405,8 @@ var
 {$ENDIF}
 begin
   Result := StringReplace(Path, '\', '/', [rfReplaceAll]);
-{$IFDEF ANDROID}
+{$IF Defined(ANDROID) or Defined(LINUX)}
+  // CHANGE: PORTABILITY - Linux assets retain their original Windows filename case.
   // Original loose-file references assume a case-insensitive Windows volume.
   // Resolve existing components, retaining the spelling of new output files.
   if SysUtils.FileExists(Result) or SysUtils.DirectoryExists(Result) then

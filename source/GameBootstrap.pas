@@ -66,6 +66,7 @@ var
   GameDirectory, UserDirectory, ExecutablePath: AnsiString;
   RestartRequested: Boolean;
   GpuRendererRequested: Boolean;
+  FullscreenRequested: Boolean;
   ObserverMode: Boolean;
   ObserverSave: AnsiString;
 
@@ -127,8 +128,14 @@ begin
   for I := 1 to ParamCount do
   begin
     Argument := ParamStr(I);
-    if Argument = '--no-thumbnail-cache' then
+    if Argument = '--on-screen-keyboard' then
+      OnScreenKeyboardEnabled := True
+    else if Argument = '--no-on-screen-keyboard' then
+      OnScreenKeyboardEnabled := False
+    else if Argument = '--no-thumbnail-cache' then
       CacheInfoThumbnails := False
+    else if Argument = '--fullscreen' then
+      FullscreenRequested := True
     else if Argument = '--renderer=software' then
     begin
       GpuRendererRequested := False;
@@ -230,6 +237,9 @@ begin
       Log('Android render resolution: ' + IntToStr(DisplayWidth) + 'x' + IntToStr(DisplayHeight));
     end;
 {$ENDIF}
+    // CHANGE: PORTABILITY - Fit the logical game canvas to handheld displays.
+    if FullscreenRequested then
+      Settings.SetOrAddParam('Window', 'False');
     // Movie playback and recording are unavailable in the native runtime.
     Settings.SetOrAddParam('HardwareRender', 'False');
     Settings.SetOrAddParam('ShowSystemMouse', 'False');
