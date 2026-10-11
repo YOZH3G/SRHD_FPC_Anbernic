@@ -81,7 +81,10 @@ def package(
             check=True,
         )
         for path in (binary, probe, *library_dir.iterdir()):
-            subprocess.run([str(sdk / "bin" / f"{triplet}-strip"), str(path)], check=True)
+            # Keep upstream's game debug information and the exact tested binary.
+            # Only the helper and native libraries are stripped for packaging.
+            if path != binary:
+                subprocess.run([str(sdk / "bin" / f"{triplet}-strip"), str(path)], check=True)
             path.chmod(0o755)
         for package_name in ("libjpeg-turbo8", "libpng16-16", "zlib1g"):
             shutil.copy2(
