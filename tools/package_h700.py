@@ -179,7 +179,7 @@ def package(
         "физические GPU, дисплей, звук и контроллеры ещё нужно проверить.\n"
         "Длительное прохождение не проверено.\n\n"
         "Исходники с локальными изменениями: SpaceRangersHD-Anbernic-sources.zip.\n"
-        "Репозиторий: https://github.com/YOZH3G/SRHD_FPC_Anbernic\n",
+        "Репозиторий: https://github.com/YOZH3G/SpaceRangersHD_FPC\n",
         encoding="utf-8",
     )
     (port / "build-info.json").write_text(
