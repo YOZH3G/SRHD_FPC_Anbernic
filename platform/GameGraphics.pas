@@ -43,6 +43,7 @@ type
     Pixels: Pointer;
     Handle, UploadTexture: PSDL_Texture;
     TextureFormat: Cardinal;
+    SamplingMode, BlendMode: Integer;
     Generation, DisplayGeneration: LongInt;
     Dirty, Locked, ReadOnly, Screen, Target: Boolean;
     constructor Create(
@@ -54,6 +55,8 @@ type
     destructor Destroy; override;
     function Storage: TSDLStorage;
     procedure Realize;
+    procedure SetSampling(Mode: Integer);
+    procedure SetBlend(Mode: Integer);
     function UpdateScreenRaster: Boolean;
     function RasterTransform(ApplyTransform: Boolean): TGameGraphicsTransform;
     function RasterRect(const Rect: TRect; ApplyTransform: Boolean = False): TSDL_Rect;
@@ -424,6 +427,26 @@ begin
   end;
   Require(Handle <> nil, string(SDL_GetError));
   Generation := CurrentGeneration;
+  SamplingMode := -1;
+  BlendMode := -1;
+end;
+
+procedure TSDLStorage.SetSampling(Mode: Integer);
+begin
+  // All writes to this storage's handle go through these helpers. A recreated
+  // handle resets both cached modes in Realize, even if SDL reuses its address.
+  if SamplingMode = Mode then
+    Exit;
+  SetTextureSampling(Handle, Mode);
+  SamplingMode := Mode;
+end;
+
+procedure TSDLStorage.SetBlend(Mode: Integer);
+begin
+  if BlendMode = Mode then
+    Exit;
+  Check(SDL_SetTextureBlendMode(Handle, Mode));
+  BlendMode := Mode;
 end;
 
 procedure TSDLStorage.Upload;
@@ -583,8 +606,8 @@ begin
     Check(SDL_SetRenderTarget(GameSDLRenderer, Readback));
     Check(SDL_RenderSetLogicalSize(GameSDLRenderer, 0, 0));
     Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
-    Check(SDL_SetTextureBlendMode(Handle, SDL_BLENDMODE_NONE));
-    SetTextureSampling(Handle, SDL_ScaleModeLinear);
+    SetBlend(SDL_BLENDMODE_NONE);
+    SetSampling(SDL_ScaleModeLinear);
     Check(SDL_RenderCopy(GameSDLRenderer, Handle, nil, nil));
     Check(SDL_RenderReadPixels(GameSDLRenderer, nil, PixelFormat(DestFormat), Dest, DestPitch));
   finally
@@ -1074,7 +1097,10 @@ begin
   Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
   Check(SDL_SetRenderDrawColor(GameSDLRenderer, 0, 0, 0, 255));
   Check(SDL_RenderClear(GameSDLRenderer));
-  Check(SDL_SetTextureBlendMode(Texture, SDL_BLENDMODE_NONE));
+  if Texture = Screen.Handle then
+    Screen.SetBlend(SDL_BLENDMODE_NONE)
+  else
+    Check(SDL_SetTextureBlendMode(Texture, SDL_BLENDMODE_NONE));
   // The native raster target already matches the fitted output. Interpolate only
   // when a resized surface or a smaller fallback target needs fractional scaling.
   Filter := SDL_ScaleModeLinear;
@@ -1091,7 +1117,10 @@ begin
     if (Scale >= 1) and (Scale = Round(Scale)) then
       Filter := SDL_ScaleModeNearest;
   end;
-  SetTextureSampling(Texture, Filter);
+  if Texture = Screen.Handle then
+    Screen.SetSampling(Filter)
+  else
+    SetTextureSampling(Texture, Filter);
   Check(SDL_RenderCopy(GameSDLRenderer, Texture, nil, DestinationPtr));
 {$IFDEF FPC_WASM_EMSCRIPTEN}
   // Submit drawing before waiting; the browser presents the completed buffer
@@ -1255,8 +1284,8 @@ begin
                   Types.Rect(0, 0, ImageOf(Dest).Desc.Width, ImageOf(Dest).Desc.Height),
                   True);
     PB := @B;
-    Check(SDL_SetTextureBlendMode(Image.Handle, SDL_BLENDMODE_NONE));
-    SetTextureSampling(Image.Handle, Ord(Filter = D3DTEXF_LINEAR));
+    Image.SetBlend(SDL_BLENDMODE_NONE);
+    Image.SetSampling(Ord(Filter = D3DTEXF_LINEAR));
     Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
     Check(SDL_RenderCopy(GameSDLRenderer, Image.Handle, PA, PB));
   finally
@@ -1427,8 +1456,8 @@ begin
     Image := TextureStorage;
     Image.Upload;
     Texture := Image.Handle;
-    Check(SDL_SetTextureBlendMode(Texture, SDL_BLENDMODE_BLEND));
-    SetTextureSampling(Texture, Ord(LinearFilter and not IsPixelAlignedQuad));
+    Image.SetBlend(SDL_BLENDMODE_BLEND);
+    Image.SetSampling(Ord(LinearFilter and not IsPixelAlignedQuad));
   end;
   Value := Target.RasterClipRect(Clip);
   Check(SDL_RenderSetClipRect(GameSDLRenderer, @Value));
