@@ -449,7 +449,7 @@ begin
   Dialog.ParentLoop := Parent;
   Parent.ChildLoop := Dialog;
   Dialog.InitializeFromConfig(UiStyleConfig, 'Count', True);
-  Dialog.InitializeLayout;
+  Dialog.InitializeFittedLayout;
   try
     Dialog.ImagePath := ImagePath;
     Dialog.PreviewImagePath := PreviewImagePath;

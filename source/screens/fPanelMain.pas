@@ -330,13 +330,13 @@ end;
 
 function TfPanelMain.ContentLayoutHeight: Integer;
 begin
-  Result := GameScreenHeight - Round(ShipButton.Parent.ClientSize.Y * (Panel.DisplayScale - 1));
+  Result := Screen.LayoutSize.Y - Round(ShipButton.Parent.ClientSize.Y * (Panel.DisplayScale - 1));
 end;
 
 function TfPanelMain.ContentBounds: TRect;
 begin
   Result :=
-      Classes.Rect(0, 0, GameScreenWidth, ContentLayoutHeight - ShipButton.Parent.ClientSize.Y);
+      Classes.Rect(0, 0, Screen.LayoutSize.X, ContentLayoutHeight - ShipButton.Parent.ClientSize.Y);
 end;
 
 procedure TfPanelMain.FitContent(Control: TObjectGI);

@@ -1,0 +1,13 @@
+{
+  "arch": "armhf",
+  "scenario": "planet-and-government",
+  "input": "load saved planetary landing; open government with G",
+  "resolution_history": [
+    "800x600"
+  ],
+  "exit": 0,
+  "seconds": 30.5,
+  "binary_sha256": "1cb557de591c0fb66026c9ce4533abfaac352a7c6e45d7b5ea7cb3bd9a683d75",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

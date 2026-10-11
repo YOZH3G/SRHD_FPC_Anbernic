@@ -8,13 +8,23 @@
 typedef struct { int kind, x, y; SDL_Keycode key; const char *text; } Action;
 static Action actions[160];
 static int count, current, state;
+static int screen_width = 1024, screen_height = 768;
 static Uint32 next_action;
 static const char *pending_capture;
 static char logbuf[65536];
 static void add_key(SDL_Keycode key) { actions[count++] = (Action){.kind=1,.key=key}; }
 static void add_click(int x, int y) { actions[count++] = (Action){.kind=2,.x=x,.y=y}; }
 static void add_capture(const char *name) { actions[count++] = (Action){.kind=3,.text=name}; }
-static void click_key(int row,int col) { add_click(52+16+col*74+30,388+94+row*44+19); }
+static void click_key(int row,int col) {
+    int width = screen_width-32 < 920 ? screen_width-32 : 920;
+    int cell = (width-32)/(row==4 ? 8 : 12);
+    add_click((screen_width-width)/2+16+col*cell+(cell-6)/2,
+        screen_height-380+94+row*44+19);
+}
+static void click_name(void) {
+    double scale = screen_width < 1024 ? (double)screen_width/1024 : 1;
+    add_click((int)(250*scale), (int)(570*scale));
+}
 static void press(SDL_Keycode key) {
     SDL_Event e; memset(&e,0,sizeof(e)); e.type=SDL_KEYDOWN;
     e.key.keysym.sym=key; e.key.keysym.scancode=SDL_GetScancodeFromKey(key);
@@ -48,13 +58,13 @@ static void prepare_script(void) {
     click_key(1,4); click_key(1,0); click_key(1,5); click_key(2,8);
     click_key(2,9); click_key(1,4); click_key(2,5); /* ейнджер */
     /* Insert and delete before the final letter, then restore the caret. */
-    add_click(52+16+4*111+30,388+94+4*44+19);
+    click_key(4,4);
     click_key(0,0); add_key(SDLK_BACKSPACE);
-    add_click(52+16+5*111+30,388+94+4*44+19);
+    click_key(4,5);
     /* Exercise insertion at index zero, where the old edit loop read Text[0]. */
     add_key(SDLK_HOME); click_key(0,0); add_key(SDLK_BACKSPACE); add_key(SDLK_END);
     add_capture("keyboard-ru");
-    add_click(52+16+2*111+30,388+94+4*44+19); /* Space */
+    click_key(4,2); /* Space */
     add_key(SDLK_TAB); add_key(SDLK_LSHIFT); click_key(3,6);
     add_key(SDLK_LSHIFT); click_key(2,0); click_key(3,1); /* Max */
     add_capture("keyboard-en");
@@ -62,7 +72,7 @@ static void prepare_script(void) {
     click_key(0,0); click_key(0,1); add_capture("keyboard-limit");
     add_key(SDLK_BACKSPACE);
     add_key(SDLK_RETURN); add_capture("committed");
-    add_click(250,570);
+    click_name();
     for(int i=0;i<32;i++) add_key(SDLK_BACKSPACE);
     actions[count++] = (Action){.kind=4,.text="Wrong"};
     add_capture("cancel-pending"); add_key(SDLK_ESCAPE); add_capture("cancelled");
@@ -76,7 +86,9 @@ void SDL_RenderPresent(SDL_Renderer *r) {
     if(state==0 && strstr(logbuf,"Rangers: run MainForm")) {
         capture(r,"menu"); press(SDLK_RETURN); state=1;
     } else if(state==1 && strstr(logbuf,"Rangers: run GameSettings")) {
-        capture(r,"before"); click(250,570); state=2;
+        capture(r,"before");
+        double scale = screen_width < 1024 ? (double)screen_width/1024 : 1;
+        click((int)(250*scale),(int)(570*scale)); state=2;
     } else if(state==2) {
         capture(r,"keyboard-open"); prepare_script(); state=3; next_action=SDL_GetTicks()+100;
     }
@@ -116,6 +128,7 @@ int SDL_PollEvent(SDL_Event *e) {
 SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags) {
     static SDL_Window *(*create_window)(const char *, int, int, int, int, Uint32);
     if (!create_window) create_window = dlsym(RTLD_NEXT, "SDL_CreateWindow");
+    screen_width = w; screen_height = h;
     SDL_Window *window = create_window(title, x, y, w, h, flags);
     if (window) {
         SDL_Event event = {0};

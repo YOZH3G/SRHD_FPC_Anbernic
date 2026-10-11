@@ -49,6 +49,8 @@ uses
   EC_Str,
   GI_LayoutMetrics,
   GR_Main,
+  GameWindow,
+  GlobalsV,
   Math,
   SysUtils;
 
@@ -874,6 +876,17 @@ begin
       PreserveAlpha := True;
       Quiet := True;
     until True;
+    // Planet artwork is displayed on the fitted legacy canvas. Assets loaded
+    // during OnOpen must use that canvas too, rather than shrink to the native
+    // framebuffer and then shrink a second time with ContentPanel.
+    if GameCompactLayoutEnabled and HardwareRenderingEnabled and (LayoutWidth < 1024)
+        and ((FindTextOffsetW(ResourceKey, 'Bm.City.') = 0)
+            or (FindTextOffsetW(ResourceKey, 'Bm.Gov.') = 0)
+            or (FindTextOffsetW(ResourceKey, 'Bm.PlanetBG') = 0)) then
+    begin
+      LayoutWidth := 1024;
+      LayoutHeight := 768;
+    end;
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);

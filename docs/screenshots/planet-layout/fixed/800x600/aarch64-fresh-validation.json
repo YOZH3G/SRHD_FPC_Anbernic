@@ -1,0 +1,13 @@
+{
+  "arch": "aarch64",
+  "scenario": "planet-and-government",
+  "input": "load saved planetary landing; government, hangar, equipment and goods; reopen government",
+  "resolution_history": [
+    "800x600"
+  ],
+  "exit": 0,
+  "seconds": 38.6,
+  "binary_sha256": "7323016a8f8c0ef10993c06ce70dfb18b2314adb90c845a8015b0d4bf42c7ec5",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

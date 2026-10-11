@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <SDL2/SDL.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -26,7 +29,13 @@ void SDL_RenderPresent(SDL_Renderer *r) {
  if(f){size_t n=fread(logbuf,1,sizeof(logbuf)-1,f);logbuf[n]=0;fclose(f);}
  if(state==0 && strstr(logbuf,"Rangers: run MainForm") && ++frames>10){capture(r,"menu");press(getenv("SR_TEST_LOAD")?SDLK_l:SDLK_RETURN);state=1;frames=0;}
  else if(state==1 && getenv("SR_TEST_LOAD") && strstr(logbuf,"Rangers: run SaveManager") && ++frames>30){capture(r,"load");press(SDLK_RETURN);state=3;frames=0;}
- else if(state==1 && strstr(logbuf,"Rangers: run GameSettings") && ++frames>10){capture(r,"character");press(SDLK_RETURN);state=2;frames=0;}
+ else if(state==1 && strstr(logbuf,"Rangers: run GameSettings") && ++frames>10){
+  capture(r,"character");
+  if(getenv("SR_TEST_PREVIEW_ONLY")) {
+   SDL_Event e;memset(&e,0,sizeof(e));e.type=SDL_QUIT;SDL_PushEvent(&e);state=7;
+  } else {press(SDLK_RETURN);state=2;}
+  frames=0;
+ }
  else if(state==2 && strstr(logbuf,"Rangers: run Introduction") && ++frames>10){capture(r,"generation");state=3;frames=0;}
  else if(state==3 && strstr(logbuf,"Rangers: run Hangar") && ++frames>30){capture(r,"hangar");state=5;frames=0;}
  else if(state==3 && (strstr(logbuf,"Rangers: run RuinsTalk") || strstr(logbuf,"Rangers: run Planet")) && ++frames>30){capture(r,"station");state=4;frames=0;}

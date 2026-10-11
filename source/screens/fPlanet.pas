@@ -225,7 +225,7 @@ begin
         )
     );
     Window.UpdateAutoGeometry;
-    Window.SetPosition(Classes.Point(GameScreenWidth - 10 - Window.ClientSize.X, 10));
+    Window.SetPosition(Classes.Point(LayoutSize.X - 10 - Window.ClientSize.X, 10));
     Window.SetActive(True);
     SetPosition(Window.WorkSubRect.TopLeft);
   end;
@@ -396,7 +396,7 @@ begin
     );
   Window.SetPosition(
       Classes.Point(
-          GameScreenWidth - 10 - Window.ClientSize.X,
+          LayoutSize.X - 10 - Window.ClientSize.X,
           MainPanel.ContentLayoutHeight - GiScalePixels(90) - Window.ClientSize.Y
       )
   );

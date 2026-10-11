@@ -99,6 +99,14 @@ var
   GameRendererPreference: TGameRendererPreference = grpDefault;
   {$ENDIF}
   GameRendererFallback: UnicodeString;
+  // Anbernic supports compact 800x600 layouts; other targets keep their defaults.
+  {$IFDEF SRHD_ANBERNIC}
+  GameCompactLayoutEnabled: Boolean = True;
+  {$ELSE}
+  GameCompactLayoutEnabled: Boolean = False;
+  {$ENDIF}
+  // Set only while constructing a fitted legacy screen, never during gameplay.
+  GameCompactLayoutBuilding: Boolean = False;
   OnGameActivated, OnGameDeactivated: TNotifyEvent;
   GameSDLWindow: PSDL_Window;
   GameSDLRenderer: PSDL_Renderer;

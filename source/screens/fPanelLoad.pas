@@ -96,14 +96,14 @@ begin
   if not LayoutAdjusted then
   begin
     Panel := Self.Screen.GetByName('PanelLoad');
-    Panel.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+    Panel.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     with Panel.FindByNameRecursive('BGImage') do
     begin
       SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight div 2));
-      SetSize(Classes.Point(GameScreenWidth, ClientSize.Y));
+      SetSize(Classes.Point(Self.Screen.LayoutSize.X, ClientSize.Y));
     end;
     with Panel.FindByNameRecursive('ShipPanelImage') do
-      SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+      SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     with Panel.FindByNameRecursive('LoadAnim') as TgaiGI do
     begin
       SetPosition(
@@ -136,7 +136,7 @@ begin
   for I := 0 to GetProgressSegmentCount - 1 do
   begin
     ProgressSegments[I] := Self.Screen.GetByName('PLB' + IntToStr(I + 1)) as TImageGI;
-    ProgressSegments[I].SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+    ProgressSegments[I].SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
   end;
   BackgroundImage := Self.Screen.GetByName('BGImage');
   ShipPanelImage := Self.Screen.GetByName('ShipPanelImage');
@@ -161,17 +161,17 @@ begin
           and (BottomShutter <> nil);
   if HasShutters then
   begin
-    RightShutter.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    LeftShutter.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    TopShutter.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    BottomShutter.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    Self.Screen.GetByName('PLRightImage').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    Self.Screen.GetByName('PLLeftImage').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-    Self.Screen.GetByName('PLTopImage').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+    RightShutter.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    LeftShutter.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    TopShutter.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    BottomShutter.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    Self.Screen.GetByName('PLRightImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    Self.Screen.GetByName('PLLeftImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    Self.Screen.GetByName('PLTopImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     Self
         .Screen
         .GetByName('PLBottomImage')
-        .SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+        .SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
   end;
 end;
 
@@ -308,19 +308,19 @@ begin
     Exit;
   LeftShutter.SetPosition(
       Classes
-          .Point(-Round(Cardinal(GameScreenWidth) * Fraction * 0.34), LeftShutter.LocalPosition.Y)
+          .Point(-Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), LeftShutter.LocalPosition.Y)
   );
   RightShutter.SetPosition(
       Classes
-          .Point(Round(Cardinal(GameScreenWidth) * Fraction * 0.34), RightShutter.LocalPosition.Y)
+          .Point(Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), RightShutter.LocalPosition.Y)
   );
   TopShutter.SetPosition(
       Classes
-          .Point(TopShutter.LocalPosition.X, -Round(Cardinal(GameScreenHeight) * Fraction * 0.61))
+          .Point(TopShutter.LocalPosition.X, -Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.61))
   );
   BottomShutter.SetPosition(
       Classes
-          .Point(BottomShutter.LocalPosition.X, Round(Cardinal(GameScreenHeight) * Fraction * 0.39))
+          .Point(BottomShutter.LocalPosition.X, Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.39))
   );
 end;
 

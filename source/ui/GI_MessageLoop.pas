@@ -255,6 +255,7 @@ type
     RegionDrawPending: Boolean;
     CursorImagePath: WideString;
     ViewportRect: TRect;
+    LayoutSize: TPoint;
     UpdateRectsEnabled: Boolean;
     UpdateRects: TArrayRectGR;
     ExitCode: Integer;
@@ -327,6 +328,7 @@ type
     procedure CancelTouchPress;
     procedure CancelPointerInput; virtual;
     procedure InitializeLayout; virtual;
+    procedure InitializeFittedLayout;
     procedure UpdateActionCursor(CanTake: Boolean); virtual;
     function GetActionParentLoop: TMessageLoopGI; virtual;
     procedure ExecuteUiCode(Block: TBlockParEC; Key: Cardinal); virtual;
@@ -421,6 +423,7 @@ uses
   GI_OnScreenKeyboard,
   Math,
   GameGraphics,
+  Direct3D9,
   GameWindow,
   PopUp,
   BreakMessageGIException,
@@ -463,6 +466,9 @@ begin
   // This also runs while unwinding exceptions, when controls may be gone.
   CancelGamePointerInput;
   MessageLoopStack.Delete(MessageLoopStack.Count - 1);
+  if MessageLoopStack.Count > 0 then
+    AppendLogLineThreadSafe('Rangers: resume '
+        + UTF8Encode(TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName));
 end;
 
 constructor TObjectGI.Create(Owner: TObjectGI);
@@ -1999,6 +2005,13 @@ begin
       Stage := 4;
       OnOpen;
       Stage := 5;
+      if (ContentPanel.DisplayScale < 1)
+          and (ViewportRect.Left = 0) and (ViewportRect.Top = 0)
+          and (ViewportRect.Right = GameScreenWidth)
+          and (ViewportRect.Bottom = GameScreenHeight) then
+        // OnOpen has already captured a modal background if it needs one.
+        // Do not leave pixels from the previous screen behind transparent art.
+        Direct3DDevice.Clear(0, nil, D3DCLEAR_TARGET, 0, 1, 0);
       RootUiObject.UpdateAbsolutePosition;
       RootUiObject.UpdateSubtreeHitBounds;
       QueueUpdateRect(ViewportRect);
@@ -3675,6 +3688,7 @@ procedure TMessageLoopGI.InitializeDefaults;
 var
   LabelControl: TLabelGI;
 begin
+  LayoutSize := Classes.Point(GameScreenWidth, GameScreenHeight);
   RootUiObject := CreateControlByName('Panel', nil);
   RootUiObject.MessageLoop := Self;
   RootUiObject.SetPosition(Classes.Point(0, 0));
@@ -3744,6 +3758,45 @@ end;
 procedure TMessageLoopGI.InitializeLayout;
 begin
   RootUiObject.UpdateAutoGeometry;
+end;
+
+procedure TMessageLoopGI.InitializeFittedLayout;
+var
+  Width, Height, ExtraWidth, ExtraHeight: Integer;
+  Scale: Single;
+begin
+  if not GameCompactLayoutEnabled or not HardwareRenderingEnabled
+      or (GameScreenWidth >= 1024) then
+  begin
+    InitializeLayout;
+    Exit;
+  end;
+  Width := GameScreenWidth;
+  Height := GameScreenHeight;
+  ExtraWidth := ExtraScreenWidth;
+  ExtraHeight := ExtraScreenHeight;
+  LayoutSize := Classes.Point(1024, 768);
+  // Only geometry construction sees the legacy canvas. The framebuffer,
+  // presentation, live world and input always retain the selected resolution.
+  GameCompactLayoutBuilding := True;
+  GameScreenWidth := LayoutSize.X;
+  GameScreenHeight := LayoutSize.Y;
+  ExtraScreenWidth := 0;
+  ExtraScreenHeight := 0;
+  try
+    InitializeLayout;
+  finally
+    GameScreenWidth := Width;
+    GameScreenHeight := Height;
+    ExtraScreenWidth := ExtraWidth;
+    ExtraScreenHeight := ExtraHeight;
+    GameCompactLayoutBuilding := False;
+  end;
+  Scale := Min(Width / LayoutSize.X, Height / LayoutSize.Y);
+  ContentPanel.DisplayScale := Scale;
+  ViewportRect := ScaleClipRect(ViewportRect, Scale);
+  RootUiObject.UpdateAbsolutePosition;
+  RootUiObject.UpdateSubtreeHitBounds;
 end;
 
 procedure TMessageLoopGI.UpdateActionCursor(CanTake: Boolean);

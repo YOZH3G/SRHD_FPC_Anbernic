@@ -1729,7 +1729,7 @@ begin
   begin
     ModsManagerScreen := TfModsManager.Create;
     ModsManagerScreen.InitializeFromConfig(UiStyleConfig, 'ModsManager', True);
-    ModsManagerScreen.InitializeLayout;
+    ModsManagerScreen.InitializeFittedLayout;
   end;
   ModsManagerScreen.ParentLoop := Parent;
   Parent.ChildLoop := ModsManagerScreen;

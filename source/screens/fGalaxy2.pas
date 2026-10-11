@@ -2088,9 +2088,9 @@ begin
       );
     if (InfoPanel.LocalPosition.X >= 0)
         and (InfoPanel.LocalPosition.Y >= 0)
-        and (GameScreenWidth - GiScalePixels(100)
+        and (LayoutSize.X - GiScalePixels(100)
             >= InfoPanel.LocalPosition.X + InfoPanel.ClientSize.X)
-        and (GameScreenHeight - GiScalePixels(100)
+        and (LayoutSize.Y - GiScalePixels(100)
             >= InfoPanel.LocalPosition.Y + InfoPanel.ClientSize.Y) then
       Break;
   end;

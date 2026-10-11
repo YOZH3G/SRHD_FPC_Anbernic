@@ -1294,6 +1294,32 @@ var
     Result := True;
   end;
 
+  procedure SnapUiQuadEdges;
+  var
+    I, Next: Integer;
+  begin
+    if not Target.Screen or not GameGraphicsTransform.PixelAligned
+        or (PrimitiveType <> D3DPT_TRIANGLEFAN) or (Count <> 4) then
+      Exit;
+    for I := 0 to 3 do
+    begin
+      Next := (I + 1) mod 4;
+      if (Vertices[I].Position.X <> Vertices[Next].Position.X)
+          and (Vertices[I].Position.Y <> Vertices[Next].Position.Y) then
+        Exit;
+    end;
+    // Adjacent UI tiles must share a physical edge. SDL's software triangle
+    // rasterizer can leave gaps between fractional, subpixel-wide strips.
+    // Snap endpoints, never each tile's width: collapsed strips are covered
+    // by their neighbors. World sprites and intermediate textures keep their
+    // original geometry and sampling policy.
+    for I := 0 to 3 do
+    begin
+      Vertices[I].Position.X := Round(Vertices[I].Position.X);
+      Vertices[I].Position.Y := Round(Vertices[I].Position.Y);
+    end;
+  end;
+
   procedure DrawEdge(First, Last: Integer);
   const
     Order: array[0..5] of Integer = (0, 1, 2, 0, 2, 3);
@@ -1370,6 +1396,7 @@ begin
     Vertices[Index].TexCoord.X := Source.U;
     Vertices[Index].TexCoord.Y := Source.V;
   end;
+  SnapUiQuadEdges;
   Texture := nil;
   if CurrentTexture <> nil then
   begin
@@ -1624,8 +1651,9 @@ var
   var
     Index: Integer;
   begin
-    if (Width < 1024)
-        or (Height < 720)
+    if ((not GameCompactLayoutEnabled) and ((Width < 1024) or (Height < 720)))
+        or (Width < 800)
+        or (Height < 600)
         or (Width > 7680)
         or (Height > 7680)
         or ((Height > 4320) and not Mobile)
@@ -1647,6 +1675,10 @@ begin
   Mobile := GameWindowIsFullscreenOnly;
   Portrait := False;
   GetDeviceCaps(0, D3DDEVTYPE_HAL, Caps);
+  if GameCompactLayoutEnabled then
+  begin
+    Add(800, 600);
+  end;
   if DesktopMode(Mode) = 0 then
   begin
     Add(Mode.W, Mode.H);

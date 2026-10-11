@@ -5092,11 +5092,22 @@ begin
     RobotSettings.ScreenHeight := 0;
   end;
   UseDesktopDisplayMode := False;
-  if (Cardinal(GameScreenWidth) < 1024) or (Cardinal(GameScreenHeight) < 720) then
+  if ((not GameCompactLayoutEnabled)
+      and ((Cardinal(GameScreenWidth) < 1024) or (Cardinal(GameScreenHeight) < 720)))
+      or (GameScreenWidth < 800) or (GameScreenHeight < 600) then
   begin
-    GameScreenWidth := DesktopDisplayMode.Width;
-    GameScreenHeight := DesktopDisplayMode.Height;
-    UseDesktopDisplayMode := True;
+    if GameCompactLayoutEnabled and (GameScreenWidth > 0) and (GameScreenHeight > 0) then
+    begin
+      GameScreenWidth := 800;
+      GameScreenHeight := 600;
+      AppendLogLineThreadSafe('Requested resolution below minimum; using 800x600');
+    end
+    else
+    begin
+      GameScreenWidth := DesktopDisplayMode.Width;
+      GameScreenHeight := DesktopDisplayMode.Height;
+      UseDesktopDisplayMode := True;
+    end;
   end;
   UseAutomaticRobotDisplayMode := False;
   if (RobotSettings.ScreenWidth < 1024) or (RobotSettings.ScreenHeight < 720) then
@@ -5109,7 +5120,8 @@ begin
   for Index := 0 to ModeCount - 1 do
   begin
     Direct3D.EnumAdapterModes(D3DADAPTER_DEFAULT, DesktopDisplayMode.Format, Index, Mode);
-    if Mode.Height >= 720 then
+    if (Mode.Height >= 720)
+        or (GameCompactLayoutEnabled and (Mode.Width >= 800) and (Mode.Height >= 600)) then
     begin
       ModeKey := SysUtils.IntToHex(Int64(Mode.Width), 6) + SysUtils.IntToHex(Int64(Mode.Height), 6);
       if (Modes.CountParams(ModeKey) <= 0)
@@ -5230,6 +5242,8 @@ end;
 
 function GetNormalGameLayoutSize: TPoint;
 begin
+  if GameCompactLayoutBuilding then
+    Exit(Classes.Point(1024, 768));
   Result := NormalGameLayoutSize;
   if (Result.X <= 0) or (Result.Y <= 0) then
     Result := Classes.Point(GameScreenWidth, GameScreenHeight);
@@ -5237,6 +5251,11 @@ end;
 
 function GetMobileHudLayoutSize: TPoint;
 begin
+  if GameCompactLayoutBuilding then
+    Exit(Classes.Point(1024, 768));
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled
+      and (GameScreenWidth < 1024) then
+    Exit(Classes.Point(1024, 768));
   Result := MobileHudLayoutSize;
   if not HardwareRenderingEnabled or (Result.X <= 0) or (Result.Y <= 0) then
     Result := GetNormalGameLayoutSize;
@@ -5529,7 +5548,19 @@ begin
     if GameRendererFallback <> '' then
       AppendLogLineThreadSafe('SDL acceleration unavailable; using software: '
           + UTF8Encode(GameRendererFallback));
-    if not GameRendererAccelerated then HardwareRenderingEnabled := False;
+    if not GameRendererAccelerated then
+    begin
+      HardwareRenderingEnabled := False;
+      // Both compact windows and mobile controls need texture transforms.
+      // Keep those transforms when changing to a larger resolution as well.
+      // SDL rasterizes them on the CPU; acceleration remains unavailable.
+      if GameCompactLayoutEnabled
+          and ((GameScreenWidth < 1024) or GameMobileUiEnabled) then
+      begin
+        HardwareRenderingEnabled := True;
+        AppendLogLineThreadSafe('Scaled UI: SDL software texture pipeline');
+      end;
+    end;
     AppendLogLineThreadSafe('SDL renderer=' + UTF8Encode(GameRendererName));
     // Capture the actual surface after window creation, before any controls
     // are built. Later docking/resizes change presentation, not this layout.

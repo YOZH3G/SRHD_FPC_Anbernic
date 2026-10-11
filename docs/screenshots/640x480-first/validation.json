@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-11",
+  "resolution": [
+    640,
+    480
+  ],
+  "arch": "armhf",
+  "renderer": "SDL software (automatic fallback)",
+  "environment": "QEMU user-mode, licensed game assets 2.1.2500",
+  "screenshots_resized": false,
+  "ui_status": "HD controls are clipped; first experiment, not a complete low-resolution adaptation",
+  "runs": {
+    "preview": {
+      "arch": "armhf",
+      "scenario": "preview",
+      "requested_resolution": "640x480",
+      "exit": 0,
+      "seconds": 11.0,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "d66b56f1a7608b214712889f4a9b3daaf7362a3903884fdc70632f7d99bc54fd"
+    },
+    "load": {
+      "arch": "armhf",
+      "scenario": "load",
+      "requested_resolution": "640x480",
+      "exit": 0,
+      "seconds": 43.7,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "d66b56f1a7608b214712889f4a9b3daaf7362a3903884fdc70632f7d99bc54fd"
+    }
+  },
+  "space_scenario": "load pre-existing QEMU test autosave, hangar, takeoff, 20 seconds in space",
+  "first_new_campaign_attempt": "Reached station at 640x480, then failed at unchecked hangar mirror readback. Fixed by intersecting capture with framebuffer bounds."
+}

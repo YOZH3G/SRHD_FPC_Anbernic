@@ -1,0 +1,13 @@
+{
+  "arch": "armhf",
+  "scenario": "fresh-1024-startup",
+  "input": "Fresh profile configured for 1024x768, then load campaign and open equipment",
+  "resolution_history": [
+    "1024x768"
+  ],
+  "exit": 0,
+  "seconds": 45.2,
+  "binary_sha256": "bd8ce298ba63b5dbe559d9b51726bd2012f2c37d7177dae24e841a7d5e9f7b68",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

@@ -1,0 +1,15 @@
+{
+  "arch": "aarch64",
+  "scenario": "in-game-resolution-roundtrip",
+  "input": "graphics settings radio buttons and Apply, within one process and a loaded campaign",
+  "resolution_history": [
+    "800x600",
+    "1024x768",
+    "800x600"
+  ],
+  "exit": 0,
+  "seconds": 76.8,
+  "binary_sha256": "78ea54b597a9f66e1597ab88e3e9c731ed69989fd0219cecb75467f3490e6afa",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

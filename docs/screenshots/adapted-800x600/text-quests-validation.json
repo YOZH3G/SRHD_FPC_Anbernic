@@ -1,0 +1,10 @@
+{
+  "arch": "aarch64",
+  "scenario": "main-menu-to-text-quests",
+  "resolution": "800x600",
+  "exit": 0,
+  "seconds": 11.4,
+  "binary_sha256": "b10f049f991972a964a42f5c8fcf9851045309fe06d01b2ee9c54c3856d02ae7",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

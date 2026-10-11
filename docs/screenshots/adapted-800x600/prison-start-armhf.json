@@ -1,0 +1,11 @@
+{
+  "arch": "armhf",
+  "scenario": "main-menu-to-prison-start",
+  "start_input": "mouse click on Start button at 565,493",
+  "resolution": "800x600",
+  "exit": 0,
+  "seconds": 16.4,
+  "binary_sha256": "718e113e739ccc3c53d7b4b48e877d6178b6164f7a644dbe482e83ed2ddff070",
+  "physical_hardware_tested": false,
+  "capture": "SDL framebuffer, no resizing"
+}

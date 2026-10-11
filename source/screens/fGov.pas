@@ -54,6 +54,7 @@ type
     procedure RequestAnimationRestart;
     procedure PortraitAnimationComplete(Sender: TObjectGI);
     procedure UpdatePortraitAnimation(Talking: Boolean);
+    procedure FitCompactPortrait;
     procedure RememberChoiceScroll;
     procedure ClearDialogChoices;
     procedure AddChoice(Text: WideString; Value: PtrInt; Callback: TDialogChoiceEventGI);
@@ -136,6 +137,7 @@ uses
   SysUtils,
   Math,
   GameInput,
+  GameWindow,
   Globals,
   GlobalsV,
   GR_Main,
@@ -295,6 +297,67 @@ begin
     UpCallback := PlanetPanel.PlanetClicked;
 end;
 
+procedure TfGov.FitCompactPortrait;
+var
+  Animation: array[0..1] of TObjectGI;
+  Origins: array[0..1] of TPoint;
+  Bounds, Frame, Area: TRect;
+  Dialog: TObjectGI;
+  I, Left, Top: Integer;
+  Scale, Factor: Single;
+  Prefix: WideString;
+begin
+  if not GameCompactLayoutEnabled or not GameMobileUiEnabled
+      or not HardwareRenderingEnabled or (ContentPanel.DisplayScale >= 1) then
+    Exit;
+  if UseHdPortrait and not UseClassicPortrait then
+    Prefix := 'GovHD_Anim'
+  else
+    Prefix := 'Gov_Anim';
+  RootUiObject.UpdateAbsolutePosition;
+  RootUiObject.UpdateSubtreeHitBounds;
+  for I := 0 to 1 do
+  begin
+    Animation[I] := PortraitPanel.FindByNameRecursive(Prefix + IntToStr(I));
+    Origins[I] := Animation[I].LogicalToScreenPoint(Animation[I].AbsolutePosition);
+    Frame.TopLeft := Animation[I].LogicalToScreenPoint(Animation[I].HitTestBounds.TopLeft);
+    Frame.BottomRight := Animation[I].LogicalToScreenPoint(Animation[I].HitTestBounds.BottomRight);
+    if I = 0 then
+      Bounds := Frame
+    else
+    begin
+      Bounds.Left := Min(Bounds.Left, Frame.Left);
+      Bounds.Top := Min(Bounds.Top, Frame.Top);
+      Bounds.Right := Max(Bounds.Right, Frame.Right);
+      Bounds.Bottom := Max(Bounds.Bottom, Frame.Bottom);
+    end;
+  end;
+  Area := MainPanel.ContentBounds;
+  Area.TopLeft := ContentPanel.LogicalToScreenPoint(Area.TopLeft);
+  Area.BottomRight := ContentPanel.LogicalToScreenPoint(Area.BottomRight);
+  Dialog := GetByName('PanelTalk');
+  Area.Left := Max(Area.Left, Dialog.LogicalToScreenPoint(Dialog.HitTestBounds.BottomRight).X);
+  Inc(Area.Left, 12);
+  Inc(Area.Top, 12);
+  Dec(Area.Right, 12);
+  Dec(Area.Bottom, 8);
+  if (Bounds.Right <= Bounds.Left) or (Bounds.Bottom <= Bounds.Top)
+      or (Area.Right <= Area.Left) or (Area.Bottom <= Area.Top) then
+    Exit;
+  // Use one envelope and scale for both speaking/idle frames. Switching
+  // animation must not move the face or put it behind the dialogue panel.
+  Factor := Min(1, Min((Area.Right - Area.Left) / (Bounds.Right - Bounds.Left),
+      (Area.Bottom - Area.Top) / (Bounds.Bottom - Bounds.Top)));
+  Scale := Animation[0].GetDisplayScale * Factor;
+  Left := Area.Left + (Area.Right - Area.Left - Round((Bounds.Right - Bounds.Left) * Factor)) div 2;
+  Top := Area.Bottom - Round((Bounds.Bottom - Bounds.Top) * Factor);
+  for I := 0 to 1 do
+    PlaceControlAtScreen(Animation[I], Point(Left + Round((Origins[I].X - Bounds.Left) * Factor),
+        Top + Round((Origins[I].Y - Bounds.Top) * Factor)), Scale);
+  RootUiObject.UpdateAbsolutePosition;
+  RootUiObject.UpdateSubtreeHitBounds;
+end;
+
 // Native reserves an unreferenced dword before its managed-string temporaries.
 // UnresolvedFrameBytes below preserves the matching frame and prologue push ECX.
 
@@ -424,6 +487,7 @@ begin
           end;
       end;
     end;
+    FitCompactPortrait;
     Stage := 5;
     Stage := 6;
     with GetByName('TalkText') as TLabelGI do

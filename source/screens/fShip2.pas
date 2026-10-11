@@ -93,6 +93,8 @@ type
     RightPanelSlideStep: Integer;
     PanelSlideWidth: Integer;
     RightPanelRestLeft: Integer;
+    EquipmentBodyRestPosition: TPoint;
+    BridgeButtonRestPosition: TPoint;
     DestrPanelSlideWidth: Integer;
     DestrPanelRestLeft: Integer;
     NativeTimer384: PCallbackTimerGI;
@@ -161,6 +163,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function CanUseLocalStorage: Boolean;
+    procedure CenterEquipment;
     function GetLocalStorageOwner: TObject;
     procedure RefreshRewards(Ship: TNormalShip);
     procedure RewardsMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
@@ -1157,6 +1160,57 @@ begin
   );
   if GameMobileUiEnabled then
     StoragePanelRestTop := 0;
+  EquipmentBodyRestPosition := GetByName('UsePanel').Parent.LocalPosition;
+  BridgeButtonRestPosition := GetByName('CustomBridgeInto').LocalPosition;
+end;
+
+procedure TfShip2.CenterEquipment;
+var
+  Body, Side, Bridge, Image: TObjectGI;
+  SavedSidePosition, Origin, Delta, Point: TPoint;
+  Visible, SideBounds, Area: TRect;
+  Scale: Single;
+begin
+  if not GameCompactLayoutEnabled or not HardwareRenderingEnabled then
+    Exit;
+  Body := GetByName('UsePanel').Parent;
+  Bridge := GetByName('CustomBridgeInto');
+  // Restore the station layout on each open; moving a persistent control tree
+  // must not accumulate offsets or push the service/storage columns aside.
+  Body.SetPosition(EquipmentBodyRestPosition);
+  Bridge.SetPosition(BridgeButtonRestPosition);
+  if CanUseLocalStorage then
+    Exit;
+  Side := GetByName('PanelRight');
+  SavedSidePosition := Side.LocalPosition;
+  // Measure the visible artwork with the drawer fully extended. Hidden
+  // sliding edges make the enclosing control's ClientSize too wide to center.
+  Side.SetPosition(Classes.Point(RightPanelRestLeft, SavedSidePosition.Y));
+  RootUiObject.UpdateAbsolutePosition;
+  RootUiObject.UpdateSubtreeHitBounds;
+  Image := GetByName('PanelLeft');
+  Visible.TopLeft := Image.LogicalToScreenPoint(Image.HitTestBounds.TopLeft);
+  Visible.BottomRight := Image.LogicalToScreenPoint(Image.HitTestBounds.BottomRight);
+  Image := GetByName('RightOpen');
+  SideBounds.TopLeft := Image.LogicalToScreenPoint(Image.HitTestBounds.TopLeft);
+  SideBounds.BottomRight := Image.LogicalToScreenPoint(Image.HitTestBounds.BottomRight);
+  Visible.Left := Min(Visible.Left, SideBounds.Left);
+  Visible.Top := Min(Visible.Top, SideBounds.Top);
+  Visible.Right := Max(Visible.Right, SideBounds.Right);
+  Visible.Bottom := Max(Visible.Bottom, SideBounds.Bottom);
+  Side.SetPosition(SavedSidePosition);
+  Area := MainPanel.ContentBounds;
+  Area.TopLeft := ContentPanel.LogicalToScreenPoint(Area.TopLeft);
+  Area.BottomRight := ContentPanel.LogicalToScreenPoint(Area.BottomRight);
+  Delta := Classes.Point((Area.Left + Area.Right - Visible.Left - Visible.Right) div 2,
+      (Area.Top + Area.Bottom - Visible.Top - Visible.Bottom) div 2);
+  Scale := Body.GetDisplayScale;
+  Origin := Body.LogicalToScreenPoint(Body.AbsolutePosition);
+  PlaceControlAtScreen(Body, AddPoints(Origin, Delta), Scale);
+  Point := Bridge.LogicalToScreenPoint(Bridge.AbsolutePosition);
+  PlaceControlAtScreen(Bridge, AddPoints(Point, Delta), Bridge.GetDisplayScale);
+  RootUiObject.UpdateAbsolutePosition;
+  RootUiObject.UpdateSubtreeHitBounds;
 end;
 
 procedure TfShip2.OnOpen;
@@ -1668,6 +1722,7 @@ begin
     GetByName('MobileStorage').SetActive(CanUseLocalStorage);
     StorageDownClicked(nil);
   end;
+  CenterEquipment;
   CustomCursorEnabled := True;
   UpdateActionCursor(ReopenRequested);
   SetCursorActive(True);
@@ -8012,10 +8067,10 @@ begin
       if CenterY then
       begin
         Dec(Position.Y, InfoWindow.ClientSize.Y div 2);
-        if Position.Y + InfoWindow.ClientSize.Y + 10 > GameScreenHeight then
-          Position.Y := GameScreenHeight - InfoWindow.ClientSize.Y - 10;
+        if Position.Y + InfoWindow.ClientSize.Y + 10 > LayoutSize.Y then
+          Position.Y := LayoutSize.Y - InfoWindow.ClientSize.Y - 10;
       end
-      else if Position.Y + InfoWindow.ClientSize.Y + 10 > GameScreenHeight then
+      else if Position.Y + InfoWindow.ClientSize.Y + 10 > LayoutSize.Y then
         Position.Y := Position.Y - CellSize.Y - InfoWindow.ClientSize.Y;
       InfoWindow.SetPosition(Position);
     end

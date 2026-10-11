@@ -587,6 +587,14 @@ begin
     Width := GraphBuf.ScreenSnapshotSize.X;
     Height := GraphBuf.ScreenSnapshotSize.Y;
   end;
+  // CPU readback can omit native snapshot metadata. Both capture paths
+  // already have framebuffer dimensions and must fill the logical canvas.
+  if HardwareRenderingEnabled and (MessageLoop <> nil)
+      and (MessageLoop.ContentPanel.DisplayScale < 1) and (GraphBuf = AuxRenderBuffer) then
+  begin
+    Width := MessageLoop.LayoutSize.X;
+    Height := MessageLoop.LayoutSize.Y;
+  end;
   if ImageKindX = ikxLeftFill then
   begin
     Left := HitTestBounds.Left;
@@ -661,8 +669,8 @@ begin
             GraphBuf.GetTexture,
             X,
             Y,
-            GraphBuf.ScreenSnapshotSize.X,
-            GraphBuf.ScreenSnapshotSize.Y,
+            Width,
+            Height,
             255 - (Ord(HalfAlpha) shl 7),
             RgbWhite,
             @ClipRect,

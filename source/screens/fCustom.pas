@@ -94,7 +94,7 @@ begin
     AfterCode := Block.ConcatenateValues
   else
     AfterCode := '';
-  Dialog.InitializeLayout;
+  Dialog.InitializeFittedLayout;
   Previous := CurrentCustomDialog;
   try
     CurrentCustomDialog := Dialog;

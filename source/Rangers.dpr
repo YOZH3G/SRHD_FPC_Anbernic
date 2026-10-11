@@ -568,6 +568,8 @@ begin
   for ArgumentIndex := 1 to ParamCount do
     if Copy(ParamStr(ArgumentIndex), 1, 11) = '--user-dir=' then
       SetGameUserDirectory(UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt)))
+    else if ParamStr(ArgumentIndex) = '--experimental-low-res' then
+      GameCompactLayoutEnabled := True
     else if ParamStr(ArgumentIndex) = '--renderer=sdl' then
       GameRendererPreference := grpSDL
     else if ParamStr(ArgumentIndex) = '--renderer=software' then

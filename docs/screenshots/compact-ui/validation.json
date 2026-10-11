@@ -1,0 +1,58 @@
+{
+  "640x480": {
+    "preview": {
+      "arch": "armhf",
+      "scenario": "preview",
+      "requested_resolution": "640x480",
+      "exit": 0,
+      "seconds": 32.0,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "89cc786777f2af2b6ed8df450c6a3d838bf50174249328fb2c621faafbc8f6bf"
+    },
+    "load": {
+      "arch": "armhf",
+      "scenario": "load",
+      "requested_resolution": "640x480",
+      "exit": 0,
+      "seconds": 68.1,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "89cc786777f2af2b6ed8df450c6a3d838bf50174249328fb2c621faafbc8f6bf"
+    }
+  },
+  "800x600": {
+    "preview": {
+      "arch": "armhf",
+      "scenario": "preview",
+      "requested_resolution": "800x600",
+      "exit": 0,
+      "seconds": 33.7,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "89cc786777f2af2b6ed8df450c6a3d838bf50174249328fb2c621faafbc8f6bf"
+    },
+    "load": {
+      "arch": "armhf",
+      "scenario": "load",
+      "requested_resolution": "800x600",
+      "exit": 0,
+      "seconds": 76.6,
+      "renderer": "software",
+      "automatic_fallback": true,
+      "video_driver": "dummy",
+      "mesa_software_rasterizer": false,
+      "physical_hardware_tested": false,
+      "binary_sha256": "89cc786777f2af2b6ed8df450c6a3d838bf50174249328fb2c621faafbc8f6bf"
+    }
+  }
+}

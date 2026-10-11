@@ -4,7 +4,7 @@
 на enhanced-ветке. После переноса на upstream `main` её бинарник не изменён;
 это историческая демонстрация, а не проверка новой сборки с SDL по умолчанию.
 
-[Смотреть MP4](https://github.com/YOZH3G/SpaceRangersHD_FPC/blob/main/docs/media/aarch64-menu-to-space.mp4)
+[Смотреть MP4](https://github.com/YOZH3G/SRHD_FPC_Anbernic/blob/main/docs/media/aarch64-menu-to-space.mp4)
 · [Сведения о записи](aarch64-menu-to-space.json)
 
 - Платформа: Linux AArch64 через QEMU user-mode, SDL software renderer из SDK.

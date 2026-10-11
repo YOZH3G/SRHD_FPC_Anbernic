@@ -262,12 +262,22 @@ begin
   end;
   Light.SetPosition(Classes.Point(WindowSize.X div 2 - Light.ClientSize.X div 2, 0));
   TextSize := TextLabel.MeasureContentSize(nil);
-  if GameMobileUiEnabled and HardwareRenderingEnabled then
+  if HardwareRenderingEnabled
+      and (GameMobileUiEnabled or (GameCompactLayoutEnabled and (GameScreenWidth < 1024))) then
   begin
-    FitMobileControl(
-        ContentPanel,
-        Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
-    );
+    if GameMobileUiEnabled then
+      FitMobileControl(
+          ContentPanel,
+          Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
+      )
+    else
+    begin
+      Scale := Min(1, Min((GameScreenWidth - 24) / WindowSize.X,
+          (GameScreenHeight - 24) / WindowSize.Y));
+      PlaceControlAtScreen(ContentPanel,
+          Classes.Point((GameScreenWidth - Round(WindowSize.X * Scale)) div 2,
+              (GameScreenHeight - Round(WindowSize.Y * Scale)) div 2), Scale);
+    end;
     // Redraw and background restoration use screen coordinates, while the
     // fitted dialog and its children retain their original logical bounds.
     Scale := ContentPanel.GetDisplayScale;

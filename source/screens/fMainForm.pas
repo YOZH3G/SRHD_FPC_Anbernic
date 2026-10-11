@@ -177,11 +177,20 @@ end;
 procedure TfMainForm.InitializeLayout;
 var
   OffsetX, OffsetY, LogoShift: Integer;
+  LayoutExtraWidth, LayoutExtraHeight: Integer;
   WideLayout: Boolean;
   Extension: WideString;
   CaptionControl: TObjectGI;
 begin
   inherited InitializeLayout;
+  LayoutExtraWidth := ExtraScreenWidth;
+  LayoutExtraHeight := ExtraScreenHeight;
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled
+      and (GameScreenWidth < 1024) then
+  begin
+    LayoutExtraWidth := 0;
+    LayoutExtraHeight := 0;
+  end;
   LoadPanel.InitializeLayout(Self);
   AppendLogTextThreadSafe('fMainForm... ');
   WideLayout := (GameScreenWidth >= 1600) and not GameMobileUiEnabled;
@@ -190,7 +199,7 @@ begin
     if Cardinal(GameScreenWidth) >= 1280 then
     begin
       SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
+          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
       );
       SetText(ReplaceAllWideString(LocalizedText('FormMain.Version'), '<Value>', GameVersionText));
       LogoShift := 0;
@@ -198,7 +207,7 @@ begin
     else
     begin
       SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight - 7)
+          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - 7)
       );
       SetText(ReplaceAllWideString(LocalizedText('FormMain.Version2'), '<Value>', GameVersionText));
       LogoShift := 16;
@@ -207,32 +216,34 @@ begin
   with GetByName('LogoElemental') do
     SetPosition(
         Classes.Point(
-            LocalPosition.X + ExtraScreenWidth,
-            LocalPosition.Y + ExtraScreenHeight - LogoShift
+            LocalPosition.X + LayoutExtraWidth,
+            LocalPosition.Y + LayoutExtraHeight - LogoShift
         )
     );
   with GetByName('Logo1C') do
     SetPosition(
         Classes.Point(
-            LocalPosition.X + ExtraScreenWidth,
-            LocalPosition.Y + ExtraScreenHeight - LogoShift
+            LocalPosition.X + LayoutExtraWidth,
+            LocalPosition.Y + LayoutExtraHeight - LogoShift
         )
     );
   with GetByName('LogoKatauri') do
     SetPosition(
         Classes.Point(
-            LocalPosition.X + ExtraScreenWidth,
-            LocalPosition.Y + ExtraScreenHeight - LogoShift
+            LocalPosition.X + LayoutExtraWidth,
+            LocalPosition.Y + LayoutExtraHeight - LogoShift
         )
     );
   with GetByName('LogoSNK') do
     SetPosition(
         Classes.Point(
-            LocalPosition.X + ExtraScreenWidth,
-            LocalPosition.Y + ExtraScreenHeight - LogoShift
+            LocalPosition.X + LayoutExtraWidth,
+            LocalPosition.Y + LayoutExtraHeight - LogoShift
         )
     );
-  if (ExtraScreenWidth <> 0) or (ExtraScreenHeight <> 0) then
+  if ((ExtraScreenWidth <> 0) or (ExtraScreenHeight <> 0))
+      and not (GameCompactLayoutEnabled and HardwareRenderingEnabled
+          and (GameScreenWidth < 1024)) then
   begin
     ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
     OffsetX := 0;
@@ -423,7 +434,14 @@ begin
         SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
     end;
   end;
-  FitMobileMenu;
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled
+      and (GameScreenWidth < 1024) then
+  begin
+    ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+    GetByName('MainPanel').DisplayScale := Min(GameScreenWidth / 1024, GameScreenHeight / 768);
+  end
+  else
+    FitMobileMenu;
   AppendLogLineThreadSafe('ok');
   with GetByName('LoadRobot') as TGraphButtonGI do
   begin
@@ -502,7 +520,11 @@ begin
   with GetByName('AnimAddonShip') as TgaiGI do
   begin
     FirstFrameOnly := not AnimMenuShip;
-    SetPosition(Classes.Point(0, ExtraScreenHeight div 2 + 60));
+    if GameCompactLayoutEnabled and HardwareRenderingEnabled
+        and (GameScreenWidth < 1024) then
+      SetPosition(Classes.Point(0, 60))
+    else
+      SetPosition(Classes.Point(0, ExtraScreenHeight div 2 + 60));
     SetDepth(29);
     if AnimMenuShip then
     begin

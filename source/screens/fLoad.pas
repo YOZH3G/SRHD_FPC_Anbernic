@@ -80,6 +80,7 @@ uses
   fPanelMain,
   EC_CacheGAI,
   GameInput,
+  GameWindow,
   SysUtils,
   Math,
   GameSystem,
@@ -376,42 +377,47 @@ begin
   if (ScreenLoadMode = 0) or (ScreenLoadMode = 3) then
   begin
     MainMenuScreen.InitializeLayout;
-    PlanetQuestScreen.InitializeLayout;
+    // The responsive quest layout rebuilds its artwork at runtime against
+    // the actual framebuffer; keep its initial geometry in the same domain.
+    if GameMobileUiEnabled then
+      PlanetQuestScreen.InitializeLayout
+    else
+      PlanetQuestScreen.InitializeFittedLayout;
     LoadScreen.InitializeLayout;
     NewGameScreen.InitializeLayout;
     IntroductionScreen.InitializeLayout;
-    HangarScreen.InitializeLayout;
-    PlanetScreen.InitializeLayout;
-    UninhabitedPlanetScreen.InitializeLayout;
-    RuinsTalkScreen.InitializeLayout;
+    HangarScreen.InitializeFittedLayout;
+    PlanetScreen.InitializeFittedLayout;
+    UninhabitedPlanetScreen.InitializeFittedLayout;
+    RuinsTalkScreen.InitializeFittedLayout;
     ArcadeBattleScreen.InitializeLayout;
-    EquipmentShopScreen.InitializeLayout;
-    GoodsShopScreen.InitializeLayout;
-    GovernmentScreen.InitializeLayout;
-    InfoScreen.InitializeLayout;
-    RangerRatingScreen.InitializeLayout;
-    RewardsScreen.InitializeLayout;
-    ShipScreen.InitializeLayout;
-    ScannerScreen.InitializeLayout;
+    EquipmentShopScreen.InitializeFittedLayout;
+    GoodsShopScreen.InitializeFittedLayout;
+    GovernmentScreen.InitializeFittedLayout;
+    InfoScreen.InitializeFittedLayout;
+    RangerRatingScreen.InitializeFittedLayout;
+    RewardsScreen.InitializeFittedLayout;
+    ShipScreen.InitializeFittedLayout;
+    ScannerScreen.InitializeFittedLayout;
     StarMapScreen.InitializeLayout;
     FilmScreen.InitializeLayout;
-    GalaxyScreen.InitializeLayout;
+    GalaxyScreen.InitializeFittedLayout;
     JumpScreen.InitializeLayout;
-    SaveManagerScreen.InitializeLayout;
+    SaveManagerScreen.InitializeFittedLayout;
     GameLoadScreen.InitializeLayout;
-    GameMenuScreen.InitializeLayout;
-    SettingsScreen.InitializeLayout;
-    GameEndScreen.InitializeLayout;
-    AboutScreen.InitializeLayout;
-    ScoreScreen.InitializeLayout;
+    GameMenuScreen.InitializeFittedLayout;
+    SettingsScreen.InitializeFittedLayout;
+    GameEndScreen.InitializeFittedLayout;
+    AboutScreen.InitializeFittedLayout;
+    ScoreScreen.InitializeFittedLayout;
     SpaceObjectUiLoop.InitializeLayout;
-    TalkScreen.InitializeLayout;
-    SelectFaceScreen.InitializeLayout;
-    JournalScreen.InitializeLayout;
+    TalkScreen.InitializeFittedLayout;
+    SelectFaceScreen.InitializeFittedLayout;
+    JournalScreen.InitializeFittedLayout;
     LoadRobotScreen.InitializeLayout;
-    LoadQuestScreen.InitializeLayout;
+    LoadQuestScreen.InitializeFittedLayout;
     LoadArcadeScreen.InitializeLayout;
-    AchievementsScreen.InitializeLayout;
+    AchievementsScreen.InitializeFittedLayout;
     // Anchor the shared HUD after each owner has positioned its content tree.
     for ScreenId := Low(TGameScreenId) to High(TGameScreenId) do
       if TObject(RegisteredScreens[ScreenId]) is TMessageLoopGIWithMainPanel then

@@ -6,7 +6,7 @@ An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.
 Supply game assets from your own licensed copy; downloads contain the port only.
 
-[Download builds](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-sdl-2026.10.11)
+[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-sdl-2026.10.11)
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
@@ -69,10 +69,25 @@ The physical panel and game layout resolution differ: fullscreen scales the
 logical frame to the panel while preserving aspect ratio. A 640×480 panel does
 not by itself make the game render its layout at 640×480.
 
+The current Anbernic source supports a minimum internal resolution of **800×600**.
+Set `VideoMode=800,600` in `profile/CFG.TXT`; no experimental flag is needed.
+Lower requested resolutions are replaced with 800×600. The menu and character
+creation fit inside the frame, while the space HUD scales separately from the
+world. Automatic resolution selection retains its previous behavior. These
+changes are not yet in the published release. Settings, station dialogs, shops,
+ship equipment, galaxy map, journal, save/load and the RU/EN keyboard now fit
+the same frame. See the [800×600 screenshots and checks](docs/screenshots/adapted-800x600/README.md).
+[In-game resolution switching](docs/screenshots/resolution-switch/README.md)
+checks restoration of the layout when changing between 800×600 and 1024×768.
+Equipment in space is centered above the HUD at both resolutions; see the
+[updated captures](docs/screenshots/centered-1024/README.md).
+[Planetary screens](docs/screenshots/planet-layout/README.md) now fill the 800×600
+frame, with the governor fitted to the right of the dialogue.
+
 ## Screenshots
 
 The screenshots and video below belong to the earlier
-[enhanced-branch keyboard release](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11).
+[enhanced-branch keyboard release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-keyboard-2026.10.11).
 
 Captured from the actual ARMHF/AArch64 builds under QEMU using licensed game
 assets. These images do not demonstrate a physical handheld or firmware driver.

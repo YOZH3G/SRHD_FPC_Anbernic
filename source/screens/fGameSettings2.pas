@@ -134,6 +134,8 @@ uses
   fGameSettings,
   Classes,
   GameInput,
+  GameWindow,
+  Direct3D9,
   SysUtils,
   Math,
   EC_Str,
@@ -165,11 +167,25 @@ uses
 procedure TfGameSettings2.InitializeLayout;
 var
   I, J: Integer;
+  LayoutWidth, LayoutHeight, LayoutExtraWidth, LayoutExtraHeight: Integer;
+  Compact: Boolean;
   Text: WideString;
   Race: TOwnerId;
   Unused: Integer; // Native O- stack reserves this unused local.
 begin
   inherited InitializeLayout;
+  Compact := GameCompactLayoutEnabled and HardwareRenderingEnabled
+      and (GameScreenWidth < 1024);
+  LayoutWidth := GameScreenWidth;
+  LayoutHeight := GameScreenHeight;
+  if Compact then
+  begin
+    LayoutWidth := 1024;
+    LayoutHeight := 768;
+    GetByName('MainPanel').DisplayScale := Min(GameScreenWidth / 1024, GameScreenHeight / 768);
+  end;
+  LayoutExtraWidth := LayoutWidth - 1024;
+  LayoutExtraHeight := LayoutHeight - 768;
   AppendLogTextThreadSafe('fGameSettings2... ');
   for Race := oiMaloc to oiGaal do
   begin
@@ -188,62 +204,62 @@ begin
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
-    SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+    SetSize(Classes.Point(LayoutWidth, LayoutHeight));
     with FindByNameRecursive('ImageBG') do
-      SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+      SetSize(Classes.Point(LayoutWidth, LayoutHeight));
     with FindByNameRecursive('PanelChar') do
       SetPosition(
           Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.X + LayoutExtraWidth div 2,
+              LocalPosition.Y + LayoutExtraHeight div 2
           )
       );
     with FindByNameRecursive('PanelLevels') do
       SetPosition(
           Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.X + LayoutExtraWidth div 2,
+              LocalPosition.Y + LayoutExtraHeight div 2
           )
       );
     with FindByNameRecursive('PanelSkills') do
       SetPosition(
           Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.X + LayoutExtraWidth div 2,
+              LocalPosition.Y + LayoutExtraHeight div 2
           )
       );
     with FindByNameRecursive('PanelExtended') do
       SetPosition(
           Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.X + LayoutExtraWidth div 2,
+              LocalPosition.Y + LayoutExtraHeight div 2
           )
       );
     with FindByNameRecursive('Ok') do
     begin
       SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
+          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
       );
     end;
     with FindByNameRecursive('Cancel') do
     begin
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
+      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + LayoutExtraHeight));
     end;
     with FindByNameRecursive('ImageHelp') do
     begin
       SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
+          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
       );
     end;
     with FindByNameRecursive('ImageFooter') do
     begin
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
-      SetSize(Classes.Point(GameScreenWidth, ClientSize.Y));
+      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + LayoutExtraHeight));
+      SetSize(Classes.Point(LayoutWidth, ClientSize.Y));
     end;
     with FindByNameRecursive('LabelHelp') do
     begin
       SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
+          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
       );
     end;
   end;
@@ -466,6 +482,9 @@ var
 
 begin
   PlayerNameEdited := False;
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled
+      and (GameScreenWidth < 1024) then
+    Direct3DDevice.Clear(0, nil, D3DCLEAR_TARGET, 0, 1, 0);
   PlayerNameValid := True;
   IronWillLabel := nil;
   IronWill := False;

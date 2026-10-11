@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import struct
 import time
 from pathlib import Path
 
@@ -15,7 +16,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arch", choices=["armhf", "aarch64"], required=True)
     parser.add_argument(
-        "--scenario", choices=["keyboard", "flight", "load"], required=True
+        "--scenario",
+        choices=["keyboard", "flight", "load", "preview", "navigation"],
+        required=True,
     )
     parser.add_argument("--sdk-root", type=Path, required=True)
     parser.add_argument("--qemu", type=Path, required=True)
@@ -23,14 +26,18 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--preload", type=Path, required=True)
     parser.add_argument(
+        "--resolution", choices=["1024x768", "800x600"], default="1024x768"
+    )
+    parser.add_argument(
         "--video-driver", choices=["dummy", "offscreen"], default="dummy"
     )
+    parser.add_argument("--renderer", choices=["sdl", "software"], default="sdl")
     args = parser.parse_args()
     profile = args.profile.resolve()
-    if args.scenario != "load":
+    if args.scenario not in ("load", "navigation"):
         profile.mkdir(parents=True, exist_ok=False)
         (profile / "CFG.TXT").write_text(
-            "VideoMode=1024,768\nWindow=False\nVSync=False\nMobileUI=2\nSkipIntro=True\nSound=True\nMusic=True\n"
+            f"VideoMode={args.resolution.replace('x', ',')}\nWindow=False\nVSync=False\nMobileUI=2\nSkipIntro=True\nSound=True\nMusic=True\n"
         )
     else:
         assert (profile / "Save").is_dir(), (
@@ -63,6 +70,8 @@ def main():
         )
     if args.scenario == "load":
         variables["SR_TEST_LOAD"] = "1"
+    if args.scenario == "preview":
+        variables["SR_TEST_PREVIEW_ONLY"] = "1"
     command = [str(args.qemu.resolve()), "-L", str(sdk)]
     for key, value in variables.items():
         command.extend(["-E", f"{key}={value}"])
@@ -71,8 +80,10 @@ def main():
             str(work / "Rangers"),
             f"--game-dir={args.game_dir.resolve()}",
             f"--user-dir={profile}",
-            "--windowed" if args.video_driver == "offscreen" else "--fullscreen",
-            "--renderer=sdl",
+            "--windowed"
+            if args.video_driver == "offscreen" or args.resolution != "1024x768"
+            else "--fullscreen",
+            f"--renderer={args.renderer}",
             "--on-screen-keyboard",
         ]
     )
@@ -95,6 +106,14 @@ def main():
     )
     assert result.returncode == 0, f"Game exited {result.returncode}; see {profile}"
     log = game_log.read_text(errors="replace")
+    if args.resolution != "1024x768":
+        assert f"Display Mode={args.resolution}" in log, (
+            "Game rejected the internal mode"
+        )
+        expected_size = tuple(int(part) for part in args.resolution.split("x"))
+        for path in profile.glob("*.bmp"):
+            width, height = struct.unpack_from("<ii", path.read_bytes(), 18)
+            assert (width, abs(height)) == expected_size, f"Wrong capture size: {path}"
     fallback = "SDL acceleration unavailable; using software:" in log
     renderer = next(
         line.split("=", 1)[1]
@@ -102,7 +121,11 @@ def main():
         if line.startswith("SDL renderer=")
     )
     if args.video_driver == "dummy":
-        assert fallback and renderer == "software", "No automatic software fallback"
+        assert renderer == "software", "No software SDL renderer"
+        if args.renderer == "sdl":
+            assert fallback, "No automatic software fallback"
+        else:
+            assert not fallback, "Forced software incorrectly reported a fallback"
     else:
         assert not fallback and renderer.startswith("opengl"), "No SDL OpenGL renderer"
     if args.scenario == "keyboard":
@@ -117,12 +140,39 @@ def main():
             "cancelled",
         ]:
             assert (profile / f"{name}.bmp").is_file(), name
+    elif args.scenario == "navigation":
+        assert "NAVIGATION_OK" in (profile / "navigation-console.log").read_text(), (
+            "Navigation incomplete"
+        )
+        for name in [
+            "settings",
+            "load",
+            "hangar",
+            "station",
+            "equipment",
+            "goods",
+            "station-info",
+            "space",
+            "ship",
+            "galaxy",
+            "journal",
+            "pause",
+            "save",
+            "space-return",
+        ]:
+            assert (profile / f"{name}.bmp").is_file(), name
+    elif args.scenario == "preview":
+        assert (profile / "menu.bmp").is_file() and (
+            profile / "character.bmp"
+        ).is_file()
     else:
         assert (profile / "space.bmp").is_file(), "No space frame"
         assert "Rangers: run StarMap" in log
     report = {
         "arch": args.arch,
         "scenario": args.scenario,
+        "requested_resolution": args.resolution,
+        "requested_renderer": args.renderer,
         "exit": result.returncode,
         "seconds": round(time.monotonic() - start, 1),
         "renderer": renderer,

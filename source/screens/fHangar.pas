@@ -539,6 +539,7 @@ end;
 procedure TfHangar.CaptureDispatcherMirror(Sender: TObjectGI);
 var
   Position: TPoint;
+  VisibleRect: TRect;
   WasActive: Boolean;
 begin
   if HardwareRenderingEnabled then
@@ -555,21 +556,23 @@ begin
       SetCursorActive(True);
     Position := ToAbsolutePoint(Classes.Point(0, 0));
     GraphBuf.AllocateNative(ClientSize.X, ClientSize.Y);
-    Ex_OKGR_Copy_XY_XY_WORD(
+    GraphBuf.ClearPixels;
+    // Small layouts can place the mirror partially or entirely outside the
+    // framebuffer. Copy only the visible intersection, never an invalid pointer.
+    if IntersectRects(VisibleRect,
+        Classes.Rect(Position.X, Position.Y, Position.X + ClientSize.X, Position.Y + ClientSize.Y),
+        Classes.Rect(0, 0, ScreenRenderBuffer.Width, ScreenRenderBuffer.Height)) then
+      Ex_OKGR_Copy_XY_XY_WORD(
         GraphBuf.GetPixels,
         GraphBuf.PitchBytes,
-        0,
-        0,
-        Pointer(
-            PtrInt(ScreenRenderBuffer.GetPixels)
-                + PtrInt(Position.X) * 2
-                + PtrInt(Position.Y) * ScreenRenderBuffer.PitchBytes
-        ),
+        VisibleRect.Left - Position.X,
+        VisibleRect.Top - Position.Y,
+        ScreenRenderBuffer.GetPixels,
         ScreenRenderBuffer.PitchBytes,
-        0,
-        0,
-        ClientSize.X,
-        ClientSize.Y
+        VisibleRect.Left,
+        VisibleRect.Top,
+        VisibleRect.Right - VisibleRect.Left,
+        VisibleRect.Bottom - VisibleRect.Top
     );
     GraphBuf.FlipHorizontal16;
     SetActive(True);

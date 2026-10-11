@@ -1,0 +1,8 @@
+{
+  "method": "Pixel comparison of opaque, static UI label regions; animated ship and live world excluded",
+  "comparisons": {
+    "mass-and-cargo-labels": true,
+    "captain-name-and-character-labels": true,
+    "800-return-mass-and-cargo-labels": true
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "preview": {
+    "arch": "armhf",
+    "scenario": "preview",
+    "requested_resolution": "800x600",
+    "exit": 0,
+    "seconds": 11.1,
+    "renderer": "software",
+    "automatic_fallback": true,
+    "video_driver": "dummy",
+    "mesa_software_rasterizer": false,
+    "physical_hardware_tested": false,
+    "binary_sha256": "d66b56f1a7608b214712889f4a9b3daaf7362a3903884fdc70632f7d99bc54fd"
+  },
+  "load": {
+    "arch": "armhf",
+    "scenario": "load",
+    "requested_resolution": "800x600",
+    "exit": 0,
+    "seconds": 49.7,
+    "renderer": "software",
+    "automatic_fallback": true,
+    "video_driver": "dummy",
+    "mesa_software_rasterizer": false,
+    "physical_hardware_tested": false,
+    "binary_sha256": "d66b56f1a7608b214712889f4a9b3daaf7362a3903884fdc70632f7d99bc54fd"
+  }
+}
