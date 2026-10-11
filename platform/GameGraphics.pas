@@ -1558,7 +1558,7 @@ begin
     Exit;
   end;
   {$ENDIF}
-  if GameWindowIsMobile then
+  if GameWindowIsFullscreenOnly then
   begin
     GetGameAutomaticLayoutSize(1024, 768, Width, Height);
     GetDeviceCaps(0, D3DDEVTYPE_HAL, Caps);
@@ -1644,7 +1644,7 @@ var
 begin
   // These layouts are scaled into the host surface, not physical display modes.
   RenderModes := nil;
-  Mobile := GameWindowIsMobile;
+  Mobile := GameWindowIsFullscreenOnly;
   Portrait := False;
   GetDeviceCaps(0, D3DDEVTYPE_HAL, Caps);
   if DesktopMode(Mode) = 0 then

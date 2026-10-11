@@ -10,6 +10,7 @@ from pathlib import Path
 from build_support import (
     BuildStamp,
     build_codecs,
+    build_jobs,
     build_okgf,
     compile_native,
     file_state,
@@ -20,7 +21,7 @@ from build_support import (
 )
 from compiler import prepare_compiler
 from pascal import build_paszlib, compile_pascal, pascal_flags
-from targets import IOS_MIN_VERSION, ROOT, BuildConfig
+from targets import IOS_MIN_VERSION, PACKAGE_VERSION, ROOT, BuildConfig
 
 APPLICATION_ID = "io.github.pakompom.spacerangershd"
 
@@ -76,7 +77,7 @@ def build_ios(config: BuildConfig, rebuild: bool) -> Path:
         *cmake_options(sdk, arch, prefix),
         "-DBUILD_SHARED_LIBS=OFF",
         rebuild=rebuild,
-        jobs=6,
+        jobs=build_jobs(),
     )
     paszlib = build_paszlib(config.work, compiler, flags, rebuild)
     launcher = config.work / "ios-main.o"
@@ -162,7 +163,7 @@ def package_ios(config: BuildConfig) -> None:
         "CFBundleDisplayName": "Space Rangers HD",
         "CFBundlePackageType": "APPL",
         "CFBundleVersion": "1",
-        "CFBundleShortVersionString": "0.1",
+        "CFBundleShortVersionString": PACKAGE_VERSION,
         "MinimumOSVersion": IOS_MIN_VERSION,
         "UIDeviceFamily": [1, 2],
         "UIFileSharingEnabled": True,

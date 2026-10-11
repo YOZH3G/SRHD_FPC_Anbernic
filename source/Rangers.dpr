@@ -8,18 +8,21 @@ program Rangers;
 {$IMAGEBASE $00400000}
 {$SETPEFLAGS $20}
 {$I-}
-{$IF not Defined(WASI) and not Defined(ANDROID) and not Defined(SRHD_IOS)}
+{$IF not Defined(WASI) and not Defined(ANDROID) and not Defined(SRHD_IOS) and not Defined(SWITCH)}
   {$R Rangers.res}
 {$ENDIF}
 
 uses
+{$IFDEF SWITCH}
+  NxThreads,
+{$ENDIF}
 {$IFDEF FPC_WASM_EMSCRIPTEN}
   EmscriptenThreads,
 {$ENDIF}
 {$IFDEF UNIX}
   cthreads,
 {$ENDIF}
-{$IF Defined(WASI) or Defined(ANDROID) or Defined(SRHD_IOS)}
+{$IF Defined(WASI) or Defined(ANDROID) or Defined(SRHD_IOS) or Defined(SWITCH)}
   unicodeducet,
   fpwidestring,
 {$ENDIF}

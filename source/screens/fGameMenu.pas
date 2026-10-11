@@ -35,6 +35,7 @@ implementation
 
 uses
   EC_Cache,
+  EC_Str,
   GI_MessageBox,
   GR_DX,
   aSaveLoad,
@@ -152,9 +153,20 @@ begin
 end;
 
 procedure TfGameMenu.HelpClicked(Sender: TObjectGI);
+var
+  Document, ErrorText: WideString;
 begin
-  MinimizeGameWindow;
-  OpenGameURL(LocalizedText('FormGameMenu.HelpFile'));
+  Document := LocalizedText('FormGameMenu.HelpFile');
+  if OpenGameURL(Document) then
+    MinimizeGameWindow
+  else
+  begin
+    if LowerCaseWideString(SelectedLanguage) = 'russian' then
+      ErrorText := 'Не удалось открыть справку.'
+    else
+      ErrorText := 'Cannot open the help document.';
+    ShowMessageBoxGI(Self, ErrorText + #13#10 + Document, mbgOK);
+  end;
 end;
 
 procedure TfGameMenu.ExitClicked(Sender: TObjectGI);

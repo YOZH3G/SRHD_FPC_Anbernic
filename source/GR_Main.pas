@@ -2350,7 +2350,6 @@ var
   MessageIdle: Boolean;
   PendingDisplayChange: Boolean;
   LastDisplayChangeTick: Cardinal;
-  LayoutDensity: Double;
   NormalGameLayoutSize, MobileHudLayoutSize: TPoint;
 
 {$I-}
@@ -4742,14 +4741,15 @@ begin
         ShowWineWarning := True;
       end;
   end;
-  GameUiMode :=
+  ConfigureGameUi(
       TGameUiMode(
           EnsureRange(
               StrToIntDef(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('MobileUI')), 0),
               Ord(Low(TGameUiMode)),
               Ord(High(TGameUiMode))
           )
-      );
+      )
+  );
   EditableSaveBlock := TBlockParEC.Create;
   NewGameSettingsConfig := TBlockParEC.Create;
   Text := GetGameUserDirectory + 'newgame.txt';
@@ -4764,7 +4764,7 @@ begin
     PathGrowEnabled :=
         ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('PathGrow')));
   ShowSystemMouse := False;
-  if UserSettingsConfig.CountParams('ShowSystemMouse') > 0 then
+  if GameWindowHasSystemCursor and (UserSettingsConfig.CountParams('ShowSystemMouse') > 0) then
     ShowSystemMouse :=
         ParseEnabledNameGI(
             TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('ShowSystemMouse'))
@@ -5226,7 +5226,6 @@ begin
   PresentationRect := Classes.Rect(0, 0, PresentationWidth, PresentationHeight);
   NormalGameLayoutSize := Classes.Point(GameScreenWidth, GameScreenHeight);
   MobileHudLayoutSize := MobileHudSizeForLayout(NormalGameLayoutSize);
-  LayoutDensity := GetGameDisplayMetrics.Density;
 end;
 
 function GetNormalGameLayoutSize: TPoint;
@@ -5333,7 +5332,7 @@ begin
   for Index := 1 to ParamCount do
     if ParamStr(Index) = '--fullscreen' then WindowedModeRequested := False
     else if ParamStr(Index) = '--windowed' then WindowedModeRequested := True;
-  if GameWindowIsMobile then
+  if GameWindowIsFullscreenOnly then
     WindowedModeRequested := False;
   VSyncEnabled := False;
   if UserSettingsConfig.CountParams('VSync') > 0 then
@@ -5532,6 +5531,9 @@ begin
           + UTF8Encode(GameRendererFallback));
     if not GameRendererAccelerated then HardwareRenderingEnabled := False;
     AppendLogLineThreadSafe('SDL renderer=' + UTF8Encode(GameRendererName));
+    // Capture the actual surface after window creation, before any controls
+    // are built. Later docking/resizes change presentation, not this layout.
+    CommitGameUiLayout;
     // SDL drivers can report their real limits only after a renderer exists.
     // Resource tiling must use those limits rather than pre-creation estimates.
     if Direct3D.GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, Caps) = 0 then
@@ -5873,12 +5875,11 @@ var
   Mode: TDisplayModeGR;
   Loop: TMessageLoopGI;
   HudSize: TPoint;
-  Metrics: TGameDisplayMetrics;
 begin
   Result := False;
   if not PendingDisplayChange then
     Exit;
-  if not UseDesktopDisplayMode then
+  if not UseDesktopDisplayMode and not GameUiLayoutChangePending then
   begin
     PendingDisplayChange := False;
     Exit;
@@ -5888,12 +5889,11 @@ begin
   if Direct3D.GetAdapterDisplayMode(D3DADAPTER_DEFAULT, Mode) <> 0 then
     Exit;
   HudSize := MobileHudSizeForLayout(Classes.Point(Mode.Width, Mode.Height));
-  Metrics := GetGameDisplayMetrics;
   if (Mode.Width = Cardinal(NormalGameLayoutSize.X))
       and (Mode.Height = Cardinal(NormalGameLayoutSize.Y))
       and (HudSize.X = MobileHudLayoutSize.X)
       and (HudSize.Y = MobileHudLayoutSize.Y)
-      and (Metrics.Density = LayoutDensity) then
+      and not GameUiLayoutChangePending then
   begin
     // Presentation and native raster dimensions follow the live output in the
     // renderer, independently of this deferred screen-layout reload.

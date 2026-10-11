@@ -13,6 +13,7 @@ from pathlib import Path
 
 from build_support import (
     build_codecs,
+    build_jobs,
     build_okgf,
     dependency_source,
     output,
@@ -149,7 +150,7 @@ def build_android(config: BuildConfig, rebuild: bool) -> Path:
         *cmake_options(ndk, prefix),
         "-DBUILD_SHARED_LIBS=ON",
         rebuild=rebuild,
-        jobs=6,
+        jobs=build_jobs(),
     )
     paszlib = build_paszlib(config.work, compiler, flags, rebuild)
     syslibs = toolchain / "sysroot/usr/lib/aarch64-linux-android"

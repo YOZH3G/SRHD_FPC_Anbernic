@@ -52,6 +52,13 @@ var
   UserDirectoryOverride: UnicodeString;
   InstanceFile: THandle = THandle(-1);
 
+{$IFDEF SWITCH}
+procedure NativeSwitchMemoryStatus(
+    out Capacity,
+    Available: QWord
+); cdecl; external name 'sr_switch_memory_status';
+{$ENDIF}
+
 {$IFDEF FPC_WASM_EMSCRIPTEN}
 procedure NativeWasmMemoryStatus(
     out Capacity,
@@ -168,9 +175,13 @@ var
 begin
   Status := Default(TGameMemoryStatus);
   Status.Length := SizeOf(Status);
-{$IF defined(FPC_WASM_EMSCRIPTEN)}
+{$IF defined(FPC_WASM_EMSCRIPTEN) or defined(SWITCH)}
   Heap := GetFPCHeapStatus;
+  {$IFDEF SWITCH}
+  NativeSwitchMemoryStatus(Status.TotalPhys, Status.AvailPhys);
+  {$ELSE}
   NativeWasmMemoryStatus(Status.TotalPhys, Status.AvailPhys);
+  {$ENDIF}
   // FPC keeps free blocks inside arenas owned by malloc. Those bytes are not
   // in malloc's free list, so add the current Pascal thread's reusable space.
   // Other threads' private arenas remain reserved and are counted conservatively.
@@ -242,13 +253,25 @@ begin
   Result := Cardinal(GetTickCount64);
 end;
 
-{$IF defined(UNIX) or defined(WASI)}
+{$IF defined(UNIX) or defined(WASI) or defined(SWITCH)}
 function ResolveGamePathCase(const Path: UnicodeString): UnicodeString;
 var
   Directory, Name: UnicodeString;
   Entry: TUnicodeSearchRec;
+  {$IFDEF SWITCH}
+  Volume: UnicodeString;
+  {$ENDIF}
 begin
   Result := Path;
+  {$IFDEF SWITCH}
+  // The SD filesystem already matches names case-insensitively. Keep the
+  // fallback for other devoptab mounts (romfs, for example, is case-sensitive).
+  Volume := ExtractFileDrive(Path);
+  if Volume = '' then
+    Volume := ExtractFileDrive(GetCurrentDir);
+  if SameText(Volume, 'sdmc:') then
+    Exit;
+  {$ENDIF}
   if (Path = '') or (FileGetAttr(Path) <> -1) then
     Exit;
   // Keep exact matches cheap. Resolve each missing component so loose mods
@@ -282,7 +305,7 @@ begin
   for Index := 1 to Length(Result) do
     if (Result[Index] = '\') or (Result[Index] = '/') then
       Result[Index] := DirectorySeparator;
-{$IF defined(UNIX) or defined(WASI)}
+{$IF defined(UNIX) or defined(WASI) or defined(SWITCH)}
   Result := ResolveGamePathCase(Result);
 {$ENDIF}
 end;
@@ -290,6 +313,9 @@ end;
 function GameUserDirectory: UnicodeString;
 begin
   if UserDirectoryOverride <> '' then Exit(UserDirectoryOverride);
+{$IFDEF SWITCH}
+  Exit('sdmc:/switch/SpaceRangersHD/user/');
+{$ENDIF}
 {$IFDEF ANDROID}
   // Set by the SDL launcher before it loads the Pascal library. Android does
   // not provide a useful HOME, and shared/external storage is not a save path.

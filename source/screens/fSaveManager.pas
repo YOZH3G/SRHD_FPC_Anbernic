@@ -92,6 +92,7 @@ type
 implementation
 
 uses
+  GameEvents,
   GI_MessageBox,
   GR_DX,
   aGalaxyStruct,

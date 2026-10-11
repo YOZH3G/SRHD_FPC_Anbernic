@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the desktop or iOS simulator game, or serve the browser build."""
+"""Run the game on desktop or an emulator/simulator, or serve the browser build."""
 
 import argparse
 import os
@@ -20,6 +20,10 @@ def main() -> None:
         "--game-dir",
         type=Path,
         help="Game asset directory; defaults to game/ on desktop/web. Imports assets on iOS.",
+    )
+    parser.add_argument("--emulator", help="Ryujinx-compatible executable for Switch homebrew.")
+    parser.add_argument(
+        "--emulator-root", type=Path, help="Configured Switch development emulator profile."
     )
     args, game_options = parser.parse_known_args()
     try:
@@ -52,6 +56,16 @@ def main() -> None:
     game_directory = (args.game_dir or ROOT / "game").expanduser().resolve()
     if not game_directory.is_dir():
         parser.error(f"Game asset directory does not exist: {game_directory}")
+    if args.target == "switch":
+        if game_options:
+            parser.error("Switch homebrew does not receive extra emulator command-line arguments.")
+        from switch import run_switch
+
+        try:
+            run_switch(config, game_directory, args.emulator, args.emulator_root)
+        except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+            parser.exit(1, f"{error}\n")
+        return
     if args.target == "wasm":
         if game_options:
             parser.error("The browser launcher does not accept command-line game options.")

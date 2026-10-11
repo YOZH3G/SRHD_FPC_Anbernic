@@ -91,6 +91,7 @@ type
 implementation
 
 uses
+  GameEvents,
   aGalaxyStruct,
   SysUtils,
   Math,

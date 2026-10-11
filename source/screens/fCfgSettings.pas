@@ -559,7 +559,7 @@ begin
   AddOptionLabel('VSync', LocalizedText('FormCfgSettings.VSync'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), VSyncEnabled, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not VSyncEnabled, False);
-  if not GameWindowIsMobile then
+  if not GameWindowIsFullscreenOnly then
   begin
     AddOptionLabel('Window', LocalizedText('FormCfgSettings.Window'), False);
     AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), WindowedModeRequested, False);
@@ -623,7 +623,7 @@ begin
       1,
       LocalizedText('FormCfgSettings.SoftwareCursorHardware'),
       ShowSystemMouse,
-      False
+      not GameWindowHasSystemCursor
   );
   AddOptionChoice(
       0,
@@ -1772,7 +1772,7 @@ begin
   SetOptionValue('FilmSpeed', 2);
   SetOptionValue('BeginCalcNextTurn', 100);
   ActiveGroupIndex := 1;
-  if not GameWindowIsMobile then
+  if not GameWindowIsFullscreenOnly then
     SetOptionValue('Resolution', 2);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
@@ -1895,7 +1895,7 @@ begin
   SetOptionValue('FilmSpeed', 0);
   SetOptionValue('BeginCalcNextTurn', 0);
   ActiveGroupIndex := 1;
-  if not GameWindowIsMobile then
+  if not GameWindowIsFullscreenOnly then
     SetOptionValue('Resolution', 1);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
@@ -1970,7 +1970,7 @@ begin
   end;
   SetOptionValue('BeginCalcNextTurn', 100);
   ActiveGroupIndex := 1;
-  if not GameWindowIsMobile then
+  if not GameWindowIsFullscreenOnly then
     SetOptionValue('Resolution', 2);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
@@ -2000,7 +2000,7 @@ begin
     SetOptionValue('AnimMenuShip', 1);
   end;
   // The original only disabled this preset for hosts older than Windows XP.
-  SetOptionValue('SoftwareCursor', 1);
+  SetOptionValue('SoftwareCursor', Ord(GameWindowHasSystemCursor));
   SetOptionValue(
       'AnimHangar',
       Ord((ClockMHz >= 2000) or ((ClockMHz >= 1400) and (MemoryMB > 500)))
@@ -2497,7 +2497,8 @@ begin
     VSyncEnabled := not VSyncEnabled;
     UserSettingsConfig.SetOrAddParam('VSync', BoolToWideString(VSyncEnabled));
   end;
-  if not GameWindowIsMobile and (Boolean(GetOptionValue('Window')) <> WindowedModeRequested) then
+  if not GameWindowIsFullscreenOnly
+      and (Boolean(GetOptionValue('Window')) <> WindowedModeRequested) then
   begin
     ResetNeeded := True;
     WindowedModeRequested := Boolean(GetOptionValue('Window'));
@@ -2527,7 +2528,7 @@ begin
                                 .GetParamByPathOrMarker('AllowHardwareRenderUnderWine')
                         ))));
   end;
-  ShowSystemMouse := Boolean(GetOptionValue('SoftwareCursor'));
+  ShowSystemMouse := GameWindowHasSystemCursor and Boolean(GetOptionValue('SoftwareCursor'));
   UserSettingsConfig.SetOrAddParam('ShowSystemMouse', BoolToWideString(ShowSystemMouse));
   SkipIntro := not Boolean(GetOptionValue('Intro'));
   UserSettingsConfig.SetOrAddParam('SkipIntro', BoolToWideString(SkipIntro));

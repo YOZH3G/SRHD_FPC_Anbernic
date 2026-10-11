@@ -219,6 +219,10 @@ const
   PackCompressedBufferSize = 72112;
   PackSlotRangeError = 'Номер файла не может быть более ';
 
+{$IFDEF SWITCH}
+function NativeClose(Handle: LongInt): LongInt; cdecl; external name 'close';
+{$ENDIF}
+
 function ReadPackageFile(
     Handle: THandle;
     var Buffer;
@@ -264,6 +268,9 @@ begin
 {$ENDIF}
 {$IFDEF WASI}
   Result := __wasi_fd_close(Handle) = __WASI_ERRNO_SUCCESS;
+{$ENDIF}
+{$IFDEF SWITCH}
+  Result := NativeClose(Handle) = 0;
 {$ENDIF}
 end;
 

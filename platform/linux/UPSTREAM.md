@@ -1,13 +1,13 @@
 # Upstream base for the Anbernic port
 
 This fork now uses the author's reference `main`, through
-[`e7a7bdc`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/e7a7bdce89d75f64868c438da7464783933d6406),
+[`e7a7bdc`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/3943d1d10651781c8dad666e54918a909e674b24),
 fetched on 2026-10-11. Upstream source, platform adapters, native code, build
 scripts, tests and dependency pins are retained. The migration merge keeps the
 old enhanced/personal history reachable without using that implementation as
 its source base.
 
-Upstream pins: FPC `681c8811ac0ff8a4450ac50735ab7e74e0c740bb`,
+Upstream pins: FPC `e79995bc0986f46a4ad6eb3fcdd9bdc1db88b1f7`,
 OKGF `7f41bc64cc87a8d77afab69b5e7be91126390dd9`.
 
 Adapted local additions: ARMHF/AArch64 cross builds, PortMaster packages,

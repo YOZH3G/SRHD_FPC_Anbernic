@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Space Rangers HD for Linux, macOS, Android, iOS, or the browser."""
+"""Build Space Rangers HD for desktop, mobile, Switch, or the browser."""
 
 import argparse
 import json
@@ -26,6 +26,7 @@ from build_support import (
 from compiler import prepare_compiler
 from ios import build_ios
 from pascal import build_paszlib, compile_pascal, pascal_flags
+from switch import build_switch
 from targets import ROOT, BuildConfig, add_build_arguments
 
 
@@ -227,6 +228,7 @@ def main() -> None:
             "macos": build_macos,
             "wasm": build_wasm,
             "android": build_android,
+            "switch": build_switch,
             "ios": build_ios,
             "ios-simulator": build_ios,
         }

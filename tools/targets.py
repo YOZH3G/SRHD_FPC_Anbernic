@@ -6,12 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = ("linux", "macos", "wasm", "android", "ios", "ios-simulator")
+TARGETS = ("linux", "macos", "wasm", "android", "ios", "ios-simulator", "switch")
 # Installed Android identity, independent of the Java/JNI class namespace.
 ANDROID_APPLICATION_ID = "io.github.pakompom.spacerangershd"
 # Package versions change for releases, not local rebuilds.
+PACKAGE_VERSION = "0.1"
 ANDROID_VERSION_CODE = 28
-ANDROID_VERSION_NAME = "0.1"
+ANDROID_VERSION_NAME = PACKAGE_VERSION
 ANDROID_MIN_API = 26
 ANDROID_TARGET_API = 35
 ANDROID_PAGE_SIZE = 16384
@@ -57,6 +58,8 @@ class BuildConfig:
     def __post_init__(self) -> None:
         if self.target not in TARGETS:
             raise ValueError(f"Unsupported target: {self.target}")
+        if self.target == "switch" and self.lto:
+            raise ValueError("Switch currently links native ELF objects; omit --lto.")
         if self.simulator_arch is not None and (
             self.target != "ios-simulator" or self.simulator_arch not in ("arm64", "x86_64")
         ):
@@ -68,7 +71,7 @@ class BuildConfig:
     def cpu(self) -> str:
         if self.target == "wasm":
             return "wasm32"
-        if self.target in ("android", "ios"):
+        if self.target in ("android", "ios", "switch"):
             return "aarch64"
         if self.simulator_arch:
             return "aarch64" if self.simulator_arch == "arm64" else "x86_64"
@@ -91,6 +94,8 @@ class BuildConfig:
             directory /= "wasm"
         elif self.target == "android":
             directory /= "android-arm64"
+        elif self.target == "switch":
+            directory /= "switch-aarch64"
         elif self.target in ("ios", "ios-simulator"):
             directory /= f"{self.target}-{self.cpu}"
         return directory / self.profile
@@ -115,6 +120,8 @@ class BuildConfig:
             return self.binary_directory / "index.html"
         if self.target == "android":
             return self.work / "Rangers.apk"
+        if self.target == "switch":
+            return self.binary_directory / "Rangers.nro"
         if self.target in ("ios", "ios-simulator"):
             return self.binary_directory
         return self.binary_directory / "Rangers"

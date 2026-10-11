@@ -9,7 +9,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from build_support import BuildStamp, content_state, output, require_tool, run_step
+from build_support import (
+    BuildStamp,
+    build_jobs,
+    content_state,
+    output,
+    require_tool,
+    run_step,
+)
+from sync_fpc import record_build_source, sync_build_source, sync_fpc
 from targets import (
     ANDROID_MIN_API,
     IOS_MIN_VERSION,
@@ -32,11 +40,26 @@ def llvm_options(clang: str | Path = "clang") -> tuple[str, ...]:
     return (f"-Clv{min(int(match[1]), 17)}.0",)
 
 
-def source_revision() -> str:
+def source_revision(*, runtime: bool = True, compiler: bool = True) -> str:
     """Hash compiler inputs without rereading an unchanged vendored checkout."""
     digest = hashlib.sha256()
     # Packages are compiled from VENDOR by the game build, not compiler_cycle.
-    names = ["compiler", "rtl", *sorted(path.name for path in VENDOR.glob("Makefile*"))]
+    # Compiler bootstrapping uses the host RTL. Switch-only runtime edits must
+    # not rebuild it, while shared or host RTL edits still invalidate it.
+    rtl_names = (
+        ["rtl"]
+        if runtime
+        else [
+            str(path.relative_to(VENDOR))
+            for path in sorted((VENDOR / "rtl").iterdir())
+            if path.name not in ("switch", "units")
+        ]
+    )
+    names = [
+        *(["compiler"] if compiler else []),
+        *rtl_names,
+        *sorted(path.name for path in VENDOR.glob("Makefile*")),
+    ]
     try:
         git = ["git", "-C", str(VENDOR)]
         toplevel = subprocess.check_output(
@@ -98,11 +121,16 @@ def prepare_compiler(
     toolchain: Path | None = None,
 ) -> tuple[Path, list[str]]:
     """Build the LLVM compiler and the game's Delphi-compatible runtime."""
+    if local_source := os.environ.get("FPC_SOURCE"):
+        sync_fpc(Path(local_source))
     target, lto = config.target, config.lto
     apple_mobile = target in ("ios", "ios-simulator")
     if apple_mobile and platform.system() != "Darwin":
         raise RuntimeError("iOS compilation requires macOS with Xcode installed.")
-    if target not in ("wasm", "android", "ios", "ios-simulator") and target != desktop_target():
+    if (
+        target not in ("wasm", "android", "ios", "ios-simulator", "switch")
+        and target != desktop_target()
+    ):
         raise RuntimeError("Desktop builds require a host with the target OS.")
     if not (VENDOR / "compiler/pp.pas").is_file():
         raise FileNotFoundError(
@@ -117,6 +145,7 @@ def prepare_compiler(
         "android": "android",
         "ios": "ios",
         "ios-simulator": "iphonesim",
+        "switch": "switch",
     }[target]
     work = WORK / f"{cpu}-{system}"
     source = work / "source"
@@ -124,12 +153,10 @@ def prepare_compiler(
         raise RuntimeError("WebAssembly compilation requires Emscripten's LLVM tools.")
     if target == "android" and toolchain is None:
         raise RuntimeError("Android compilation requires the NDK LLVM tools.")
-    # LLVM object emission is independent between units. Bound the worker
-    # count so large units do not exhaust memory on hosts with many CPUs.
-    jobs = f"-j{min(6, os.cpu_count() or 1)}"
+    jobs = f"-j{build_jobs()}"
     bootstrap_flags = (*llvm_options(), jobs)
     llvm_flags = (*llvm_options(toolchain / "clang"), jobs) if toolchain else bootstrap_flags
-    if target in ("linux", "android"):
+    if target in ("linux", "android", "switch"):
         llvm_flags += ("-Aclang-llvm",)
     if cpu == "x86_64":
         llvm_flags += ("-CpX86-64-V2", "-CfX86-64-V2")
@@ -155,6 +182,9 @@ def prepare_compiler(
     elif target == "android" and native_cpu != cpu:
         compiler_name = "ppcrossa64"
         cross_flags = ["CPU_TARGET=aarch64", "CROSSINSTALL=1", "OS_TARGET=android"]
+    elif target == "switch" and native_cpu != cpu:
+        compiler_name = "ppcrossa64"
+        cross_flags = ["CPU_TARGET=aarch64", "CROSSINSTALL=1", "OS_TARGET=linux"]
     elif apple_mobile and native_cpu != cpu:
         compiler_name = "ppcrossa64" if cpu == "aarch64" else "ppcrossx64"
         # The compiler runs on the host. Select iOS only when compiling the RTL/game.
@@ -177,14 +207,68 @@ def prepare_compiler(
         "OPTNEW=" + " ".join(bootstrap_flags) + soft_fpu,
         *cross_flags,
     ]
-    revision = recipe_revision(source_revision(), compiler_command, (make, bootstrap, "clang"))
+    tools = (make, bootstrap, "clang")
+    revision = recipe_revision(source_revision(runtime=False), compiler_command, tools)
+    host_revision = recipe_revision(
+        source_revision(runtime=False, compiler=False), compiler_command, tools
+    )
+    host_stamp = BuildStamp(work / "host-runtime.stamp")
+    # Local compiler development uses a single incremental compiler build after
+    # the first bootstrap. Keep a separate executable as the build compiler.
+    development = bool(os.environ.get("FPC_SOURCE"))
+    development_bootstrap = work / "build-compiler"
+    incremental = (
+        development
+        # A cross-CPU compiler cannot rebuild its own host executable.
+        and native_cpu == cpu
+        and host_stamp.matches(host_revision)
+        and (compiler.is_file() or development_bootstrap.is_file())
+    )
+    if incremental:
+        if not development_bootstrap.is_file():
+            shutil.copy2(compiler, development_bootstrap)
+        compiler_command = [
+            make,
+            "-C",
+            source / "compiler",
+            "compiler",
+            "LLVM=1",
+            f"FPC={development_bootstrap}",
+            "OPT=-n -B -O2 "
+            + " ".join(bootstrap_flags)
+            + (f" -XR{bootstrap_sdk}" if bootstrap_sdk else "")
+            + soft_fpu,
+            *cross_flags,
+        ]
     stamp = BuildStamp(work / "compiler.stamp")
     if not stamp.matches(revision, compiler):
         with stamp.recording(revision):
-            if source.exists():
-                shutil.rmtree(source)
-            shutil.copytree(VENDOR, source, ignore=shutil.ignore_patterns(".git"))
+            if incremental:
+                # Preserve build outputs and unchanged mtimes for FPC's unit cache.
+                sync_build_source(VENDOR, source)
+                # Bootstrap cycles mark compiler PPUs as released (-Ur), which
+                # also makes -B ignore them. Invalidate just compiler units.
+                for ppu in (source / "compiler" / cpu / "units").rglob("*.ppu"):
+                    ppu.unlink()
+            else:
+                if source.exists():
+                    shutil.rmtree(source)
+                shutil.copytree(VENDOR, source, ignore=shutil.ignore_patterns(".git"))
+                # Record new source files from the very first bootstrap, so
+                # deleting one before the first incremental build removes it.
+                record_build_source(VENDOR, source)
             run_step(work, "compiler", compiler_command)
+            if not incremental:
+                # The build compiler and its host RTL must agree after a full
+                # bootstrap. Shared/host RTL edits require another full cycle.
+                shutil.copy2(compiler, development_bootstrap)
+                with host_stamp.recording(host_revision):
+                    pass
+
+    if target == "switch":
+        from switch import prepare_runtime
+
+        return prepare_runtime(compiler, toolchain, source_revision())
 
     runtime = work / ("runtime-lto" if lto else "runtime")
     runtime_source = runtime / "src"
@@ -259,7 +343,7 @@ def prepare_compiler(
             # Do not alter the native RTL used to bootstrap the compiler. Each
             # runtime profile starts from source and gets its own PPUs/objects.
             shutil.copytree(
-                source / "rtl",
+                VENDOR / "rtl",
                 runtime_source / "rtl",
                 ignore=shutil.ignore_patterns("units"),
             )

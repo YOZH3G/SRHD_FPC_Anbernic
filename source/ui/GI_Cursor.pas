@@ -25,6 +25,7 @@ type
     procedure Clear; override;
     procedure SetOrigin(Origin: TPoint); override;
     procedure SetActive(Enabled: Boolean); override;
+    procedure RefreshVisibility;
     procedure Draw(ClipRect: TRect); override;
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
@@ -165,9 +166,15 @@ begin
   end
   else
   begin
-    ImageControl.SetActive(Enabled);
+    RefreshVisibility;
     ImageControl.RestartPlayback;
   end;
+end;
+
+procedure TCursorGI.RefreshVisibility;
+begin
+  if not ShowSystemMouse then
+    ImageControl.SetActive(Active and GamePointerCursorVisible);
 end;
 
 procedure TCursorGI.SetOrigin(Origin: TPoint);

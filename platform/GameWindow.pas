@@ -45,9 +45,16 @@ function CalculateGamePresentation(
 
 procedure InitializeGameVideo;
 function GameWindowUsesCanvas: Boolean;
+function GameWindowHasSystemCursor: Boolean;
+function GamePointerCursorVisible: Boolean;
 function GameWindowIsMobile: Boolean;
-// UI preference is independent of Android windowing, input and native overlays.
+function GameWindowIsFullscreenOnly: Boolean;
+// Commit layout policy only when rebuilding the control tree. Live docking
+// changes remain pending while a dialog or screen delays the rebuild.
+procedure ConfigureGameUi(Mode: TGameUiMode);
+procedure CommitGameUiLayout;
 function GameMobileUiEnabled: Boolean;
+function GameUiLayoutChangePending: Boolean;
 function GameWindowUsesNativeRaster: Boolean;
 function GameWindowUsesRenderResolution: Boolean;
 procedure GetGameWindowLogicalSize(out Width, Height: Integer);
@@ -72,7 +79,7 @@ procedure WarpGameMouse(X, Y: Integer);
 function ShowGameCursor(Show: Boolean): Integer;
 procedure SetGameWindowTitle(const Title: UnicodeString);
 procedure MinimizeGameWindow;
-procedure OpenGameURL(const URL: UnicodeString);
+function OpenGameURL(const URL: UnicodeString): Boolean;
 function GetGameClipboard: UnicodeString;
 procedure SetGameClipboard(const Text: UnicodeString);
 procedure DiscardGameTextCharacter;
@@ -84,8 +91,7 @@ procedure CancelGamePointerInput;
 procedure SetGameArcadeControls(Flags: Integer);
 
 var
-  // Set while loading settings, before rebuilding controls and render targets.
-  // Do not change this while an existing control tree is still in use.
+  // Read by settings; apply changes through ConfigureGameUi at a tree rebuild.
   GameUiMode: TGameUiMode = gumAutomatic;
   {$IFDEF LINUX}
   GameRendererPreference: TGameRendererPreference = grpSDL;
@@ -116,7 +122,9 @@ var
   VideoInitialized: Boolean;
   DesktopMouseAvailable: Boolean;
   BrowserWindow: Boolean;
-  MobileWindow, AppInBackground: Boolean;
+  MobileWindow, FullscreenOnlyWindow, AppInBackground: Boolean;
+  MobileUiEnabled: Boolean;
+  UiDisplayMetrics: TGameDisplayMetrics;
   MobileDensity: Double;
   HasPendingDisplayChange: Boolean;
   PostedMessageType: Cardinal;
@@ -132,11 +140,36 @@ var
   Touch: TGameTouch;
   TouchMouse: TPoint;
   TouchMouseActive: Boolean;
+  PointerCursorActive: Boolean;
   TouchMode: Integer;
   TouchSlop: Integer;
   HasPendingActivation: Boolean;
   PendingActivation: Cardinal;
   ArcadeControls: Cardinal;
+
+{$IFDEF SWITCH}
+var
+  HandheldMode: Boolean;
+
+procedure SwitchPollInput(Window: PSDL_Window); cdecl; external name 'sr_switch_poll_input';
+function SwitchMouseButtons: Cardinal; cdecl; external name 'sr_switch_mouse_buttons';
+function SwitchKeyboardState: PByte; cdecl; external name 'sr_switch_keyboard_state';
+function SwitchHandheld: LongInt; cdecl; external name 'sr_switch_handheld';
+procedure SwitchTouchPosition(X, Y: Integer); cdecl; external name 'sr_switch_touch_position';
+{$ENDIF}
+
+function CombinedMouseState(State: Cardinal): Cardinal;
+begin
+  Result := State;
+{$IFDEF SWITCH}
+  Result := Result or SwitchMouseButtons;
+{$ENDIF}
+end;
+
+function GameMouseState(X, Y: PInteger): Cardinal;
+begin
+  Result := CombinedMouseState(SDL_GetMouseState(X, Y));
+end;
 
 procedure SetGameArcadeControls(Flags: Integer);
 var
@@ -233,6 +266,12 @@ begin
   DesktopMouseAvailable := (Driver = 'cocoa') or (Driver = 'windows') or (Driver = 'x11');
   BrowserWindow := Driver = 'emscripten';
   MobileWindow := (Driver = 'android') or (Driver = 'uikit');
+  FullscreenOnlyWindow := MobileWindow or (Driver = 'switch');
+  MobileUiEnabled := MobileWindow;
+{$IFDEF SWITCH}
+  HandheldMode := SwitchHandheld <> 0;
+  MobileUiEnabled := HandheldMode;
+{$ENDIF}
   Format := DefaultFormatSettings;
   Format.DecimalSeparator := '.';
   MobileDensity := StrToFloatDef(string(SDL_GetHint('SRHD_UI_DENSITY')), 1, Format);
@@ -247,6 +286,24 @@ begin
   VideoInitialized := True;
 end;
 
+function GameWindowHasSystemCursor: Boolean;
+begin
+{$IFDEF SWITCH}
+  Result := False;
+{$ELSE}
+  Result := True;
+{$ENDIF}
+end;
+
+function GamePointerCursorVisible: Boolean;
+begin
+{$IFDEF SWITCH}
+  Result := (SwitchHandheld = 0) or PointerCursorActive;
+{$ELSE}
+  Result := True;
+{$ENDIF}
+end;
+
 function GameWindowUsesCanvas: Boolean;
 begin
   InitializeGameVideo;
@@ -259,13 +316,61 @@ begin
   Result := MobileWindow;
 end;
 
-function GameMobileUiEnabled: Boolean;
+function GameWindowIsFullscreenOnly: Boolean;
+begin
+  InitializeGameVideo;
+  Result := FullscreenOnlyWindow;
+end;
+
+function DesiredMobileUi: Boolean;
 begin
   case GameUiMode of
     gumDesktop: Result := False;
     gumMobile: Result := True;
   else
-    Result := GameWindowIsMobile;
+{$IFDEF SWITCH}
+    Result := SwitchHandheld <> 0;
+{$ELSE}
+    Result := MobileWindow;
+{$ENDIF}
+  end;
+end;
+
+procedure ConfigureGameUi(Mode: TGameUiMode);
+begin
+  InitializeGameVideo;
+  GameUiMode := Mode;
+  MobileUiEnabled := DesiredMobileUi;
+  CommitGameUiLayout;
+end;
+
+procedure CommitGameUiLayout;
+begin
+  // Layout dimensions and density belong to the control tree. Presentation
+  // still follows the live surface while a safe tree rebuild is deferred.
+  UiDisplayMetrics := GetGameDisplayMetrics;
+end;
+
+function GameMobileUiEnabled: Boolean;
+begin
+  InitializeGameVideo;
+  Result := MobileUiEnabled;
+end;
+
+function GameUiLayoutChangePending: Boolean;
+var
+  Metrics: TGameDisplayMetrics;
+begin
+  InitializeGameVideo;
+  Result := MobileUiEnabled <> DesiredMobileUi;
+  if MobileUiEnabled then
+  begin
+    Metrics := GetGameDisplayMetrics;
+    Result :=
+        Result
+            or (Metrics.Density <> UiDisplayMetrics.Density)
+            or (Metrics.OutputSize.X <> UiDisplayMetrics.OutputSize.X)
+            or (Metrics.OutputSize.Y <> UiDisplayMetrics.OutputSize.Y);
   end;
 end;
 
@@ -273,7 +378,7 @@ function GameWindowUsesNativeRaster: Boolean;
 begin
   // Android keeps full-resolution rendering with either layout. Desktop opts
   // into the same raster/input transform when using independently scaled UI.
-  Result := GameWindowIsMobile or GameMobileUiEnabled;
+  Result := GameWindowIsFullscreenOnly or GameMobileUiEnabled;
 end;
 
 function GameWindowUsesRenderResolution: Boolean;
@@ -285,7 +390,7 @@ begin
   {$ENDIF}
   // Browser and Android surfaces belong to the host. Resolution settings choose
   // the game's layout, without changing the display's physical resolution.
-  Result := BrowserWindow or MobileWindow;
+  Result := BrowserWindow or FullscreenOnlyWindow;
 end;
 
 procedure GetGameAutomaticLayoutSize(MinWidth, MinHeight: Integer; out Width, Height: Integer);
@@ -319,6 +424,11 @@ begin
   InitializeGameVideo;
   Result := Default(TGameDisplayMetrics);
   Result.Density := MobileDensity;
+{$IFDEF SWITCH}
+  // The handheld's 720p panel needs larger touch targets than a TV layout.
+  if SwitchHandheld <> 0 then
+    Result.Density := 1.5 * MobileDensity;
+{$ENDIF}
   Result.TouchSlop := TouchSlop;
   if GameSDLWindow <> nil then
   begin
@@ -326,7 +436,7 @@ begin
     SDL_GetWindowSizeInPixels(GameSDLWindow, Result.OutputSize.X, Result.OutputSize.Y);
     // Desktop UI sizes use window points, including Retina's backing scale.
     // Keep Android's supplied density: its window points are physical pixels.
-    if not MobileWindow then
+    if not FullscreenOnlyWindow then
       Result.Density := Max(1.0, Result.OutputSize.X / Max(1, Result.WindowSize.X));
   end
   else
@@ -334,6 +444,12 @@ begin
     Mode := Default(TSDL_DisplayMode);
     SDL_GetCurrentDisplayMode(0, Mode);
     Result.OutputSize := Types.Point(Mode.W, Mode.H);
+{$IFDEF SWITCH}
+    // SDL's Switch backend reports 1080p as its initial desktop mode even
+    // when undocked. Match the physical surface before creating the window.
+    if SwitchHandheld <> 0 then
+      Result.OutputSize := Types.Point(1280, 720);
+{$ENDIF}
     Result.WindowSize := Result.OutputSize;
   end;
 end;
@@ -424,12 +540,19 @@ begin
 end;
 
 function GetGameMobileUiScale(DpPerSourcePixel: Single): Single;
+var
+  Scale: Double;
 begin
   // Source artwork size -> game-logical size. Callers bound this desired dp
   // scale to their usable area; raster resolution and world zoom stay separate.
   Result := 1;
   if GameMobileUiEnabled then
-    Result := GetGameDisplayMetrics.Density * DpPerSourcePixel / GetGameWindowPixelScale;
+  begin
+    Scale := 1;
+    if (LogicalWidth > 0) and (LogicalHeight > 0) then
+      Scale := CalculateGamePresentation(UiDisplayMetrics, LogicalWidth, LogicalHeight).PixelScale;
+    Result := UiDisplayMetrics.Density * DpPerSourcePixel / Scale;
+  end;
 end;
 
 procedure OpenGameWindow(Width, Height: Integer; Windowed, VSync: Boolean);
@@ -442,12 +565,13 @@ var
   Vertices: array[0..2] of TSDL_Vertex;
   ProbeReady: Boolean;
   Info: TSDL_RendererInfo;
+  WindowSize: TPoint;
 begin
   InitializeGameVideo;
   // The browser controls canvas size and fullscreen through CSS and user gestures.
   if BrowserWindow then
     Windowed := True;
-  if MobileWindow then
+  if FullscreenOnlyWindow then
     Windowed := False;
   TargetGeneration := GameTargetGeneration;
   LogicalWidth := Width;
@@ -455,16 +579,20 @@ begin
   Created := GameSDLWindow = nil;
   if Created then
   begin
+    WindowSize := Types.Point(Width, Height);
+{$IFDEF SWITCH}
+    WindowSize := GetGameDisplayMetrics.OutputSize;
+{$ENDIF}
     Flags := SDL_WINDOW_ALLOW_HIGHDPI;
-    if BrowserWindow or MobileWindow then
+    if BrowserWindow or FullscreenOnlyWindow then
       Flags := Flags or SDL_WINDOW_RESIZABLE;
     GameSDLWindow :=
         SDL_CreateWindow(
             'Rangers',
             SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED,
-            Width,
-            Height,
+            WindowSize.X,
+            WindowSize.Y,
             Flags
         );
     if GameSDLWindow = nil then
@@ -521,6 +649,11 @@ begin
     end;
     // Enable UTF-8 commits without calling SDL_StartTextInput on Android: that
     // API also requests the soft keyboard. The Java overlay opens it directly.
+{$IFDEF SWITCH}
+    // Switch SDL suppresses touch/mouse polling while text input is active.
+    // The right-stick button opens the software keyboard explicitly.
+    SDL_StopTextInput;
+{$ELSE}
     if MobileWindow then
     begin
       SDL_EventState(SDL_TEXTINPUT, SDL_ENABLE);
@@ -528,15 +661,19 @@ begin
     end
     else
       SDL_StartTextInput;
+{$ENDIF}
   end;
   // SDL's browser resize handler follows the canvas CSS size. Keep the selected
   // game resolution in the renderer instead of replacing the canvas dimensions.
-  if not BrowserWindow and not MobileWindow then
+  if not BrowserWindow and not FullscreenOnlyWindow then
     SDL_SetWindowSize(GameSDLWindow, Width, Height);
   Flags := 0;
   if not Windowed then
     Flags := SDL_WINDOW_FULLSCREEN_DESKTOP;
+{$IFNDEF SWITCH}
+  // Switch has one fullscreen surface; desktop fullscreen would force 1080p.
   CheckSDL(SDL_SetWindowFullscreen(GameSDLWindow, Flags));
+{$ENDIF}
   // Native raster drawing uses our explicit integer viewport for both input
   // and presentation, avoiding SDL's separate floor-rounded viewport.
   PreviousTarget := SDL_GetRenderTarget(GameSDLRenderer);
@@ -601,6 +738,7 @@ begin
   TextPosition := 0;
   CancelGamePointerInput;
   TouchMouseActive := False;
+  PointerCursorActive := False;
   HasPendingActivation := False;
   HasPendingDisplayChange := False;
 end;
@@ -661,8 +799,6 @@ begin
 end;
 
 function MouseKeys(State: Cardinal): Cardinal;
-var
-  Modifiers: Integer;
 begin
   Result := 0;
   if State and 1 <> 0 then
@@ -671,10 +807,9 @@ begin
     Result := Result or MK_RBUTTON;
   if State and 2 <> 0 then
     Result := Result or MK_MBUTTON;
-  Modifiers := SDL_GetModState;
-  if Modifiers and $3 <> 0 then
+  if GameKeyState(VK_SHIFT) < 0 then
     Result := Result or MK_SHIFT;
-  if Modifiers and $C0 <> 0 then
+  if GameKeyState(VK_CONTROL) < 0 then
     Result := Result or MK_CONTROL;
 end;
 
@@ -726,6 +861,15 @@ var
   end;
 
 begin
+{$IFDEF SWITCH}
+  SwitchPollInput(GameSDLWindow);
+  if HandheldMode <> (SwitchHandheld <> 0) then
+  begin
+    HandheldMode := SwitchHandheld <> 0;
+    HasPendingDisplayChange := True;
+    InterlockedIncrement(GameDisplayGeneration);
+  end;
+{$ENDIF}
   Result := True;
   Message := Default(TGameMessage);
   repeat
@@ -826,7 +970,7 @@ begin
       GetGameMouse(Point);
       Message.Message := WM_MOUSEWHEEL;
       Message.WParam :=
-          MouseKeys(SDL_GetMouseState(nil, nil)) or (Cardinal(Word(Step * WHEEL_DELTA)) shl 16);
+          MouseKeys(GameMouseState(nil, nil)) or (Cardinal(Word(Step * WHEEL_DELTA)) shl 16);
       Message.LParam := PackGamePoint(Point.X, Point.Y);
       Exit;
     end;
@@ -900,7 +1044,7 @@ begin
             RefreshGameCursor;
             GetGameMouse(Point);
             Message.Message := WM_MOUSEMOVE;
-            Message.WParam := MouseKeys(SDL_GetMouseState(nil, nil));
+            Message.WParam := MouseKeys(GameMouseState(nil, nil));
             Message.LParam := PackGamePoint(Point.X, Point.Y);
             Exit;
           end;
@@ -933,8 +1077,10 @@ begin
         if Event.Motion.Which = SDL_TOUCH_MOUSEID then
           Continue;
         TouchMouseActive := False;
+        if (Event.Motion.XRel <> 0) or (Event.Motion.YRel <> 0) then
+          PointerCursorActive := True;
         Message.Message := WM_MOUSEMOVE;
-        Message.WParam := MouseKeys(Event.Motion.State);
+        Message.WParam := MouseKeys(CombinedMouseState(Event.Motion.State));
         Point := Types.Point(Event.Motion.X, Event.Motion.Y);
         if GameWindowUsesNativeRaster then
           Point := WindowPoint(Point.X, Point.Y);
@@ -946,6 +1092,7 @@ begin
         if Event.Button.Which = SDL_TOUCH_MOUSEID then
           Continue;
         TouchMouseActive := False;
+        PointerCursorActive := True;
         case Event.Button.Button of
           1: Message.Message := WM_LBUTTONDOWN;
           2: Message.Message := WM_MBUTTONDOWN;
@@ -957,7 +1104,7 @@ begin
           Inc(Message.Message)
         else if Event.Button.Clicks = 2 then
           Inc(Message.Message, 2);
-        Message.WParam := MouseKeys(SDL_GetMouseState(nil, nil));
+        Message.WParam := MouseKeys(GameMouseState(nil, nil));
         Point := Types.Point(Event.Button.X, Event.Button.Y);
         if GameWindowUsesNativeRaster then
           Point := WindowPoint(Point.X, Point.Y);
@@ -974,7 +1121,7 @@ begin
         // SDL already applied the user's natural-scroll preference.
         WheelRemainder := WheelRemainder + Amount;
         WheelMessage.Message := WM_MOUSEWHEEL;
-        WheelMessage.WParam := MouseKeys(SDL_GetMouseState(@X, @Y));
+        WheelMessage.WParam := MouseKeys(GameMouseState(@X, @Y));
         Point := Types.Point(Event.Wheel.MouseX, Event.Wheel.MouseY);
         if GameWindowUsesNativeRaster then
           Point := WindowPoint(Point.X, Point.Y);
@@ -1029,6 +1176,15 @@ begin
                 or (FingerY < 0)
                 or (FingerY >= LogicalHeight)) then
           Continue;
+        PointerCursorActive := False;
+{$IFDEF SWITCH}
+        // Resume stick control from the last touch, without generating a
+        // synthetic mouse event that would reveal the cursor again.
+        SwitchTouchPosition(
+            Round(Event.Finger.X * Presentation.Metrics.WindowSize.X),
+            Round(Event.Finger.Y * Presentation.Metrics.WindowSize.Y)
+        );
+{$ENDIF}
         Touch.Feed(
             Phase,
             Event.Finger.TouchID,
@@ -1076,6 +1232,9 @@ end;
 function GameKeyState(Key: Integer): SmallInt;
 var
   Keys: PByte;
+{$IFDEF SWITCH}
+  ControllerKeys: PByte;
+{$ENDIF}
   Count, Index, Mask: Integer;
 begin
   Result := 0;
@@ -1088,13 +1247,21 @@ begin
       Mask := 4
     else if Key = 4 then
       Mask := 2;
-    if SDL_GetMouseState(nil, nil) and Cardinal(Mask) <> 0 then
+    if GameMouseState(nil, nil) and Cardinal(Mask) <> 0 then
       Result := -32768;
     Exit;
   end;
   Keys := SDL_GetKeyboardState(@Count);
+{$IFDEF SWITCH}
+  ControllerKeys := SwitchKeyboardState;
+{$ENDIF}
   for Index := 0 to Count - 1 do
-    if (Keys[Index] <> 0) and (KeyFromScanCode(Index) = Cardinal(Key)) then
+    if ((Keys[Index] <> 0)
+{$IFDEF SWITCH}
+            or (ControllerKeys[Index] <> 0)
+{$ENDIF}
+        )
+        and (KeyFromScanCode(Index) = Cardinal(Key)) then
       Exit(-32768);
 end;
 
@@ -1135,7 +1302,7 @@ begin
     Exit;
   end
   else
-    SDL_GetMouseState(@X, @Y);
+    GameMouseState(@X, @Y);
   if GameSDLRenderer = nil then
   begin
     Point := Types.Point(X, Y);
@@ -1153,7 +1320,7 @@ function GamePointerAllowsEdgeScroll: Boolean;
 begin
   // Android uses explicit panning, including when a mouse is connected.
   // Elsewhere, a released finger must not act as a parked desktop cursor.
-  Result := not GameWindowIsMobile and not TouchMouseActive;
+  Result := not GameWindowIsMobile and GamePointerCursorVisible and not TouchMouseActive;
 end;
 
 procedure WarpGameMouse(X, Y: Integer);
@@ -1201,7 +1368,7 @@ begin
   SDL_MinimizeWindow(GameSDLWindow);
 end;
 
-procedure OpenGameURL(const URL: UnicodeString);
+function OpenGameURL(const URL: UnicodeString): Boolean;
 var
   Target: UTF8String;
 begin
@@ -1210,7 +1377,9 @@ begin
   Target := UTF8Encode(URL);
   if Pos('://', Target) = 0 then
     Target := FilenameToURI(UTF8Encode(ExpandFileName(NativeGamePath(URL))));
-  CheckSDL(SDL_OpenURL(PAnsiChar(Target)));
+  // Opening an external document is optional platform functionality. Failure
+  // must not unwind the current game session (Switch has no URL handler).
+  Result := SDL_OpenURL(PAnsiChar(Target)) = 0;
 end;
 
 function GetGameClipboard: UnicodeString;

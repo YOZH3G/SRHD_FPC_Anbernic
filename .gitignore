@@ -1,4 +1,6 @@
 /.local/
+# Local audits, disassembly and runtime evidence are not distributable source.
+/research/
 /game
 /build/
 .DS_Store

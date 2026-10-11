@@ -76,6 +76,7 @@ procedure LoadPendingAssets(PendingLoads: TList);
 implementation
 
 uses
+  GameEvents,
   fPanelMain,
   EC_CacheGAI,
   GameInput,

@@ -44,6 +44,11 @@ def require_tool(name: str) -> Path:
     return Path(path).resolve()
 
 
+def build_jobs() -> int:
+    """Bound parallel compiler work to keep memory use predictable."""
+    return min(6, os.cpu_count() or 1)
+
+
 def output(*command: str) -> str:
     # Callers parse stdout as paths, versions, or JSON. Keep diagnostics separate.
     return subprocess.check_output(command, text=True).strip()
