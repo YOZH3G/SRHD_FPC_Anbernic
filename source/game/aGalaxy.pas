@@ -299,6 +299,11 @@ type
     SpecialSimulationMode: Byte;
     CheatsDisabled: Boolean;
     Gap1DA: array[0..1] of Byte;
+    // CHANGE: PORTABILITY - UtilityFunctions' capital freeze is applied at the
+    // recalculation site instead of racing the simulation with a 1 ms thread.
+    // These are process-local mod state, deliberately absent from the save format.
+    UtilityCapitalOverrideActive: Boolean;
+    UtilityCapitalOverrideValue: Integer;
     constructor Create;
     destructor Destroy; override;
     procedure InitializeCampaignState;
@@ -4504,9 +4509,8 @@ begin
       Ship.LoadFromBuffer(Buffer, Galaxy);
     end;
     Stage := 7;
+    // CHANGE: FIX - Long campaigns can exceed 10,000 loose items; the save count is a Word.
     Count := Buffer.GetWord;
-    if (Count < 0) or (Count > 10000) then
-      raise EAbort.Create('Err');
     Stage := 8;
     for I := 0 to Count - 1 do
     begin
@@ -5879,7 +5883,9 @@ begin
     if GetPlayer.CurrentStar.Items.IndexOf(Obj) >= 0 then
       Local := True;
   if Local then
-    Result := '<Object=' + IntToStr(Cardinal(Obj)) + ',23,17,0>'
+    // Native $7B28C9 formats the object address as an unsigned decimal value.
+    // The dialog's focus button casts it back to TObject, so retain every bit.
+    Result := '<Object=' + UIntToStr(PtrUInt(Obj)) + ',23,17,0>'
   else
     Result := '';
 end;
@@ -8400,6 +8406,9 @@ begin
         AverageRangerCapital := Total;
     end;
   end;
+  // Keep wealthiest-ranger and maximum-wealth statistics current while frozen.
+  if UtilityCapitalOverrideActive then
+    AverageRangerCapital := UtilityCapitalOverrideValue;
 end;
 procedure TGalaxy.RefreshRangerStrengthStats;
 var
@@ -10356,7 +10365,8 @@ begin
     Planet.CurrentStar.Ships.Add(Warrior);
   end;
   Turn := CurrentTurn + SeededRandomIntRange(30, 40, (CurrentTurn + 0) + Planet.GenerationSeed);
-  Station.FlyToStar := TStar(Integer(Target) + 0);
+  // The original + 0 is an evaluation-order artifact; this is a star pointer.
+  Station.FlyToStar := Target;
   Station.FlyDate := Turn + 0;
   Text :=
       PickLocalizedTextVariant(

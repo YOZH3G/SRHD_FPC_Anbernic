@@ -5,11 +5,25 @@
 The macOS ARM64 build requires Python 3, FPC 3.2.2 for bootstrapping, GNU Make,
 Xcode command-line tools, CMake, pkg-config, SDL2, SDL2_mixer, libjpeg, and libpng.
 
-The build creates the vendored FPC 3.3.1 LLVM compiler in `.local/fpc/` on first
+The build creates the pinned FPC 3.3.1 LLVM compiler in `.local/fpc/` on first
 use and rebuilds it when its source changes. `FPC_BOOTSTRAP` selects the installed
 bootstrap compiler. The same generated compiler serves macOS and Android, with
 a runtime compiled for each target. Pascal compiles through LLVM IR and Clang;
 C code also uses Clang.
+
+All builds use an RTL compiled with `CLASSESINLINE`; the pinned FPC also marks
+the list error routine `noreturn`, allowing safe list accesses to optimize better.
+macOS link-time optimization is a separate opt-in. Pass `--lto` to both scripts:
+
+```sh
+./tools/build.py --release --lto
+./tools/run.py --release --lto
+```
+
+Normal builds keep their existing output paths. LTO builds use `.local/release-lto/`
+or `.local/debug-lto/`, with separate RTL and game-unit caches. Switching between
+them does not rebuild the compiler or overwrite the other configuration.
+LTO takes longer to link. Android currently builds without LTO.
 
 ```sh
 git submodule update --init --recursive
@@ -35,6 +49,16 @@ Optional mods go in `game/Mods/` and are selected through the original mod manag
 Generated output stays in `.local/`.
 Use `--release` with both scripts for an optimized build.
 
+Builds reuse unchanged Pascal units. On macOS, the native libraries also build
+incrementally. Use `./tools/build.py --rebuild` (with `--release` if needed) to
+force a full game rebuild. Changes to the compiler or Pascal flags automatically
+rebuild the units.
+
+Both macOS configurations keep matching `.dSYM` bundles beside `Rangers` and the
+native libraries. Keep these with the corresponding binaries: crash backtraces
+use them to print source paths and line numbers, including in release builds.
+The macOS runtime uses `/usr/bin/atos` when FPC cannot resolve an address itself.
+
 Saves/settings default to `~/Library/Application Support/SpaceRangersHD/`.
 Game options include `--user-dir=/path/to/profile`, `--language=english`,
 `--renderer=sdl`, and `--transitions=original`.
@@ -57,7 +81,7 @@ and the Android SDK/NDK. Set these dependency paths:
   and libpng; SDL2_mixer and image libraries are linked statically.
 - `SDL_SOURCE`: matching SDL2 source tree, supplying its Android Java classes.
 
-Android Pascal and C code use the NDK's LLVM tools. The vendored compiler includes
+Android Pascal and C code use the NDK's LLVM tools. The compiler submodule includes
 [Android LLVM support](vendor/fpc/PORT.md).
 
 `JAVA_HOME` selects the JDK. The APK contains code; the launcher imports game
