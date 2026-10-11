@@ -12,7 +12,7 @@ from pathlib import Path
 from build import ROOT
 
 
-MODELS = ["RG35XX H", "RG35XX SP", "RG35XX 2024", "RG28XX", "RG40XX H", "RG40XX V"]
+MODELS = ["RG35XX Plus", "RG35XX H", "RG35XX SP", "RG35XX 2024", "RG28XX", "RG40XX H", "RG40XX V"]
 
 
 def package(

@@ -11,7 +11,7 @@ bootstrap compiler. The same generated compiler serves macOS and Android, with
 a runtime compiled for each target. Pascal compiles through LLVM IR and Clang;
 C code also uses Clang.
 
-All builds use an RTL compiled with `CLASSESINLINE`; the pinned FPC also marks
+The macOS and Android builds use an RTL compiled with `CLASSESINLINE`; the pinned FPC also marks
 the list error routine `noreturn`, allowing safe list accesses to optimize better.
 macOS link-time optimization is a separate opt-in. Pass `--lto` to both scripts:
 
@@ -125,12 +125,13 @@ compiled Pascal units. Outputs are `.local/anbernic/armhf/` and
 `.local/anbernic/arm64/`; these contain `Rangers`, `lib/`, and build logs.
 The build tool does not download a sysroot or bootstrap FPC.
 
-The experimental packages target RG35XX Plus/muOS (ARMHF) and RG353V/ArkOS
-(AArch64). Both bundles require glibc 2.29 or newer, PortMaster, and original
-game resources. They include a firmware launcher and keyboard/mouse mappings
-from `platform/linux/`. Packaging substitutes `@ARCH@` in the launcher with
-`armhf` or `aarch64`. `--fullscreen` fits the logical canvas to the physical
-display; profiles can be placed beside the port with `--user-dir`.
+Experimental packages target muOS, KNULLI, ArkOS, AmberELEC and ROCKNIX;
+see [the model list and installation instructions](platform/linux/ANBERNIC.md).
+They require glibc 2.29 or newer, PortMaster and original game resources.
+Packages include the firmware launcher and keyboard/mouse mappings from
+`platform/linux/`. The launcher selects ARMHF or AArch64 by userland bitness.
+`--fullscreen` fits the logical canvas to the physical display; profiles can be
+placed beside the port with `--user-dir`.
 
 `--on-screen-keyboard` enables the built-in RU/EN keyboard when clicking an
 edit field or pressing F6 with an edit field focused. PortMaster launchers enable
