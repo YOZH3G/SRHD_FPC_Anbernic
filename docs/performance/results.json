@@ -1,0 +1,418 @@
+{
+  "baseline_source_commit": "3703bc2b03b9255dd638e7b3efa0dba3a86e6b93",
+  "optimized_source_commit": "de271ee1e1c7ff97287b32a8445bf69b486b6ce7",
+  "measurement_scope": "Synthetic CPU/render submission and SDL software rasterization; not game FPS or physical hardware speed",
+  "noise": "Cloud-host scheduling and frequency variation remains visible in individual runs; small mixed-workload gains should not be treated as guaranteed. Earlier exploratory runs were excluded.",
+  "results": {
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU, SDL dummy/software, single host CPU affinity",
+      "method": "ABBA; seven samples per run; median of two run medians; 2048 draws per scene",
+      "physical_hardware_tested": false,
+      "game_fps_measured": false,
+      "fixture_sha256": {
+        "baseline": "7beea7100372427196681a7acab4c4cd9ebab44c5b994558bc513508dc20567d",
+        "optimized": "c0235a71269ec5867c550fb25f5b8b54555322f34fb1cd9a3904ed0ba897b763"
+      },
+      "runs": {
+        "baseline": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 43.105,
+              "min_ms": 41.075,
+              "max_ms": 50.055,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 61.913,
+              "min_ms": 55.709,
+              "max_ms": 82.568,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 473.876,
+              "min_ms": 439.659,
+              "max_ms": 553.793,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 39.954,
+              "min_ms": 39.253,
+              "max_ms": 42.306,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 46.492,
+              "min_ms": 42.384,
+              "max_ms": 53.893,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 61.559,
+              "min_ms": 56.319,
+              "max_ms": 67.992,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 558.281,
+              "min_ms": 464.738,
+              "max_ms": 628.64,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 41.704,
+              "min_ms": 40.134,
+              "max_ms": 60.42,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ]
+        ],
+        "optimized": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 31.856,
+              "min_ms": 31.627,
+              "max_ms": 32.794,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 45.644,
+              "min_ms": 45.064,
+              "max_ms": 47.935,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 441.137,
+              "min_ms": 417.701,
+              "max_ms": 450.021,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 33.148,
+              "min_ms": 31.791,
+              "max_ms": 38.063,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 32.131,
+              "min_ms": 31.744,
+              "max_ms": 33.326,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 48.338,
+              "min_ms": 45.032,
+              "max_ms": 50.238,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 474.191,
+              "min_ms": 440.351,
+              "max_ms": 503.862,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 35.969,
+              "min_ms": 34.897,
+              "max_ms": 43.768,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ]
+        ]
+      },
+      "comparison": [
+        {
+          "case": "ui-800",
+          "baseline_ms": 44.7985,
+          "optimized_ms": 31.9935,
+          "time_reduction_percent": 28.58,
+          "throughput_increase_percent": 40.02,
+          "framebuffer_hash": "81F91B73"
+        },
+        {
+          "case": "sprites-1024",
+          "baseline_ms": 61.736,
+          "optimized_ms": 46.991,
+          "time_reduction_percent": 23.88,
+          "throughput_increase_percent": 31.38,
+          "framebuffer_hash": "7BC183A5"
+        },
+        {
+          "case": "mixed-primitives",
+          "baseline_ms": 516.0785,
+          "optimized_ms": 457.664,
+          "time_reduction_percent": 11.32,
+          "throughput_increase_percent": 12.76,
+          "framebuffer_hash": "E37F4E36"
+        },
+        {
+          "case": "ui-after-reset",
+          "baseline_ms": 40.829,
+          "optimized_ms": 34.5585,
+          "time_reduction_percent": 15.36,
+          "throughput_increase_percent": 18.14,
+          "framebuffer_hash": "81F91B73"
+        }
+      ],
+      "game_binary_sha256": "aec913dac84ca3ee64001fb6e4a462b44d05554b28a7214af1f13650d4b47748",
+      "baseline_game_binary_sha256": "7c934bda5d1fc1647b9d4c1c316ec17e90e69722968abe8836be1fded0946e61",
+      "native_library_sha256": {
+        "libvorbisfile.so": "8c3945cfd757e17d5d283b76f303fe87e150783bd9cfeeb2bb5348d8b466e257",
+        "libvorbis.so.0": "513a6bb2975269d3ed8e0f47f0512046df8407e52f8daf982243b2c20b16b0a1",
+        "libogg.so.0": "3dd2a3a7de8ef3fe3856feb38dfcabbed2863bdd50bc93b5ee1c49564384bcba",
+        "libSDL2_mixer-2.0.so.0": "8d0c80dd3db4b1bff92bad44010a5ee2a3433aa8c3be0e3c399bc59ec69190fa",
+        "libSDL2.so": "8baca4faf9842ba5a64e31ad25b660123903fc0adac60cdeec198bdbfc2faf88",
+        "libvorbisenc.so.2": "b5511c03014f48f72d4c8546562e1af26cd9a05f3b3e7e9a62851be67d22ed4c",
+        "libvorbisfile.so.3": "8c3945cfd757e17d5d283b76f303fe87e150783bd9cfeeb2bb5348d8b466e257",
+        "libogg.so": "3dd2a3a7de8ef3fe3856feb38dfcabbed2863bdd50bc93b5ee1c49564384bcba",
+        "libgamenative.so": "52e03e7a68536112c39e53ca12a637fd8e03a0ad0561e7f5fb52f660ece8a5e8",
+        "libokgf.so": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+        "libSDL2_mixer.so": "8d0c80dd3db4b1bff92bad44010a5ee2a3433aa8c3be0e3c399bc59ec69190fa",
+        "libvorbis.so": "513a6bb2975269d3ed8e0f47f0512046df8407e52f8daf982243b2c20b16b0a1",
+        "libvorbisenc.so": "b5511c03014f48f72d4c8546562e1af26cd9a05f3b3e7e9a62851be67d22ed4c",
+        "libSDL2-2.0.so.0": "8baca4faf9842ba5a64e31ad25b660123903fc0adac60cdeec198bdbfc2faf88"
+      }
+    },
+    "aarch64": {
+      "arch": "aarch64",
+      "environment": "QEMU, SDL dummy/software, single host CPU affinity",
+      "method": "ABBA; seven samples per run; median of two run medians; 2048 draws per scene",
+      "physical_hardware_tested": false,
+      "game_fps_measured": false,
+      "fixture_sha256": {
+        "baseline": "abe6fabfcbc046771fe5e213580c5dbe0a6f2282e85f12ae36627b1afde63682",
+        "optimized": "9297826adb0078f87f983f26180cd3b508acb8706465c96aa9c3f65d810c0b5d"
+      },
+      "runs": {
+        "baseline": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 37.834,
+              "min_ms": 36.336,
+              "max_ms": 39.848,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 33.509,
+              "min_ms": 29.285,
+              "max_ms": 41.288,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 360.493,
+              "min_ms": 334.786,
+              "max_ms": 370.362,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 38.103,
+              "min_ms": 36.406,
+              "max_ms": 47.227,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 36.834,
+              "min_ms": 36.211,
+              "max_ms": 37.406,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 30.084,
+              "min_ms": 28.873,
+              "max_ms": 30.759,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 354.878,
+              "min_ms": 341.935,
+              "max_ms": 364.611,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 35.579,
+              "min_ms": 35.057,
+              "max_ms": 36.572,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ],
+        "optimized": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 31.12,
+              "min_ms": 30.859,
+              "max_ms": 32.154,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 33.927,
+              "min_ms": 23.869,
+              "max_ms": 37.817,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 325.321,
+              "min_ms": 316.825,
+              "max_ms": 351.003,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 30.06,
+              "min_ms": 29.921,
+              "max_ms": 30.901,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 31.288,
+              "min_ms": 30.79,
+              "max_ms": 31.866,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 23.996,
+              "min_ms": 23.412,
+              "max_ms": 26.061,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 339.307,
+              "min_ms": 331.948,
+              "max_ms": 349.979,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 31.488,
+              "min_ms": 30.548,
+              "max_ms": 36.774,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ]
+      },
+      "comparison": [
+        {
+          "case": "ui-800",
+          "baseline_ms": 37.334,
+          "optimized_ms": 31.204,
+          "time_reduction_percent": 16.42,
+          "throughput_increase_percent": 19.64,
+          "framebuffer_hash": "ACBF7205"
+        },
+        {
+          "case": "sprites-1024",
+          "baseline_ms": 31.7965,
+          "optimized_ms": 28.9615,
+          "time_reduction_percent": 8.92,
+          "throughput_increase_percent": 9.79,
+          "framebuffer_hash": "7BC183A5"
+        },
+        {
+          "case": "mixed-primitives",
+          "baseline_ms": 357.6855,
+          "optimized_ms": 332.314,
+          "time_reduction_percent": 7.09,
+          "throughput_increase_percent": 7.63,
+          "framebuffer_hash": "E37F4E36"
+        },
+        {
+          "case": "ui-after-reset",
+          "baseline_ms": 36.841,
+          "optimized_ms": 30.774,
+          "time_reduction_percent": 16.47,
+          "throughput_increase_percent": 19.71,
+          "framebuffer_hash": "ACBF7205"
+        }
+      ],
+      "game_binary_sha256": "d7992c4afd7fbe0e5098bd96f4e1de83cca1d1303472ee76d120af4b6bd3ee22",
+      "baseline_game_binary_sha256": "7323016a8f8c0ef10993c06ce70dfb18b2314adb90c845a8015b0d4bf42c7ec5",
+      "native_library_sha256": {
+        "libvorbisfile.so": "0d0f1186dbb171ab2b42a3459c2591e6d948185cde1d64e6dc75e8223c67da8d",
+        "libvorbis.so.0": "9fa2ef36b894c4fcdc22bcc7624047421de38d9862c727ff2187534e664beeb6",
+        "libogg.so.0": "66015f344b53895affd3ff153f402097ebaa2add33246bea2d7fca27b682e07a",
+        "libSDL2_mixer-2.0.so.0": "5be03d1ccb26b2339596e35bb30b1be6a2e4ca1aaac7ba3aa5f2aca4160fe849",
+        "libSDL2.so": "ef88f34fa4b842f12c4f85c762a166892878ca6a18d93c8d30eae86371772793",
+        "libvorbisenc.so.2": "d0584b63037a885a82b1e94c2d4f48af48a62c47f911ccff8ae8ebfd290cb2c7",
+        "libvorbisfile.so.3": "0d0f1186dbb171ab2b42a3459c2591e6d948185cde1d64e6dc75e8223c67da8d",
+        "libogg.so": "66015f344b53895affd3ff153f402097ebaa2add33246bea2d7fca27b682e07a",
+        "libgamenative.so": "d493671ab91a6d69236c712786544a3abdc8bf720aa4562009b1bd5812cd386c",
+        "libokgf.so": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+        "libSDL2_mixer.so": "5be03d1ccb26b2339596e35bb30b1be6a2e4ca1aaac7ba3aa5f2aca4160fe849",
+        "libvorbis.so": "9fa2ef36b894c4fcdc22bcc7624047421de38d9862c727ff2187534e664beeb6",
+        "libvorbisenc.so": "d0584b63037a885a82b1e94c2d4f48af48a62c47f911ccff8ae8ebfd290cb2c7",
+        "libSDL2-2.0.so.0": "ef88f34fa4b842f12c4f85c762a166892878ca6a18d93c8d30eae86371772793"
+      }
+    }
+  }
+}
