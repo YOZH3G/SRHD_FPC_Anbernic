@@ -14,8 +14,13 @@ begin
   {$ENDIF}
   OpenGameWindow(1024, 768, True, True);
   try
-    if GameRendererAccelerated then raise Exception.Create('Expected dummy software driver');
-    if (GameRendererPreference = grpSDL) and (GameRendererFallback = '') then
+    if ParamStr(1) = 'sdl' then
+    begin
+      if not GameRendererAccelerated then raise Exception.Create('Expected accelerated SDL driver');
+      if GameRendererFallback <> '' then raise Exception.Create('Unexpected fallback');
+    end
+    else if GameRendererAccelerated then raise Exception.Create('Expected dummy software driver');
+    if (ParamStr(1) <> 'sdl') and (GameRendererPreference = grpSDL) and (GameRendererFallback = '') then
       raise Exception.Create('Missing acceleration failure reason');
     if (GameRendererPreference = grpSoftware) and (GameRendererFallback <> '') then
       raise Exception.Create('Forced software attempted acceleration');
@@ -34,7 +39,7 @@ begin
       if SDL_RenderReadPixels(GameSDLRenderer, @Rect, SDL_PIXELFORMAT_ARGB8888,
           @Pixel, SizeOf(Pixel)) <> 0 then
         raise Exception.Create(string(SDL_GetError));
-      if Pixel <> $FF1E508C then raise Exception.Create('Software target pixel mismatch');
+      if Pixel <> $FF1E508C then raise Exception.Create('Render target pixel mismatch');
       SDL_SetRenderTarget(GameSDLRenderer, nil);
       SDL_RenderCopy(GameSDLRenderer, Texture, nil, nil);
       SDL_RenderPresent(GameSDLRenderer);
