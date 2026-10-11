@@ -6,7 +6,7 @@ An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.
 Supply game assets from your own licensed copy; downloads contain the port only.
 
-[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-sdl-2026.10.11)
+[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-ui-2026.10.11)
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
@@ -74,7 +74,7 @@ Set `VideoMode=800,600` in `profile/CFG.TXT`; no experimental flag is needed.
 Lower requested resolutions are replaced with 800×600. The menu and character
 creation fit inside the frame, while the space HUD scales separately from the
 world. Automatic resolution selection retains its previous behavior. These
-changes are not yet in the published release. Settings, station dialogs, shops,
+changes are included in release `anbernic-ui-2026.10.11`. Keep Mobile UI enabled for the adapted layout. Settings, station dialogs, shops,
 ship equipment, galaxy map, journal, save/load and the RU/EN keyboard now fit
 the same frame. See the [800×600 screenshots and checks](docs/screenshots/adapted-800x600/README.md).
 [In-game resolution switching](docs/screenshots/resolution-switch/README.md)
