@@ -6,7 +6,7 @@
 с экспериментальными сборками для Anbernic Linux и экранной клавиатурой RU/EN.
 Для запуска нужны ресурсы вашей лицензионной копии игры. В архивы входит только порт.
 
-[Скачать сборки](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-sdl-2026.10.11)
+[Скачать сборки](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-sdl-2026.10.11)
 · [Подробная установка и диагностика](platform/linux/ANBERNIC.md)
 · [Сборка из исходников](BUILDING.md)
 
@@ -91,7 +91,7 @@ SDL и драйверы дисплея и звука используются и
 ## Скриншоты
 
 Скриншоты и видео ниже относятся к предыдущему
-[релизу клавиатуры на enhanced-ветке](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11).
+[релизу клавиатуры на enhanced-ветке](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-keyboard-2026.10.11).
 
 Кадры получены из работающих ARMHF/AArch64 сборок через QEMU с ресурсами
 лицензионной игры. Это проверка порта; работа дисплея конкретной приставки

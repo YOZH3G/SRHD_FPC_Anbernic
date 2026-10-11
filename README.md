@@ -6,7 +6,7 @@ An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.
 Supply game assets from your own licensed copy; downloads contain the port only.
 
-[Download builds](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-sdl-2026.10.11)
+[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-sdl-2026.10.11)
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
@@ -87,7 +87,7 @@ frame, with the governor fitted to the right of the dialogue.
 ## Screenshots
 
 The screenshots and video below belong to the earlier
-[enhanced-branch keyboard release](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11).
+[enhanced-branch keyboard release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-keyboard-2026.10.11).
 
 Captured from the actual ARMHF/AArch64 builds under QEMU using licensed game
 assets. These images do not demonstrate a physical handheld or firmware driver.
