@@ -112,6 +112,8 @@ provisioning profile before installation. Copy game files to
 Initialize submodules and bootstrap ARMHF/AArch64 compilers and RTL from the
 pinned `vendor/fpc` revision. A matching Linux sysroot and Clang/binutils wrappers
 are required; `--fpc-source` points at the bootstrapped source/build tree.
+The toolchain must also provide `<triplet>-fpcres` (the FPC resource compiler),
+and its sysroot must contain SDL2 ≥ 2.26 plus Ogg/Vorbis development libraries.
 
 ```sh
 python tools/build_linux.py --arch aarch64 \

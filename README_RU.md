@@ -1,6 +1,6 @@
 [English version](README.md)
 
-# Space Rangers HD — Anbernic Linux / FPC Enhanced Port
+# Space Rangers HD — Anbernic Linux / FPC Port
 
 Неофициальный Free Pascal-порт **«Космических рейнджеров HD: Революция»**
 с экспериментальными сборками для Anbernic Linux и экранной клавиатурой RU/EN.

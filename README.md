@@ -1,6 +1,6 @@
 [Русская версия](README_RU.md)
 
-# Space Rangers HD — Anbernic Linux / FPC Enhanced Port
+# Space Rangers HD — Anbernic Linux / FPC Port
 
 An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.

@@ -1,7 +1,7 @@
 # Upstream base for the Anbernic port
 
 This fork now uses the author's reference `main`, through
-[`e7a7bdc`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/3943d1d10651781c8dad666e54918a909e674b24),
+[`3943d1d`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/3943d1d10651781c8dad666e54918a909e674b24),
 fetched on 2026-10-11. Upstream source, platform adapters, native code, build
 scripts, tests and dependency pins are retained. The migration merge keeps the
 old enhanced/personal history reachable without using that implementation as
