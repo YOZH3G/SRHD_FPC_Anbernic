@@ -1,12 +1,15 @@
-{$EXCESSPRECISION OFF}
 unit GR_Main;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+{$POINTERMATH ON}
+
 interface
+
 uses
-  RTLFileSystem,
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
+  GameSystem,
   GR_Music,
   DirectSound,
   EC_Thread,
@@ -23,14 +26,28 @@ uses
   SyncObjs,
   Classes,
   Types;
+
 const
-  RuntimeLogFileName = 'Rangers.log';
+
+  GameVersionText = '2.1.2500';
+
+  ModSelectionConfigPath = 'Mods\ModCFG.txt';
+
 type
+
+  TCCInterface = class;
+
   TCursorUnit = class;
+
+  PointerToTCCSnapshot = ^TCCSnapshot;
+
   TWindowMessageCallbackGR =
       procedure(Message: Cardinal; WParam: Cardinal; LParam: Integer) of object;
+
   TRuntimeCallbackGR = procedure;
+
   TDebugKeyCallbackGR = procedure(Key: Word);
+
   TTriangleRasterizer16 =
       procedure(
           Pixels: Pointer;
@@ -46,6 +63,7 @@ type
           Color3: Cardinal;
           Clip: PRect
       ); cdecl;
+
   TLineRasterizer16 =
       procedure(
           Pixels: Pointer;
@@ -60,23 +78,8 @@ type
 
   TBlendPixel16 = procedure(Pixel: Pointer; Color: Word; Alpha: Byte); cdecl;
 
-  TMemoryStatusEx = packed record
-    Length: Cardinal;
-    MemoryLoad: Cardinal;
-    TotalPhys: UInt64;
-    AvailPhys: UInt64;
-    TotalPageFile: UInt64;
-    AvailPageFile: UInt64;
-    TotalVirtual: UInt64;
-    AvailVirtual: UInt64;
-    AvailExtendedVirtual: UInt64;
-  end;
-  TDisplayModeGR = packed record
-    Width: Cardinal;
-    Height: Cardinal;
-    RefreshRate: Cardinal;
-    Format: Cardinal;
-  end;
+  TMemoryStatusEx = TGameMemoryStatus;
+
   TCursorUnit = class(TObject)
     Prev: TCursorUnit;
     Next: TCursorUnit;
@@ -85,139 +88,134 @@ type
     HotSpot: TPoint;
   end;
 
+  PCCSnapshot = PointerToTCCSnapshot;
+
+  TCCSnapshot = record
+    Prev: PCCSnapshot;
+    Next: PCCSnapshot;
+    ResourceChecksumFailed: Boolean;
+    TamperDetected: Boolean;
+    Flag0A: Boolean;
+    ProtectedStateXorSeed: Integer;
+    Value10: Integer;
+    IntegrityStatus: Integer;
+    IntegrityError: Integer;
+    IntegrityChecksum: Cardinal;
+    IntegrityChecksum1: Cardinal;
+    IntegrityChecksum2: Cardinal;
+    EncodedCheatPoints: Integer;
+    EditableStateApplied: Boolean;
+  end;
+
+  TCCInterface = class(TObject)
+    Buffer: TBufEC;
+    SnapshotHead: PCCSnapshot;
+    Lock: TCriticalSection;
+    constructor Create;
+    destructor Destroy; override;
+    procedure Reset;
+    function GetSnapshot: PCCSnapshot;
+    function CreateDecoy: PCCSnapshot;
+    function CreateEmptySnapshot: PCCSnapshot;
+    function CopySnapshot(Source: PCCSnapshot): PCCSnapshot;
+    procedure CommitSnapshot(Snapshot: PCCSnapshot);
+    procedure ClearSnapshots;
+    function GetResourceChecksumFailed: Boolean;
+    procedure SetResourceChecksumFailed(Value: Boolean);
+    function GetTamperDetected: Boolean;
+    procedure SetTamperDetected(Value: Boolean);
+    function GetFlag0A: Boolean;
+    procedure SetFlag0A(Value: Boolean);
+    function GetEditableStateApplied: Boolean;
+    procedure SetEditableStateApplied(Value: Boolean);
+    function GetProtectedStateXorSeed: Integer;
+    procedure SetProtectedStateXorSeed(Value: Integer);
+    function GetValue10: Integer;
+    procedure SetValue10(Value: Integer);
+    function GetIntegrityStatus: Integer;
+    procedure SetIntegrityStatus(Value: Integer);
+    function GetIntegrityError: Integer;
+    procedure SetIntegrityError(Value: Integer);
+    function GetIntegrityChecksum: Cardinal;
+    procedure SetIntegrityChecksum(Value: Cardinal);
+    function GetIntegrityChecksum1: Cardinal;
+    procedure SetIntegrityChecksum1(Value: Cardinal);
+    function GetIntegrityChecksum2: Cardinal;
+    procedure SetIntegrityChecksum2(Value: Cardinal);
+    function GetEncodedCheatPoints: Integer;
+    procedure SetEncodedCheatPoints(Value: Integer);
+  end;
+
 var
+
   RuntimeActive: Boolean;
+
   VSyncEnabled: Boolean;
+
   PathGrowEnabled: Boolean;
+
   ShowSystemMouse: Boolean;
+
   ScreenRenderBuffer: TGraphBufGR;
+
   RenderScratchBuffer: TGraphBufGR;
+
   AuxRenderBuffer: TGraphBufGR;
+
   SelectedLanguage: WideString;
+
   RequestedLanguage: WideString;
+
   AvailableLanguageCodes: WideString;
+
   OverrideGameUserDirectory: WideString;
+
   CurrentPixelFormat: TPixelFormatGR;
+
   GameScreenWidth: Integer;
+
   GameScreenHeight: Integer;
+
   PresentationWidth: Integer;
+
   PresentationHeight: Integer;
+
   ViewportOffset: TPoint;
+
   AlternateViewportEnabled: Boolean;
+
   GameScreenRect: TRect;
+
   PresentationRect: TRect;
+
   ScrollInteriorRect: TRect;
+
   MainWindowHandle: Cardinal;
+
   WideCaseTable: array of TWideCasePair;
-function GlobalMemoryStatusEx(var Status: TMemoryStatusEx): LongBool; stdcall;
-var
-  InstallConfig: TBlockParEC;
-  LanguageInstallConfig: TBlockParEC;
-  UserSettingsConfig: TBlockParEC;
-  MainDataConfig: TBlockParEC;
-  LanguageDataConfig: TBlockParEC;
-  UiStyleConfig: TBlockParEC;
-  SelectedMods: WideString;
-  SelectedModsDisplaySuffix: WideString;
-  LoadedSaveModSet: WideString;
-  SuppressModRetryPrompt: Boolean = False;
-  SkipModsOnReload: Boolean = False;
-  WindowedModeRequested: Boolean = False;
-  ExitScreenLoop: Boolean = False;
-  FullFrameRedrawRequested: Boolean = True;
-  DisplayBrightness: Single = 0;
-  DisplayContrast: Single = 0;
-  RobotBrightness: Single = 0;
-  RobotContrast: Single = 0;
-  OffscreenFrameUpdated: Boolean = False;
-  OffscreenLastPresentationTick: Cardinal = 0;
-  InterfaceBlendPalette: Pointer = nil;
-  RequestedRefreshRate: Integer = 0;
-  PresentWithoutLimit: Boolean = False;
-  DisableHardwareVertexProcessing: Boolean = False;
-  DisableMultithreadFlag: Boolean = False;
-  DisableTripleBuffer: Boolean = False;
-  ModInstallConfigs: TList = nil;
-  ModLanguageInstallConfigs: TList = nil;
-  ApplyEditableSaveOnLoad: Boolean = False;
-  EditableSaveFileName: WideString = '';
-  PlatformCheckAnchor: Integer = -35753766;
-  ModShipNameConfig: TBlockParEC = nil;
-  ModRuinNameConfig: TBlockParEC = nil;
-  NewGameSeedText: WideString = '';
-  CacheLoadLoggingEnabled: Boolean = False;
-  SoundManager: TSoundControl = nil;
-  MusicManager: TMusicControl = nil;
-  ShowFrameRate: Boolean = False;
-  RecordingFrames: Boolean = False;
-  RecordingFrameBuffers: TList = nil;
-  FirstRegisteredCursor: TCursorUnit = nil;
-  LastRegisteredCursor: TCursorUnit = nil;
-  BuildVersionMismatch: Boolean = False;
-  SessionLogLock: TCriticalSection = nil;
-  DebugKeyCallback: TDebugKeyCallbackGR = nil;
-  CustomCursorEnabled: Boolean = True;
-  DirectXVersion: Cardinal = 0;
-  RecordingFrameCount: Integer = 0;
-  RecordingFrameInterval: Integer = 50;
-  LastRecordingFrameTick: Cardinal = 0;
-  UnknownPresentState: Integer = 0;
-  LastMouseMessageTick: Cardinal = 0;
-  RobotBattleActive: Boolean = False;
-  ProcessorCoreCount: Integer = 1;
-  Direct3D: IDirect3D9 = nil;
-  Direct3DDevice: IDirect3DDevice9 = nil;
-  OffscreenTexture: IDirect3DTexture9 = nil;
-  OffscreenFillViewport: Boolean = False;
-  UseDesktopDisplayMode: Boolean = False;
-  GameDisplayModeCount: Integer = 0;
-  SelectedGameDisplayMode: Integer = -1;
-  SmallestGameDisplayMode: Integer = -1;
-  UseAutomaticRobotDisplayMode: Boolean = False;
-  RobotDisplayModeCount: Integer = 0;
-  SelectedRobotDisplayMode: Integer = -1;
-  AltResolutionSwitch: Boolean = False;
-  LastPresentationTick: Cardinal = 0;
-  PresentationFrameRate: Cardinal = 0;
-  RuntimeWatchdog: TThreadEC = nil;
-  PresentationDepth: Integer = 0;
-  EditableSaveBlock: TBlockParEC;
-  GameDataConfig: TBlockParEC;
-  NewGameSettingsConfig: TBlockParEC;
-  UiDepthConfig: TBlockParEC;
-  CacheDataRoot: TDataEC;
-  GlobalCache: TCacheEC;
-  SessionLog: TextFile;
-  SavePreviewGraph: TGraphBufGR;
-  SecondarySavePreviewGraph: TGraphBufGR;
-  PerformanceCounterFrequency: Int64;
-  DebugCommandMessage: Cardinal;
-  SuppressExceptionLogCopy: Boolean;
-  BlendPixel16: TBlendPixel16;
-  TriangleRasterizer16: TTriangleRasterizer16;
-  LineRasterizer16: TLineRasterizer16;
-  RuntimeExitCheckCallback1: procedure;
-  RuntimeExitCheckCallback2: procedure;
-  RuntimeStartupTick: Cardinal;
-  MainRuntimeThreadId: Cardinal;
-  DesktopDisplayMode: TDisplayModeGR;
-  Direct3DPresentParameters: TD3DPresentParameters;
-  PreviousPresentParameters: TD3DPresentParameters;
-  GameDisplayModes: array of TDisplayModeGR;
-  RobotDisplayModes: array of TDisplayModeGR;
-  ExtraScreenWidth: Integer;
-  ExtraScreenHeight: Integer;
-  CachedGameUserDirectory: WideString = '';
-procedure LogMemoryUsage;
-function Ex_OKGF_MulTable256x256: Pointer;
-function Ex_OKGF_DXVersion: Cardinal;
-function BeginImageRead(
+
+const
+{$IFDEF WASI}
+  // Match the namespace of the statically linked C implementation.
+  OkgfLibraryName = 'env';
+{$ELSEIF Defined(MSWINDOWS)}
+  OkgfLibraryName = 'okgf.dll';
+{$ELSE}
+  OkgfLibraryName = 'okgf';
+{$ENDIF}
+
+function OKGF_MulTable256x256: Pointer; cdecl; external OkgfLibraryName name 'OKGF_MulTable256x256';
+
+function OKGF_DXVersion: Cardinal; cdecl; external OkgfLibraryName name 'DXVersion';
+
+function OKGF_ReadStart_Buf(
     Source: Pointer;
     SourceSize: Integer;
     out Width: Integer;
     out Height: Integer
-): POkgfReadContext;
-function ReadImagePixels(
+): POkgfReadContext; cdecl; external OkgfLibraryName name 'OKGF_ReadStart_Buf';
+
+function OKGF_Read(
     Context: POkgfReadContext;
     Pixels: Pointer;
     PitchBytes: Integer;
@@ -226,22 +224,25 @@ function ReadImagePixels(
     BlueMask: Cardinal;
     AlphaMask: Cardinal;
     BytesPerPixel: Integer
-): Integer;
-function BeginIndexedImageRead(
+): Integer; cdecl; external OkgfLibraryName name 'OKGF_Read';
+
+function OKGF_ReadStartPal_Buf(
     Source: Pointer;
     SourceSize: Integer;
     out Width: Integer;
     out Height: Integer;
     out PaletteCount: Integer;
     out BytesPerPixel: Integer
-): POkgfReadContext;
-function ReadIndexedImagePixels(
+): POkgfReadContext; cdecl; external OkgfLibraryName name 'OKGF_ReadStartPal_Buf';
+
+function OKGF_ReadPal(
     Context: POkgfReadContext;
     Pixels: Pointer;
     PitchBytes: Integer;
     Palette: PColorRGBA
-): Integer;
-function WritePngFile(
+): Integer; cdecl; external OkgfLibraryName name 'OKGF_ReadPal';
+
+function OKGF_Write_PNG_File(
     FileName: PAnsiChar;
     Pixels: Pointer;
     PitchBytes: Integer;
@@ -249,8 +250,9 @@ function WritePngFile(
     Height: Integer;
     HasAlpha: Integer;
     SwapRedBlue: Integer
-): Integer;
-function WriteBmpFile(
+): Integer; cdecl; external OkgfLibraryName name 'OKGF_Write_PNG_File';
+
+function OKGF_Write_BMP_File(
     FileName: PAnsiChar;
     Pixels: Pointer;
     PitchBytes: Integer;
@@ -261,28 +263,1092 @@ function WriteBmpFile(
     AlphaMask: Cardinal;
     Width: Integer;
     Height: Integer
+): Integer; cdecl; external OkgfLibraryName name 'OKGF_Write_BMP_File';
+
+procedure OKGR_AlphaBuf_Draw_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaBuf_Draw_RGBA';
+
+procedure OKGR_TransAlphaBuf_Draw_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_TransAlphaBuf_Draw_RGBA';
+
+procedure OKGR_AlphaIndexed_Draw_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_Draw_RGBA';
+
+procedure OKGR_AlphaIndexed_AlphaDraw_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_AlphaDraw_RGBA';
+
+procedure OKGR_TransBuf_Draw_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_TransBuf_Draw_RGBA';
+
+// OKGF takes a pointer to each clipping rectangle. Delphi Win32 passed these
+// const records by reference; FPC may pass their contents in registers instead.
+// Keep the pointer ABI explicit at the C boundary (original call at $4C8644,
+// OKGR_AlphaBuf_DrawClip_16 reads that pointer at okgf.dll:$1005365D).
+procedure OKGR_TransBuf_DrawClip_WORD(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_TransBuf_DrawClip_WORD';
+
+procedure OKGR_TransBuf_HADrawClip_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_TransBuf_HADrawClip_16';
+
+function OKGR_TransBuf_Build_WORD(
+    Source: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Dest: Pointer;
+    TransparentColor: TOkgfWordArgument
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_TransBuf_Build_WORD';
+
+function OKGR_TransBuf_BuildFromRGBA_16(
+    Source: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Dest: Pointer
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_TransBuf_BuildFromRGBA_16';
+
+procedure OKGR_TransAlphaBuf_DrawClip_WORD(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_TransAlphaBuf_DrawClip_WORD';
+
+procedure OKGR_AlphaBuf_DrawClip_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaBuf_DrawClip_16';
+
+function OKGR_TransAlphaBuf_BuildFromRGBA_16(
+    Source: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Dest: Pointer
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_TransAlphaBuf_BuildFromRGBA_16';
+
+function OKGR_AlphaBuf_BuildFromRGBA(
+    Source: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Dest: Pointer
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_AlphaBuf_BuildFromRGBA';
+
+procedure OKGR_AlphaSimpleBuf_Draw_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaSimpleBuf_Draw_16';
+
+procedure OKGR_AlphaSimpleBufPalAlpha_Draw_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer;
+    Palette: PColorRGBA
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaSimpleBufPalAlpha_Draw_16';
+
+procedure OKGR_MaskBuf_DrawClip_DWORD(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    Color: Cardinal;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_MaskBuf_DrawClip_DWORD';
+
+procedure OKGR_MaskBuf_DrawClip_WORD(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_MaskBuf_DrawClip_WORD';
+
+procedure OKGR_TransBuf_FillAlphaClip_RGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect;
+    Color: Cardinal
+); cdecl; external OkgfLibraryName name 'OKGR_TransBuf_FillAlphaClip_RGBA';
+
+procedure OKGR_TransBuf_FillAlphaClip_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect;
+    Color: TOkgfWordArgument
+); cdecl; external OkgfLibraryName name 'OKGR_TransBuf_FillAlphaClip_16';
+
+procedure OKGR_AlphaIndexed_CopyDrawClip_WORD(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_CopyDrawClip_WORD';
+
+procedure OKGR_AlphaIndexed_CopyDrawClip_Alpha_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect;
+    Alpha: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_CopyDrawClip_Alpha_16';
+
+procedure OKGR_AlphaIndexed_AlphaDrawClip_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_AlphaDrawClip_16';
+
+procedure OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16(
+    Dest: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Source: Pointer;
+    constref Clip: TRect;
+    Alpha: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16';
+
+function OKGR_RotateBuf_Build(
+    Width: Integer;
+    Height: Integer;
+    SourceWidth: Integer;
+    SourceHeight: Integer;
+    CenterX: Integer;
+    CenterY: Integer
+): Pointer; cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_Build';
+
+procedure OKGR_RotateBuf_Free(
+    Buffer: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_Free';
+
+procedure OKGR_RotateBuf_Size(
+    X: Integer;
+    Y: Integer;
+    Angle: TOkgfByteArgument;
+    RotationMap: Pointer;
+    var Bounds: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_Size';
+
+procedure OKGR_RotateBuf_Draw_DWORD(
+    Dest: Pointer;
+    DestPitch: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    CenterX: Integer;
+    CenterY: Integer;
+    Angle: TOkgfByteArgument;
+    RotationMap: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_Draw_DWORD';
+
+procedure OKGR_RotateBuf_Draw_BYTE(
+    Dest: Pointer;
+    DestPitch: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Angle: TOkgfByteArgument;
+    RotationMap: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_Draw_BYTE';
+
+procedure OKGR_RotateBuf_DrawTransClip_WORD(
+    Dest: Pointer;
+    DestPitch: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    CenterX: Integer;
+    CenterY: Integer;
+    Angle: TOkgfByteArgument;
+    RotationMap: Pointer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_RotateBuf_DrawTransClip_WORD';
+
+function OKGR_LightBuf_Create(
+    Width: Integer;
+    Height: Integer
+): Pointer; cdecl; external OkgfLibraryName name 'OKGR_LightBuf_Create';
+
+procedure OKGR_LightBuf_Destroy(
+    Buffer: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_LightBuf_Destroy';
+
+procedure OKGR_LightBuf_SetSme(
+    Buffer: Pointer;
+    X: Integer;
+    Y: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_LightBuf_SetSme';
+
+procedure OKGR_LightBuf_Init(
+    Buffer: Pointer;
+    Value: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_LightBuf_Init';
+
+procedure OKGR_LightBuf_LoadFromPalBuf(
+    Buffer: Pointer;
+    Source: Pointer;
+    Width: Integer;
+    Height: Integer;
+    Pitch: Integer;
+    Palette: PColorRGBA
+); cdecl; external OkgfLibraryName name 'OKGR_LightBuf_LoadFromPalBuf';
+
+procedure OKGR_LightBuf_Rotate(
+    Dest: Pointer;
+    Source: Pointer;
+    RotationMap: Pointer;
+    Angle: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_LightBuf_Rotate';
+
+function OKGR_Planet2_TemplBuild(
+    Source: Pointer;
+    Pitch: Integer;
+    Height: Integer;
+    TextureWidth: Integer;
+    TextureHeight: Integer;
+    var ByteCount: Integer
+): Pointer; cdecl; external OkgfLibraryName name 'OKGR_Planet2_TemplBuild';
+
+procedure OKGR_Planet2_TemplDel(
+    TemplateData: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_Planet2_TemplDel';
+
+procedure OKGR_Planet2_DrawAndLight_32(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_Planet2_DrawAndLight_32';
+
+procedure OKGR_Planet2_DrawAndLightClip_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Planet2_DrawAndLightClip_16';
+
+procedure OKGR_Planet3_DrawAndLight_32(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_Planet3_DrawAndLight_32';
+
+procedure OKGR_Planet3_DrawAndLightClip_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Planet3_DrawAndLightClip_16';
+
+procedure OKGR_Planet4_DrawAndLight_32(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_Planet4_DrawAndLight_32';
+
+procedure OKGR_Planet4_DrawAndLightClip_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    TemplateData: Pointer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    WidthMask: Integer;
+    MapOffset: Integer;
+    LightBuffer: Pointer;
+    Palette: Pointer;
+    X: Integer;
+    Y: Integer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Planet4_DrawAndLightClip_16';
+
+procedure OKGR_Copy_XY_XY_WORD(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_Copy_XY_XY_WORD';
+
+procedure OKGR_PalCopy_XY_XY_WORD(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Palette: Pointer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_PalCopy_XY_XY_WORD';
+
+procedure OKGR_CopyTrans_XY_XY_WORD(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer;
+    TransparentColor: TOkgfWordArgument
+); cdecl; external OkgfLibraryName name 'OKGR_CopyTrans_XY_XY_WORD';
+
+procedure OKGR_CopySingleBuf_XY_XY_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_CopySingleBuf_XY_XY_WORD';
+
+procedure OKGR_HACopy_XY_XY_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_HACopy_XY_XY_16';
+
+procedure OKGR_StretchGdi_WORD(
+    Dest: Pointer;
+    Width: Cardinal;
+    Height: Cardinal;
+    Source: Pointer;
+    SourceWidth: Cardinal;
+    SourceHeight: Cardinal
+); cdecl; external OkgfLibraryName name 'OKGR_StretchGdi_WORD';
+
+procedure OKGR_Fill_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Color: TOkgfWordArgument
+); cdecl; external OkgfLibraryName name 'OKGR_Fill_WORD';
+
+procedure OKGF_ConvertRGBto565(
+    Source: Pointer;
+    Dest: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_ConvertRGBto565';
+
+procedure OKGF_Convert565toRGB(
+    Source: Pointer;
+    SourcePitch: Integer;
+    Dest: Pointer;
+    DestPitch: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_Convert565toRGB';
+
+procedure OKGF_Convert565toBGR(
+    Source: Pointer;
+    SourcePitch: Integer;
+    Dest: Pointer;
+    DestPitch: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_Convert565toBGR';
+
+procedure OKGF_Convert565toBGRA(
+    Source: Pointer;
+    SourcePitch: Integer;
+    Dest: Pointer;
+    DestPitch: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_Convert565toBGRA';
+
+procedure OKGF_Convert_8888to565(
+    Dest: Pointer;
+    DestPitch: Integer;
+    DestX: Integer;
+    DestY: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    SourceX: Integer;
+    SourceY: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_Convert_8888to565';
+
+procedure OKGR_ShrLight_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Shift: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_ShrLight_16';
+
+procedure OKGR_ShrLightMask_16(
+    Dest: Pointer;
+    DestPitch: Integer;
+    Source: Pointer;
+    SourcePitch: Integer;
+    Width: Integer;
+    Height: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_ShrLightMask_16';
+
+procedure OKGR_Light_BYTE(
+    Pixels: Pointer;
+    PixelStride: Integer;
+    Pitch: Integer;
+    Width: Integer;
+    Height: Integer;
+    Alpha: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_Light_BYTE';
+
+procedure OKGR_Circle_DrawClip_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Radius: Integer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Circle_DrawClip_WORD';
+
+procedure OKGR_Circle_DrawClip_BYTE(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Radius: Integer;
+    Color: TOkgfByteArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Circle_DrawClip_BYTE';
+
+procedure OKGR_Circle_DrawFillClip_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Radius: Integer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Circle_DrawFillClip_WORD';
+
+procedure OKGR_Circle_DrawFillClip_BYTE(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X: Integer;
+    Y: Integer;
+    Radius: Integer;
+    Color: TOkgfByteArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Circle_DrawFillClip_BYTE';
+
+procedure OKGR_PixelAlpha_16(
+    Pixel: Pointer;
+    Color: TOkgfWordArgument;
+    Alpha: TOkgfByteArgument
+); cdecl; external OkgfLibraryName name 'OKGR_PixelAlpha_16';
+
+function OKGR_Line_Clip(
+    var X1: Integer;
+    var Y1: Integer;
+    var X2: Integer;
+    var Y2: Integer;
+    constref Clip: TRect
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_Line_Clip';
+
+function OKGR_LineColor_Clip(
+    var X1: Integer;
+    var Y1: Integer;
+    var Color1: Cardinal;
+    var X2: Integer;
+    var Y2: Integer;
+    var Color2: Cardinal;
+    constref Clip: TRect
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_LineColor_Clip';
+
+procedure OKGR_Line_Draw_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    Color: TOkgfWordArgument
+); cdecl; external OkgfLibraryName name 'OKGR_Line_Draw_WORD';
+
+procedure OKGR_Line_DrawClip_WORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Line_DrawClip_WORD';
+
+function OKGR_Line_CopyToBuf_WORD(
+    Dest: Pointer;
+    Source: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_Line_CopyToBuf_WORD';
+
+function OKGR_Line_CopyFromBuf_WORD(
+    Source: Pointer;
+    Dest: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer
+): Integer; cdecl; external OkgfLibraryName name 'OKGR_Line_CopyFromBuf_WORD';
+
+procedure OKGR_Line_DrawClip_Alpha_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    Color: TOkgfWordArgument;
+    Alpha: TOkgfByteArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Line_DrawClip_Alpha_16';
+
+procedure OKGR_AnimLine_Draw_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    Color: TOkgfWordArgument;
+    Phase: Integer;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_AnimLine_Draw_16';
+
+procedure OKGR_AnimShadowLine_Draw_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    Color: TOkgfWordArgument;
+    Phase: Integer;
+    constref Clip: TRect;
+    ShadowPixels: Pointer;
+    ShadowPitch: Integer
+); cdecl; external OkgfLibraryName name 'OKGR_AnimShadowLine_Draw_16';
+
+procedure OKGR_Alpha64Trapezium_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    X3: Integer;
+    X4: Integer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Alpha64Trapezium_16';
+
+procedure OKGR_Alpha128Trapezium_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    X2: Integer;
+    Y2: Integer;
+    X3: Integer;
+    X4: Integer;
+    Color: TOkgfWordArgument;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_Alpha128Trapezium_16';
+
+procedure OKGR_FillTrapezium_DWORD(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    X2: Integer;
+    Y1: Integer;
+    X3: Integer;
+    X4: Integer;
+    Y2: Integer;
+    Color: Cardinal;
+    constref Clip: TRect
+); cdecl; external OkgfLibraryName name 'OKGR_FillTrapezium_DWORD';
+
+procedure OKGF_Rescale(
+    Dest: Pointer;
+    Width: Integer;
+    Height: Integer;
+    DestPitch: Integer;
+    Source: Pointer;
+    SourceWidth: Integer;
+    SourceHeight: Integer;
+    SourcePitch: Integer;
+    BytesPerPixel: Integer;
+    Filter: Integer
+); cdecl; external OkgfLibraryName name 'OKGF_Rescale';
+
+procedure OKGR_F5_DrawRGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_F5_DrawRGBA';
+
+procedure OKGR_F6_DrawRGBA(
+    Dest: Pointer;
+    Pitch: Integer;
+    Source: Pointer
+); cdecl; external OkgfLibraryName name 'OKGR_F6_DrawRGBA';
+
+procedure OKGF_Triangle_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    Color1: Cardinal;
+    X2: Integer;
+    Y2: Integer;
+    Color2: Cardinal;
+    X3: Integer;
+    Y3: Integer;
+    Color3: Cardinal;
+    Clip: PRect
+); cdecl; external OkgfLibraryName name 'OKGF_Triangle_16';
+
+procedure OKGF_LineIp_16(
+    Pixels: Pointer;
+    Pitch: Integer;
+    X1: Integer;
+    Y1: Integer;
+    Color1: Cardinal;
+    X2: Integer;
+    Y2: Integer;
+    Color2: Cardinal
+); cdecl; external OkgfLibraryName name 'OKGF_LineIp_16';
+
+var
+
+  InstallConfig: TBlockParEC;
+
+  LanguageInstallConfig: TBlockParEC;
+
+  UserSettingsConfig: TBlockParEC;
+
+  MainDataConfig: TBlockParEC;
+
+  LanguageDataConfig: TBlockParEC;
+
+  UiStyleConfig: TBlockParEC;
+
+  SelectedMods: WideString;
+
+  SelectedModsDisplaySuffix: WideString;
+
+  LoadedSaveModSet: WideString;
+
+  SuppressModRetryPrompt: Boolean = False;
+
+  SkipModsOnReload: Boolean = False;
+
+  WindowedModeRequested: Boolean = False;
+
+  ExitScreenLoop: Boolean = False;
+
+  FullFrameRedrawRequested: Boolean = True;
+
+  DisplayBrightness: Single = 0;
+
+  DisplayContrast: Single = 0;
+
+  RobotBrightness: Single = 0;
+
+  RobotContrast: Single = 0;
+
+  OffscreenFrameUpdated: Boolean = False;
+
+  OffscreenLastPresentationTick: Cardinal = 0;
+
+  InterfaceBlendPalette: Pointer = nil;
+
+  RequestedRefreshRate: Integer = 0;
+
+  PresentWithoutLimit: Boolean = False;
+
+  DisableHardwareVertexProcessing: Boolean = False;
+
+  DisableMultithreadFlag: Boolean = False;
+
+  DisableTripleBuffer: Boolean = False;
+
+  ModInstallConfigs: TList = nil;
+
+  ModLanguageInstallConfigs: TList = nil;
+
+  ApplyEditableSaveOnLoad: Boolean = False;
+
+  EditableSaveFileName: WideString = '';
+
+  ModShipNameConfig: TBlockParEC = nil;
+
+  ModRuinNameConfig: TBlockParEC = nil;
+
+  NewGameSeedText: WideString = '';
+
+  CacheLoadLoggingEnabled: Boolean = False;
+
+  SoundManager: TSoundControl = nil;
+
+  MusicManager: TMusicControl = nil;
+
+  ShowFrameRate: Boolean = False;
+
+  RecordingFrames: Boolean = False;
+
+  RecordingFrameBuffers: TList = nil;
+
+  FirstRegisteredCursor: TCursorUnit = nil;
+
+  LastRegisteredCursor: TCursorUnit = nil;
+
+  BuildVersionMismatch: Boolean = False;
+
+  SessionLogLock: TCriticalSection = nil;
+
+  DebugKeyCallback: TDebugKeyCallbackGR = nil;
+
+  CustomCursorEnabled: Boolean = True;
+
+  DirectXVersion: Cardinal = 0;
+
+  RecordingFrameCount: Integer = 0;
+
+  RecordingFrameInterval: Integer = 50;
+
+  LastRecordingFrameTick: Cardinal = 0;
+
+  LastMouseMessageTick: Cardinal = 0;
+
+  RobotBattleActive: Boolean = False;
+
+  ProcessorCoreCount: Integer = 1;
+
+  Direct3D: IDirect3D9 = nil;
+
+  Direct3DDevice: IDirect3DDevice9 = nil;
+
+  OffscreenTexture: IDirect3DTexture9 = nil;
+
+  OffscreenFillViewport: Boolean = False;
+
+  UseDesktopDisplayMode: Boolean = False;
+
+  GameDisplayModeCount: Integer = 0;
+
+  SelectedGameDisplayMode: Integer = -1;
+
+  SmallestGameDisplayMode: Integer = -1;
+
+  UseAutomaticRobotDisplayMode: Boolean = False;
+
+  RobotDisplayModeCount: Integer = 0;
+
+  SelectedRobotDisplayMode: Integer = -1;
+
+  AltResolutionSwitch: Boolean = False;
+
+  LastPresentationTick: Cardinal = 0;
+
+  PresentationFrameRate: Cardinal = 0;
+
+  RuntimeWatchdog: TThreadEC = nil;
+
+  PresentationDepth: Integer = 0;
+
+  EditableSaveBlock: TBlockParEC;
+
+  GameDataConfig: TBlockParEC;
+
+  NewGameSettingsConfig: TBlockParEC;
+
+  UiDepthConfig: TBlockParEC;
+
+  CacheDataRoot: TDataEC;
+
+  GlobalCache: TCacheEC;
+
+  SessionLog: TextFile;
+
+  SavePreviewGraph: TGraphBufGR;
+
+  SecondarySavePreviewGraph: TGraphBufGR;
+
+  PerformanceCounterFrequency: Int64;
+
+  DebugCommandMessage: Cardinal;
+
+  BlendPixel16: TBlendPixel16;
+
+  TriangleRasterizer16: TTriangleRasterizer16;
+
+  LineRasterizer16: TLineRasterizer16;
+
+  RuntimeExitCheckCallback1: procedure;
+
+  RuntimeExitCheckCallback2: procedure;
+
+  OnMessageIdle: TRuntimeCallbackGR;
+
+  OnMessageResume: TRuntimeCallbackGR;
+
+  CCInterface: TCCInterface;
+
+  RuntimeStartupTick: Cardinal;
+
+  MainRuntimeThreadId: TThreadID;
+
+type
+
+  TDisplayModeGR = object
+    Width: Cardinal;
+    Height: Cardinal;
+    RefreshRate: Cardinal;
+    Format: Cardinal;
+  end;
+
+var
+
+  DesktopDisplayMode: TDisplayModeGR;
+
+  Direct3DPresentParameters: TD3DPresentParameters;
+
+  PreviousPresentParameters: TD3DPresentParameters;
+
+  GameDisplayModes: array of TDisplayModeGR;
+
+  RobotDisplayModes: array of TDisplayModeGR;
+
+  ExtraScreenWidth: Integer;
+
+  ExtraScreenHeight: Integer;
+
+  CachedGameUserDirectory: WideString = '';
+
+procedure LogMemoryUsage;
+
+function Ex_OKGF_MulTable256x256: Pointer;
+
+function BeginImageRead(
+    Source: Pointer;
+    SourceSize: Integer;
+    out Width: Integer;
+    out Height: Integer
+): POkgfReadContext;
+
+function ReadImagePixels(
+    Context: POkgfReadContext;
+    Pixels: Pointer;
+    PitchBytes: Integer;
+    RedMask: Cardinal;
+    GreenMask: Cardinal;
+    BlueMask: Cardinal;
+    AlphaMask: Cardinal;
+    BytesPerPixel: Integer
 ): Integer;
+
+function BeginIndexedImageRead(
+    Source: Pointer;
+    SourceSize: Integer;
+    out Width: Integer;
+    out Height: Integer;
+    out PaletteCount: Integer;
+    out BytesPerPixel: Integer
+): POkgfReadContext;
+
+function ReadIndexedImagePixels(
+    Context: POkgfReadContext;
+    Pixels: Pointer;
+    PitchBytes: Integer;
+    Palette: PColorRGBA
+): Integer;
+
+function WritePngFile(
+    const FileName: UnicodeString;
+    Pixels: Pointer;
+    PitchBytes: Integer;
+    Width: Integer;
+    Height: Integer;
+    HasAlpha: Integer;
+    SwapRedBlue: Integer
+): Integer;
+
+function WriteBmpFile(
+    const FileName: UnicodeString;
+    Pixels: Pointer;
+    PitchBytes: Integer;
+    BitsPerPixel: Integer;
+    RedMask: Cardinal;
+    GreenMask: Cardinal;
+    BlueMask: Cardinal;
+    AlphaMask: Cardinal;
+    Width: Integer;
+    Height: Integer
+): Integer;
+
 procedure Ex_OKGR_AlphaBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_TransAlphaBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_AlphaIndexed_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDraw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_TransBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_TransBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_TransBuf_HADrawClip_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 function Ex_OKGR_TransBuf_Build_WORD(
     Source: Pointer;
     Pitch: Integer;
@@ -291,6 +1357,7 @@ function Ex_OKGR_TransBuf_Build_WORD(
     Dest: Pointer;
     TransparentColor: Word
 ): Integer;
+
 function Ex_OKGR_TransBuf_BuildFromRGBA_16(
     Source: Pointer;
     Pitch: Integer;
@@ -298,22 +1365,25 @@ function Ex_OKGR_TransBuf_BuildFromRGBA_16(
     Height: Integer;
     Dest: Pointer
 ): Integer;
+
 procedure Ex_OKGR_TransAlphaBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_AlphaBuf_DrawClip_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 function Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(
     Source: Pointer;
     Pitch: Integer;
@@ -321,6 +1391,7 @@ function Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(
     Height: Integer;
     Dest: Pointer
 ): Integer;
+
 function Ex_OKGR_AlphaBuf_BuildFromRGBA(
     Source: Pointer;
     Pitch: Integer;
@@ -328,6 +1399,7 @@ function Ex_OKGR_AlphaBuf_BuildFromRGBA(
     Height: Integer;
     Dest: Pointer
 ): Integer;
+
 procedure Ex_OKGR_AlphaSimpleBuf_Draw_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -340,6 +1412,7 @@ procedure Ex_OKGR_AlphaSimpleBuf_Draw_16(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_AlphaSimpleBufPalAlpha_Draw_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -353,6 +1426,7 @@ procedure Ex_OKGR_AlphaSimpleBufPalAlpha_Draw_16(
     Height: Integer;
     Palette: PColorRGBA
 );
+
 procedure Ex_OKGR_MaskBuf_DrawClip_DWORD(
     Dest: Pointer;
     Pitch: Integer;
@@ -360,8 +1434,9 @@ procedure Ex_OKGR_MaskBuf_DrawClip_DWORD(
     Y: Integer;
     Source: Pointer;
     Color: Cardinal;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_MaskBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch: Integer;
@@ -369,60 +1444,67 @@ procedure Ex_OKGR_MaskBuf_DrawClip_WORD(
     Y: Integer;
     Source: Pointer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_TransBuf_FillAlphaClip_RGBA(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Color: Cardinal
 );
+
 procedure Ex_OKGR_TransBuf_FillAlphaClip_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Color: Word
 );
+
 procedure Ex_OKGR_AlphaIndexed_CopyDrawClip_WORD(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_AlphaIndexed_CopyDrawClip_Alpha_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Alpha: Byte
 );
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDrawClip_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16(
     Dest: Pointer;
     Pitch: Integer;
     X: Integer;
     Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Alpha: Byte
 );
+
 function Ex_OKGR_RotateBuf_Build(
     Width: Integer;
     Height: Integer;
@@ -431,7 +1513,9 @@ function Ex_OKGR_RotateBuf_Build(
     CenterX: Integer;
     CenterY: Integer
 ): Pointer;
+
 procedure Ex_OKGR_RotateBuf_Free(Buffer: Pointer);
+
 procedure Ex_OKGR_RotateBuf_Size(
     X: Integer;
     Y: Integer;
@@ -439,6 +1523,7 @@ procedure Ex_OKGR_RotateBuf_Size(
     RotationMap: Pointer;
     var Bounds: TRect
 );
+
 procedure Ex_OKGR_RotateBuf_Draw_DWORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -449,6 +1534,7 @@ procedure Ex_OKGR_RotateBuf_Draw_DWORD(
     Angle: Byte;
     RotationMap: Pointer
 );
+
 procedure Ex_OKGR_RotateBuf_Draw_BYTE(
     Dest: Pointer;
     DestPitch: Integer;
@@ -459,6 +1545,7 @@ procedure Ex_OKGR_RotateBuf_Draw_BYTE(
     Angle: Byte;
     RotationMap: Pointer
 );
+
 procedure Ex_OKGR_RotateBuf_DrawTransClip_WORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -470,10 +1557,15 @@ procedure Ex_OKGR_RotateBuf_DrawTransClip_WORD(
     RotationMap: Pointer;
     const Clip: TRect
 );
+
 function Ex_OKGR_LightBuf_Create(Width: Integer; Height: Integer): Pointer;
+
 procedure Ex_OKGR_LightBuf_Destroy(Buffer: Pointer);
+
 procedure Ex_OKGR_LightBuf_SetSme(Buffer: Pointer; X: Integer; Y: Integer);
+
 procedure Ex_OKGR_LightBuf_Init(Buffer: Pointer; Value: Byte);
+
 procedure Ex_OKGR_LightBuf_LoadFromPalBuf(
     Buffer: Pointer;
     Source: Pointer;
@@ -482,12 +1574,14 @@ procedure Ex_OKGR_LightBuf_LoadFromPalBuf(
     Pitch: Integer;
     Palette: PColorRGBA
 );
+
 procedure Ex_OKGR_LightBuf_Rotate(
     Dest: Pointer;
     Source: Pointer;
     RotationMap: Pointer;
     Angle: Byte
 );
+
 function Ex_OKGR_Planet2_TemplBuild(
     Source: Pointer;
     Pitch: Integer;
@@ -496,7 +1590,9 @@ function Ex_OKGR_Planet2_TemplBuild(
     TextureHeight: Integer;
     var ByteCount: Integer
 ): Pointer;
-procedure Ex_OKGR_Planet2_TemplDel(TemplateData: Pointer);
+
+function Ex_OKGR_Planet2_TemplDel(TemplateData: Pointer): Integer;
+
 procedure Ex_OKGR_Planet2_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -510,6 +1606,7 @@ procedure Ex_OKGR_Planet2_DrawAndLight_32(
     X: Integer;
     Y: Integer
 );
+
 procedure Ex_OKGR_Planet2_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -524,6 +1621,7 @@ procedure Ex_OKGR_Planet2_DrawAndLightClip_16(
     Y: Integer;
     const Clip: TRect
 );
+
 procedure Ex_OKGR_Planet3_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -537,6 +1635,7 @@ procedure Ex_OKGR_Planet3_DrawAndLight_32(
     X: Integer;
     Y: Integer
 );
+
 procedure Ex_OKGR_Planet3_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -551,6 +1650,7 @@ procedure Ex_OKGR_Planet3_DrawAndLightClip_16(
     Y: Integer;
     const Clip: TRect
 );
+
 procedure Ex_OKGR_Planet4_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -564,6 +1664,7 @@ procedure Ex_OKGR_Planet4_DrawAndLight_32(
     X: Integer;
     Y: Integer
 );
+
 procedure Ex_OKGR_Planet4_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -578,6 +1679,7 @@ procedure Ex_OKGR_Planet4_DrawAndLightClip_16(
     Y: Integer;
     const Clip: TRect
 );
+
 procedure Ex_OKGR_Copy_XY_XY_WORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -590,6 +1692,7 @@ procedure Ex_OKGR_Copy_XY_XY_WORD(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_PalCopy_XY_XY_WORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -603,6 +1706,7 @@ procedure Ex_OKGR_PalCopy_XY_XY_WORD(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_CopyTrans_XY_XY_WORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -616,6 +1720,7 @@ procedure Ex_OKGR_CopyTrans_XY_XY_WORD(
     Height: Integer;
     TransparentColor: Word
 );
+
 procedure Ex_OKGR_CopySingleBuf_XY_XY_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -626,6 +1731,7 @@ procedure Ex_OKGR_CopySingleBuf_XY_XY_WORD(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_HACopy_XY_XY_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -638,6 +1744,7 @@ procedure Ex_OKGR_HACopy_XY_XY_16(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_StretchGdi_WORD(
     Dest: Pointer;
     Width: Cardinal;
@@ -646,6 +1753,7 @@ procedure Ex_OKGR_StretchGdi_WORD(
     SourceWidth: Cardinal;
     SourceHeight: Cardinal
 );
+
 procedure Ex_OKGR_Fill_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -653,6 +1761,7 @@ procedure Ex_OKGR_Fill_WORD(
     Height: Integer;
     Color: Word
 );
+
 procedure Ex_OKGF_ConvertRGBto565(
     Source: Pointer;
     Dest: Pointer;
@@ -660,6 +1769,7 @@ procedure Ex_OKGF_ConvertRGBto565(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGF_Convert565toRGB(
     Source: Pointer;
     SourcePitch: Integer;
@@ -668,6 +1778,7 @@ procedure Ex_OKGF_Convert565toRGB(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGF_Convert565toBGR(
     Source: Pointer;
     SourcePitch: Integer;
@@ -676,6 +1787,7 @@ procedure Ex_OKGF_Convert565toBGR(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGF_Convert565toBGRA(
     Source: Pointer;
     SourcePitch: Integer;
@@ -684,6 +1796,7 @@ procedure Ex_OKGF_Convert565toBGRA(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGF_Convert_8888to565(
     Dest: Pointer;
     DestPitch: Integer;
@@ -696,6 +1809,7 @@ procedure Ex_OKGF_Convert_8888to565(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_ShrLight_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -703,6 +1817,7 @@ procedure Ex_OKGR_ShrLight_16(
     Height: Integer;
     Shift: Integer
 );
+
 procedure Ex_OKGR_ShrLightMask_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -711,6 +1826,7 @@ procedure Ex_OKGR_ShrLightMask_16(
     Width: Integer;
     Height: Integer
 );
+
 procedure Ex_OKGR_Light_BYTE(
     Pixels: Pointer;
     PixelStride: Integer;
@@ -719,6 +1835,7 @@ procedure Ex_OKGR_Light_BYTE(
     Height: Integer;
     Alpha: Byte
 );
+
 procedure Ex_OKGR_Circle_DrawClip_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -726,8 +1843,9 @@ procedure Ex_OKGR_Circle_DrawClip_WORD(
     Y: Integer;
     Radius: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_Circle_DrawClip_BYTE(
     Pixels: Pointer;
     Pitch: Integer;
@@ -735,8 +1853,9 @@ procedure Ex_OKGR_Circle_DrawClip_BYTE(
     Y: Integer;
     Radius: Integer;
     Color: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_Circle_DrawFillClip_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -744,8 +1863,9 @@ procedure Ex_OKGR_Circle_DrawFillClip_WORD(
     Y: Integer;
     Radius: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_Circle_DrawFillClip_BYTE(
     Pixels: Pointer;
     Pitch: Integer;
@@ -753,8 +1873,9 @@ procedure Ex_OKGR_Circle_DrawFillClip_BYTE(
     Y: Integer;
     Radius: Integer;
     Color: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 function Ex_OKGR_Line_Clip(
     var X1: Integer;
     var Y1: Integer;
@@ -762,6 +1883,7 @@ function Ex_OKGR_Line_Clip(
     var Y2: Integer;
     const Clip: TRect
 ): Integer;
+
 function Ex_OKGR_LineColor_Clip(
     var X1: Integer;
     var Y1: Integer;
@@ -771,6 +1893,7 @@ function Ex_OKGR_LineColor_Clip(
     var Color2: Cardinal;
     const Clip: TRect
 ): Integer;
+
 procedure Ex_OKGR_Line_Draw_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -780,6 +1903,7 @@ procedure Ex_OKGR_Line_Draw_WORD(
     Y2: Integer;
     Color: Word
 );
+
 procedure Ex_OKGR_Line_DrawClip_WORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -788,8 +1912,9 @@ procedure Ex_OKGR_Line_DrawClip_WORD(
     X2: Integer;
     Y2: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 function Ex_OKGR_Line_CopyToBuf_WORD(
     Dest: Pointer;
     Source: Pointer;
@@ -799,6 +1924,7 @@ function Ex_OKGR_Line_CopyToBuf_WORD(
     X2: Integer;
     Y2: Integer
 ): Integer;
+
 function Ex_OKGR_Line_CopyFromBuf_WORD(
     Source: Pointer;
     Dest: Pointer;
@@ -808,6 +1934,7 @@ function Ex_OKGR_Line_CopyFromBuf_WORD(
     X2: Integer;
     Y2: Integer
 ): Integer;
+
 procedure Ex_OKGR_Line_DrawClip_Alpha_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -817,8 +1944,9 @@ procedure Ex_OKGR_Line_DrawClip_Alpha_16(
     Y2: Integer;
     Color: Word;
     Alpha: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_AnimLine_Draw_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -828,8 +1956,9 @@ procedure Ex_OKGR_AnimLine_Draw_16(
     Y2: Integer;
     Color: Word;
     Phase: Integer;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_AnimShadowLine_Draw_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -839,10 +1968,11 @@ procedure Ex_OKGR_AnimShadowLine_Draw_16(
     Y2: Integer;
     Color: Word;
     Phase: Integer;
-    constref Clip: TRect;
+    const Clip: TRect;
     ShadowPixels: Pointer;
     ShadowPitch: Integer
 );
+
 procedure Ex_OKGR_Alpha64Trapezium_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -853,8 +1983,9 @@ procedure Ex_OKGR_Alpha64Trapezium_16(
     X3: Integer;
     X4: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_Alpha128Trapezium_16(
     Pixels: Pointer;
     Pitch: Integer;
@@ -865,8 +1996,9 @@ procedure Ex_OKGR_Alpha128Trapezium_16(
     X3: Integer;
     X4: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGR_FillTrapezium_DWORD(
     Pixels: Pointer;
     Pitch: Integer;
@@ -877,8 +2009,9 @@ procedure Ex_OKGR_FillTrapezium_DWORD(
     X4: Integer;
     Y2: Integer;
     Color: Cardinal;
-    constref Clip: TRect
+    const Clip: TRect
 );
+
 procedure Ex_OKGF_Rescale(
     Dest: Pointer;
     Width: Integer;
@@ -891,44 +2024,84 @@ procedure Ex_OKGF_Rescale(
     BytesPerPixel: Integer;
     Filter: Integer
 );
+
 procedure Ex_OKGR_F5_DrawRGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure Ex_OKGR_F6_DrawRGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
+
 procedure ApplyProcessAffinity;
+
 procedure CheckRuntimeWatchdog;
+
 procedure CreateStartupLogFile;
+
 procedure InitializePlatformRuntimeAndMainWindow;
+
 procedure LoadLanguageAndPackages;
+
 procedure LoadSelectedModInstallBlocks;
+
 procedure ResetInstalledPackageState;
+
 procedure FinalizePlatformRuntime;
+
 function HasWow64Support: Boolean;
+
 procedure ApplyMainWindowGeometry;
+
 procedure ShowAndFocusMainWindow;
+
 procedure LoadDatConfigAndModOverrides;
+
 procedure FreeDatConfigRoots;
+
 procedure InitializeRuntimeAndSettings;
+
 procedure FinalizeRuntimeAndSettings;
+
 procedure EnumerateAndSelectDisplayModes;
+
+function GetNormalGameLayoutSize: TPoint;
+
+function GetMobileHudLayoutSize: TPoint;
+
 procedure ConfigureDefaultRenderState;
+
 procedure PreparePresentationParameters;
+
 procedure GR_DXInit;
+
 procedure GR_DXReset;
+
 procedure FreeScreenRenderBuffers;
+
 procedure ApplyGammaRamp(Brightness: Single; Contrast: Single);
+
 function GR_WinMessage(Callback: TWindowMessageCallbackGR): Integer;
+
+function ApplyPendingDisplayChange: Boolean;
+
 function MainWindowProc(
     Window: Cardinal;
     Message: Cardinal;
     WParam: Cardinal;
     LParam: Integer
 ): Integer; stdcall;
+
 function BeginFramePresentation: Boolean;
+
 procedure EndFramePresentation;
+
 procedure PresentScreenBuffer;
+
 procedure DrawOffscreenTexture;
+
 procedure CaptureScreenBackground(ApplyEffects: Boolean; UnusedOption: Byte);
+
 procedure CaptureSavePreview;
+
 procedure FreeSavePreviewBuffers;
+
 procedure CopyBgraToRgb24(
     Dest: Pointer;
     DestPitch: Integer;
@@ -937,8 +2110,11 @@ procedure CopyBgraToRgb24(
     Width: Integer;
     Height: Integer
 );
+
 procedure CaptureRecordingFrame;
+
 procedure FlushRecordingFrames;
+
 procedure DrawTransparentBuffer16(
     Dest: Pointer;
     Pitch: Integer;
@@ -948,6 +2124,7 @@ procedure DrawTransparentBuffer16(
     Clip: TRect;
     HalfAlpha: Boolean
 );
+
 procedure CopyPalettedBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -958,8 +2135,9 @@ procedure CopyPalettedBuffer16Clipped(
     SourcePitch: Integer;
     Width: Integer;
     Height: Integer;
-    constref Clip: TRect
+    Clip: TRect
 );
+
 procedure CopyGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -970,6 +2148,7 @@ procedure CopyGraphBuffer16Clipped(
     HalfAlpha: Boolean;
     UnusedOption: Boolean
 );
+
 procedure CopyBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -982,6 +2161,7 @@ procedure CopyBuffer16Clipped(
     Clip: TRect;
     UnusedOption: Boolean
 );
+
 procedure CopyTransparentGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -991,6 +2171,7 @@ procedure CopyTransparentGraphBuffer16Clipped(
     Clip: TRect;
     TransparentColor: Word
 );
+
 procedure DrawAlphaGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -999,6 +2180,7 @@ procedure DrawAlphaGraphBuffer16Clipped(
     Source: TGraphBufGR;
     Clip: TRect
 );
+
 procedure DrawAlphaBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1008,8 +2190,9 @@ procedure DrawAlphaBuffer16Clipped(
     SourcePitch: Integer;
     Width: Integer;
     Height: Integer;
-    constref Clip: TRect
+    Clip: TRect
 );
+
 procedure DrawPaletteAlphaBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1018,6 +2201,7 @@ procedure DrawPaletteAlphaBuffer16Clipped(
     Source: TGraphBufPalGR;
     Clip: TRect
 );
+
 procedure ExpandPaletteToBgra(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1027,6 +2211,7 @@ procedure ExpandPaletteToBgra(
     SourcePitch: Integer;
     Palette: Pointer
 );
+
 procedure BlendPaletteBuffer16Clipped(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1035,6 +2220,7 @@ procedure BlendPaletteBuffer16Clipped(
     Source: TGraphBufPalGR;
     Clip: TRect
 );
+
 procedure DrawGradientLine16Clipped(
     Pixels: Pointer;
     Pitch: Integer;
@@ -1046,73 +2232,102 @@ procedure DrawGradientLine16Clipped(
     Color2: Cardinal;
     Clip: TRect
 );
+
 function IsVirtualKeyDown(Key: Integer): Boolean;
+
 function LookupLocalizedTextByKey(const Path: WideString): WideString;
+
 function LookupLocalizedTextOrEmpty(const Path: WideString): WideString;
+
 function GiResourceVariant: Integer;
+
 function GiResourceSuffix: WideString;
+
 function GiScalePixels(Value: Integer): Integer;
+
 function GiScalePixelsEx(Value: Integer; AlternateValue: Integer): Integer;
+
 procedure AppendLogLineThreadSafe(const Text: AnsiString);
+
 procedure AppendLogTextThreadSafe(const Text: AnsiString);
+
 procedure AppendDebugLogLine(const Text: AnsiString);
+
 procedure AppendOptionalDebugLogLine(const Text: AnsiString);
+
 procedure WriteTextFileThreadSafe(FileName: AnsiString; Text: AnsiString);
+
 function IsInstallFeatureEnabled(const Path: WideString): Boolean;
+
 function AddCursorUnit: TCursorUnit;
+
 procedure RemoveCursorUnit(Cursor: TCursorUnit);
+
 function FindCursorByName(const Name: WideString): TCursorUnit;
+
 procedure PostMouseMoveMessage;
+
 function MeasureCpuClockMHz: Double;
+
+{$IFDEF MSWINDOWS}
 function ReadRegistryText(
-    Root: Cardinal;
+    Root: PtrUInt;
     KeyPath: WideString;
     ValueName: WideString;
     DefaultValue: WideString
 ): WideString;
-function ReadRegistryInteger(
-    Root: Cardinal;
-    KeyPath: WideString;
-    ValueName: WideString;
-    DefaultValue: Integer
-): Integer;
+
+{$ENDIF}
+
 procedure RaiseWideMessage(const Message: WideString);
+
 function Direct3DErrorText(Code: Integer): AnsiString;
+
 function FormatUnixDateTime(Value: Cardinal): WideString;
+
 procedure LoadInformationColorTags;
+
 function GetStyleColorGI(
     StyleName: WideString;
     DefaultRed: Integer;
     DefaultGreen: Integer;
     DefaultBlue: Integer
 ): Cardinal;
+
 function GetStyleColorTagGI(
     StyleName: WideString;
     DefaultRed: Integer;
     DefaultGreen: Integer;
     DefaultBlue: Integer
 ): WideString;
+
 function GetGameUserDirectory: WideString;
+
+function ComputeMachineFingerprintCRC: Cardinal;
+
 function GetClipboardWideText: WideString;
+
 procedure SetClipboardWideText(Text: WideString);
+
 procedure LogPresentationParameters;
-procedure LogExceptionBackTrace;
-var
-  CacheInfoThumbnails: Boolean = True;
-  FastTravelTransitions: Boolean = True;
+
 implementation
+
 uses
-  ZLib,
-  CrashSymbols,
-  GameNative,
-  SDLRenderer,
+  GameGraphics,
+  GameAudio,
+  aSaveLoad,
+  aScript,
+  ThreadCalc,
+  fStarMap,
+  GameInput,
+  SDL2,
   GI_Main,
   DirectXRenderException,
   aPacket,
   DateUtils,
   Robot,
   GI_MessageLoop,
-  MMSystem,
   EC_Mem,
   GR_DX,
   Globals,
@@ -1120,33 +2335,425 @@ uses
   MessageText,
   GlobalsV,
   Math,
-  Forms,
-  SysUtils,
-  Messages,
-  ActiveX,
-  Windows;
-// @unit-initialization $876738
-// @unit-finalization $4D5A48
+  GameWindow,
+{$IFDEF MSWINDOWS}
+  Registry,
+{$ENDIF}
+  SysUtils;
+
 var
   StartupState:
-      Cardinal; // @addr $88A218 @note "Cleared by settings initialization; no retained reader found, original meaning unresolved."
-  ScreenCenterX: Cardinal; // @addr $88A21C
-  ScreenCenterY: Cardinal; // @addr $88A220
-  LastWindowMessageTick: Cardinal; // @addr $88A224
-  MessageIdle: Boolean; // @addr $88A228
+      Cardinal; { Cleared by settings initialization; no retained reader found, original meaning unresolved. }
+  ScreenCenterX: Cardinal;
+  ScreenCenterY: Cardinal;
+  LastWindowMessageTick: Cardinal;
+  MessageIdle: Boolean;
+  PendingDisplayChange: Boolean;
+  LastDisplayChangeTick: Cardinal;
+  LayoutDensity: Double;
+  NormalGameLayoutSize, MobileHudLayoutSize: TPoint;
+
 {$I-}
-procedure LogExceptionBackTrace;
-var
-  I: Integer;
-begin
-  AppendLogLineThreadSafe(DescribeCodeAddress(ExceptAddr));
-  for I := 0 to ExceptFrameCount - 1 do
-    AppendLogLineThreadSafe(DescribeCodeAddress(ExceptFrames[I]));
-end;
+
 procedure LogMemoryUsage;
+var
+  Status: TMemoryStatusEx;
 begin
-  AppendLogLineThreadSafe('Native macOS allocator')
+  Status.Length := SizeOf(Status);
+  QueryGameMemory(Status);
+  AppendLogLineThreadSafe('Memory Info');
+  AppendLogLineThreadSafe('Physical Memory:');
+  AppendLogLineThreadSafe(
+      'Used=' + SysUtils.IntToStr((Status.TotalPhys - Status.AvailPhys) shr 10) + ' KB'
+  );
+  AppendLogLineThreadSafe('Available=' + SysUtils.IntToStr(Status.AvailPhys shr 10) + ' KB');
+  AppendLogLineThreadSafe('Total=' + SysUtils.IntToStr(Status.TotalPhys shr 10) + ' KB');
+  AppendLogLineThreadSafe('Virtual Memory:');
+  AppendLogLineThreadSafe(
+      'Used=' + SysUtils.IntToStr((Status.TotalVirtual - Status.AvailVirtual) shr 10) + ' KB'
+  );
+  AppendLogLineThreadSafe('Available=' + SysUtils.IntToStr(Status.AvailVirtual shr 10) + ' KB');
+  AppendLogLineThreadSafe('Total=' + SysUtils.IntToStr(Status.TotalVirtual shr 10) + ' KB');
+  if GlobalCache <> nil then
+    AppendLogLineThreadSafe(
+        'Cache Size=' + SysUtils.IntToStr(GlobalCache.ResidentBytes shr 10) + ' KB'
+    );
+  AppendLogLineThreadSafe(
+      'Textures Cache Size=' + SysUtils.IntToStr(Int64(ResidentTextureBytes shr 10)) + ' KB'
+  );
 end;
+
+constructor TCCInterface.Create;
+begin
+  inherited Create;
+  Lock := TCriticalSection.Create;
+  Randomize;
+  Buffer := TBufEC.Create;
+  CommitSnapshot(CreateEmptySnapshot);
+end;
+
+destructor TCCInterface.Destroy;
+begin
+  Lock.Free;
+  Buffer.Free;
+  ClearSnapshots;
+  inherited Destroy;
+end;
+
+procedure TCCInterface.Reset;
+begin
+  Lock.Enter;
+  Buffer.Clear;
+  ClearSnapshots;
+  CommitSnapshot(CreateEmptySnapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetSnapshot: PCCSnapshot;
+var
+  Entry: PCCSnapshot;
+begin
+  Entry := SnapshotHead;
+  while (Entry.Prev = nil) or (Entry.Next.Prev = Entry) do
+    Entry := Entry.Next;
+  Result := Entry.Next;
+end;
+
+function TCCInterface.CreateDecoy: PCCSnapshot;
+begin
+  New(Result);
+  Result.ResourceChecksumFailed := Random(11) > 9;
+  Result.TamperDetected := Random(11) > 8;
+  Result.Flag0A := Random(11) > 9;
+  Result.ProtectedStateXorSeed := Random(2000000000);
+  Result.Value10 := Random(1000);
+  Result.IntegrityStatus := Random(1000);
+  Result.IntegrityError := Ord(Random(11) > 8) * Random(1000);
+  Result.IntegrityChecksum := Random(2000000000);
+  Result.IntegrityChecksum1 := Random(2000000000);
+  Result.IntegrityChecksum2 := Random(2000000000);
+  Result.EncodedCheatPoints := Random(2000000000);
+  Result.EditableStateApplied := Random(11) > 9;
+end;
+
+function TCCInterface.CreateEmptySnapshot: PCCSnapshot;
+begin
+  New(Result);
+  Result.ResourceChecksumFailed := False;
+  Result.TamperDetected := False;
+  Result.Flag0A := False;
+  Result.ProtectedStateXorSeed := 0;
+  Result.Value10 := 0;
+  Result.IntegrityStatus := 0;
+  Result.IntegrityError := 0;
+  Result.IntegrityChecksum := 0;
+  Result.IntegrityChecksum1 := 0;
+  Result.IntegrityChecksum2 := 0;
+  Result.EncodedCheatPoints := 0;
+  Result.EditableStateApplied := False;
+end;
+
+function TCCInterface.CopySnapshot(Source: PCCSnapshot): PCCSnapshot;
+begin
+  New(Result);
+  Result.ResourceChecksumFailed := Source.ResourceChecksumFailed;
+  Result.TamperDetected := Source.TamperDetected;
+  Result.Flag0A := Source.Flag0A;
+  Result.ProtectedStateXorSeed := Source.ProtectedStateXorSeed;
+  Result.Value10 := Source.Value10;
+  Result.IntegrityStatus := Source.IntegrityStatus;
+  Result.IntegrityError := Source.IntegrityError;
+  Result.IntegrityChecksum := Source.IntegrityChecksum;
+  Result.IntegrityChecksum1 := Source.IntegrityChecksum1;
+  Result.IntegrityChecksum2 := Source.IntegrityChecksum2;
+  Result.EncodedCheatPoints := Source.EncodedCheatPoints;
+  Result.EditableStateApplied := Source.EditableStateApplied;
+end;
+
+procedure TCCInterface.CommitSnapshot(Snapshot: PCCSnapshot);
+var
+  RingCount, PrefixCount, OldPrefixCount: Integer;
+  Entry, Added: PCCSnapshot;
+begin
+  OldPrefixCount := 0;
+  if SnapshotHead <> nil then
+  begin
+    Entry := GetSnapshot;
+    Added := SnapshotHead;
+    while Entry <> Added do
+    begin
+      Inc(OldPrefixCount);
+      Added := Added.Next;
+    end;
+  end;
+  RingCount := Random(3) + 3;
+  PrefixCount := Random(3) + 3;
+  while PrefixCount = OldPrefixCount do
+    PrefixCount := Random(3) + 3;
+  Entry := Snapshot;
+  Added := nil;
+  while RingCount > 0 do
+  begin
+    Dec(RingCount);
+    Added := CreateDecoy;
+    Added.Next := Entry;
+    Entry.Prev := Added;
+    Entry := Added;
+  end;
+  Added.Prev := Snapshot;
+  Snapshot.Next := Added;
+  Entry := Snapshot;
+  while PrefixCount > 0 do
+  begin
+    Dec(PrefixCount);
+    Added := CreateDecoy;
+    Added.Next := Entry;
+    Entry.Prev := Added;
+    Entry := Added;
+  end;
+  Added.Prev := nil;
+  if SnapshotHead <> nil then
+    ClearSnapshots;
+  SnapshotHead := Added;
+end;
+
+procedure TCCInterface.ClearSnapshots;
+var
+  Snapshot, Entry, Next: PCCSnapshot;
+begin
+  Snapshot := GetSnapshot;
+  SnapshotHead := nil;
+  Entry := Snapshot.Next;
+  while Entry <> Snapshot do
+  begin
+    Next := Entry.Next;
+    Dispose(Entry);
+    Entry := Next;
+  end;
+  while Entry <> nil do
+  begin
+    Next := Entry.Prev;
+    Dispose(Entry);
+    Entry := Next;
+  end;
+end;
+
+function TCCInterface.GetResourceChecksumFailed: Boolean;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.ResourceChecksumFailed;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetResourceChecksumFailed(Value: Boolean);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.ResourceChecksumFailed := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetTamperDetected: Boolean;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.TamperDetected;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetTamperDetected(Value: Boolean);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.TamperDetected := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetFlag0A: Boolean;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.Flag0A;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetFlag0A(Value: Boolean);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.Flag0A := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetEditableStateApplied: Boolean;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.EditableStateApplied;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetEditableStateApplied(Value: Boolean);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.EditableStateApplied := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetProtectedStateXorSeed: Integer;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.ProtectedStateXorSeed;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetProtectedStateXorSeed(Value: Integer);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.ProtectedStateXorSeed := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetValue10: Integer;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.Value10;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetValue10(Value: Integer);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.Value10 := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetIntegrityStatus: Integer;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.IntegrityStatus;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetIntegrityStatus(Value: Integer);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.IntegrityStatus := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetIntegrityError: Integer;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.IntegrityError;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetIntegrityError(Value: Integer);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.IntegrityError := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetIntegrityChecksum: Cardinal;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.IntegrityChecksum;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetIntegrityChecksum(Value: Cardinal);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.IntegrityChecksum := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetIntegrityChecksum1: Cardinal;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.IntegrityChecksum1;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetIntegrityChecksum1(Value: Cardinal);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.IntegrityChecksum1 := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetIntegrityChecksum2: Cardinal;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.IntegrityChecksum2;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetIntegrityChecksum2(Value: Cardinal);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.IntegrityChecksum2 := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
+function TCCInterface.GetEncodedCheatPoints: Integer;
+begin
+  Lock.Enter;
+  Result := GetSnapshot.EncodedCheatPoints;
+  Lock.Leave;
+end;
+
+procedure TCCInterface.SetEncodedCheatPoints(Value: Integer);
+var
+  Snapshot: PCCSnapshot;
+begin
+  Lock.Enter;
+  Snapshot := CopySnapshot(GetSnapshot);
+  Snapshot.EncodedCheatPoints := Value;
+  CommitSnapshot(Snapshot);
+  Lock.Leave;
+end;
+
 function Ex_OKGF_MulTable256x256: Pointer;
 begin
   try
@@ -1155,14 +2762,7 @@ begin
     raise Exception.Create('Error in OKGF_MulTable256x256');
   end;
 end;
-function Ex_OKGF_DXVersion: Cardinal;
-begin
-  try
-    Result := OKGF_DXVersion;
-  except
-    raise Exception.Create('Error in OKGF_DXVersion');
-  end;
-end;
+
 function BeginImageRead(
     Source: Pointer;
     SourceSize: Integer;
@@ -1175,6 +2775,7 @@ begin
     raise Exception.Create('Error in OKGF_ReadStart_Buf');
   end;
 end;
+
 function ReadImagePixels(
     Context: POkgfReadContext;
     Pixels: Pointer;
@@ -1199,6 +2800,7 @@ begin
     raise Exception.Create('Error in OKGF_Read');
   end;
 end;
+
 function BeginIndexedImageRead(
     Source: Pointer;
     SourceSize: Integer;
@@ -1211,6 +2813,7 @@ begin
     raise Exception.Create('Error in OKGF_ReadStartPal_Buf');
   end;
 end;
+
 function ReadIndexedImagePixels(
     Context: POkgfReadContext;
     Pixels: Pointer;
@@ -1224,31 +2827,57 @@ begin
     raise Exception.Create('Error in OKGF_ReadPal');
   end;
 end;
+
 function WritePngFile(
-    FileName: PAnsiChar;
+    const FileName: UnicodeString;
     Pixels: Pointer;
     PitchBytes, Width, Height, HasAlpha, SwapRedBlue: Integer
 ): Integer;
+var
+  NativeName: AnsiString;
 begin
+  // OKGF uses fopen: translate OS paths here, including recorded BMP frames.
+{$IFDEF MSWINDOWS}
+  NativeName := AnsiString(NativeGamePath(FileName));
+{$ELSE}
+  NativeName := UTF8Encode(NativeGamePath(FileName));
+{$ENDIF}
   try
     Result :=
-        OKGF_Write_PNG_File(FileName, Pixels, PitchBytes, Width, Height, HasAlpha, SwapRedBlue);
+        OKGF_Write_PNG_File(
+            PAnsiChar(NativeName),
+            Pixels,
+            PitchBytes,
+            Width,
+            Height,
+            HasAlpha,
+            SwapRedBlue
+        );
   except
     raise Exception.Create('Error in OKGF_Write_PNG_File');
   end;
 end;
+
 function WriteBmpFile(
-    FileName: PAnsiChar;
+    const FileName: UnicodeString;
     Pixels: Pointer;
     PitchBytes, BitsPerPixel: Integer;
     RedMask, GreenMask, BlueMask, AlphaMask: Cardinal;
     Width, Height: Integer
 ): Integer;
+var
+  NativeName: AnsiString;
 begin
+  // OKGF uses fopen: translate OS paths here, including recorded BMP frames.
+{$IFDEF MSWINDOWS}
+  NativeName := AnsiString(NativeGamePath(FileName));
+{$ELSE}
+  NativeName := UTF8Encode(NativeGamePath(FileName));
+{$ENDIF}
   try
     Result :=
         OKGF_Write_BMP_File(
-            FileName,
+            PAnsiChar(NativeName),
             Pixels,
             PitchBytes,
             BitsPerPixel,
@@ -1263,6 +2892,7 @@ begin
     raise Exception.Create('Error in OKGF_Write_BMP_File');
   end;
 end;
+
 procedure Ex_OKGR_AlphaBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -1271,6 +2901,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaBuf_Draw_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_TransAlphaBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -1279,6 +2910,7 @@ begin
     raise Exception.Create('Error in OKGR_TransAlphaBuf_Draw_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -1287,6 +2919,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_Draw_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDraw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -1295,6 +2928,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_AlphaDraw_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_TransBuf_Draw_RGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -1303,11 +2937,12 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_Draw_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_TransBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1316,11 +2951,12 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_DrawClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_TransBuf_HADrawClip_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1329,6 +2965,7 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_HADrawClip_16');
   end;
 end;
+
 function Ex_OKGR_TransBuf_Build_WORD(
     Source: Pointer;
     Pitch, Width, Height: Integer;
@@ -1342,6 +2979,7 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_Build_WORD');
   end;
 end;
+
 function Ex_OKGR_TransBuf_BuildFromRGBA_16(
     Source: Pointer;
     Pitch, Width, Height: Integer;
@@ -1354,11 +2992,12 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_BuildFromRGBA_16');
   end;
 end;
+
 procedure Ex_OKGR_TransAlphaBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1367,11 +3006,12 @@ begin
     raise Exception.Create('Error in OKGR_TransAlphaBuf_DrawClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_AlphaBuf_DrawClip_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1380,6 +3020,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaBuf_DrawClip_16');
   end;
 end;
+
 function Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(
     Source: Pointer;
     Pitch, Width, Height: Integer;
@@ -1392,6 +3033,7 @@ begin
     raise Exception.Create('Error in OKGR_TransAlphaBuf_BuildFromRGBA_16');
   end;
 end;
+
 function Ex_OKGR_AlphaBuf_BuildFromRGBA(
     Source: Pointer;
     Pitch, Width, Height: Integer;
@@ -1404,6 +3046,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaBuf_BuildFromRGBA');
   end;
 end;
+
 procedure Ex_OKGR_AlphaSimpleBuf_Draw_16(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -1428,6 +3071,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaSimpleBuf_Draw_16');
   end;
 end;
+
 procedure Ex_OKGR_AlphaSimpleBufPalAlpha_Draw_16(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -1454,12 +3098,13 @@ begin
     raise Exception.Create('Error in OKGR_AlphaSimpleBufPalAlpha_Draw_16');
   end;
 end;
+
 procedure Ex_OKGR_MaskBuf_DrawClip_DWORD(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
     Color: Cardinal;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1468,12 +3113,13 @@ begin
     raise Exception.Create('Error in OKGR_MaskBuf_DrawClip_DWORD');
   end;
 end;
+
 procedure Ex_OKGR_MaskBuf_DrawClip_WORD(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1482,11 +3128,12 @@ begin
     raise Exception.Create('Error in OKGR_MaskBuf_DrawClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_TransBuf_FillAlphaClip_RGBA(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Color: Cardinal
 );
 begin
@@ -1496,11 +3143,12 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_FillAlphaClip_RGBA');
   end;
 end;
+
 procedure Ex_OKGR_TransBuf_FillAlphaClip_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Color: Word
 );
 begin
@@ -1510,11 +3158,12 @@ begin
     raise Exception.Create('Error in OKGR_TransBuf_FillAlphaClip_16');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_CopyDrawClip_WORD(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1523,11 +3172,12 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_CopyDrawClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_CopyDrawClip_Alpha_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Alpha: Byte
 );
 begin
@@ -1537,11 +3187,12 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_CopyDrawClip_Alpha_16');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDrawClip_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -1550,11 +3201,12 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_AlphaDrawClip_16');
   end;
 end;
+
 procedure Ex_OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
     Source: Pointer;
-    constref Clip: TRect;
+    const Clip: TRect;
     Alpha: Byte
 );
 begin
@@ -1564,6 +3216,7 @@ begin
     raise Exception.Create('Error in OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16');
   end;
 end;
+
 function Ex_OKGR_RotateBuf_Build(
     Width,
     Height,
@@ -1579,6 +3232,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_Build');
   end;
 end;
+
 procedure Ex_OKGR_RotateBuf_Free(Buffer: Pointer);
 begin
   try
@@ -1587,6 +3241,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_Free');
   end;
 end;
+
 procedure Ex_OKGR_RotateBuf_Size(
     X, Y: Integer;
     Angle: Byte;
@@ -1600,6 +3255,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_Size');
   end;
 end;
+
 procedure Ex_OKGR_RotateBuf_Draw_DWORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1624,6 +3280,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_Draw_DWORD');
   end;
 end;
+
 procedure Ex_OKGR_RotateBuf_Draw_BYTE(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1648,6 +3305,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_Draw_BYTE');
   end;
 end;
+
 procedure Ex_OKGR_RotateBuf_DrawTransClip_WORD(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1674,6 +3332,7 @@ begin
     raise Exception.Create('Error in OKGR_RotateBuf_DrawTransClip_WORD');
   end;
 end;
+
 function Ex_OKGR_LightBuf_Create(Width, Height: Integer): Pointer;
 begin
   try
@@ -1682,6 +3341,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_Create');
   end;
 end;
+
 procedure Ex_OKGR_LightBuf_Destroy(Buffer: Pointer);
 begin
   try
@@ -1690,6 +3350,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_Destroy');
   end;
 end;
+
 procedure Ex_OKGR_LightBuf_SetSme(Buffer: Pointer; X, Y: Integer);
 begin
   try
@@ -1698,6 +3359,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_SetSme');
   end;
 end;
+
 procedure Ex_OKGR_LightBuf_Init(Buffer: Pointer; Value: Byte);
 begin
   try
@@ -1706,6 +3368,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_Init');
   end;
 end;
+
 procedure Ex_OKGR_LightBuf_LoadFromPalBuf(
     Buffer, Source: Pointer;
     Width, Height, Pitch: Integer;
@@ -1718,6 +3381,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_LoadFromPalBuf');
   end;
 end;
+
 procedure Ex_OKGR_LightBuf_Rotate(Dest, Source, RotationMap: Pointer; Angle: Byte);
 begin
   try
@@ -1726,6 +3390,7 @@ begin
     raise Exception.Create('Error in OKGR_LightBuf_Rotate');
   end;
 end;
+
 function Ex_OKGR_Planet2_TemplBuild(
     Source: Pointer;
     Pitch, Height, TextureWidth, TextureHeight: Integer;
@@ -1739,14 +3404,17 @@ begin
     raise Exception.Create('Error in OKGR_Planet2_TemplBuild');
   end;
 end;
-procedure Ex_OKGR_Planet2_TemplDel(TemplateData: Pointer);
+
+function Ex_OKGR_Planet2_TemplDel(TemplateData: Pointer): Integer;
 begin
   try
     OKGR_Planet2_TemplDel(TemplateData);
+    Result := 0;
   except
     raise Exception.Create('Error in OKGR_Planet2_TemplDel');
   end;
 end;
+
 procedure Ex_OKGR_Planet2_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1774,6 +3442,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet2_DrawAndLight_32');
   end;
 end;
+
 procedure Ex_OKGR_Planet2_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1803,6 +3472,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet2_DrawAndLightClip_16');
   end;
 end;
+
 procedure Ex_OKGR_Planet3_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1830,6 +3500,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet3_DrawAndLight_32');
   end;
 end;
+
 procedure Ex_OKGR_Planet3_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1859,6 +3530,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet3_DrawAndLightClip_16');
   end;
 end;
+
 procedure Ex_OKGR_Planet4_DrawAndLight_32(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1886,6 +3558,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet4_DrawAndLight_32');
   end;
 end;
+
 procedure Ex_OKGR_Planet4_DrawAndLightClip_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -1915,6 +3588,7 @@ begin
     raise Exception.Create('Error in OKGR_Planet4_DrawAndLightClip_16');
   end;
 end;
+
 procedure Ex_OKGR_Copy_XY_XY_WORD(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -1939,6 +3613,7 @@ begin
     raise Exception.Create('Error in OKGR_Copy_XY_XY_WORD');
   end;
 end;
+
 procedure Ex_OKGR_PalCopy_XY_XY_WORD(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -1966,6 +3641,7 @@ begin
     raise Exception.Create('Error in OKGR_PalCopy_XY_XY_WORD');
   end;
 end;
+
 procedure Ex_OKGR_CopyTrans_XY_XY_WORD(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -1992,6 +3668,7 @@ begin
     raise Exception.Create('Error in OKGR_CopyTrans_XY_XY_WORD');
   end;
 end;
+
 procedure Ex_OKGR_CopySingleBuf_XY_XY_WORD(
     Pixels: Pointer;
     Pitch, DestX, DestY, SourceX, SourceY, Width, Height: Integer
@@ -2003,6 +3680,7 @@ begin
     raise Exception.Create('Error in OKGR_CopySingleBuf_XY_XY_WORD');
   end;
 end;
+
 procedure Ex_OKGR_HACopy_XY_XY_16(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -2027,6 +3705,7 @@ begin
     raise Exception.Create('Error in OKGR_HACopy_XY_XY_16');
   end;
 end;
+
 procedure Ex_OKGR_StretchGdi_WORD(
     Dest: Pointer;
     Width, Height: Cardinal;
@@ -2040,6 +3719,7 @@ begin
     raise Exception.Create('Error in OKGR_StretchGdi_WORD');
   end;
 end;
+
 procedure Ex_OKGR_Fill_WORD(Pixels: Pointer; Pitch, Width, Height: Integer; Color: Word);
 begin
   try
@@ -2048,6 +3728,7 @@ begin
     raise Exception.Create('Error in OKGR_Fill_WORD');
   end;
 end;
+
 procedure Ex_OKGF_ConvertRGBto565(Source, Dest: Pointer; Pitch, Width, Height: Integer);
 begin
   try
@@ -2056,6 +3737,7 @@ begin
     raise Exception.Create('Error in OKGF_ConvertRGBto565');
   end;
 end;
+
 procedure Ex_OKGF_Convert565toRGB(
     Source: Pointer;
     SourcePitch: Integer;
@@ -2069,6 +3751,7 @@ begin
     raise Exception.Create('Error in OKGF_Convert565toRGB');
   end;
 end;
+
 procedure Ex_OKGF_Convert565toBGR(
     Source: Pointer;
     SourcePitch: Integer;
@@ -2082,6 +3765,7 @@ begin
     raise Exception.Create('Error in OKGF_Convert565toBGR');
   end;
 end;
+
 procedure Ex_OKGF_Convert565toBGRA(
     Source: Pointer;
     SourcePitch: Integer;
@@ -2095,6 +3779,7 @@ begin
     raise Exception.Create('Error in OKGF_Convert565toBGRA');
   end;
 end;
+
 procedure Ex_OKGF_Convert_8888to565(
     Dest: Pointer;
     DestPitch, DestX, DestY: Integer;
@@ -2119,6 +3804,7 @@ begin
     raise Exception.Create('Error in OKGF_Convert_8888to565');
   end;
 end;
+
 procedure Ex_OKGR_ShrLight_16(Pixels: Pointer; Pitch, Width, Height, Shift: Integer);
 begin
   try
@@ -2127,6 +3813,7 @@ begin
     raise Exception.Create('Error in OKGR_ShrLight_16');
   end;
 end;
+
 procedure Ex_OKGR_ShrLightMask_16(
     Dest: Pointer;
     DestPitch: Integer;
@@ -2140,6 +3827,7 @@ begin
     raise Exception.Create('Error in OKGR_ShrLightMask_16');
   end;
 end;
+
 procedure Ex_OKGR_Light_BYTE(
     Pixels: Pointer;
     PixelStride, Pitch, Width, Height: Integer;
@@ -2152,11 +3840,12 @@ begin
     raise Exception.Create('Error in OKGR_Light_BYTE');
   end;
 end;
+
 procedure Ex_OKGR_Circle_DrawClip_WORD(
     Pixels: Pointer;
     Pitch, X, Y, Radius: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2165,11 +3854,12 @@ begin
     raise Exception.Create('Error in OKGR_Circle_DrawClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_Circle_DrawClip_BYTE(
     Pixels: Pointer;
     Pitch, X, Y, Radius: Integer;
     Color: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2178,11 +3868,12 @@ begin
     raise Exception.Create('Error in OKGR_Circle_DrawClip_BYTE');
   end;
 end;
+
 procedure Ex_OKGR_Circle_DrawFillClip_WORD(
     Pixels: Pointer;
     Pitch, X, Y, Radius: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2191,11 +3882,12 @@ begin
     raise Exception.Create('Error in OKGR_Circle_DrawFillClip_WORD');
   end;
 end;
+
 procedure Ex_OKGR_Circle_DrawFillClip_BYTE(
     Pixels: Pointer;
     Pitch, X, Y, Radius: Integer;
     Color: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2204,6 +3896,7 @@ begin
     raise Exception.Create('Error in OKGR_Circle_DrawFillClip_BYTE');
   end;
 end;
+
 function Ex_OKGR_Line_Clip(var X1, Y1, X2, Y2: Integer; const Clip: TRect): Integer;
 begin
   try
@@ -2212,6 +3905,7 @@ begin
     raise Exception.Create('Error in OKGR_Line_Clip');
   end;
 end;
+
 function Ex_OKGR_LineColor_Clip(
     var X1, Y1: Integer;
     var Color1: Cardinal;
@@ -2226,6 +3920,7 @@ begin
     raise Exception.Create('Error in Ex_OKGR_LineColor_Clip');
   end;
 end;
+
 procedure Ex_OKGR_Line_Draw_WORD(Pixels: Pointer; Pitch, X1, Y1, X2, Y2: Integer; Color: Word);
 begin
   try
@@ -2234,11 +3929,12 @@ begin
     raise Exception.Create('Error in OKGR_Line_Draw_WORD');
   end;
 end;
+
 procedure Ex_OKGR_Line_DrawClip_WORD(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2247,6 +3943,7 @@ begin
     raise Exception.Create('Error in OKGR_Line_DrawClip_WORD');
   end;
 end;
+
 function Ex_OKGR_Line_CopyToBuf_WORD(
     Dest, Source: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer
@@ -2258,6 +3955,7 @@ begin
     raise Exception.Create('Error in OKGR_Line_CopyToBuf_WORD');
   end;
 end;
+
 function Ex_OKGR_Line_CopyFromBuf_WORD(
     Source, Dest: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer
@@ -2269,12 +3967,13 @@ begin
     raise Exception.Create('Error in OKGR_Line_CopyFromBuf_WORD');
   end;
 end;
+
 procedure Ex_OKGR_Line_DrawClip_Alpha_16(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer;
     Color: Word;
     Alpha: Byte;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2283,12 +3982,13 @@ begin
     raise Exception.Create('Error in OKGR_Line_DrawClip_Alpha_16');
   end;
 end;
+
 procedure Ex_OKGR_AnimLine_Draw_16(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer;
     Color: Word;
     Phase: Integer;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2297,12 +3997,13 @@ begin
     raise Exception.Create('Error in OKGR_AnimLine_Draw_16');
   end;
 end;
+
 procedure Ex_OKGR_AnimShadowLine_Draw_16(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2: Integer;
     Color: Word;
     Phase: Integer;
-    constref Clip: TRect;
+    const Clip: TRect;
     ShadowPixels: Pointer;
     ShadowPitch: Integer
 );
@@ -2325,11 +4026,12 @@ begin
     raise Exception.Create('Error in OKGR_AnimShadowLine_Draw_16');
   end;
 end;
+
 procedure Ex_OKGR_Alpha64Trapezium_16(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2, X3, X4: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2338,11 +4040,12 @@ begin
     raise Exception.Create('Error in OKGR_Alpha64Trapezium_16');
   end;
 end;
+
 procedure Ex_OKGR_Alpha128Trapezium_16(
     Pixels: Pointer;
     Pitch, X1, Y1, X2, Y2, X3, X4: Integer;
     Color: Word;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2351,11 +4054,12 @@ begin
     raise Exception.Create('Error in OKGR_Alpha128Trapezium_16');
   end;
 end;
+
 procedure Ex_OKGR_FillTrapezium_DWORD(
     Pixels: Pointer;
     Pitch, X1, X2, Y1, X3, X4, Y2: Integer;
     Color: Cardinal;
-    constref Clip: TRect
+    const Clip: TRect
 );
 begin
   try
@@ -2364,6 +4068,7 @@ begin
     raise Exception.Create('Error in OKGR_FillTrapezium_DWORD');
   end;
 end;
+
 procedure Ex_OKGF_Rescale(
     Dest: Pointer;
     Width, Height, DestPitch: Integer;
@@ -2388,6 +4093,7 @@ begin
     raise Exception.Create('Error in OKGF_Rescale');
   end;
 end;
+
 procedure Ex_OKGR_F5_DrawRGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -2396,6 +4102,7 @@ begin
     raise Exception.Create('Error in OKGR_F5_DrawRGBA');
   end;
 end;
+
 procedure Ex_OKGR_F6_DrawRGBA(Dest: Pointer; Pitch: Integer; Source: Pointer);
 begin
   try
@@ -2404,63 +4111,67 @@ begin
     raise Exception.Create('Error in OKGR_F6_DrawRGBA');
   end;
 end;
+
 procedure ApplyProcessAffinity;
+{$IFDEF MSWINDOWS}
+var
+  Mask: PtrUInt;
 begin
+  Mask := 1;
+  if MultiThreadEnabled then
+  begin
+    while SetProcessAffinityMask(GetCurrentProcess, Mask) do
+      Mask := (Mask shl 1) or 1;
+    Exit;
+  end;
+  SetProcessAffinityMask(GetCurrentProcess, Mask);
 end;
+{$ELSE}
+begin
+  // FPC workers are scheduled by the host OS; no process-wide CPU pinning.
+end;
+{$ENDIF}
+
 procedure CheckRuntimeWatchdog;
 begin
+  // The original jumped into generated x86 bytes to crash on watchdog failure.
+  // Report the same fatal condition without executing data as machine code.
   if (RuntimeWatchdog <> nil) and not RuntimeWatchdog.IsRunning then
-    raise Exception.Create('Runtime worker stopped')
+    raise EWorkerFailure.Create('Runtime watchdog stopped');
 end;
+
 procedure CreateStartupLogFile;
-var
-  LogPath: AnsiString;
-  procedure ArchivePreviousLog(const PreviousPath: AnsiString);
-  var
-    ArchiveDirectory, ArchivePath: AnsiString;
-    Index: Integer;
-  begin
-    if not RTLFileSystem.FileExists(PreviousPath) then
-      Exit;
-    ArchiveDirectory := GetGameUserDirectory + 'Logs/';
-    if not ForceDirectories(ArchiveDirectory) then
-      raise Exception.Create('Cannot create log archive: ' + ArchiveDirectory);
-    ArchivePath := ArchiveDirectory + 'Rangers-' + FormatDateTime('yyyymmdd-hhnnss-zzz', Now);
-    Index := 0;
-    while RTLFileSystem.FileExists(ArchivePath + '-' + IntToStr(Index) + '.log') do
-      Inc(Index);
-    ArchivePath := ArchivePath + '-' + IntToStr(Index) + '.log';
-    if not SysUtils.RenameFile(PreviousPath, ArchivePath) then
-      raise Exception.Create('Cannot preserve previous log: ' + PreviousPath);
-  end;
 begin
-  LogPath := GetGameUserDirectory + RuntimeLogFileName;
-  ArchivePreviousLog(LogPath);
-  AssignFile(SessionLog, LogPath);
+  AssignFile(SessionLog, GetGameUserDirectory + '########.log');
   Rewrite(SessionLog);
-
   Writeln(SessionLog, 'Start');
-
   CloseFile(SessionLog);
-
 end;
+
 procedure InitializePlatformRuntimeAndMainWindow;
 begin
-  if SessionLogLock = nil then
-    SessionLogLock := TCriticalSection.Create;
-  PerformanceCounterFrequency := 1000;
+  InitializeGameVideo;
+  DirectSoundCreate := CreateGameSound;
+  DirectSoundEnumerate := EnumerateGameSound;
+  DebugCommandMessage := $C000;
+  DirectXVersion := $090000;
+  CopyGameFile('#ship_c.dbf', '#ship.dbf');
+  AppendLogLineThreadSafe('Build=2.1.2500 (11 August 2026)');
+  PerformanceCounterFrequency := SDL_GetPerformanceFrequency;
   if not InitializePackageCollection then
-    raise Exception.Create('Cannot initialize package collection');
+    raise Exception.Create('Error while initializing package files');
+  // The UI uses this as an identity token. SDL owns the actual native window.
   MainWindowHandle := 1;
   InstallConfig := TBlockParEC.Create;
-  InstallConfig.LoadFromTextFileWithEncodingProbe('INSTALL.TXT', False);
+  InstallConfig.LoadFromTextFileWithEncodingProbe('install.txt', False);
   QuestMessages := TQuestMessages.Create;
 end;
+
 procedure LoadLanguageAndPackages;
 begin
   if RequestedLanguage <> '' then
   begin
-    if not RTLFileSystem.FileExists('install_' + RequestedLanguage + '.txt') then
+    if not FileExists(NativeGamePath('install_' + RequestedLanguage + '.txt')) then
     begin
       AppendLogLineThreadSafe('Not installed - ' + RequestedLanguage);
       RequestedLanguage := '';
@@ -2469,7 +4180,7 @@ begin
       SelectedLanguage := RequestedLanguage;
   end;
   if SelectedLanguage <> '' then
-    if not RTLFileSystem.FileExists('install_' + SelectedLanguage + '.txt') then
+    if not FileExists(NativeGamePath('install_' + SelectedLanguage + '.txt')) then
     begin
       AppendLogLineThreadSafe('Not installed - ' + SelectedLanguage + ', try to switch to russian');
       SelectedLanguage := 'russian';
@@ -2477,7 +4188,7 @@ begin
   if SelectedLanguage = '' then
     SelectedLanguage := 'russian';
   // Keep the else: DCC32 emits the native jump at $4CBAB6 after the raise.
-  if not RTLFileSystem.FileExists('install_' + SelectedLanguage + '.txt') then
+  if not FileExists(NativeGamePath('install_' + SelectedLanguage + '.txt')) then
     raise Exception.Create('Not installed language: ' + SelectedLanguage)
   else
   begin
@@ -2493,6 +4204,7 @@ begin
   if not LoadConfiguredPackages then
     raise Exception.Create('Error while openning package files');
 end;
+
 procedure LoadSelectedModInstallBlocks;
 var
   Index: Integer;
@@ -2500,11 +4212,10 @@ var
   Block: TBlockParEC;
 begin
   ModNames := '';
-  // CHANGE: PORTABILITY - Resolve Windows-style mod paths through the native filesystem.
-  if RTLFileSystem.FileExists('Mods\ModCFG.txt') then
+  if FileExists(NativeGamePath(ModSelectionConfigPath)) then
   begin
     Block := TBlockParEC.Create;
-    Block.LoadFromTextFileWithEncodingProbe('Mods\ModCFG.txt', False);
+    Block.LoadFromTextFileWithEncodingProbe(ModSelectionConfigPath, False);
     if Block.CountParams('CurrentMod') > 0 then
       ModNames := TrimWideString(Block.GetParam('CurrentMod'));
     SelectedMods := ModNames;
@@ -2530,14 +4241,14 @@ begin
       ModPath := TrimWideString(ExtractDelimitedPartW(ModNames, Index, ','));
       if ModPath <> '' then
         ModPath := ModPath + '\';
-      if RTLFileSystem.FileExists('Mods\' + ModPath + 'Install.txt') then
+      if FileExists(NativeGamePath('Mods\' + ModPath + 'Install.txt')) then
       begin
         Block := TBlockParEC.Create;
         ModInstallConfigs.Add(Block);
         Block
             .LoadFromTextFileWithEncodingProbe(PWideChar('Mods\' + ModPath + 'Install.txt'), False);
       end;
-      if RTLFileSystem.FileExists('Mods\' + ModPath + 'Install_' + SelectedLanguage + '.txt') then
+      if FileExists(NativeGamePath('Mods\' + ModPath + 'Install_' + SelectedLanguage + '.txt')) then
       begin
         Block := TBlockParEC.Create;
         ModLanguageInstallConfigs.Add(Block);
@@ -2550,6 +4261,7 @@ begin
     until Index >= CountDelimitedPartsW(ModNames, ',');
   end;
 end;
+
 procedure ResetInstalledPackageState;
 var
   I: Integer;
@@ -2563,6 +4275,7 @@ begin
     TObject(ModLanguageInstallConfigs[I]).Free;
   ModLanguageInstallConfigs.Clear;
 end;
+
 procedure FinalizePlatformRuntime;
 begin
   FreeSavePreviewBuffers;
@@ -2577,20 +4290,133 @@ begin
     LanguageInstallConfig := nil;
   end;
   FinalizePackageCollection;
-  DestroyWindow(MainWindowHandle);
+  // Drop every device-owned image before SDL destroys its renderer.
+  OffscreenTexture := nil;
+  Direct3DDevice := nil;
+  Direct3D := nil;
+  CloseGameWindow;
   MainWindowHandle := 0;
-  CoUninitialize;
 end;
+
 function HasWow64Support: Boolean;
+{$IFDEF MSWINDOWS}
+type
+  TGetNativeSystemInfo = procedure(var Info: TSystemInfo); stdcall;
+  TIsWow64Process = function(Process: THandle; var IsWow64: LongBool): LongBool; stdcall;
+var
+  Module: HModule;
+  NativeSystemInfo: TGetNativeSystemInfo;
+  IsWow64Process: TIsWow64Process;
+  Wow64: LongBool;
+  Supported: Boolean;
+  Info: TSystemInfo;
 begin
-  Result := False
+  Supported := False;
+  Module := GetModuleHandle('kernel32.dll');
+  NativeSystemInfo := GetProcAddress(Module, 'GetNativeSystemInfo');
+  if Assigned(NativeSystemInfo) then
+  begin
+    NativeSystemInfo(Info);
+    IsWow64Process := GetProcAddress(Module, 'IsWow64Process');
+    if Assigned(IsWow64Process) then
+      if IsWow64Process(GetCurrentProcess, Wow64) then
+        if Wow64 then
+          if GetProcAddress(GetModuleHandle('kernel32.dll'), 'Wow64DisableWow64FsRedirection')
+              <> nil then
+            if GetProcAddress(Module, 'GetSystemWow64DirectoryA') <> nil then
+              if GetProcAddress(GetModuleHandle('advapi32.dll'), 'RegDeleteKeyExA') <> nil then
+                Supported := True;
+  end
+  else
+    GetSystemInfo(Info);
+  Result := Supported;
 end;
+{$ELSE}
+begin
+  Result := False;
+end;
+{$ENDIF}
+
 procedure ApplyMainWindowGeometry;
+var
+  Style: Cardinal;
+  Width, Height: Integer;
+  Bounds: TRect;
 begin
+  if AlternateViewportEnabled then
+  begin
+    Width := PresentationWidth;
+    Height := PresentationHeight;
+  end
+  else
+  begin
+    Width := GameScreenWidth;
+    Height := GameScreenHeight;
+  end;
+  if Direct3DPresentParameters.Windowed then
+  begin
+    if (UserSettingsConfig.CountParams('ShowCaption') > 0)
+        and not ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('ShowCaption'))) then
+      Style := $10000000
+    else
+      Style := $10CA0000;
+    if UserSettingsConfig.CountParams('OverrideWindowPosition') > 0 then
+    begin
+      Bounds.Left :=
+          ExtractSignedDigitsToIntW(
+              ExtractDelimitedPartW(
+                  TrimWideString(
+                      UserSettingsConfig.GetParamByPathOrMarker('OverrideWindowPosition')
+                  ),
+                  0,
+                  ','
+              )
+          );
+      Bounds.Top :=
+          ExtractSignedDigitsToIntW(
+              ExtractDelimitedPartW(
+                  TrimWideString(
+                      UserSettingsConfig.GetParamByPathOrMarker('OverrideWindowPosition')
+                  ),
+                  1,
+                  ','
+              )
+          );
+    end
+    else
+    begin
+      Bounds.Left := SDL_WINDOWPOS_CENTERED;
+      Bounds.Top := SDL_WINDOWPOS_CENTERED;
+    end;
+    Bounds.Right := Bounds.Left + Width;
+    Bounds.Bottom := Bounds.Top + Height;
+  end
+  else
+  begin
+    Style := $90080000;
+    Bounds.Left := 0;
+    Bounds.Top := 0;
+    Bounds.Right := Width;
+    Bounds.Bottom := Height;
+  end;
+  // Window changes preserve the current target, so recover a pending SDL loss
+  // before that handle can be saved and rebound by OpenGameWindow.
+  if Direct3DDevice <> nil then
+    Direct3DDevice.TestCooperativeLevel;
+  OpenGameWindow(Width, Height, Direct3DPresentParameters.Windowed, VSyncEnabled);
+  if Direct3DPresentParameters.Windowed then
+  begin
+    SDL_SetWindowPosition(GameSDLWindow, Bounds.Left, Bounds.Top);
+    SDL_SetWindowBordered(GameSDLWindow, Ord(Style <> $10000000));
+  end;
 end;
+
 procedure ShowAndFocusMainWindow;
 begin
+  SDL_RaiseWindow(GameSDLWindow);
 end;
+
 procedure LoadDatConfigAndModOverrides;
 var
   ModNames, ModPath: WideString;
@@ -2598,31 +4424,31 @@ var
   Block: TBlockParEC;
   Data: TDataEC;
   Index: Integer;
+
   procedure LoadBlockDatConfig(
       Root: TBlockParEC;
       FileName: WideString
-  ); // @ida "void __usercall $name(TBlockParEC *Root@<eax>, unsigned __int16 *FileName@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4CC7E7,0x4CC89C,0x4CC93B,0x4CCA24" @addr 0x4CC57C @note "An empty tree produces a log warning, not an exception from this wrapper."
+  ); { An empty tree produces a log warning, not an exception from this wrapper. }
   begin
     Root.LoadFromEncryptedDatFile(FileName);
     if (Root.GetBlockCount <= 0) and (Root.GetParamCount <= 0) then
       AppendLogLineThreadSafe('Warning! <' + FileName + '> is empty!');
   end;
-  procedure LoadCacheDatConfig(
-      Root: TDataEC;
-      FileName: WideString
-  ); // @ida "void __usercall $name(TDataEC *Root@<eax>, unsigned __int16 *FileName@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4CCA99,0x4CCB4E" @addr 0x4CC660
+
+  procedure LoadCacheDatConfig(Root: TDataEC; FileName: WideString);
   begin
     Root.LoadFromEncryptedDatFile(FileName);
     if Root.IsEmpty then
       AppendLogLineThreadSafe('Warning! <' + FileName + '> is empty!');
   end;
+
 begin
   MainDataConfig := TBlockParEC.Create;
   ModNames := '';
-  if not SkipModsOnReload and RTLFileSystem.FileExists('Mods\ModCFG.txt') then
+  if not SkipModsOnReload and FileExists(NativeGamePath(ModSelectionConfigPath)) then
   begin
     Block := TBlockParEC.Create;
-    Block.LoadFromTextFileWithEncodingProbe('Mods\ModCFG.txt', False);
+    Block.LoadFromTextFileWithEncodingProbe(ModSelectionConfigPath, False);
     if Block.CountParams('CurrentMod') > 0 then
       ModNames := TrimWideString(Block.GetParamByPath('CurrentMod'));
     Block.Free;
@@ -2636,7 +4462,7 @@ begin
       ModPath := TrimWideString(ExtractDelimitedPartW(ModNames, Index, ','));
       if ModPath <> '' then
         ModPath := ModPath + '\';
-      if RTLFileSystem.FileExists('Mods\' + ModPath + 'CFG\Main.dat') then
+      if FileExists(NativeGamePath('Mods\' + ModPath + 'CFG\Main.dat')) then
       begin
         HasOverrides := True;
         Block := TBlockParEC.Create;
@@ -2662,8 +4488,10 @@ begin
       ModPath := TrimWideString(ExtractDelimitedPartW(ModNames, Index, ','));
       if ModPath <> '' then
         ModPath := ModPath + '\';
-      if RTLFileSystem.FileExists(
-          'Mods\' + ModPath + 'CFG\' + LanguageInstallConfig.GetParam('Lang') + '\Lang.dat') then
+      if FileExists(
+          NativeGamePath(
+              'Mods\' + ModPath + 'CFG\' + LanguageInstallConfig.GetParam('Lang') + '\Lang.dat'
+          )) then
       begin
         HasOverrides := True;
         Block := TBlockParEC.Create;
@@ -2689,7 +4517,7 @@ begin
       ModPath := TrimWideString(ExtractDelimitedPartW(ModNames, Index, ','));
       if ModPath <> '' then
         ModPath := ModPath + '\';
-      if RTLFileSystem.FileExists('Mods\' + ModPath + 'CFG\CacheData.dat') then
+      if FileExists(NativeGamePath('Mods\' + ModPath + 'CFG\CacheData.dat')) then
       begin
         HasOverrides := True;
         Data := TDataEC.Create;
@@ -2714,6 +4542,7 @@ begin
     AppendLogLineThreadSafe('Custom mod');
   end;
 end;
+
 procedure FreeDatConfigRoots;
 begin
   if CacheDataRoot <> nil then
@@ -2733,24 +4562,132 @@ begin
     MainDataConfig := nil;
   end;
 end;
+
 procedure InitializeRuntimeAndSettings;
 var
-  ModuleName, Text, ExtraText: WideString;
+  DetailText, Text, ExtraText: WideString;
   Block: TBlockParEC;
   Index, Count, BufferSize: Integer;
   Frame: Pointer;
   Cursor: TCursorUnit;
+{$IFDEF MSWINDOWS}
+  Reg: TRegistry;
+{$ENDIF}
+  MemoryStatus: TMemoryStatusEx;
+
 begin
   StartupState := 0;
   FinalizeRuntimeAndSettings;
+{$IFDEF MSWINDOWS}
+  Text :=
+      TrimWideString(
+          ReadRegistryText(
+              HKEY_LOCAL_MACHINE,
+              'SOFTWARE\Microsoft\Windows NT\CurrentVersion',
+              'ProductName',
+              ''
+          )
+      );
+  if HasWow64Support then
+    ExtraText := ' [x64] build '
+  else
+    ExtraText := ' [x86] build ';
+  DetailText :=
+      TrimWideString(
+          ReadRegistryText(
+              HKEY_LOCAL_MACHINE,
+              'SOFTWARE\Microsoft\Windows NT\CurrentVersion',
+              'CurrentBuild',
+              ''
+          )
+      );
+  if ExtractDigitsToIntW(DetailText) >= 22000 then
+    Text := ReplaceAllWideString(Text, 'Windows 10', 'Windows 11');
+  if RunningUnderWine then
+    AppendLogLineThreadSafe(
+        AnsiString('Wine compatibility mode is set to ''' + Text + ExtraText + DetailText + '''')
+    )
+  else
+    AppendLogLineThreadSafe(AnsiString('Operating System=' + Text + ExtraText + DetailText));
+  Index := 0;
+  Count := 0;
+  while True do
+  begin
+    Reg := TRegistry.Create;
+    try
+      Reg.RootKey := HKEY_LOCAL_MACHINE;
+      if Reg.KeyExists('HARDWARE\DESCRIPTION\System\CentralProcessor\' + IntToStr(Index)) then
+        Inc(Count)
+      else
+        Break;
+      Inc(Index);
+    finally
+      Reg.Free;
+    end;
+  end;
+  Index := 0;
+  Text :=
+      TrimWideString(
+          ReadRegistryText(
+              HKEY_LOCAL_MACHINE,
+              WideString('HARDWARE\DESCRIPTION\System\CentralProcessor\' + IntToStr(Index)),
+              'Identifier',
+              ''
+          )
+      );
+  ExtraText :=
+      TrimWideString(
+          ReadRegistryText(
+              HKEY_LOCAL_MACHINE,
+              WideString('HARDWARE\DESCRIPTION\System\CentralProcessor\' + IntToStr(Index)),
+              'ProcessorNameString',
+              ''
+          )
+      );
+{$ELSE}
+  AppendLogLineThreadSafe('Operating System=' + {$I %FPCTARGETOS%});
+  Count := SDL_GetCPUCount;
+  ExtraText := {$I %FPCTARGETCPU%};
+{$ENDIF}
+  if Count <= 1 then
+    DetailText := ' (1 core)'
+  else
+    DetailText := WideString(' (' + IntToStr(Count) + ' cores)');
+  ProcessorCoreCount := Max(Count, 1);
+  AppendLogLineThreadSafe(AnsiString('Processor=' + ExtraText + DetailText));
+  AppendLogLineThreadSafe(
+      'CPU Clock='
+          + IntToStr(Round(Min(Min(MeasureCpuClockMHz, MeasureCpuClockMHz), MeasureCpuClockMHz)))
+          + ' MHz'
+  );
+  MemoryStatus.Length := SizeOf(MemoryStatus);
+  QueryGameMemory(MemoryStatus);
+  AppendLogLineThreadSafe(
+      'Physical Memory Total=' + IntToStr(MemoryStatus.TotalPhys div $100000) + ' MB'
+  );
+  AppendLogLineThreadSafe(
+      'Physical Memory Available=' + IntToStr(MemoryStatus.AvailPhys div $100000) + ' MB'
+  );
+  AppendLogLineThreadSafe(
+      'Page File Total=' + IntToStr(MemoryStatus.TotalPageFile div $100000) + ' MB'
+  );
+  AppendLogLineThreadSafe(
+      'Page File Available=' + IntToStr(MemoryStatus.AvailPageFile div $100000) + ' MB'
+  );
+  AppendLogLineThreadSafe(
+      'Virtual Memory Total=' + IntToStr(MemoryStatus.TotalVirtual div $100000) + ' MB'
+  );
+  AppendLogLineThreadSafe(
+      'Virtual Memory Available=' + IntToStr(MemoryStatus.AvailVirtual div $100000) + ' MB'
+  );
   UserSettingsConfig := TBlockParEC.Create;
   Text := GetGameUserDirectory + 'CFG.TXT';
-  if not RTLFileSystem.FileExists(AnsiString(Text)) then
+  if not FileExists(NativeGamePath(AnsiString(Text))) then
   begin
     AppendLogTextThreadSafe('Creating cfg.txt ... ');
-    CopyFileW('cfg.txt', PWideChar(Text), False);
+    CopyGameFile('cfg.txt', Text);
     UserSettingsConfig.LoadFromTextFileWithEncodingProbe(PWideChar(Text), True);
-    UserSettingsConfig.AddParam('CurrentVersion', '2.1.2500');
+    UserSettingsConfig.AddParam('CurrentVersion', GameVersionText);
     UserSettingsConfig.AddParam('VideoMemSizeLimit', '256');
     if RunningUnderWine then
     begin
@@ -2766,20 +4703,20 @@ begin
     if UserSettingsConfig.CountParamsByPath('CurrentVersion') = 0 then
     begin
       AppendLogTextThreadSafe('Updating cfg.txt content ... ');
-      UserSettingsConfig.AddParam('CurrentVersion', '2.1.2500');
+      UserSettingsConfig.AddParam('CurrentVersion', GameVersionText);
       UserSettingsConfig.SetOrAddParam('HardwareRender', 'True');
       UserSettingsConfig.SetOrAddParam('MultiThread', 'False');
       UserSettingsConfig.SaveTextFile(PWideChar(Text), True, False);
       AppendLogLineThreadSafe('ok!');
     end
-    else if UserSettingsConfig.GetParamByPathOrMarker('CurrentVersion') <> '2.1.2500' then
+    else if UserSettingsConfig.GetParamByPathOrMarker('CurrentVersion') <> GameVersionText then
     begin
       AppendLogTextThreadSafe('Updating cfg.txt version ... ');
       if (UserSettingsConfig.GetParam('CurrentVersion') = '2.1.1800')
           and (UserSettingsConfig.CountParamsByPath('CountFilmSave') > 0)
           and (UserSettingsConfig.GetParamByPathOrMarker('CountFilmSave') = '30') then
         UserSettingsConfig.SetOrAddParam('CountFilmSave', '7');
-      UserSettingsConfig.SetOrAddParam('CurrentVersion', '2.1.2500');
+      UserSettingsConfig.SetOrAddParam('CurrentVersion', GameVersionText);
       UserSettingsConfig.SaveTextFile(PWideChar(Text), True, False);
       AppendLogLineThreadSafe('ok!');
     end;
@@ -2805,10 +4742,18 @@ begin
         ShowWineWarning := True;
       end;
   end;
+  GameUiMode :=
+      TGameUiMode(
+          EnsureRange(
+              StrToIntDef(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('MobileUI')), 0),
+              Ord(Low(TGameUiMode)),
+              Ord(High(TGameUiMode))
+          )
+      );
   EditableSaveBlock := TBlockParEC.Create;
   NewGameSettingsConfig := TBlockParEC.Create;
   Text := GetGameUserDirectory + 'newgame.txt';
-  if RTLFileSystem.FileExists(AnsiString(PWideChar(Text))) then
+  if FileExists(NativeGamePath(AnsiString(PWideChar(Text)))) then
     NewGameSettingsConfig.LoadFromTextFileWithEncodingProbe(PWideChar(Text), True);
   if UserSettingsConfig.CountParamsByPath('MultiThread') > 0 then
     MultiThreadEnabled :=
@@ -2819,18 +4764,22 @@ begin
     PathGrowEnabled :=
         ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('PathGrow')));
   ShowSystemMouse := False;
-  ShowSystemMouse := False;
-  if RTLFileSystem.FileExists('Mods\ShipName.txt') then
+  if UserSettingsConfig.CountParams('ShowSystemMouse') > 0 then
+    ShowSystemMouse :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('ShowSystemMouse'))
+        );
+  if FileExists(NativeGamePath('Mods\ShipName.txt')) then
   begin
     ModShipNameConfig := TBlockParEC.Create;
     ModShipNameConfig.LoadFromTextFileWithEncodingProbe('Mods\ShipName.txt', False);
   end;
-  if RTLFileSystem.FileExists('Mods\RuinName.txt') then
+  if FileExists(NativeGamePath('Mods\RuinName.txt')) then
   begin
     ModRuinNameConfig := TBlockParEC.Create;
     ModRuinNameConfig.LoadFromTextFileWithEncodingProbe('Mods\RuinName.txt', False);
   end;
-  if RTLFileSystem.FileExists('MusicChange.txt') then
+  if FileExists('MusicChange.txt') then
   begin
     MainDataConfig.GetBlock('Music').Clear;
     MainDataConfig.GetBlock('Music').LoadFromTextFileWithEncodingProbe('MusicChange.txt', False);
@@ -2843,7 +4792,11 @@ begin
     GlobalCache.ResidentByteLimit :=
         (ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('CacheSize')) shl 10) shl 10;
   if GlobalCache.ResidentByteLimit <= $1000000 then
-    GlobalCache.ResidentByteLimit := $18000000;
+    if MemoryStatus.AvailVirtual > $48000000 then
+      GlobalCache.ResidentByteLimit := $18000000
+    else
+      GlobalCache.ResidentByteLimit :=
+          Min(Int64(Cardinal(MemoryStatus.AvailVirtual) div 3), Int64($18000000));
   AppendLogLineThreadSafe('Cache Size=' + IntToStr(GlobalCache.ResidentByteLimit div 1024) + ' KB');
   if UserSettingsConfig.CountParams('Brightness') > 0 then
     DisplayBrightness :=
@@ -2940,11 +4893,6 @@ begin
     AppendLogLineThreadSafe('Sound interfaces are:')
   else
     AppendLogLineThreadSafe('Sound is disabled...');
-  if sr_is_headless <> 0 then
-  begin
-    SoundEnabled := False;
-    MusicEnabled := False
-  end;
   SoundManager := TSoundControl.Create;
   MusicManager := TMusicControl.Create;
   if XonarSoundDevice then
@@ -2967,7 +4915,7 @@ begin
   ScreenCenterY := Cardinal(GameScreenHeight) shr 1;
   ShowAndFocusMainWindow;
   if not ShowSystemMouse then
-    ShowCursor(False);
+    ShowGameCursor(False);
   AppendLogLineThreadSafe(AnsiString('Sound=' + BoolToWideString(SoundEnabled)));
   AppendLogLineThreadSafe(AnsiString('Music=' + BoolToWideString(MusicEnabled)));
   InterfaceBlendPalette := AllocEC(512);
@@ -3017,23 +4965,26 @@ begin
     Cursor.ImagePath := Block.GetBlockByIndex(Index).GetParam('Image');
     Cursor.HotSpot := GetPointGI(Block.GetBlockByIndex(Index).GetParam('Sme'));
   end;
-  if LanguageDataConfig.GetParamByPathOrMarker('BV.BV') <> '2.1.2500' then
+  if LanguageDataConfig.GetParamByPathOrMarker('BV.BV') <> GameVersionText then
   begin
     AppendLogLineThreadSafe('Build version mismatch with Lang.dat!');
     BuildVersionMismatch := True;
   end;
-  if MainDataConfig.GetParamByPathOrMarker('BV.BV') <> '2.1.2500' then
+  if MainDataConfig.GetParamByPathOrMarker('BV.BV') <> GameVersionText then
   begin
     AppendLogLineThreadSafe('Build version mismatch with Main.dat!');
     BuildVersionMismatch := True;
   end;
   if CacheDataRoot.FindEntry('BV').ChildData.FindEntry('BV').SharedFileRef.FileRef.FileName
-      <> '2.1.2500' then
+      <> GameVersionText then
   begin
     AppendLogLineThreadSafe('Build version mismatch with CacheData.dat!');
     BuildVersionMismatch := True;
   end;
+  // Refreshing this snapshot also advances the shared random stream.
+  CCInterface.SetResourceChecksumFailed(CCInterface.GetResourceChecksumFailed);
 end;
+
 procedure FinalizeRuntimeAndSettings;
 begin
   while not (FirstRegisteredCursor = nil) do
@@ -3078,6 +5029,18 @@ begin
   FreeScreenRenderBuffers;
   WideCaseTable := nil;
 end;
+
+function MobileHudSizeForLayout(const Layout: TPoint): TPoint;
+begin
+  Result := Layout;
+  if GameMobileUiEnabled and UseDesktopDisplayMode then
+  begin
+    GetGameAutomaticLayoutSize(1024, 480, Result.X, Result.Y);
+    Result.X := Min(Result.X, Layout.X);
+    Result.Y := Min(Result.Y, Layout.Y);
+  end;
+end;
+
 procedure EnumerateAndSelectDisplayModes;
 var
   Index, ModeCount: Integer;
@@ -3088,19 +5051,9 @@ var
   // Native reserves 16 unused local bytes here; original type is unresolved.
   UnusedLocal: array[0..15] of Byte;
 begin
-  // CHANGE: PORTABILITY - Feed SDL display modes into the original resolution selection.
-  if sr_display_mode(
-          -1,
-          DesktopDisplayMode.Width,
-          DesktopDisplayMode.Height,
-          DesktopDisplayMode.RefreshRate)
-      = 0 then
-  begin
-    DesktopDisplayMode.Width := 1024;
-    DesktopDisplayMode.Height := 768;
-    DesktopDisplayMode.RefreshRate := 60;
-  end;
-  DesktopDisplayMode.Format := D3DFMT_X8R8G8B8;
+  // Refresh after display changes or a runtime restart; the previous mode list
+  // does not imply that the desktop or browser viewport still has the same size.
+  Direct3D.GetAdapterDisplayMode(D3DADAPTER_DEFAULT, DesktopDisplayMode);
   FillChar(Mode, SizeOf(Mode), 0);
   GameDisplayModeCount := 0;
   SelectedGameDisplayMode := -1;
@@ -3148,16 +5101,14 @@ begin
   UseAutomaticRobotDisplayMode := False;
   if (RobotSettings.ScreenWidth < 1024) or (RobotSettings.ScreenHeight < 720) then
     UseAutomaticRobotDisplayMode := True;
-  ModeCount := sr_display_mode_count;
+  ModeCount := Direct3D.GetAdapterModeCount(D3DADAPTER_DEFAULT, DesktopDisplayMode.Format);
   if (DesktopDisplayMode.Format <> D3DFMT_X8R8G8B8)
       and (DesktopDisplayMode.Format <> D3DFMT_A8R8G8B8) then
     DesktopDisplayMode.Format := D3DFMT_X8R8G8B8;
   Modes := TBlockParEC.Create;
   for Index := 0 to ModeCount - 1 do
   begin
-    if sr_display_mode(Index, Mode.Width, Mode.Height, Mode.RefreshRate) = 0 then
-      Continue;
-    Mode.Format := DesktopDisplayMode.Format;
+    Direct3D.EnumAdapterModes(D3DADAPTER_DEFAULT, DesktopDisplayMode.Format, Index, Mode);
     if Mode.Height >= 720 then
     begin
       ModeKey := SysUtils.IntToHex(Int64(Mode.Width), 6) + SysUtils.IntToHex(Int64(Mode.Height), 6);
@@ -3184,11 +5135,11 @@ begin
   for Index := 0 to Modes.GetParamCount - 1 do
   begin
     ModeKey := Modes.GetParamValue(Index);
-    sr_display_mode(
+    Direct3D.EnumAdapterModes(
+        D3DADAPTER_DEFAULT,
+        DesktopDisplayMode.Format,
         SysUtils.StrToInt(AnsiString(ExtractDelimitedPartW(ModeKey, 1, ','))),
-        Mode.Width,
-        Mode.Height,
-        Mode.RefreshRate
+        Mode
     );
     GameDisplayModes[Index] := Mode;
     RobotDisplayModes[Index] := Mode;
@@ -3273,7 +5224,25 @@ begin
   ExtraScreenHeight := GameScreenHeight - 768;
   GameScreenRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   PresentationRect := Classes.Rect(0, 0, PresentationWidth, PresentationHeight);
+  NormalGameLayoutSize := Classes.Point(GameScreenWidth, GameScreenHeight);
+  MobileHudLayoutSize := MobileHudSizeForLayout(NormalGameLayoutSize);
+  LayoutDensity := GetGameDisplayMetrics.Density;
 end;
+
+function GetNormalGameLayoutSize: TPoint;
+begin
+  Result := NormalGameLayoutSize;
+  if (Result.X <= 0) or (Result.Y <= 0) then
+    Result := Classes.Point(GameScreenWidth, GameScreenHeight);
+end;
+
+function GetMobileHudLayoutSize: TPoint;
+begin
+  Result := MobileHudLayoutSize;
+  if not HardwareRenderingEnabled or (Result.X <= 0) or (Result.Y <= 0) then
+    Result := GetNormalGameLayoutSize;
+end;
+
 procedure ConfigureDefaultRenderState;
 begin
   Direct3DDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, 1);
@@ -3286,13 +5255,14 @@ begin
   Direct3DDevice.SetRenderState(D3DRS_SCISSORTESTENABLE, 1);
   Direct3DDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 end;
+
 procedure PreparePresentationParameters;
 begin
   PreviousPresentParameters := Direct3DPresentParameters;
   with Direct3DPresentParameters do
   begin
-    ZeroMemory(@Direct3DPresentParameters, SizeOf(Direct3DPresentParameters));
-    Windowed := WindowedModeRequested and (Cardinal(GameScreenHeight) < DesktopDisplayMode.Height);
+    System.FillChar(Pointer(@Direct3DPresentParameters)^, SizeOf(Direct3DPresentParameters), 0);
+    Windowed := WindowedModeRequested;
     DeviceWindow := MainWindowHandle;
     if DisableTripleBuffer then
       BackBufferCount := 1
@@ -3305,6 +5275,16 @@ begin
       if VSyncEnabled then
         PresentationInterval := D3DPRESENT_INTERVAL_DEFAULT;
       SwapEffect := D3DSWAPEFFECT_DISCARD;
+      if AlternateViewportEnabled then
+      begin
+        BackBufferWidth := PresentationWidth;
+        BackBufferHeight := PresentationHeight;
+      end
+      else
+      begin
+        BackBufferWidth := GameScreenWidth;
+        BackBufferHeight := GameScreenHeight;
+      end;
     end
     else
     begin
@@ -3334,49 +5314,305 @@ begin
       PresentationFrameRate := 50;
   end;
 end;
+
 procedure GR_DXInit;
-
 var
-  I, MiniMapSize: Integer;
+  Code: Integer;
+  Surface: IDirect3DSurface9;
+  Index, MiniMapSize: Integer;
   Angle: Single;
-
+  DeviceFlags: Cardinal;
+  Identifier: TD3DAdapterIdentifier9;
+  Caps: TD3DCaps9;
 begin
   FreeScreenRenderBuffers;
-  HardwareRenderingEnabled := False;
-  HardwareRenderingRequested := False;
-  ThreeDimensionalModeEnabled := False;
-  WindowedModeRequested := True;
-  VSyncEnabled := True;
-  if UserSettingsConfig.CountParams('VSync') > 0 then
-    VSyncEnabled := ParseEnabledNameGI(UserSettingsConfig.GetParam('VSync'));
+  WindowedModeRequested := False;
   if UserSettingsConfig.CountParams('Window') > 0 then
-    WindowedModeRequested := ParseEnabledNameGI(UserSettingsConfig.GetParam('Window'));
-  Direct3DPresentParameters.Windowed := WindowedModeRequested;
+    WindowedModeRequested :=
+        ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('Window')));
+  for Index := 1 to ParamCount do
+    if ParamStr(Index) = '--fullscreen' then WindowedModeRequested := False
+    else if ParamStr(Index) = '--windowed' then WindowedModeRequested := True;
+  if GameWindowIsMobile then
+    WindowedModeRequested := False;
+  VSyncEnabled := False;
+  if UserSettingsConfig.CountParams('VSync') > 0 then
+    VSyncEnabled :=
+        ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('VSync')));
+  HardwareRenderingRequested := False;
+  if UserSettingsConfig.CountParams('HardwareRender') > 0 then
+    HardwareRenderingRequested :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('HardwareRender'))
+        );
+  if GameRendererPreference <> grpDefault then
+    HardwareRenderingRequested := GameRendererPreference = grpSDL;
+  HardwareRenderingEnabled :=
+      HardwareRenderingRequested
+          and (not RunningUnderWine
+              or ((UserSettingsConfig.CountParams('AllowHardwareRenderUnderWine') <> 0)
+                  and ParseEnabledNameGI(
+                      TrimWideString(
+                          UserSettingsConfig.GetParamByPathOrMarker('AllowHardwareRenderUnderWine')
+                      ))));
   ScaleViewportToWindow := True;
-  AlternateViewportEnabled := False;
-  EnumerateAndSelectDisplayModes;
-  PresentationWidth := GameScreenWidth;
-  PresentationHeight := GameScreenHeight;
-  PresentationRect := GameScreenRect;
-  PresentationFrameRate := DesktopDisplayMode.RefreshRate;
-  if sr_window_open(GameScreenWidth, GameScreenHeight) = 0 then
-    raise Exception.Create('SDL window: ' + string(sr_error));
-
-  HardwareRenderingEnabled := sr_gpu_active <> 0;
-  HardwareRenderingRequested := HardwareRenderingEnabled;
-  if HardwareRenderingEnabled then
-  begin
-    Direct3DDevice := CreateSDLDevice(GameScreenWidth, GameScreenHeight);
-    MaxTextureSize := Types.Point(4096, 4096);
-    ConfigureDefaultRenderState;
-  end;
-  AppendLogLineThreadSafe(
-      'Renderer: '
-          + string(sr_renderer_name)
-          + '; GPU drawing='
-          + BoolToStr(HardwareRenderingEnabled, True)
+  if not GameWindowUsesNativeRaster and (UserSettingsConfig.CountParams('RenderModeScale') > 0) then
+    ScaleViewportToWindow :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('RenderModeScale'))
+        );
+  // Android and mobile UI present the complete logical framebuffer. Old
+  // desktop settings must not select a movable, cropped viewport here.
+  if GameWindowUsesNativeRaster then
+    AlternateViewportEnabled := False;
+  TextureManagerDisabled := False;
+  if UserSettingsConfig.CountParams('DisableTextureManager') > 0 then
+    TextureManagerDisabled :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('DisableTextureManager'))
+        );
+  PresentWithoutLimit := False;
+  if UserSettingsConfig.CountParams('DisableFrameLimit') > 0 then
+    PresentWithoutLimit :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('DisableFrameLimit'))
+        );
+  DisableHardwareVertexProcessing := False;
+  if UserSettingsConfig.CountParams('DisableHWVertexProcessing') > 0 then
+    DisableHardwareVertexProcessing :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('DisableHWVertexProcessing'))
+        );
+  DisableMultithreadFlag := False;
+  if UserSettingsConfig.CountParams('DisableMultithreadFlag') > 0 then
+    DisableMultithreadFlag :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('DisableMultithreadFlag'))
+        );
+  DisableTripleBuffer := False;
+  if UserSettingsConfig.CountParams('DisableTripleBuffer') > 0 then
+    DisableTripleBuffer :=
+        ParseEnabledNameGI(
+            TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('DisableTripleBuffer'))
+        );
+  ScreenRenderBuffer := TGraphBufGR.Create(True);
+  RenderScratchBuffer := TGraphBufGR.Create(True);
+  AuxRenderBuffer := TGraphBufGR.Create(True);
+  // $133F and $FCFF selects nearest rounding, single x87 precision and masked exceptions.
+  // Fixed-precision CPUs retain their native precision through FPC.
+  ClearExceptions(False);
+  SetExceptionMask(
+      [exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]
   );
-
+  SetRoundMode(rmNearest);
+  SetPrecisionMode(pmSingle);
+  try
+    if Direct3D = nil then
+    begin
+      Direct3D := CreateGameGraphics;
+      // Native constructs this exception without raising it.
+      if Direct3D = nil then
+        EDirectXRender.Create('GR_DXInit()::Direct3DCreate9(...)');
+      AppendLogLineThreadSafe('Initializing DX9.... ok!');
+      Direct3D.GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, Identifier);
+      AppendLogLineThreadSafe('Videocard=' + AnsiString(Identifier.Description));
+      AppendLogLineThreadSafe('Driver=' + AnsiString(Identifier.Driver));
+    end;
+    SupportedMultiSamples := nil;
+    SupportedMultiSampleCount := 0;
+    for Index := 0 to 16 do
+      if Direct3D.CheckDeviceMultiSampleType(
+              D3DADAPTER_DEFAULT,
+              D3DDEVTYPE_HAL,
+              D3DFMT_A8R8G8B8,
+              False,
+              Index,
+              nil)
+          = 0 then
+      begin
+        SetLength(SupportedMultiSamples, SupportedMultiSampleCount + 1);
+        SupportedMultiSamples[SupportedMultiSampleCount] := Index;
+        Inc(SupportedMultiSampleCount);
+      end;
+    if Direct3D.GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, Caps) = 0 then
+      MaximumAnisotropy := Caps.MaxAnisotropy;
+    MaxTextureSize.X := Caps.MaxTextureWidth;
+    MaxTextureSize.Y := Caps.MaxTextureHeight;
+    AppendLogLineThreadSafe(
+        'Max Texture Size='
+            + IntToStr(Int64(Caps.MaxTextureWidth))
+            + 'x'
+            + IntToStr(Int64(Caps.MaxTextureHeight))
+    );
+    EnumerateAndSelectDisplayModes;
+    PreparePresentationParameters;
+    ApplyMainWindowGeometry;
+    if Direct3DDevice = nil then
+    begin
+      DeviceFlags := 0;
+      if not DisableMultithreadFlag then
+        DeviceFlags := D3DCREATE_MULTITHREADED;
+      if not DisableHardwareVertexProcessing then
+        Code :=
+            Direct3D.CreateDevice(
+                D3DADAPTER_DEFAULT,
+                D3DDEVTYPE_HAL,
+                MainWindowHandle,
+                DeviceFlags or D3DCREATE_HARDWARE_VERTEXPROCESSING,
+                Direct3DPresentParameters,
+                Direct3DDevice
+            )
+      else
+        Code := -1;
+      if Code <> 0 then
+        Code :=
+            Direct3D.CreateDevice(
+                D3DADAPTER_DEFAULT,
+                D3DDEVTYPE_HAL,
+                MainWindowHandle,
+                DeviceFlags or D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+                Direct3DPresentParameters,
+                Direct3DDevice
+            );
+      if (Code <> 0) or (Direct3DDevice = nil) then
+      begin
+        AppendLogLineThreadSafe(
+            'Error: GR_DXInit()::GR_Direct3D.CreateDevice, failed to create device, trying to switch to minimal resolution...'
+        );
+        SelectedGameDisplayMode := SmallestGameDisplayMode;
+        GameScreenWidth := GameDisplayModes[SelectedGameDisplayMode].Width;
+        GameScreenHeight := GameDisplayModes[SelectedGameDisplayMode].Height;
+        NormalGameLayoutSize := Classes.Point(GameScreenWidth, GameScreenHeight);
+        MobileHudLayoutSize := NormalGameLayoutSize;
+        PresentationWidth := GameScreenWidth;
+        PresentationHeight := GameScreenHeight;
+        ExtraScreenWidth := GameScreenWidth - 1024;
+        ExtraScreenHeight := GameScreenHeight - 768;
+        GameScreenRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+        PresentationRect := Classes.Rect(0, 0, PresentationWidth, PresentationHeight);
+        WindowedModeRequested := True;
+        AlternateViewportEnabled := False;
+        PreparePresentationParameters;
+        ApplyMainWindowGeometry;
+        Code :=
+            Direct3D.CreateDevice(
+                D3DADAPTER_DEFAULT,
+                D3DDEVTYPE_HAL,
+                MainWindowHandle,
+                DeviceFlags or D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+                Direct3DPresentParameters,
+                Direct3DDevice
+            );
+        if (Code <> 0) or (Direct3DDevice = nil) then
+        begin
+          LogPresentationParameters;
+          raise EDirectXRender.CreateCode('GR_DXInit()::GR_Direct3D.CreateDevice', Code);
+        end;
+      end;
+      Direct3DDevice.GetRenderTarget(0, Surface);
+      Direct3DDevice.ColorFill(Surface, nil, 0);
+      Direct3DDevice.GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, Surface);
+      Direct3DDevice.ColorFill(Surface, nil, 0);
+      Direct3DDevice.GetBackBuffer(0, 1, D3DBACKBUFFER_TYPE_MONO, Surface);
+      Direct3DDevice.ColorFill(Surface, nil, 0);
+      AppendLogLineThreadSafe('Initializing Direct3D device... ok!');
+    end
+    else
+    begin
+      Code := Direct3DDevice.Reset(Direct3DPresentParameters);
+      if Code <> 0 then
+      begin
+        LogPresentationParameters;
+        raise EDirectXRender.CreateCode('GR_DXInit()::GR_D3DDevice.Reset', Code);
+      end;
+      AppendLogLineThreadSafe('Re-initializing Direct3D device... ok!');
+    end;
+    if GameRendererFallback <> '' then
+      AppendLogLineThreadSafe('SDL acceleration unavailable; using software: '
+          + UTF8Encode(GameRendererFallback));
+    if not GameRendererAccelerated then HardwareRenderingEnabled := False;
+    AppendLogLineThreadSafe('SDL renderer=' + UTF8Encode(GameRendererName));
+    // SDL drivers can report their real limits only after a renderer exists.
+    // Resource tiling must use those limits rather than pre-creation estimates.
+    if Direct3D.GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, Caps) = 0 then
+    begin
+      MaxTextureSize.X := Caps.MaxTextureWidth;
+      MaxTextureSize.Y := Caps.MaxTextureHeight;
+      AppendLogLineThreadSafe(
+          'Active Max Texture Size=' + IntToStr(MaxTextureSize.X)
+              + 'x' + IntToStr(MaxTextureSize.Y)
+      );
+    end;
+    AvailableTextureBytes := Direct3DDevice.GetAvailableTextureMem;
+    ReservedTextureBytes :=
+        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('VideoMemSizeLimit'));
+    AppendLogLineThreadSafe(
+        'Available Video Memory=' + IntToStr(Int64(AvailableTextureBytes shr 10)) + ' KB'
+    );
+    if Integer(ReservedTextureBytes) > 0 then
+    begin
+      AppendLogLineThreadSafe(
+          'Available Video Memory Override='
+              + IntToStr(Integer(ReservedTextureBytes shl 10))
+              + ' KB'
+      );
+      ReservedTextureBytes := AvailableTextureBytes - ((ReservedTextureBytes shl 10) shl 10);
+    end;
+    UserSettingsConfig.GetParam('VideoMemSizeLimit');
+    for Index := Low(DrawVertices) to High(DrawVertices) do
+    begin
+      DrawVertices[Index].Z := 1;
+      DrawVertices[Index].RHW := 1;
+    end;
+    Direct3DDevice.SetVertexShader(nil);
+    Direct3DDevice.SetFVF(D3DFVF_XYZRHW or D3DFVF_DIFFUSE or D3DFVF_TEX1);
+    ConfigureDefaultRenderState;
+    AppendLogTextThreadSafe('Display Mode=');
+    if not Direct3DPresentParameters.Windowed then
+    begin
+      AppendLogTextThreadSafe(
+          IntToStr(Int64(Direct3DPresentParameters.BackBufferWidth))
+              + 'x'
+              + IntToStr(Int64(Direct3DPresentParameters.BackBufferHeight))
+              + ' '
+              + IntToStr(Int64(Direct3DPresentParameters.FullScreenRefreshRateInHz))
+              + 'Hz'
+      );
+      if AlternateViewportEnabled then
+        AppendLogLineThreadSafe(
+            ' ['
+                + IntToStr(Int64(Cardinal(GameScreenWidth)))
+                + 'x'
+                + IntToStr(Int64(Cardinal(GameScreenHeight)))
+                + ']'
+        );
+    end
+    else
+    begin
+      if AlternateViewportEnabled then
+        AppendLogTextThreadSafe(
+            IntToStr(Int64(Cardinal(PresentationWidth)))
+                + 'x'
+                + IntToStr(Int64(Cardinal(PresentationHeight)))
+                + ' ['
+        );
+      AppendLogTextThreadSafe(
+          IntToStr(Int64(Cardinal(GameScreenWidth)))
+              + 'x'
+              + IntToStr(Int64(Cardinal(GameScreenHeight)))
+      );
+      if AlternateViewportEnabled then
+        AppendLogTextThreadSafe(']');
+    end;
+    AppendLogLineThreadSafe('');
+  except
+    on E: EDirectXRender do
+    begin
+      ThreeDimensionalModeEnabled := False;
+      Direct3DDevice := nil;
+      Direct3D := nil;
+    end;
+  end;
   CurrentPixelFormat := TPixelFormatGR.Create;
   CurrentPixelFormat.RedMask := $F800;
   CurrentPixelFormat.GreenMask := $7E0;
@@ -3384,35 +5620,80 @@ begin
   CurrentPixelFormat.AlphaMask := 0;
   CurrentPixelFormat.BytesPerPixel := 2;
   CurrentPixelFormat.RebuildChannelMetrics;
-  BlendPixel16 := OKGR_PixelAlpha_16;
-  TriangleRasterizer16 := OKGF_Triangle_16;
-  LineRasterizer16 := OKGF_LineIp_16;
-  ScreenRenderBuffer := TGraphBufGR.Create(False);
-  RenderScratchBuffer := TGraphBufGR.Create(False);
-  AuxRenderBuffer := TGraphBufGR.Create(False);
+  BlendPixel16 := @OKGR_PixelAlpha_16;
+  TriangleRasterizer16 := @OKGF_Triangle_16;
+  LineRasterizer16 := @OKGF_LineIp_16;
   ScreenRenderBuffer.AllocateNativePitch(GameScreenWidth, GameScreenHeight, 2 * GameScreenWidth);
-  ScreenRenderBuffer.ClearPixels;
-  MiniMapSize := 156;
   if GameDataConfig.CountParams('MiniMapBufSize') > 0 then
-    MiniMapSize := ExtractDigitsToIntW(GameDataConfig.GetParam('MiniMapBufSize'));
+    MiniMapSize := ExtractDigitsToIntW(GameDataConfig.GetParam('MiniMapBufSize'))
+  else
+    MiniMapSize := 156;
   RenderScratchBuffer.AllocateNative(MiniMapSize, MiniMapSize);
-  for I := 0 to 360 do
+  ApplyGammaRamp(DisplayBrightness, DisplayContrast);
+  // Native uses two different approximations of pi for these tables.
+  for Index := Low(CircleCos) to High(CircleCos) do
   begin
-    Angle := I * (3.1415926 / 180);
-    CircleCos[I] := Cos(Angle);
-    CircleSin[I] := Sin(Angle)
+    Angle := Index * (GamePi / 180);
+    CircleCos[Index] := Cos(Angle);
+    CircleSin[Index] := Sin(Angle);
   end;
-  for I := 0 to 359 do
-    LineAlphaTable[I] := Trunc(Cos(I / 180 * 3.14159265354) * 127 + 128);
+  for Index := Low(LineAlphaTable) to High(LineAlphaTable) do
+    LineAlphaTable[Index] := Trunc(Cos(Index / 180 * 3.14159265354) * 127 + 128);
   PendingPointCapacity := 1024;
   SetLength(PendingPoints, PendingPointCapacity);
 end;
+
 procedure GR_DXReset;
+var
+  ErrorCode: Integer;
 begin
-  if sr_window_options(Ord(WindowedModeRequested), Ord(VSyncEnabled)) = 0 then
-    raise Exception.Create('SDL display options: ' + string(sr_error));
-  PresentScreenBuffer;
+  PreparePresentationParameters;
+  if not Direct3DPresentParameters.Windowed then
+    ApplyMainWindowGeometry;
+  if Direct3DDevice = nil then
+  begin
+    ErrorCode :=
+        Direct3D.CreateDevice(
+            D3DADAPTER_DEFAULT,
+            D3DDEVTYPE_HAL,
+            MainWindowHandle,
+            D3DCREATE_MULTITHREADED or D3DCREATE_HARDWARE_VERTEXPROCESSING,
+            Direct3DPresentParameters,
+            Direct3DDevice
+        );
+    if ErrorCode <> 0 then
+      ErrorCode :=
+          Direct3D.CreateDevice(
+              D3DADAPTER_DEFAULT,
+              D3DDEVTYPE_HAL,
+              MainWindowHandle,
+              D3DCREATE_MULTITHREADED or D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+              Direct3DPresentParameters,
+              Direct3DDevice
+          );
+    if (ErrorCode <> 0) or (Direct3DDevice = nil) then
+    begin
+      LogPresentationParameters;
+      raise EDirectXRender.CreateCode('GR_DXReset()::GR_Direct3D.CreateDevice(...)', ErrorCode);
+    end;
+  end
+  else
+  begin
+    ErrorCode := Direct3DDevice.Reset(Direct3DPresentParameters);
+    if ErrorCode <> 0 then
+    begin
+      LogPresentationParameters;
+      raise EDirectXRender.CreateCode('GR_DXReset()::GR_D3DDevice.Reset(...)', ErrorCode);
+    end;
+  end;
+  Direct3DDevice.SetVertexShader(nil);
+  Direct3DDevice.SetFVF(D3DFVF_XYZRHW or D3DFVF_DIFFUSE or D3DFVF_TEX1);
+  ConfigureDefaultRenderState;
+  if Direct3DPresentParameters.Windowed then
+    ApplyMainWindowGeometry;
+  ShowAndFocusMainWindow;
 end;
+
 procedure FreeScreenRenderBuffers;
 begin
   if RenderScratchBuffer <> nil then
@@ -3432,6 +5713,7 @@ begin
   end;
   PresentationDepth := 0;
 end;
+
 procedure ApplyGammaRamp(Brightness, Contrast: Single);
 var
   Index, Value: Integer;
@@ -3440,6 +5722,8 @@ var
   Level, Step: Single;
   Ramp: TD3DGammaRamp;
 begin
+  if Direct3DDevice = nil then
+    Exit;
   if Brightness >= 0 then
   begin
     LowInput := 0;
@@ -3491,89 +5775,396 @@ begin
     Ramp.Green[Index] := Value;
     Ramp.Blue[Index] := Value;
   end;
-  sr_set_gamma(@Ramp.Red[0], @Ramp.Green[0], @Ramp.Blue[0]);
+  Direct3DDevice.SetGammaRamp(0, 0, Ramp);
 end;
+
 function GR_WinMessage(Callback: TWindowMessageCallbackGR): Integer;
-
 var
-  E: TNativeEvent;
-
+  ContinueLoop, Stage: Integer;
+  Msg: TGameMessage;
+  PreviousInputSource: TGameInputSource;
 begin
-
-  if SoundManager <> nil then
-    SoundManager.UpdateFades;
-  if MusicManager <> nil then
-    MusicManager.Update;
-  while sr_poll(E) <> 0 do
-  begin
-    case E.Message of
-      WM_CLOSE:
+  Stage := 0;
+  try
+    if SoundManager <> nil then
+      SoundManager.UpdateFades;
+    Stage := 1;
+    ContinueLoop := 1;
+    while True do
+    begin
+      CheckGalaxyWorkerFailures;
+      if SaveWriter <> nil then
+        SaveWriter.CheckFailure;
+      if SoundManager <> nil then
+        CheckGameSoundFailure(SoundManager.DirectSound);
+      if ExitScreenLoop then
       begin
-        ExitScreenLoop := True;
-        Exit(0)
+        Result := 0;
+        Exit;
       end;
-      WM_ACTIVATEAPP:
+      Stage := 2;
+      if (GameTickCount - LastWindowMessageTick > 5000) and not MessageIdle then
       begin
-        RuntimeActive := E.WParam <> 0;
-        Application.Active := RuntimeActive
+        MessageIdle := True;
+        if Assigned(OnMessageIdle) then
+          OnMessageIdle;
       end;
-      WM_PAINT:
-        if ScreenRenderBuffer <> nil then
-          PresentScreenBuffer;
+      Stage := 3;
+      if LastMouseMessageTick <> 0 then
+        if (GameTickCount - LastMouseMessageTick > 100) and RuntimeActive then
+        begin
+          LastMouseMessageTick := GameTickCount;
+          PostMouseMoveMessage;
+        end;
+      Stage := 4;
+      while PollGameMessage(Msg) do
+      begin
+        Stage := 5;
+        if MessageIdle and Assigned(OnMessageResume) then
+          OnMessageResume;
+        MessageIdle := False;
+        LastWindowMessageTick := GameTickCount;
+        Stage := 6;
+        Stage := 7;
+        if Msg.message <> DebugCommandMessage then
+          if Msg.message = WM_QUIT then
+            ContinueLoop := 0;
+        Stage := 8;
+        if Msg.message = WM_MOUSEMOVE then
+        begin
+          LastMouseMessageTick := 0;
+        end;
+        Stage := 9;
+        PreviousInputSource := CurrentGameInputSource;
+        CurrentGameInputSource := Msg.Source;
+        try
+          MainWindowProc(MainWindowHandle, Msg.Message, Msg.WParam, Msg.LParam);
+          Stage := 10;
+          if Assigned(Callback) and GameWindowFocused then
+            Callback(Msg.message, Msg.wParam, Msg.lParam);
+        finally
+          // A handler may run a nested modal message loop. Restore its caller's
+          // event source instead of leaving behind the last nested event.
+          CurrentGameInputSource := PreviousInputSource;
+        end;
+      end;
+      Stage := 11;
+      if (ContinueLoop = 0) or RuntimeActive then
+        Break;
+      SysUtils.Sleep(1);
     end;
-    if Assigned(Callback) then
-      Callback(E.Message, E.WParam, E.LParam);
+    Result := ContinueLoop;
+  except
+    on E: Exception do
+    begin
+      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+      E.Message :=
+          'Error in procedure GR_WinMessage, label = '
+              + SysUtils.IntToStr(Stage)
+              + ': '
+              + E.Message;
+      raise;
+    end;
   end;
-  if ExitScreenLoop then
-    Result := 0
-  else
-    Result := 1;
-
-  // The continuous loop accounts for its own sleep. An active-window sleep
-  // here falls outside that clock and makes film playback slower than real time.
-  if not RuntimeActive then
-    Sleep(10);
-
 end;
-function MainWindowProc(Window, Message, WParam: Cardinal; LParam: Integer): Integer; stdcall;
+
+function ApplyPendingDisplayChange: Boolean;
+var
+  Mode: TDisplayModeGR;
+  Loop: TMessageLoopGI;
+  HudSize: TPoint;
+  Metrics: TGameDisplayMetrics;
 begin
-  if Message = WM_CLOSE then
-    ExitScreenLoop := True;
-  Result := 0
+  Result := False;
+  if not PendingDisplayChange then
+    Exit;
+  if not UseDesktopDisplayMode then
+  begin
+    PendingDisplayChange := False;
+    Exit;
+  end;
+  if Direct3D = nil then
+    Exit;
+  if Direct3D.GetAdapterDisplayMode(D3DADAPTER_DEFAULT, Mode) <> 0 then
+    Exit;
+  HudSize := MobileHudSizeForLayout(Classes.Point(Mode.Width, Mode.Height));
+  Metrics := GetGameDisplayMetrics;
+  if (Mode.Width = Cardinal(NormalGameLayoutSize.X))
+      and (Mode.Height = Cardinal(NormalGameLayoutSize.Y))
+      and (HudSize.X = MobileHudLayoutSize.X)
+      and (HudSize.Y = MobileHudLayoutSize.Y)
+      and (Metrics.Density = LayoutDensity) then
+  begin
+    // Presentation and native raster dimensions follow the live output in the
+    // renderer, independently of this deferred screen-layout reload.
+    PendingDisplayChange := False;
+    Exit;
+  end;
+  // A stream of surface notifications should fit the existing scene immediately
+  // and rebuild its controls once, after the dimensions have settled.
+  if GameTickCount - LastDisplayChangeTick < 150 then
+    Exit;
+  if ExitScreenLoop
+      or MemorySnapshotActive
+      or (RequestedScreenId <> screenNone)
+      or (MessageLoopStack = nil)
+      or (MessageLoopStack.Count <> 1) then
+    Exit;
+  // These screens already support returning through the settings reload path.
+  // Keep dialogs, edited settings, quests and battle playback intact; their
+  // existing frame remains fitted until a normal game screen resumes.
+  case CurrentScreenId of
+    screenMainMenu, screenPlanet:;
+    screenHangar:
+      if HangarScreen.TakeOffPending or HangarScreen.IsServiceButtonDown then
+        Exit;
+    screenStarMap:
+      if (StarMapScreen.Mode <> smmOrders) or (StarMapScreen.DeferredEndTurnTimer <> nil) then
+        Exit;
+  else
+    Exit;
+  end;
+  if IsTurnCalculationRunning
+      or ((NewGameGenerationThread <> nil) and NewGameGenerationThread.IsRunning)
+      or ((ScriptRequestThread <> nil) and ScriptRequestThread.IsRunning)
+      or HasPendingScriptRequests then
+    Exit;
+  Loop := TMessageLoopGI(MessageLoopStack[0]);
+  if (Loop <> RegisteredScreens[CurrentScreenId]) or (Loop.ChildLoop <> nil) then
+    Exit;
+  PendingDisplayChange := False;
+  // Reuse the normal resolution-change restart: UI and render buffers are
+  // rebuilt, while the current galaxy and the destination screen survive.
+  RequestedScreenId := screenNone;
+  PostLoadScreenId := CurrentScreenId;
+  Loop.RequestClose(1);
+  Result := True;
 end;
+
+function MainWindowProc(Window, Message, WParam: Cardinal; LParam: Integer): Integer; stdcall;
+var
+  Origin: TPoint;
+  Bounds: TRect;
+  Index: Integer;
+begin
+  if (Message = WM_GAME_CANCEL_INPUT) or (Message = WM_GAME_DISPLAY_CHANGED) then
+  begin
+    if Message = WM_GAME_DISPLAY_CHANGED then
+      CancelGamePointerInput;
+    // Focus and display changes cancel every active or suspended UI loop,
+    // even though GR_WinMessage stops forwarding ordinary input without focus.
+    if MessageLoopStack <> nil then
+      for Index := 0 to MessageLoopStack.Count - 1 do
+        TMessageLoopGI(MessageLoopStack[Index]).CancelPointerInput;
+    if (Message = WM_GAME_DISPLAY_CHANGED) and GameWindowUsesNativeRaster then
+    begin
+      PendingDisplayChange := True;
+      LastDisplayChangeTick := GameTickCount;
+      FullFrameRedrawRequested := True;
+      if MessageLoopStack <> nil then
+        for Index := 0 to MessageLoopStack.Count - 1 do
+          TMessageLoopGI(MessageLoopStack[Index]).UpdateRects.AddRect(GameScreenRect);
+    end;
+  end
+  else if Message = WM_GAME_RENDER_RESET then
+  begin
+    if Direct3DDevice <> nil then
+      Direct3DDevice.TestCooperativeLevel;
+    FullFrameRedrawRequested := True;
+    // Include modal loops and paused parents: their shared screen target was
+    // lost too. Queue directly even when a continuous loop disables invalidation.
+    if MessageLoopStack <> nil then
+      for Index := 0 to MessageLoopStack.Count - 1 do
+        TMessageLoopGI(MessageLoopStack[Index]).UpdateRects.AddRect(GameScreenRect);
+  end
+  else if Message = WM_ACTIVATEAPP then
+  begin
+    if WParam <> 0 then
+    begin
+      if Direct3DDevice <> nil then
+        if Direct3DDevice.TestCooperativeLevel = D3DERR_DEVICENOTRESET then
+          GR_DXReset;
+      if not Direct3DPresentParameters.Windowed then
+      begin
+        Origin := Classes.Point(GameScreenRect.Left, GameScreenRect.Top);
+
+        Bounds :=
+            Classes.Rect(
+                Origin.X + GameScreenRect.Left,
+                Origin.Y + GameScreenRect.Top,
+                Origin.X + GameScreenRect.Right,
+                Origin.Y + GameScreenRect.Bottom
+            );
+        SDL_SetWindowGrab(GameSDLWindow, 1);
+      end;
+      if Assigned(OnGameActivated) then
+        OnGameActivated(nil);
+    end
+    else
+    begin
+      if Direct3DDevice <> nil then
+        Direct3DDevice.TestCooperativeLevel;
+      if not Direct3DPresentParameters.Windowed then
+        SDL_SetWindowGrab(GameSDLWindow, 0);
+      if Assigned(OnGameDeactivated) then
+        OnGameDeactivated(nil);
+    end;
+    if WParam <> 0 then
+    begin
+      if CurrentScreenId = screenPlanetNO then
+        TMessageLoopGI(RegisteredScreens[CurrentScreenId]).UpdateActionCursor(False)
+      else if (CurrentScreenId = screenShip) or (CurrentScreenId = screenStarMap) then
+        TMessageLoopGI(RegisteredScreens[CurrentScreenId]).UpdateActionCursor(True);
+      if (TMessageLoopGI(RegisteredScreens[screenShip]) <> nil)
+          and (TMessageLoopGI(RegisteredScreens[screenShip]).GetActionParentLoop <> nil)
+          and (TMessageLoopGI(RegisteredScreens[screenShip]).GetActionParentLoop
+              = TMessageLoopGI(RegisteredScreens[CurrentScreenId])) then
+        TMessageLoopGI(RegisteredScreens[screenShip]).UpdateActionCursor(True);
+    end;
+  end
+  else if Message = WM_DESTROY then
+  begin
+    if ExitScreenLoop then
+      PostGameMessage(WM_QUIT, 0, 0);
+  end
+  else if Message = WM_ERASEBKGND then
+  begin
+    Result := 1;
+    Exit;
+  end
+  else if Message = WM_PAINT then
+  begin
+    if Direct3DPresentParameters.Windowed then
+      PresentScreenBuffer;
+  end
+  else if Message = WM_MOUSEMOVE then
+  begin
+  end
+  else if Message = WM_LBUTTONDOWN then
+  begin
+  end
+  else if Message = WM_LBUTTONUP then
+  begin
+  end
+  else if Message = WM_RBUTTONDOWN then
+  begin
+  end
+  else if Message = WM_RBUTTONUP then
+  begin
+  end
+  else if (Message = WM_SYSKEYDOWN) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN]) then
+  begin
+    Result := 1;
+    Exit;
+  end
+  else if (Message = WM_SYSKEYUP) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN]) then
+  begin
+    Result := 1;
+    Exit;
+  end
+  else if Message = WM_KEYDOWN then
+  begin
+    if (WParam = Ord('R'))
+        and IsVirtualKeyDown(VK_CONTROL)
+        and IsVirtualKeyDown(VK_SHIFT)
+        and IsVirtualKeyDown(VK_MENU)
+        and (CurrentScreenId <> screenNone) then
+    begin
+    end;
+  end
+  else if Message = WM_CLOSE then
+    ExitScreenLoop := True
+  else if Message = WM_CANCELMODE then
+    RuntimeActive := False
+  else if Message = WM_SETCURSOR then
+  begin
+    Result := 1;
+    Exit;
+  end
+  else if Message = WM_TIMER then
+  begin
+    CheckRuntimeWatchdog;
+    Result := 1;
+    Exit;
+  end;
+  Result := 0;
+end;
+
 function BeginFramePresentation: Boolean;
 begin
   Inc(PresentationDepth);
   Result := True;
 end;
+
 procedure EndFramePresentation;
+var
+  Tick: Cardinal;
 begin
   if PresentationDepth > 0 then
   begin
     Dec(PresentationDepth);
-
     if PresentationDepth = 0 then
-      // SDL owns presentation pacing. The old millisecond gate discarded
-      // frames and competed with VSync's refresh boundary.
-      PresentScreenBuffer;
-
+    begin
+      // SDL vsync and browser refresh callbacks already pace presentation.
+      // The legacy millisecond gate would discard refreshes: at 120 Hz its
+      // strict comparison requires at least 9 ms instead of 8.33 ms.
+      if PresentWithoutLimit or VSyncEnabled or GameWindowUsesCanvas then
+        PresentScreenBuffer
+      else
+      begin
+        Tick := GameTickCount;
+        if 1000 div PresentationFrameRate < Tick - LastPresentationTick then
+        begin
+          LastPresentationTick := Tick;
+          PresentScreenBuffer;
+        end;
+      end;
+    end;
   end;
 end;
+
 procedure PresentScreenBuffer;
 begin
-  if ScreenRenderBuffer = nil then
-    Exit;
-
   if HardwareRenderingEnabled then
   begin
-    if sr_gpu_present = 0 then
-      raise Exception.Create('SDL GPU presentation: ' + string(sr_error));
-    Exit;
+    Direct3DDevice.EndScene;
+    Direct3DDevice.Present(nil, nil, 0, nil);
+    Direct3DDevice.BeginScene;
+  end
+  else if OffscreenTexture = nil then
+  begin
+    Direct3DDevice.BeginScene;
+    if not AlternateViewportEnabled then
+      DrawTexture(ScreenRenderBuffer.GetTexture, 0, 0, 255, RgbWhite, nil, False, False)
+    else if ScaleViewportToWindow then
+      DrawTextureSized(
+          ScreenRenderBuffer.GetTexture,
+          0,
+          0,
+          PresentationWidth,
+          PresentationHeight,
+          255,
+          RgbWhite,
+          nil,
+          False,
+          False
+      )
+    else
+      DrawTexture(
+          ScreenRenderBuffer.GetTexture,
+          ViewportOffset.X,
+          ViewportOffset.Y,
+          255,
+          RgbWhite,
+          nil,
+          False,
+          False
+      );
+    Direct3DDevice.EndScene;
+    Direct3DDevice.Present(nil, nil, 0, nil);
   end;
-
-  if sr_present(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes) = 0 then
-    raise Exception.Create('SDL presentation: ' + string(sr_error));
 end;
+
 procedure DrawOffscreenTexture;
 var
   X, Y: Integer;
@@ -3583,9 +6174,9 @@ begin
   if OffscreenTexture <> nil then
   begin
     if not OffscreenFrameUpdated then
-      if timeGetTime - OffscreenLastPresentationTick < 100 then
+      if GameTickCount - OffscreenLastPresentationTick < 100 then
         Exit;
-    OffscreenLastPresentationTick := timeGetTime;
+    OffscreenLastPresentationTick := GameTickCount;
     OffscreenTexture.GetLevelDesc(0, Desc);
     if AlternateViewportEnabled then
     begin
@@ -3616,7 +6207,7 @@ begin
           Width,
           Height,
           255,
-          $FFFFFF,
+          RgbWhite,
           @GameScreenRect,
           False,
           False
@@ -3631,7 +6222,7 @@ begin
           Width,
           Height,
           255,
-          $FFFFFF,
+          RgbWhite,
           @GameScreenRect,
           False,
           False
@@ -3641,9 +6232,10 @@ begin
     end;
   end;
 end;
+
 procedure CaptureScreenBackground(ApplyEffects: Boolean; UnusedOption: Byte);
 begin
-  AuxRenderBuffer.LoadFromScreen(UnusedOption);
+  AuxRenderBuffer.LoadFromScreen(UnusedOption, True);
   if ApplyEffects then
   begin
     if BackgroundShade then
@@ -3652,6 +6244,7 @@ begin
       AuxRenderBuffer.ConvertToGrayscale;
   end;
 end;
+
 procedure CaptureSavePreview;
 begin
   FreeSavePreviewBuffers;
@@ -3670,6 +6263,7 @@ begin
   SecondarySavePreviewGraph := TGraphBufGR.Create(False);
   SecondarySavePreviewGraph.AllocateNativePitch(300, 225, 900);
 end;
+
 procedure FreeSavePreviewBuffers;
 begin
   if SavePreviewGraph <> nil then
@@ -3683,6 +6277,7 @@ begin
     SecondarySavePreviewGraph := nil;
   end;
 end;
+
 procedure CopyBgraToRgb24(
     Dest: Pointer;
     DestPitch: Integer;
@@ -3698,9 +6293,12 @@ begin
     X := 0;
     while X < Width do
     begin
-      PByte(AddPointerOffset(Dest, X * 3))^ := PByte(AddPointerOffset(Source, X * 4 + 2))^;
-      PByte(AddPointerOffset(Dest, X * 3 + 1))^ := PByte(AddPointerOffset(Source, X * 4 + 1))^;
-      PByte(AddPointerOffset(Dest, X * 3 + 2))^ := PByte(AddPointerOffset(Source, X * 4))^;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).R :=
+          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).R)))^;
+      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).G)))^ :=
+          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).G)))^;
+      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).B)))^ :=
+          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).B;
       Inc(X);
     end;
     Dest := AddPointerOffset(Dest, DestPitch);
@@ -3708,9 +6306,10 @@ begin
     Inc(Y);
   end;
 end;
+
 procedure CaptureRecordingFrame;
 begin
-  if timeGetTime - LastRecordingFrameTick >= Cardinal(RecordingFrameInterval) then
+  if GameTickCount - LastRecordingFrameTick >= Cardinal(RecordingFrameInterval) then
   begin
     Ex_OKGR_Copy_XY_XY_WORD(
         RecordingFrameBuffers[RecordingFrameCount],
@@ -3727,14 +6326,67 @@ begin
     Inc(RecordingFrameCount);
     if RecordingFrameCount >= RecordingFrameBuffers.Count then
       FlushRecordingFrames;
-    LastRecordingFrameTick := timeGetTime;
+    LastRecordingFrameTick := GameTickCount;
   end;
 end;
+
 procedure FlushRecordingFrames;
+var
+
+  FirstFrameNumber, Index: Integer;
+  Directory: AnsiString;
+  Frame: TGraphBufGR;
+  FileName: AnsiString;
+  FindData: TSearchRec;
 begin
-  if RecordingFrameCount <> 0 then
-    raise Exception.Create('Recording is disabled in the FPC port')
+  if RecordingFrameCount >= 1 then
+  begin
+    Directory := GetCurrentDir;
+    SetCurrentDir(NativeGamePath('Film'));
+    FirstFrameNumber := -1;
+    if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
+    begin
+      repeat
+        if (FindData.Attr and faDirectory) <> faDirectory then
+          FirstFrameNumber :=
+              Max(FirstFrameNumber, ExtractDigitsToIntW(WideString(AnsiString(FindData.Name))));
+      until SysUtils.FindNext(FindData) <> 0;
+      SysUtils.FindClose(FindData);
+    end;
+    SetCurrentDir(NativeGamePath(Directory));
+    Inc(FirstFrameNumber);
+    Frame := TGraphBufGR.Create(False);
+    Frame.AllocateNativePitch(GameScreenWidth, GameScreenHeight, GameScreenWidth * 3);
+    for Index := 0 to RecordingFrameCount - 1 do
+    begin
+      Ex_OKGF_Convert565toBGR(
+          RecordingFrameBuffers[Index],
+          GameScreenWidth * 2,
+          Frame.GetPixels,
+          Frame.PitchBytes,
+          Frame.Width,
+          Frame.Height
+      );
+      FileName :=
+          AnsiString('Film\' + IntToFixedWidthWideString(FirstFrameNumber + Index, 6) + '.bmp');
+      WriteBmpFile(
+          FileName,
+          Frame.GetPixels,
+          Frame.PitchBytes,
+          24,
+          $FF,
+          $FF00,
+          $FF0000,
+          0,
+          Frame.Width,
+          Frame.Height
+      );
+    end;
+    Frame.Free;
+    RecordingFrameCount := 0;
+  end;
 end;
+
 procedure DrawTransparentBuffer16(
     Dest: Pointer;
     Pitch, X, Y: Integer;
@@ -3754,12 +6406,13 @@ begin
   else
     Ex_OKGR_TransBuf_DrawClip_WORD(Dest, Pitch, X, Y, Source, InclusiveClip);
 end;
+
 procedure CopyPalettedBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
     Source, Palette: Pointer;
     SourcePitch, Width, Height: Integer;
-    constref Clip: TRect
+    Clip: TRect
 );
 var
   SourceX, SourceY: Integer;
@@ -3801,6 +6454,7 @@ begin
       Height
   );
 end;
+
 procedure CopyGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -3863,6 +6517,7 @@ begin
         Height
     );
 end;
+
 procedure CopyBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -3910,6 +6565,7 @@ begin
       Height
   );
 end;
+
 procedure CopyTransparentGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -3959,6 +6615,7 @@ begin
       TransparentColor
   );
 end;
+
 procedure DrawAlphaGraphBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -4006,12 +6663,13 @@ begin
       Height
   );
 end;
+
 procedure DrawAlphaBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
     Source: Pointer;
     SourcePitch, Width, Height: Integer;
-    constref Clip: TRect
+    Clip: TRect
 );
 var
   SourceX, SourceY: Integer;
@@ -4052,6 +6710,7 @@ begin
       Height
   );
 end;
+
 procedure DrawPaletteAlphaBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -4063,8 +6722,8 @@ var
 begin
   if (X >= Clip.Right)
       or (Y >= Clip.Bottom)
-      or (X + 0 + Source.Width - 1 < Clip.Left)
-      or (Y + 0 + Source.Height - 1 < Clip.Top) then
+      or (X + Source.Width - 1 < Clip.Left)
+      or (Y + Source.Height - 1 < Clip.Top) then
     Exit;
   SourceX := 0;
   SourceY := 0;
@@ -4100,6 +6759,7 @@ begin
       Source.Palette
   );
 end;
+
 procedure ExpandPaletteToBgra(
     Dest: Pointer;
     DestPitch: Integer;
@@ -4116,16 +6776,21 @@ begin
   begin
     for X := 0 to Width - 1 do
     begin
-      Offset := PByte(PtrUInt(Source) + X)^ shl 2;
-      PByte(PtrUInt(Dest) + X * 4)^ := PByte(PtrUInt(Palette) + Offset + 2)^;
-      PByte(PtrUInt(Dest) + X * 4 + 1)^ := PByte(PtrUInt(Palette) + Offset + 1)^;
-      PByte(PtrUInt(Dest) + X * 4 + 2)^ := PByte(PtrUInt(Palette) + Offset)^;
-      PByte(PtrUInt(Dest) + X * 4 + 3)^ := PByte(PtrUInt(Palette) + Offset + 3)^;
+      Offset := PByte(PAnsiChar(Source) + X)^ shl 2;
+      PColorBGRA(PAnsiChar(Dest) + X * SizeOf(TColorBGRA)).B :=
+          PByte(@PColorRGBA(PAnsiChar(Palette) + Offset).B)^;
+      PByte(@PColorBGRA(PAnsiChar(Dest) + X * SizeOf(TColorBGRA)).G)^ :=
+          PByte(@PColorRGBA(PAnsiChar(Palette) + Offset).G)^;
+      PByte(@PColorBGRA(PAnsiChar(Dest) + X * SizeOf(TColorBGRA)).R)^ :=
+          PColorRGBA(PAnsiChar(Palette) + Offset).R;
+      PByte(@PColorBGRA(PAnsiChar(Dest) + X * SizeOf(TColorBGRA)).A)^ :=
+          PByte(@PColorRGBA(PAnsiChar(Palette) + Offset).A)^;
     end;
     Source := AddPointerOffset(Source, SourcePitch);
     Dest := AddPointerOffset(Dest, DestPitch);
   end;
 end;
+
 procedure BlendPaletteBuffer16Clipped(
     Dest: Pointer;
     DestPitch, X, Y: Integer;
@@ -4133,12 +6798,24 @@ procedure BlendPaletteBuffer16Clipped(
     Clip: TRect
 );
 var
-  SourcePixels: Pointer;
+  SourcePixels: PByte;
+  DestPixel: PByte;
   Width: Integer;
   Palette, MulTable: Pointer;
-  ColumnCount, SourceSkip, DestSkip, Height: Integer;
+  Column, Row, SourceSkip, DestSkip, Height: Integer;
   SourceX, SourceY: Integer;
-  Color, Alpha, OldPixel, NewPixel, Inverse, RedShift, GreenMask: Cardinal;
+  RedShift, GreenShift, GreenMask: Integer;
+  Color, Pixel, Blended: Cardinal;
+  Foreground, Background: PByte;
+
+  function ScaleRgb(Red, Green, Blue: Byte; TableRow: PByte): Cardinal;
+  begin
+    Result :=
+        ((Cardinal(TableRow[Red]) and $F8) shl RedShift)
+            or ((Cardinal(TableRow[Green]) and GreenMask) shl GreenShift)
+            or (Cardinal(TableRow[Blue]) shr 3);
+  end;
+
 begin
   if (X >= Clip.Right)
       or (Y >= Clip.Bottom)
@@ -4165,66 +6842,57 @@ begin
     Dec(Height, SourceY);
     Y := Clip.Top;
   end;
-  SourcePixels := Pointer(PAnsiChar(Source.Pixels) + SourceY * Source.PitchBytes + SourceX);
+  SourcePixels := PByte(PAnsiChar(Source.Pixels) + SourceY * Source.PitchBytes + SourceX);
   Dest := Pointer(PAnsiChar(Dest) + Y * DestPitch + X * 2);
   SourceSkip := Source.PitchBytes - Width;
   DestSkip := DestPitch - Width * 2;
   MulTable := Ex_OKGF_MulTable256x256;
   Palette := Source.Palette;
-  ColumnCount := Width;
-  // Preserve the native table lookup, channel truncation and packed addition.
   if CurrentPixelFormat.TotalChannelBits = 16 then
   begin
     RedShift := 8;
-    GreenMask := $7E0
+    GreenShift := 3;
+    GreenMask := $FC;
   end
   else
   begin
     RedShift := 7;
-    GreenMask := $3E0
+    GreenShift := 2;
+    GreenMask := $F8;
   end;
-  while Height > 0 do
+  DestPixel := Dest;
+  for Row := 1 to Height do
   begin
-    for ColumnCount := 0 to Width - 1 do
+    for Column := 1 to Width do
     begin
-      Color := PCardinal(Palette)[PByte(SourcePixels)^];
-      Alpha := Color shr 24;
-      if Alpha <> 0 then
+      Color := ReadDWordEC(PAnsiChar(Palette) + Integer(SourcePixels^) * SizeOf(Cardinal));
+      if Color shr 24 <> 0 then
       begin
-        Inverse := (255 - Alpha) * 256;
-        Alpha := Alpha * 256;
-        OldPixel := PWord(Dest)^;
-        NewPixel := (Cardinal(PByte(MulTable)[Alpha + (Color and 255)]) shr 3) shl (RedShift + 3);
-        NewPixel :=
-            NewPixel
-                or ((Cardinal(PByte(MulTable)[Alpha + ((Color shr 8) and 255)]) shl (RedShift - 5))
-                    and GreenMask);
-        NewPixel := NewPixel or (PByte(MulTable)[Alpha + ((Color shr 16) and 255)] shr 3);
-        NewPixel :=
-            NewPixel
-                + ((Cardinal(PByte(MulTable)[Inverse + ((OldPixel shr RedShift) and $F8)]) shr 3)
-                    shl (RedShift + 3));
-        NewPixel :=
-            NewPixel
-                + ((Cardinal(
-                            PByte(MulTable)[
-                                Inverse
-                                    + ((OldPixel shr (RedShift - 5))
-                                        and (GreenMask shr (RedShift - 5)))
-                            ])
-                        shl (RedShift - 5))
-                    and GreenMask);
-        NewPixel := NewPixel + (PByte(MulTable)[Inverse + ((OldPixel shl 3) and $F8)] shr 3);
-        PWord(Dest)^ := Word(NewPixel);
+        Foreground := PByte(PAnsiChar(MulTable) + Integer(Color shr 24) * 256);
+        Background := PByte(PAnsiChar(MulTable) + (255 - Integer(Color shr 24)) * 256);
+        Pixel := ReadWordEC(DestPixel);
+        // Quantize each contribution before adding, as in the RGB565/RGB555 loops.
+        // Combining full-precision channels first changes the low color bits.
+        Blended := ScaleRgb(Byte(Color), Byte(Color shr 8), Byte(Color shr 16), Foreground);
+        Inc(
+            Blended,
+            ScaleRgb(
+                (Pixel shr RedShift) and $F8,
+                (Pixel shr GreenShift) and GreenMask,
+                (Pixel shl 3) and $F8,
+                Background
+            )
+        );
+        WriteWordEC(DestPixel, Word(Blended));
       end;
-      Inc(PByte(SourcePixels));
-      Inc(PByte(Dest), 2);
+      Inc(SourcePixels);
+      Inc(DestPixel, SizeOf(Word));
     end;
-    Inc(PByte(SourcePixels), SourceSkip);
-    Inc(PByte(Dest), DestSkip);
-    Dec(Height);
+    Inc(SourcePixels, SourceSkip);
+    Inc(DestPixel, DestSkip);
   end;
 end;
+
 procedure DrawGradientLine16Clipped(
     Pixels: Pointer;
     Pitch, X1, Y1: Integer;
@@ -4246,14 +6914,17 @@ begin
         Color2
     );
 end;
+
 function IsVirtualKeyDown(Key: Integer): Boolean;
 begin
-  Result := GetAsyncKeyState(Key) and $8000 = $8000;
+  Result := GameKeyState(Key) and $8000 = $8000;
 end;
+
 function LookupLocalizedTextByKey(const Path: WideString): WideString;
 begin
   Result := LanguageDataConfig.GetParamByPathOrMarker(Path);
 end;
+
 function LookupLocalizedTextOrEmpty(const Path: WideString): WideString;
 begin
   if LanguageDataConfig.CountParamsByPath(Path) > 0 then
@@ -4261,22 +6932,27 @@ begin
   else
     Result := '';
 end;
+
 function GiResourceVariant: Integer;
 begin
   Result := 2;
 end;
+
 function GiResourceSuffix: WideString;
 begin
   Result := '2';
 end;
+
 function GiScalePixels(Value: Integer): Integer;
 begin
   Result := Value;
 end;
+
 function GiScalePixelsEx(Value, AlternateValue: Integer): Integer;
 begin
   Result := Value;
 end;
+
 procedure AppendLogLineThreadSafe(const Text: AnsiString);
 begin
   if SessionLogLock = nil then
@@ -4285,9 +6961,9 @@ begin
   Append(SessionLog);
   Writeln(SessionLog, Text);
   CloseFile(SessionLog);
-
   SessionLogLock.Leave;
 end;
+
 procedure AppendLogTextThreadSafe(const Text: AnsiString);
 begin
   if SessionLogLock = nil then
@@ -4296,9 +6972,9 @@ begin
   Append(SessionLog);
   Write(SessionLog, Text);
   CloseFile(SessionLog);
-
   SessionLogLock.Leave;
 end;
+
 procedure AppendDebugLogLine(const Text: AnsiString);
 var
   Log: TextFile;
@@ -4307,7 +6983,7 @@ begin
     SessionLogLock := TCriticalSection.Create;
   SessionLogLock.Enter;
   AssignFile(Log, '#####add.log');
-  if not RTLFileSystem.FileExists('#####add.log') then
+  if not FileExists('#####add.log') then
     Rewrite(Log)
   else
     Append(Log);
@@ -4315,11 +6991,12 @@ begin
   CloseFile(Log);
   SessionLogLock.Leave;
 end;
+
 procedure AppendOptionalDebugLogLine(const Text: AnsiString);
 var
   Log: TextFile;
 begin
-  if RTLFileSystem.FileExists('#####add.log') then
+  if FileExists('#####add.log') then
   begin
     if SessionLogLock = nil then
       SessionLogLock := TCriticalSection.Create;
@@ -4331,6 +7008,7 @@ begin
     SessionLogLock.Leave;
   end;
 end;
+
 procedure WriteTextFileThreadSafe(FileName, Text: AnsiString);
 var
   F: TextFile;
@@ -4338,12 +7016,13 @@ begin
   if SessionLogLock = nil then
     SessionLogLock := TCriticalSection.Create;
   SessionLogLock.Enter;
-  AssignFile(F, FileName);
+  AssignFile(F, NativeGamePath(FileName));
   Rewrite(F);
   Writeln(F, Text);
   CloseFile(F);
   SessionLogLock.Leave;
 end;
+
 function IsInstallFeatureEnabled(const Path: WideString): Boolean;
 begin
   if InstallConfig.CountParamsByPath(Path) < 1 then
@@ -4351,6 +7030,7 @@ begin
   else
     Result := ParseEnabledNameGI(InstallConfig.GetParamByPathOrMarker(Path));
 end;
+
 function AddCursorUnit: TCursorUnit;
 var
   Cursor: TCursorUnit;
@@ -4365,6 +7045,7 @@ begin
     FirstRegisteredCursor := Cursor;
   Result := Cursor;
 end;
+
 procedure RemoveCursorUnit(Cursor: TCursorUnit);
 begin
   if Cursor.Prev <> nil then
@@ -4377,6 +7058,7 @@ begin
     FirstRegisteredCursor := Cursor.Next;
   Cursor.Free;
 end;
+
 function FindCursorByName(const Name: WideString): TCursorUnit;
 var
   Cursor: TCursorUnit;
@@ -4393,34 +7075,61 @@ begin
   end;
   raise Exception.Create('GR_CursorFind');
 end;
+
 procedure PostMouseMoveMessage;
 var
   Point: TPoint;
 begin
-  GetCursorPos(Point);
-  ScreenToClient(MainWindowHandle, Point);
-  PostMessage(MainWindowHandle, WM_MOUSEMOVE, 0, Word(Point.X) or (Word(Point.Y) shl 16));
+  GetGameMouse(Point);
+
+  PostGameMessage(WM_MOUSEMOVE, 0, Word(Point.X) or (Word(Point.Y) shl 16));
 end;
+
 function MeasureCpuClockMHz: Double;
 begin
-  Result := 0
+  Result := GameCpuClockMHz;
 end;
-function ReadRegistryText(Root: Cardinal; KeyPath, ValueName, DefaultValue: WideString): WideString;
+
+{$IFDEF MSWINDOWS}
+function ReadRegistryText(Root: PtrUInt; KeyPath, ValueName, DefaultValue: WideString): WideString;
+var
+  Key: HKey;
+  ValueType: Cardinal;
+  Data: Pointer;
+  ByteCount: Cardinal;
 begin
-  Result := DefaultValue
+  if RegOpenKeyExA(Root, PAnsiChar(AnsiString(KeyPath)), 0, KEY_READ, Key) <> ERROR_SUCCESS then
+  begin
+    Result := DefaultValue;
+    Exit;
+  end;
+
+  ByteCount := 2048;
+  Data := AllocEC(ByteCount);
+  if RegQueryValueExA(Key, PAnsiChar(AnsiString(ValueName)), nil, @ValueType, Data, @ByteCount)
+      <> ERROR_SUCCESS then
+  begin
+    Result := DefaultValue;
+    RegCloseKey(Key);
+    FreeEC(Data);
+    Exit;
+  end;
+
+  if ValueType <> REG_SZ then
+    Result := DefaultValue
+  else
+    Result := PAnsiChar(Data);
+  FreeEC(Data);
+  RegCloseKey(Key);
 end;
-function ReadRegistryInteger(
-    Root: Cardinal;
-    KeyPath, ValueName: WideString;
-    DefaultValue: Integer
-): Integer;
-begin
-  Result := DefaultValue
-end;
+
+{$ENDIF}
+
 procedure RaiseWideMessage(const Message: WideString);
 begin
   raise Exception.Create(Message);
 end;
+
 function Direct3DErrorText(Code: Integer): AnsiString;
 begin
   Result := '';
@@ -4453,6 +7162,7 @@ begin
   end;
   Result := Result + ' (' + SysUtils.IntToStr(Code) + ')';
 end;
+
 function FormatUnixDateTime(Value: Cardinal): WideString;
 var
   DateValue: TDateTime;
@@ -4460,12 +7170,13 @@ begin
   DateValue := UnixToDateTime(Value);
   Result := DateTimeToStr(DateValue);
 end;
+
 procedure LoadInformationColorTags;
 var
   Block: TBlockParEC;
 begin
-  InfoNameColorTag := '<color=57,239,255>';
-  InfoHullSeriesColorTag := '<color=82,166,255>';
+  InfoNameColorTag := DefaultInfoNameColorTag;
+  InfoHullSeriesColorTag := DefaultInfoHullSeriesColorTag;
   if GameDataConfig.CountBlocks('StyleColor') > 0 then
   begin
     Block := GameDataConfig.GetBlock('StyleColor');
@@ -4475,6 +7186,7 @@ begin
       InfoHullSeriesColorTag := '<color=' + Block.GetParamByPath('InfoHullSeriesColor') + '>';
   end;
 end;
+
 function GetStyleColorGI(
     StyleName: WideString;
     DefaultRed, DefaultGreen, DefaultBlue: Integer
@@ -4500,6 +7212,7 @@ begin
   end;
   Result := CurrentPixelFormat.PackRgb(DefaultRed, DefaultGreen, DefaultBlue);
 end;
+
 function GetStyleColorTagGI(
     StyleName: WideString;
     DefaultRed, DefaultGreen, DefaultBlue: Integer
@@ -4526,25 +7239,68 @@ begin
           + IntToWideString(DefaultBlue)
           + '>';
 end;
+
 function GetGameUserDirectory: WideString;
 begin
-  Result := IncludeTrailingPathDelimiter(UTF8Encode(OverrideGameUserDirectory));
+  if CachedGameUserDirectory <> '' then
+    Exit(CachedGameUserDirectory);
+  if OverrideGameUserDirectory <> '' then
+    CachedGameUserDirectory :=
+        IncludeTrailingPathDelimiter(NativeGamePath(OverrideGameUserDirectory))
+  else
+    CachedGameUserDirectory := GameUserDirectory;
+  ForceDirectories(NativeGamePath(CachedGameUserDirectory));
+  Result := CachedGameUserDirectory;
 end;
+
+function ComputeMachineFingerprintCRC: Cardinal;
+var
+  Buffer: TBufEC;
+  ProcessorName: AnsiString;
+  Serial, Flags: Cardinal;
+begin
+{$IFDEF MSWINDOWS}
+  Serial := 0;
+  GetVolumeInformationA('c:\', nil, 0, @Serial, Flags, Flags, nil, 0);
+  ProcessorName :=
+      AnsiString(
+          ReadRegistryText(
+              HKEY_LOCAL_MACHINE,
+              'HARDWARE\DESCRIPTION\System\CentralProcessor\0',
+              'ProcessorNameString',
+              ''
+          )
+      );
+{$ELSE}
+  // The fingerprint is an integrity seed, not a hardware identifier on Unix.
+  Serial := 0;
+  ProcessorName := {$I %FPCTARGETCPU%} +':' + GetEnvironmentVariable('HOSTNAME');
+{$ENDIF}
+  Buffer := TBufEC.Create;
+  Buffer.AddInt32(Serial);
+  if Length(ProcessorName) > 0 then
+    Buffer.AddBytes(Pointer(ProcessorName), Length(ProcessorName));
+  Result := Buffer.ComputeCrc32;
+  Buffer.Clear;
+  Buffer.Free;
+end;
+
 function GetClipboardWideText: WideString;
 begin
-  Result := UTF8Decode(AnsiString(sr_clipboard_get));
+  Result := GetGameClipboard;
 end;
+
 procedure SetClipboardWideText(Text: WideString);
 begin
-  sr_clipboard_set(PAnsiChar(UTF8Encode(Text)));
+  SetGameClipboard(Text);
 end;
+
 procedure LogPresentationParameters;
 var
   CurrentValue, PreviousValue: Cardinal;
   Text: WideString;
-  procedure LogPresentationField(
-      Name: WideString
-  ); // @addr $4D548C @ida "void __usercall $name(unsigned __int16 *Name@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4D5638,0x4D5654,0x4D5670,0x4D568C,0x4D56A8,0x4D56C4,0x4D56E0,0x4D56FC,0x4D5732,0x4D5768,0x4D5784,0x4D57A0,0x4D57BC,0x4D57D8"
+
+  procedure LogPresentationField(Name: WideString);
   begin
     if CurrentValue = PreviousValue then
       Text := Name + ' = ' + SysUtils.IntToStr(Int64(CurrentValue))
@@ -4604,13 +7360,5 @@ begin
   LogPresentationField('PresentationInterval');
   AppendLogLineThreadSafe('');
 end;
-function GlobalMemoryStatusEx(var Status: TMemoryStatusEx): LongBool; stdcall;
-begin
-  FillChar(Status, SizeOf(Status), 0);
-  Status.Length := SizeOf(Status);
-  sr_memory(Status.TotalPhys, Status.AvailPhys);
-  Status.TotalVirtual := Status.TotalPhys;
-  Status.AvailVirtual := Status.AvailPhys;
-  Result := True
-end;
+
 end.

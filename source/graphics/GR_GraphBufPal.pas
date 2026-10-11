@@ -1,17 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit GR_GraphBufPal;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_OKGF,
   EC_Buf,
   EC_Struct,
   GR_GraphBuf;
+
 type
+
   TGraphBufPalGR = class;
+
   TGraphBufPalGR = class(TObjectEx)
     Width: Integer;
     Height: Integer;
@@ -37,13 +39,14 @@ type
     procedure ClearPixels;
     procedure FillPixels(Value: Byte);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   GR_Main,
   SysUtils,
-  Windows;
+  Types;
 
 constructor TGraphBufPalGR.Create;
 begin
@@ -112,7 +115,7 @@ begin
     PaletteCount := Count;
     Palette := ReAllocREC(Palette, PaletteCount * SizeOf(Palette^));
   end;
-  CopyMemory(Palette, Source, Count * SizeOf(Source^));
+  System.Move(Pointer(Source)^, Pointer(Palette)^, Count * SizeOf(Source^));
 end;
 
 function TGraphBufPalGR.GetPixelIndex(X, Y: Integer): Byte;
@@ -152,7 +155,7 @@ end;
 
 procedure TGraphBufPalGR.FillPixels(Value: Byte);
 begin
-  FillMemory(Pixels, PitchBytes * Height, Value);
+  System.FillChar(Pointer(Pixels)^, PitchBytes * Height, Value);
 end;
 
 end.

@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit fCount2;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   Types;
+
 type
+
   TfCount2 = class;
+
   TfCount2 = class(TMessageLoopGI)
     ImagePath: WideString;
     PreviewImagePath: WideString;
@@ -22,11 +24,11 @@ type
     Available: Integer;
     TotalLimit: Integer;
     Dragging: Boolean;
-    GapF9: array[0..2] of Byte;
     RepeatTimer: PCallbackTimerGI;
     FontName: WideString;
     procedure OnOpen; override;
     procedure OnClose; override;
+    procedure CancelPointerInput; override;
     procedure ProcessCallbackTimers; override;
     procedure ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer); override;
     procedure InitializeLayout; override;
@@ -46,6 +48,7 @@ type
     procedure SliderMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
+
 function ShowCountDialogWithFont(
     Parent: TMessageLoopGI;
     const ImagePath: WideString;
@@ -60,6 +63,7 @@ function ShowCountDialogWithFont(
     PreviewImagePath: WideString;
     FontName: WideString
 ): Cardinal;
+
 function ShowCountDialog(
     Parent: TMessageLoopGI;
     const ImagePath: WideString;
@@ -72,14 +76,15 @@ function ShowCountDialog(
     TotalLimit: Integer;
     var Value: Integer
 ): Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_GI,
   Classes,
   SysUtils,
   Math,
-  Windows,
+  GameInput,
   GlobalsV,
   GR_Main,
   GR_GraphBuf,
@@ -114,10 +119,17 @@ begin
           )
       );
   end;
+  FitMobileControl(
+      GetByName('Ok').Parent,
+      Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12),
+      0,
+      1.15 // Slightly larger than ordinary dialogs, in dp per source pixel.
+  );
 end;
 
 procedure TfCount2.OnOpen;
 begin
+  (GetByName('BGBuf') as TGraphBufGI).GraphBuf.LoadFromScreen(0, True);
   Dragging := False;
   if ImagePath <> '' then
     with GetByName('ItemImage') as TImageGI do
@@ -159,17 +171,19 @@ begin
     SetText(Description);
     SetFontName(Self.FontName);
   end;
-  with GetByName('BGBuf') as TGraphBufGI do
-    BindExternalGraphBuf(AuxRenderBuffer);
   with GetByName('Add') as TGraphButtonGI do
   begin
     DownCallback := IncreaseMouseDown;
     UpCallback := IncreaseMouseUp;
+    TouchHold := True;
+    TouchCancelCallback := IncreaseMouseUp;
   end;
   with GetByName('Sub') as TGraphButtonGI do
   begin
     DownCallback := DecreaseMouseDown;
     UpCallback := DecreaseMouseUp;
+    TouchHold := True;
+    TouchCancelCallback := DecreaseMouseUp;
   end;
   (GetByName('Max') as TGraphButtonGI).UpCallback := MaximumClicked;
   (GetByName('Ok') as TGraphButtonGI).UpCallback := AcceptClicked;
@@ -187,6 +201,17 @@ begin
   GetByName('Kind1').SetActive(UnitValue <= 0);
   GetByName('Count2').SetActive(UnitValue <= 0);
   RefreshValue;
+end;
+
+procedure TfCount2.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  Dragging := False;
+  if RepeatTimer <> nil then
+  begin
+    CancelCallbackTimer(RepeatTimer);
+    RepeatTimer := nil;
+  end;
 end;
 
 procedure TfCount2.OnClose;
@@ -416,11 +441,10 @@ var
   Dialog: TfCount2;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
-  CaptureScreenBackground(False, 0);
   Dialog := TfCount2.Create;
   Dialog.ParentLoop := Parent;
   Parent.ChildLoop := Dialog;
@@ -447,7 +471,7 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
 end;
 
 function ShowCountDialog(
@@ -476,11 +500,4 @@ begin
       );
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-end;
 end.

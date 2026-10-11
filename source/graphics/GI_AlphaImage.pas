@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_AlphaImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -12,13 +11,15 @@ uses
   GI_Main,
   GI_MessageLoop,
   Types;
+
 type
+
   TAlphaImageGI = class;
+
   TAlphaImageGI = class(TObjectGI)
     ImageCache: TCAlphaBitmapControlEC;
     ImageKindX: TImageKindXGI;
     ImageKindY: TImageKindYGI;
-    Gap126: array[0..1] of Byte;
     procedure Clear; override;
     procedure QueueImageLoad(PendingLoads: TList); override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -32,9 +33,10 @@ type
     procedure SetImageKindY(Value: TImageKindYGI);
     function HitTestPixel(Point: TPoint): Boolean;
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   EC_Mem,
   GlobalsV,
@@ -112,6 +114,7 @@ var
   Pixels: Pointer;
   Clip: TRect;
 begin
+  Point := ScreenToLogicalPoint(Point);
   Result := False;
   Pixel := 0;
   Clip.Left := Point.X;
@@ -356,7 +359,7 @@ begin
         X := Left;
         while (X < Right) do
         begin
-          DrawTexture(Bitmap.GetTexture, X, Y, 255, $FFFFFF, @ClipRect, False, False);
+          DrawTexture(Bitmap.GetTexture, X, Y, 255, RgbWhite, @ClipRect, False, False);
           Inc(X, Width);
         end;
         Inc(Y, Height);

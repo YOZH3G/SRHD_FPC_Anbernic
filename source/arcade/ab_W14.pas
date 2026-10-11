@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ab_W14;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW14 = class;
+
   TabW14 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
@@ -24,10 +26,10 @@ type
     destructor Destroy; override;
     procedure Launch(Owner: TabObject; Amount: Integer; Angle: Single);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   GlobalsV,
   ab_Ship;
@@ -117,9 +119,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabShip.ClassName;
-  TabW14.ClassName;
-end;
 end.

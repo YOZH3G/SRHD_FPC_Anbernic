@@ -1,40 +1,68 @@
-{$EXCESSPRECISION OFF}
 unit EC_Expression;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+{$POINTERMATH ON}
+
 interface
+
 uses
+  GameScriptLibrary,
+  GameEvents,
   Classes,
   EC_Buf,
   SysUtils,
-  Windows;
+  Types;
+
 type
+
   PointerToInteger = ^Integer;
+
 type
+
   ExceptionExpressionEC = class;
+
   TCodeAnalyzerEC = class;
+
   TCodeAnalyzerUnitEC = class;
+
   TCodeEC = class;
+
   TCodeProcessEC = class;
+
   TCodeUnitEC = class;
+
   TCompilerEC = class;
+
   TCompilerUnitEC = class;
+
   TExpressionEC = class;
+
   TExpressionInstrEC = class;
+
   TExpressionVarEC = class;
+
   TScriptDebugState = class;
+
   TVarArrayEC = class;
+
   TVarEC = class;
+
   PointerToTCodeAnalyzerUnitEC = ^TCodeAnalyzerUnitEC;
+
   PointerToTVarEC = ^TVarEC;
+
   PointerToTExpressionVarEC = ^TExpressionVarEC;
+
   PointerToTExpressionInstrEC = ^TExpressionInstrEC;
+
   PointerToTCodeExceptionHandler = ^TCodeExceptionHandler;
+
   ExceptionExpressionEC = class(Exception)
+
   end;
+
   TScriptStepCallback = procedure(StatementCount: Integer);
+
   {$Z1}
   TVarKind = (
       vkEmpty = 0,
@@ -49,9 +77,11 @@ type
       vkArray = 9,
       vkRef = 10
   );
+
   {$Z4}
   TLibraryValueKind =
       (lvVoid = 0, lvInt = 1, lvDword = 2, lvFloat = 3, lvString = 4, lvRef = 5, lvCode = 6);
+
   {$Z1}
   TCodeTokenKind = (
       ctNewline = 0,
@@ -94,6 +124,7 @@ type
       ctStringLiteral = 37,
       ctText = 38
   );
+
   {$Z1}
   TCompilerUnitKind = (
       cuIntLiteral = 0,
@@ -113,6 +144,7 @@ type
       cuComma = 14,
       cuAssignment = 15
   );
+
   {$Z1}
   TExpressionOpcode = (
       eoNegate = 0,
@@ -140,8 +172,10 @@ type
       eoCall = 22,
       eoIndex = 23
   );
+
   {$Z1}
   TExpressionVarKind = (evNamed = 0, evOwned = 1, evIndexed = 2);
+
   {$Z1}
   TCodeOpcode = (
       coLabel = 0,
@@ -153,14 +187,16 @@ type
       coPopHandler = 6,
       coThrow = 7
   );
+
   PCodeAnalyzerUnitEC = PointerToTCodeAnalyzerUnitEC;
+
   TVarEC = class(TObject)
     Name: WideString;
     Kind: TVarKind;
-    Gap9: array[0..2] of Byte;
-    // Win32 mods also use int variables to transport object addresses (e.g.
-    // ShuMercs' art_num = CreateArt(...)). GetInt still provides 32-bit numeric
-    // semantics; GetDword must recover the entire address on wider targets.
+    // Mods pass object addresses through both integer kinds. GetInt still
+    // exposes signed 32-bit arithmetic; GetDword retains every address bit.
+    // Arithmetic operators explicitly wrap DWORD results to 32 bits; copying,
+    // comparisons and truth tests retain the full address for object handles.
     IntValue: PtrInt;
     DwordValue: PtrUInt;
     StringValue: WideString;
@@ -231,7 +267,9 @@ type
     procedure LoadFromBuffer(Buffer: TBufEC);
     procedure SetLibrarySignature(Signature: array of Dword);
   end;
+
   PVarEC = PointerToTVarEC;
+
   TVarArrayEC = class(TObject)
     Count: Integer;
     Data: PVarEC;
@@ -262,15 +300,16 @@ type
     procedure LoadFromBuffer(Buffer: TBufEC);
     procedure AppendFromBuffer(Buffer: TBufEC);
   end;
+
   TCodeAnalyzerUnitEC = class(TObject)
     Prev: TCodeAnalyzerUnitEC;
     Next: TCodeAnalyzerUnitEC;
     TokenKind: TCodeTokenKind;
-    GapD: array[0..2] of Byte;
     SourceStart: Integer;
     SourceLength: Integer;
     Text: WideString;
   end;
+
   TCodeAnalyzerEC = class(TObject)
     FirstFree: TCodeAnalyzerUnitEC;
     LastFree: TCodeAnalyzerUnitEC;
@@ -292,6 +331,7 @@ type
     procedure RemoveNewlines;
     procedure RemoveComments;
   end;
+
   TScriptIncludeResolver =
       function(
           SourceContext: Pointer;
@@ -300,18 +340,19 @@ type
           var IncludedContext: Pointer;
           Analyzer: TCodeAnalyzerEC
       ): Integer;
+
   TExpressionCallback = procedure(av: array of TVarEC; Code: TCodeEC);
+
   TExpressionInstrEC = class(TObject)
     Opcode: TExpressionOpcode;
-    Gap5: array[0..2] of Byte;
     OperandCount: Integer;
     Operands: array of Integer;
     destructor Destroy; override;
     procedure CopyFrom(Source: TExpressionInstrEC);
   end;
+
   TExpressionVarEC = class(TObject)
     Kind: TExpressionVarKind;
-    Gap5: array[0..2] of Byte;
     Name: WideString;
     MemberPath: array of WideString;
     Value: TVarEC;
@@ -321,13 +362,13 @@ type
     function GetFullName: WideString;
     function Resolve(InitialKind: TVarKind): TVarEC;
   end;
+
   TExpressionEC = class(TObject)
     VariableCount: Integer;
     Variables: PointerToTExpressionVarEC;
     InstructionCount: Integer;
     Instructions: PointerToTExpressionInstrEC;
     SharedInstructions: Boolean;
-    Gap15: array[0..2] of Byte;
     ResultIndex: Integer;
     constructor Create;
     destructor Destroy; override;
@@ -353,11 +394,11 @@ type
     procedure Evaluate(Process: TCodeProcessEC; Code: TCodeEC; DebugContext: TScriptDebugState);
     function GetResult: TVarEC;
   end;
+
   TCodeUnitEC = class(TObject)
     Prev: TCodeUnitEC;
     Next: TCodeUnitEC;
     Opcode: TCodeOpcode;
-    GapD: array[0..2] of Byte;
     Expression: TExpressionEC;
     Target: TCodeUnitEC;
     ExceptionVar: TVarEC;
@@ -365,10 +406,11 @@ type
     SourceLength: Integer;
     SourceContext: Pointer;
     Breakpoint: Boolean;
-    Gap29: array[0..2] of Byte;
     destructor Destroy; override;
   end;
+
   PCodeExceptionHandler = PointerToTCodeExceptionHandler;
+
   TCodeProcessEC = class(TObject)
     Handlers: TList;
     Exceptions: TList;
@@ -383,10 +425,10 @@ type
     function GetException: PVarEC;
     procedure RaiseUnhandledExceptions;
   end;
+
   TCodeEC = class(TObject)
     Parent: TCodeEC;
     IsClassDefinition: Boolean;
-    Gap9: array[0..2] of Byte;
     Name: WideString;
     First: TCodeUnitEC;
     Last: TCodeUnitEC;
@@ -394,7 +436,6 @@ type
     Process: TCodeProcessEC;
     DebugContext: TScriptDebugState;
     ScriptFunLinked: Boolean;
-    Gap25: array[0..2] of Byte;
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
@@ -429,16 +470,17 @@ type
     procedure Run(Process: TCodeProcessEC);
     procedure RunDebug(Process: TCodeProcessEC; DebugContext: TScriptDebugState);
   end;
+
   TCodeExceptionHandler = packed record
     Code: TCodeEC;
     Handler: TCodeUnitEC;
   end;
+
   TCompilerUnitEC = class(TObject)
     Prev: TCompilerUnitEC;
     Next: TCompilerUnitEC;
     Kind: TCompilerUnitKind;
     OperatorToken: TCodeTokenKind;
-    GapE: array[0..1] of Byte;
     Text: WideString;
     VariableIndex: Integer;
     IntValue: Integer;
@@ -447,6 +489,7 @@ type
     SourceStart: Integer;
     SourceLength: Integer;
   end;
+
   TCompilerEC = class(TObject)
     First: TCompilerUnitEC;
     Last: TCompilerUnitEC;
@@ -459,309 +502,152 @@ type
     function FindReducibleIndex: TCompilerUnitEC;
     function FindReducibleCall: TCompilerUnitEC;
   end;
+
   TScriptDebugState = class(TObject)
     Paused: Boolean;
-    Gap5: array[0..2] of Byte;
-    StopEvent: Dword;
-    ResumeEvent: Dword;
+    StopEvent: TGameEventHandle;
+    ResumeEvent: TGameEventHandle;
     StepMode: Byte;
-    Gap11: array[0..2] of Byte;
     CurrentUnit: TCodeUnitEC;
     CurrentCode: TCodeEC;
   end;
+
 var
+
   ScriptCallTrace: array[0..19] of TVarEC;
+
   ScriptCallTracePosition: Integer = 0;
+
   ScriptCallTraceCount: Integer = 0;
+
 const
+
   ScriptHexDigits: array[0..15] of WideChar =
       ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+
 var
+
   ScriptStepInterval: Integer = 0;
+
   ScriptStepCallback: TScriptStepCallback = nil;
+
 function CompareScriptNames(Left: PWideChar; Right: PWideChar): Integer; cdecl;
+
 function TrimScriptString(Text: WideString): WideString;
+
 function ScriptStringToInt(Text: WideString): Integer;
+
 function ScriptFloatToString(Value: Double): WideString;
+
 function ScriptDwordToHex(Value: Dword): WideString;
+
 function ScriptStringToFloat(Text: WideString): Double;
+
 function IsScriptIntegerText(Text: WideString): Boolean;
+
 function IsNonIntegerScriptText(Text: WideString): Boolean;
+
 procedure FormatScriptError(Code: Integer; Position: Integer; var Text: WideString);
+
 function TryReadFloatLiteral(var Token: TCodeAnalyzerUnitEC; out Value: Double): Boolean;
+
 function TryReadIntegerLiteral(var Token: TCodeAnalyzerUnitEC; out Value: Integer): Boolean;
+
 function TryReadStringLiteral(var Token: TCodeAnalyzerUnitEC; var Value: WideString): Boolean;
+
 function TryReadDwordLiteral(var Token: TCodeAnalyzerUnitEC; out Value: Dword): Boolean;
+
 function TryReadMemberName(var Token: TCodeAnalyzerUnitEC; var Name: WideString): Boolean;
+
 procedure FreeScriptArrayTree(Values: TVarArrayEC);
+
 procedure GrowScriptArray(
     Values: TVarArrayEC;
     Dimensions: array of Integer;
     DimensionIndex: Integer
 );
+
 procedure ResizeScriptArray(Values: TVarArrayEC; Count: Integer);
+
 procedure InitInstr(Instruction: TExpressionInstrEC; Token: TCodeTokenKind);
+
 procedure SetScriptStepCallback(Callback: TScriptStepCallback; Interval: Integer);
+
 procedure EF_Min(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Max(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_NewArray(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_ArrayChange(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Free(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Count(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Copy(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Abs(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_ArcTan(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Exp(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Ln(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Round(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Sin(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Cos(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Sqr(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Sqrt(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Frac(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Int(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Ord(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Rnd(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Randomize(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_RandSeed(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_SubStr(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_FindSubStr(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Trim(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_ToAnsi(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_ToUnicode(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_LowerCase(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_UpperCase(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_LoadLibrary(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_FreeLibrary(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_LibraryFunction(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_New(av: array of TVarEC; code: TCodeEC);
+
 procedure EF_Delete(av: array of TVarEC; code: TCodeEC);
+
 procedure RegisterExpressionBuiltins(Scope: TVarArrayEC);
-// CHANGE: PORTABILITY - Keep the script DLL import/save protocol, but resolve
-// known exports to native callbacks. IDs in LibraryFunData are registry slots,
-// never truncated ARM64 code pointers or addresses from the Windows executable.
-procedure RegisterNativeScriptFunction(
-    const LibraryName, Signature: WideString;
-    Callback: TExpressionCallback
-);
-function LoadNativeScriptLibrary(const Path: WideString): Cardinal;
-function FreeNativeScriptLibrary(Handle: Cardinal): Boolean;
-function NativeScriptLibraryName(Handle: Cardinal): WideString;
-function InitNativeScriptFunction(
-    Cell: TVarEC;
-    Handle: Cardinal;
-    const ExportName: WideString;
-    const Signature: WideString = ''
-): Boolean;
-procedure InitAllNativeScriptFunctions(Scope: TVarArrayEC; Handle: Cardinal);
-procedure InvokeNativeScriptFunction(Cell: TVarEC; av: array of TVarEC; Code: TCodeEC);
 
-// Optional host snapshot encoding; nil preserves the ordinary save format.
-var
-  SnapshotObjectIdentity: function(Value: PtrUInt): WideString;
 implementation
+
 uses
-  EC_Str,
+  GameHeap,
   Math;
-type
-  TNativeExport = record
-    LibraryHandle: Cardinal;
-    Name, Signature: WideString;
-    Callback: TExpressionCallback;
-  end;
-var
-  Libraries: array of WideString;
-  NativeExports: array of TNativeExport;
-
-function LibraryKey(const Path: WideString): WideString;
-var
-  S: WideString;
-  I: Integer;
-begin
-  S := Path;
-  for I := 1 to Length(S) do
-    if S[I] = '\' then
-      S[I] := '/';
-  I := Length(S);
-  while (I > 0) and (S[I] <> '/') do
-    Dec(I);
-  Result := LowerCase(Copy(S, I + 1, MaxInt));
-  if Copy(Result, Length(Result) - 3, 4) = '.dll' then
-    Delete(Result, Length(Result) - 3, 4);
-end;
-
-function LoadNativeScriptLibrary(const Path: WideString): Cardinal;
-var
-  I: Integer;
-  Key: WideString;
-begin
-  Key := LibraryKey(Path);
-  for I := 0 to High(Libraries) do
-    if Libraries[I] = Key then
-      Exit(I + 1);
-  Result := 0;
-end;
-
-function FreeNativeScriptLibrary(Handle: Cardinal): Boolean;
-begin
-  // Native code is part of the executable; freeing an import does not unload it.
-  Result := (Handle > 0) and (Handle <= Cardinal(Length(Libraries)));
-end;
-
-function NativeScriptLibraryName(Handle: Cardinal): WideString;
-begin
-  if not FreeNativeScriptLibrary(Handle) then
-    raise ExceptionExpressionEC.Create('Unknown native script library');
-  Result := Libraries[Handle - 1];
-end;
-
-procedure RegisterNativeScriptFunction(
-    const LibraryName, Signature: WideString;
-    Callback: TExpressionCallback
-);
-var
-  Handle: Cardinal;
-  N: Integer;
-begin
-  Handle := LoadNativeScriptLibrary(LibraryName);
-  if Handle = 0 then
-  begin
-    SetLength(Libraries, Length(Libraries) + 1);
-    Handle := Length(Libraries);
-    Libraries[Handle - 1] := LibraryKey(LibraryName);
-  end;
-  N := Length(NativeExports);
-  SetLength(NativeExports, N + 1);
-  NativeExports[N].LibraryHandle := Handle;
-  NativeExports[N].Name := ExtractDelimitedPartW(Signature, 1, ',');
-  NativeExports[N].Signature := Signature;
-  NativeExports[N].Callback := Callback;
-end;
-
-function InitNativeScriptFunction(
-    Cell: TVarEC;
-    Handle: Cardinal;
-    const ExportName, Signature: WideString
-): Boolean;
-var
-  I, J, Count: Integer;
-  Text, Kind: WideString;
-  Data: array of Dword;
-begin
-  Result := False;
-  for I := 0 to High(NativeExports) do
-    if (NativeExports[I].LibraryHandle = Handle) and (NativeExports[I].Name = ExportName) then
-    begin
-      Text := Signature;
-      if Text = '' then
-        Text := NativeExports[I].Signature;
-      Count := CountDelimitedPartsW(Text, ',');
-      if Count <> CountDelimitedPartsW(NativeExports[I].Signature, ',') then
-        raise ExceptionExpressionEC.Create(
-            'Native library signature argument count: ' + ExportName);
-      SetLength(Data, Count);
-      Data[1] := I + 1;
-      for J := 0 to Count - 1 do
-      begin
-        if J = 1 then
-          Continue;
-        Kind := ExtractDelimitedPartW(Text, J, ',');
-        if Kind <> ExtractDelimitedPartW(NativeExports[I].Signature, J, ',') then
-          raise ExceptionExpressionEC.Create('Native library signature type: ' + ExportName);
-        if Kind = 'void' then
-          Data[J] := Ord(lvVoid)
-        else if Kind = 'int' then
-          Data[J] := Ord(lvInt)
-        else if Kind = 'dword' then
-          Data[J] := Ord(lvDword)
-        else if Kind = 'float' then
-          Data[J] := Ord(lvFloat)
-        else if Kind = 'str' then
-          Data[J] := Ord(lvString)
-        else
-          raise ExceptionExpressionEC.Create('Unsupported native library type: ' + Kind);
-      end;
-      // Rebinding must retain the saved library/alias identity: ConvertToKind
-      // clears StringValue even when the cell is already a library function.
-      Cell := Cell.Resolve;
-      if Cell.Kind <> vkLibraryFun then
-        Cell.ConvertToKind(vkLibraryFun);
-      Cell.SetLibrarySignature(Data);
-      Exit(True);
-    end;
-end;
-
-procedure InitAllNativeScriptFunctions(Scope: TVarArrayEC; Handle: Cardinal);
-var
-  I: Integer;
-  Cell: TVarEC;
-begin
-  for I := 0 to High(NativeExports) do
-    if NativeExports[I].LibraryHandle = Handle then
-    begin
-      Cell := Scope.GetVarNE(NativeExports[I].Name);
-      if Cell = nil then
-        Cell := Scope.Add(NativeExports[I].Name, vkLibraryFun);
-      if Cell.RealVType <> vkLibraryFun then
-        Continue;
-      Cell.SetString(NativeScriptLibraryName(Handle) + ',' + NativeExports[I].Name);
-      InitNativeScriptFunction(Cell, Handle, NativeExports[I].Name);
-    end;
-end;
-
-procedure InvokeNativeScriptFunction(Cell: TVarEC; av: array of TVarEC; Code: TCodeEC);
-var
-  I, Slot: Integer;
-  Args: array of TVarEC;
-  SingleValue: Single;
-begin
-  if (Length(Cell.LibraryFunData) < 2) or (Length(Cell.LibraryFunData) <> Length(av) + 1) then
-    raise ExceptionExpressionEC.Create('Count variable: ' + Cell.Name);
-  Slot := Cell.LibraryFunData[1];
-  if (Slot < 1) or (Slot > Length(NativeExports)) then
-    raise ExceptionExpressionEC.Create('Unresolved native library function: ' + Cell.GetString);
-  SetLength(Args, Length(av));
-  try
-    // DLL arguments were converted according to the import declaration. In
-    // particular float is Single, while dword can also carry a native object.
-    for I := 0 to High(Args) do
-    begin
-      Args[I] := TVarEC.Create(vkEmpty);
-      if I = 0 then
-        Continue;
-      case TLibraryValueKind(Cell.LibraryFunData[I + 1]) of
-        lvInt: Args[I].SetInt(av[I].GetInt);
-        lvDword: Args[I].SetDword(av[I].GetDword);
-        lvFloat:
-        begin
-          SingleValue := av[I].GetFloat;
-          Args[I].SetFloat(SingleValue);
-        end;
-        lvString:
-        begin
-          if av[I].RealVType <> vkString then
-            raise ExceptionExpressionEC.Create('Variable not string');
-          Args[I].SetString(av[I].GetString);
-        end;
-      end;
-    end;
-    NativeExports[Slot - 1].Callback(Args, Code);
-    av[0].ResetKind(vkEmpty);
-    case TLibraryValueKind(Cell.LibraryFunData[0]) of
-      lvInt: av[0].SetInt(Args[0].GetInt);
-      lvDword: av[0].SetDword(Args[0].GetDword);
-      lvFloat:
-      begin
-        SingleValue := Args[0].GetFloat;
-        av[0].SetFloat(SingleValue);
-      end;
-      lvString: av[0].SetString(Args[0].GetString);
-    end;
-  finally
-    for I := 0 to High(Args) do
-      Args[I].Free;
-  end;
-end;
 
 // Reference parameters avoid copies of Self and RunStart in composed inline calls.
 procedure FlushTokenRun(
@@ -777,6 +663,7 @@ begin
     Inc(Analyzer.Last.SourceLength, RunLength);
   end;
 end;
+
 procedure FlushQuotedRun(
     var Analyzer: TCodeAnalyzerEC;
     const Text: WideString;
@@ -789,6 +676,7 @@ begin
     Inc(Analyzer.Last.SourceLength, RunLength - 1);
   end;
 end;
+
 // Reference parameters preserve caller storage when DCC32 expands these helpers.
 procedure EmitSourceToken(
     var Analyzer: TCodeAnalyzerEC;
@@ -803,6 +691,7 @@ begin
   Token.SourceStart := Index + SourceOffset;
   Token.SourceLength := SourceLength;
 end;
+
 // Finish the pending text before beginning a punctuation or newline token.
 procedure EmitToken(
     var Analyzer: TCodeAnalyzerEC;
@@ -822,7 +711,32 @@ end;
 
 function CompareScriptNames(Left, Right: PWideChar): Integer; cdecl;
 begin
-  Result := CompareWideChars(Left, Right)
+  // Nil sorts before a non-nil string, including a non-nil empty string.
+  // Compare unsigned UTF-16 code units and return exactly -1, 0 or 1.
+  if Left = nil then
+  begin
+    if Right = nil then
+      Result := 0
+    else
+      Result := -1;
+    Exit;
+  end;
+  if Right = nil then
+  begin
+    Result := 1;
+    Exit;
+  end;
+  while (Left^ = Right^) and (Left^ <> #0) do
+  begin
+    Inc(Left);
+    Inc(Right);
+  end;
+  if Left^ < Right^ then
+    Result := -1
+  else if Left^ > Right^ then
+    Result := 1
+  else
+    Result := 0;
 end;
 
 function TrimScriptString(Text: WideString): WideString;
@@ -884,6 +798,8 @@ begin
   // Like native $45FE4C, collect all decimal digits, ignore other characters,
   // and recognize a minus only at the start. Use the target's pointer width:
   // EvoTranc stores a weapon address in TextData1 between combat phases.
+  // Without a distinct handle kind, oversized decimal scalars are ambiguous
+  // with these addresses and cannot be safely narrowed here.
   Result := 0;
   for I := 1 to Length(Text) do
     if (Text[I] >= '0') and (Text[I] <= '9') then
@@ -933,13 +849,17 @@ begin
     Exit;
   end;
   Value := 0;
-  for i := 0 to Count - 1 do
+  // Native $460100 exhausts to Count; Break retains the dot index.
+  // The extra increment at $460108 below also runs when no dot was found.
+  i := 0;
+  while i < Count do
   begin
     C := Ord(Text[i + 1]);
     if (C >= Ord('0')) and (C <= Ord('9')) then
       Value := Value * 10 + (C - Ord('0'))
     else if C = Ord('.') then
       Break;
+    Inc(i);
   end;
   Inc(i);
   Divisor := 10;
@@ -2113,6 +2033,8 @@ begin
   if Count > 0 then
   begin
     Text := StringValue;
+    // FPC can share WideString storage; raw writes must first detach this copy.
+    SetLength(StringValue, Count);
     Dest := PAnsiChar(PWideChar(StringValue));
     for i := 0 to Count - 1 + 1 do
     begin
@@ -2193,15 +2115,17 @@ var
   i, OldCount: Integer;
   Item: TVarEC;
   Dimensions: array of Integer;
+
   procedure CollectScriptArrayDimensions(
       Values: TVarArrayEC
-  ); // @addr $462D4C @ida "void __usercall $name(TVarArrayEC *Values@<eax>, void *ParentFrame@<^0>);" @note "Nested in ResizeScriptArray; collects dimensions by following each first child."
+  ); { Nested in ResizeScriptArray; collects dimensions by following each first child. }
   begin
     SetLength(Dimensions, High(Dimensions) + 1 + 1);
     Dimensions[High(Dimensions)] := Values.Count;
     if (Values.Count > 0) and (Values.GetItem(0).RealVType = vkArray) then
       CollectScriptArrayDimensions(Values.GetItem(0).GetArray);
   end;
+
 begin
   OldCount := Values.Count;
   if Count = OldCount then
@@ -2266,7 +2190,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt + Right.GetInt);
-      vkDword: SetDword(Left.GetDword + Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword + Right.GetDword));
       vkFloat: SetFloat(Left.GetFloat + Right.GetFloat);
       vkString: SetString(Left.GetString + Right.GetString);
       vkExternFun: SetExternFun(nil);
@@ -2287,7 +2211,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt - Right.GetInt);
-      vkDword: SetDword(Left.GetDword - Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword - Right.GetDword));
       vkFloat: SetFloat(Left.GetFloat - Right.GetFloat);
       vkString: SetString(Left.GetString + Right.GetString);
       vkExternFun: SetExternFun(nil);
@@ -2308,7 +2232,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt * Right.GetInt);
-      vkDword: SetDword(Left.GetDword * Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword * Right.GetDword));
       vkFloat: SetFloat(Left.GetFloat * Right.GetFloat);
       vkString: SetString(Left.GetString + Right.GetString);
       vkExternFun: SetExternFun(nil);
@@ -2329,7 +2253,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt div Right.GetInt);
-      vkDword: SetDword(Left.GetDword div Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword) div Dword(Right.GetDword));
       vkFloat: SetFloat(Left.GetFloat / Right.GetFloat);
       vkString: SetString(Left.GetString + Right.GetString);
       vkExternFun: SetExternFun(nil);
@@ -2350,7 +2274,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt mod Right.GetInt);
-      vkDword: SetDword(Left.GetDword mod Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword) mod Dword(Right.GetDword));
       vkFloat: SetFloat(Trunc(Left.GetFloat) mod Trunc(Right.GetFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2371,7 +2295,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt and Right.GetInt);
-      vkDword: SetDword(Left.GetDword and Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword and Right.GetDword));
       vkFloat: SetFloat(Trunc(Left.GetFloat) and Trunc(Right.GetFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2392,7 +2316,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt or Right.GetInt);
-      vkDword: SetDword(Left.GetDword or Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword or Right.GetDword));
       vkFloat: SetFloat(Trunc(Left.GetFloat) or Trunc(Right.GetFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2413,7 +2337,7 @@ begin
   begin
     case Left.RealVType of
       vkInt: SetInt(Left.GetInt xor Right.GetInt);
-      vkDword: SetDword(Left.GetDword xor Right.GetDword);
+      vkDword: SetDword(Dword(Left.GetDword xor Right.GetDword));
       vkFloat: SetFloat(Trunc(Left.GetFloat) xor Trunc(Right.GetFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2468,6 +2392,26 @@ begin
   end;
 end;
 
+function ScriptShiftInt64(Value, Count: Int64; ShiftLeft: Boolean): Int64;
+var
+  Bits: Integer;
+begin
+  // Delphi 2007's Win32 Int64 helpers inspect the count as a signed byte.
+  // Counts 64..127 produce zero; negative bytes take the 0..31-bit path.
+  Bits := ShortInt(Count);
+  if Bits >= 64 then
+    Result := 0
+  else
+  begin
+    if Bits < 0 then
+      Bits := Bits and 31;
+    if ShiftLeft then
+      Result := Value shl Bits
+    else
+      Result := Value shr Bits;
+  end;
+end;
+
 procedure TVarEC.OShl(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
@@ -2475,9 +2419,9 @@ begin
   if RealVType <> vkEmpty then
   begin
     case Left.RealVType of
-      vkInt: SetInt(Left.GetInt shl Right.GetInt);
-      vkDword: SetDword(Left.GetDword shl Right.GetDword);
-      vkFloat: SetFloat(Trunc(Left.GetFloat) shl Trunc(Right.GetFloat));
+      vkInt: SetInt(Left.GetInt shl (Right.GetInt and 31));
+      vkDword: SetDword(Dword(Dword(Left.GetDword) shl (Right.GetDword and 31)));
+      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.GetFloat), Trunc(Right.GetFloat), True));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2496,9 +2440,9 @@ begin
   if RealVType <> vkEmpty then
   begin
     case Left.RealVType of
-      vkInt: SetInt(Left.GetInt shr Right.GetInt);
-      vkDword: SetDword(Left.GetDword shr Right.GetDword);
-      vkFloat: SetFloat(Trunc(Left.GetFloat) shr Trunc(Right.GetFloat));
+      vkInt: SetInt(Left.GetInt shr (Right.GetInt and 31));
+      vkDword: SetDword(Dword(Dword(Left.GetDword) shr (Right.GetDword and 31)));
+      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.GetFloat), Trunc(Right.GetFloat), False));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2645,8 +2589,7 @@ begin
   begin
     case Value.RealVType of
       vkInt: SetInt(-Value.GetInt);
-      // Match DWORD addition/subtraction at the target's pointer width.
-      vkDword: SetDword(PtrUInt(-Int64(Value.GetDword)));
+      vkDword: SetDword(Dword(0 - Value.GetDword));
       vkFloat: SetFloat(-Value.GetFloat);
       vkString: SetString(Value.GetString);
       vkExternFun: SetExternFun(nil);
@@ -2667,7 +2610,7 @@ begin
   begin
     case Value.RealVType of
       vkInt: SetInt(not Value.GetInt);
-      vkDword: SetDword(not Value.GetDword);
+      vkDword: SetDword(Dword(not Value.GetDword));
       vkFloat: SetFloat(0);
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2843,20 +2786,7 @@ begin
 end;
 
 procedure TVarEC.SaveToBuffer(Buffer: TBufEC);
-var
-  ObjectKey: WideString;
 begin
-  if (Kind = vkDword) and Assigned(SnapshotObjectIdentity) then
-  begin
-    ObjectKey := SnapshotObjectIdentity(DwordValue);
-    if ObjectKey <> '' then
-    begin
-      Buffer.AddWideStringZ(Name);
-      Buffer.AddByte($FE); // Distinguish object identities from every scalar kind.
-      Buffer.AddWideStringZ(ObjectKey);
-      Exit;
-    end;
-  end;
   Buffer.AddWideStringZ(Name);
   Buffer.AddAnsiChar(AnsiChar(Kind));
   if Kind = vkEmpty then
@@ -2959,12 +2889,12 @@ procedure TVarArrayEC.ClearStorage;
 begin
   if Data <> nil then
   begin
-    HeapFree(GetProcessHeap, 0, Data);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Data);
     Data := nil;
   end;
   if NameOrder <> nil then
   begin
-    HeapFree(GetProcessHeap, 0, NameOrder);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, NameOrder);
     NameOrder := nil;
   end;
   Count := 0;
@@ -2992,9 +2922,9 @@ begin
   Count := Source.Count;
   if Count < 1 then
     Exit;
-  Data := HeapAlloc(GetProcessHeap, 0, Count * SizeOf(Pointer));
-  NameOrder := HeapAlloc(GetProcessHeap, 0, Count * 4);
-  CopyMemory(NameOrder, Source.NameOrder, Count * 4);
+  Data := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, Count * SizeOf(TVarEC));
+  NameOrder := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, Count * SizeOf(Integer));
+  System.Move(Pointer(Source.NameOrder)^, Pointer(NameOrder)^, Count * SizeOf(Integer));
   for i := 0 to Count - 1 do
   begin
     SourceItem := Source.GetItem(i);
@@ -3068,40 +2998,40 @@ end;
 
 procedure TVarArrayEC.SetNameOrderIndex(Index: Integer; DataIndex: Integer);
 begin
-  PInteger(PByte(NameOrder) + Index * SizeOf(Integer))^ := DataIndex
+  PInteger(NameOrder)[Index] := DataIndex;
 end;
 
 function TVarArrayEC.GetNameOrderIndex(Index: Integer): Integer;
 begin
-  Result := PInteger(PByte(NameOrder) + Index * SizeOf(Integer))^
+  Result := PInteger(NameOrder)[Index];
 end;
 
 function TVarArrayEC.GetItemByNameOrder(Index: Integer): TVarEC;
 begin
-  Result := GetItem(GetNameOrderIndex(Index))
+  Result := PointerToTVarEC(Data)[GetNameOrderIndex(Index)];
 end;
 
 function TVarArrayEC.FindNameOrderForDataIndex(DataIndex: Integer): Integer;
 var
-  I: Integer;
+  i: Integer;
 begin
   Result := -1;
-  for I := 0 to Count - 1 do
-    if GetNameOrderIndex(I) = DataIndex then
+  for i := 0 to Count - 1 do
+    if GetNameOrderIndex(i) = DataIndex then
     begin
-      Result := I;
-      Exit
-    end
+      Result := i;
+      Exit;
+    end;
 end;
 
 function TVarArrayEC.GetItem(Index: Integer): TVarEC;
 begin
-  Result := TVarEC(PPointer(PByte(Data) + Index * SizeOf(Pointer))^)
+  Result := PointerToTVarEC(Data)[Index];
 end;
 
 procedure TVarArrayEC.SetItem(Index: Integer; Value: TVarEC);
 begin
-  PPointer(PByte(Data) + Index * SizeOf(Pointer))^ := Value
+  PointerToTVarEC(Data)[Index] := Value;
 end;
 
 function TVarArrayEC.GetItemNE(Index: Integer): TVarEC;
@@ -3114,15 +3044,15 @@ end;
 
 function TVarArrayEC.IndexOf(Value: TVarEC): Integer;
 var
-  I: Integer;
+  i: Integer;
 begin
   Result := -1;
-  for I := 0 to Count - 1 do
-    if GetItem(I) = Value then
+  for i := 0 to Count - 1 do
+    if GetItem(i) = Value then
     begin
-      Result := I;
-      Exit
-    end
+      Result := i;
+      Exit;
+    end;
 end;
 
 function TVarArrayEC.GetVar(const Name: WideString): TVarEC;
@@ -3226,24 +3156,26 @@ var
   i, InsertionIndex: Integer;
 begin
   if Data = nil then
-    Data := HeapAlloc(GetProcessHeap, 0, (Count + 1) * SizeOf(Pointer))
+    Data := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, (Count + 1) * SizeOf(TVarEC))
   else
-    Data := HeapReAlloc(GetProcessHeap, 0, Data, (Count + 1) * SizeOf(Pointer));
+    Data := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, Data, (Count + 1) * SizeOf(TVarEC));
   SetItem(Count, Value);
   InsertionIndex := FindNameInsertionIndex(Value.Name);
   if InsertionIndex >= Count then
   begin
     Inc(Count);
     if NameOrder = nil then
-      NameOrder := HeapAlloc(GetProcessHeap, 0, Count * SizeOf(Integer))
+      NameOrder := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, Count * SizeOf(Integer))
     else
-      NameOrder := HeapReAlloc(GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
+      NameOrder :=
+          GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
     SetNameOrderIndex(Count - 1, Count - 1);
   end
   else
   begin
     Inc(Count);
-    NameOrder := HeapReAlloc(GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
+    NameOrder :=
+        GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
     for i := Count - 1 downto InsertionIndex + 1 do
       SetNameOrderIndex(i, GetNameOrderIndex(i - 1));
     SetNameOrderIndex(InsertionIndex, Count - 1);
@@ -3425,6 +3357,7 @@ var
   Index: Integer;
   Token: TCodeAnalyzerUnitEC;
   TextLength, QuoteStart, RunStart, RunLength, HexValue, HexDigits: Integer;
+
 begin
   TextLength := Length(Text);
   QuoteStart := -1;
@@ -4127,9 +4060,16 @@ function TExpressionEC.AddVariable: Integer;
 begin
   Inc(VariableCount);
   if Variables = nil then
-    Variables := HeapAlloc(GetProcessHeap, 0, VariableCount * SizeOf(Pointer))
+    Variables :=
+        GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, VariableCount * SizeOf(TExpressionVarEC))
   else
-    Variables := HeapReAlloc(GetProcessHeap, 0, Variables, VariableCount * SizeOf(Pointer));
+    Variables :=
+        GameHeap.HeapReAlloc(
+            GameHeap.GetProcessHeap,
+            0,
+            Variables,
+            VariableCount * SizeOf(TExpressionVarEC)
+        );
   SetVariable(VariableCount - 1, TExpressionVarEC.Create);
   Result := VariableCount - 1;
 end;
@@ -4146,29 +4086,36 @@ begin
   Dec(VariableCount);
   if VariableCount <= 0 then
   begin
-    HeapFree(GetProcessHeap, 0, Variables);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Variables);
     Variables := nil;
   end;
 end;
 
 function TExpressionEC.GetVariable(Index: Integer): TExpressionVarEC; cdecl;
 begin
-  Result := TExpressionVarEC(PPointer(PByte(Variables) + Index * SizeOf(Pointer))^)
+  Result := PointerToTExpressionVarEC(Variables)[Index];
 end;
 
 procedure TExpressionEC.SetVariable(Index: Integer; Value: TExpressionVarEC); cdecl;
 begin
-  PPointer(PByte(Variables) + Index * SizeOf(Pointer))^ := Value
+  PointerToTExpressionVarEC(Variables)[Index] := Value;
 end;
 
 function TExpressionEC.AddInstruction: Integer;
 begin
   Inc(InstructionCount);
   if Instructions = nil then
-    Instructions := HeapAlloc(GetProcessHeap, 0, InstructionCount * SizeOf(Pointer))
+    Instructions :=
+        GameHeap
+            .HeapAlloc(GameHeap.GetProcessHeap, 0, InstructionCount * SizeOf(TExpressionInstrEC))
   else
     Instructions :=
-        HeapReAlloc(GetProcessHeap, 0, Instructions, InstructionCount * SizeOf(Pointer));
+        GameHeap.HeapReAlloc(
+            GameHeap.GetProcessHeap,
+            0,
+            Instructions,
+            InstructionCount * SizeOf(TExpressionInstrEC)
+        );
   SetInstruction(InstructionCount - 1, TExpressionInstrEC.Create);
   Result := InstructionCount - 1;
 end;
@@ -4185,19 +4132,19 @@ begin
   Dec(InstructionCount);
   if InstructionCount <= 0 then
   begin
-    HeapFree(GetProcessHeap, 0, Instructions);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Instructions);
     Instructions := nil;
   end;
 end;
 
 function TExpressionEC.GetInstruction(Index: Integer): TExpressionInstrEC; cdecl;
 begin
-  Result := TExpressionInstrEC(PPointer(PByte(Instructions) + Index * SizeOf(Pointer))^)
+  Result := PointerToTExpressionInstrEC(Instructions)[Index];
 end;
 
 procedure TExpressionEC.SetInstruction(Index: Integer; Value: TExpressionInstrEC); cdecl;
 begin
-  PPointer(PByte(Instructions) + Index * SizeOf(Pointer))^ := Value
+  PointerToTExpressionInstrEC(Instructions)[Index] := Value;
 end;
 
 // Extract whole conditions: a helper inside an and/or chain adds DCC32 temporaries.
@@ -4225,6 +4172,7 @@ begin
           or (Token.TokenKind = ctLessEqual)
           or (Token.TokenKind = ctGreaterEqual);
 end;
+
 function IsUnaryMinusPosition(const Item: TCompilerUnitEC): Boolean; inline;
 begin
   Result :=
@@ -4236,6 +4184,7 @@ begin
               and (Item.Prev.Kind <> cuCloseBracket)
               and (Item.Prev.Kind <> cuName));
 end;
+
 function InvalidBinaryOperands(const Item: TCompilerUnitEC): Boolean; inline;
 begin
   Result :=
@@ -4258,6 +4207,7 @@ begin
               or (Item.Next.Kind = cuIndex)
               or (Item.Next.Kind = cuUnaryOperator));
 end;
+
 function InvalidAssignmentOperands(const Item: TCompilerUnitEC): Boolean; inline;
 begin
   Result :=
@@ -4274,6 +4224,7 @@ begin
               or (Item.Next.Kind = cuIndex)
               or (Item.Next.Kind = cuUnaryOperator));
 end;
+
 function InvalidUnaryOperand(const Item: TCompilerUnitEC): Boolean; inline;
 begin
   Result :=
@@ -4289,6 +4240,7 @@ begin
                   or (Item.Next.Kind = cuIndex)
                   or (Item.Next.Kind = cuUnaryOperator)));
 end;
+
 // Callers exit immediately after this; Compiler has been freed.
 procedure RejectExpression(
     var Compiler: TCompilerEC;
@@ -4299,6 +4251,7 @@ begin
   FormatScriptError(0, SourceStart, ErrorText);
   Compiler.Free;
 end;
+
 procedure TExpressionEC.Compile(
     Analyzer: TCodeAnalyzerEC;
     FirstToken, EndToken: TCodeAnalyzerUnitEC;
@@ -4851,6 +4804,7 @@ procedure TExpressionEC.Evaluate(
     DebugContext: TScriptDebugState
 );
 var
+  LibraryWord: Dword;
   i, j: Integer;
   Instruction: TExpressionInstrEC;
   Dest, Left, Right: TExpressionVarEC;
@@ -4858,6 +4812,7 @@ var
   Value, IndexValue, Callee, Argument: TVarEC;
   Invocation: TCodeEC;
   ResultKind: TVarKind;
+  SingleValue: Single;
 begin
   i := 0;
   while i < VariableCount do
@@ -4979,21 +4934,61 @@ begin
       Callee := Left.Resolve(vkEmpty);
       if Callee.RealVType = vkLibraryFun then
       begin
-        // CHANGE: PORTABILITY - Native exports retain DLL argument conversion
-        // and saved import identities without building a Win32 argument stack.
-        SetLength(Arguments, Instruction.OperandCount - 1);
-        Arguments[0] := Dest.Value;
-        for j := 2 to Instruction.OperandCount - 1 do
-          Arguments[j - 1] := GetVariable(Instruction.Operands[j]).Resolve(vkEmpty);
-        if Code <> nil then
+{$IF Defined(MSWINDOWS) and Defined(CPU386)}
+  {$ASMMODE INTEL}
+        Value := Callee.Resolve;
+        if High(Value.LibraryFunData) + 1 - 2 <> Instruction.OperandCount - 2 then
+          raise ExceptionExpressionEC.Create('Count variable : ' + Left.Name);
+        for j := Instruction.OperandCount - 2 - 1 downto 0 do
         begin
-          Code.Process := Process;
-          Code.DebugContext := DebugContext;
+          Argument := GetVariable(Instruction.Operands[j + 2]).Resolve(vkEmpty);
+          case TLibraryValueKind(Value.LibraryFunData[2 + j]) of
+            lvInt: LibraryWord := Argument.GetInt;
+            lvDword: LibraryWord := Argument.GetDword;
+            lvFloat:
+            begin
+              SingleValue := Argument.GetFloat;
+              LibraryWord := PDword(@SingleValue)^;
+            end;
+            lvString:
+            begin
+              IndexValue := Argument.Resolve;
+              if IndexValue.Kind <> vkString then
+                raise ExceptionExpressionEC.Create('Variable not string');
+              if Length(IndexValue.StringValue) <= 0 then
+                LibraryWord := 0
+              else
+                LibraryWord := Dword(PWideChar(IndexValue.StringValue));
+            end;
+            lvRef: LibraryWord := Dword(Argument);
+            lvCode: LibraryWord := Dword(Code);
+          else
+            LibraryWord := 0;
+          end;
+          // The imported function consumes its dynamically constructed argument stack.
+          asm
+            push LibraryWord
+          end;
         end;
         ScriptCallTrace[ScriptCallTracePosition] := Callee;
         ScriptCallTraceCount := Min(20, ScriptCallTraceCount + 1);
         ScriptCallTracePosition := (ScriptCallTracePosition + 1) mod 20;
-        InvokeNativeScriptFunction(Callee.Resolve, Arguments, Code);
+        LibraryWord := Value.LibraryFunData[1];
+        asm
+          call LibraryWord
+          mov LibraryWord, eax
+        end;
+        if Value.LibraryFunData[0] = 1 then
+          Dest.Value.SetInt(LibraryWord)
+        else if Value.LibraryFunData[0] = 2 then
+          Dest.Value.SetDword(LibraryWord)
+        else if Value.LibraryFunData[0] = 3 then
+          Dest.Value.SetFloat(PSingle(@LibraryWord)^)
+        else if Value.LibraryFunData[0] = 4 then
+          Dest.Value.SetString(AnsiString('') + PWideChar(LibraryWord));
+{$ELSE}
+        raise ExceptionExpressionEC.Create('Script DLL calls require 32-bit Windows');
+{$ENDIF}
       end
       else if Callee.RealVType = vkExternFun then
       begin
@@ -5313,7 +5308,7 @@ begin
   for i := 0 to Handlers.Count - 1 do
   begin
     Handler := Handlers[i];
-    HeapFree(GetProcessHeap, 0, Handler);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Handler);
   end;
   Handlers.Clear;
   for i := 0 to Exceptions.Count - 1 do
@@ -5324,7 +5319,7 @@ begin
       Value^.Free;
       Value^ := nil;
     end;
-    HeapFree(GetProcessHeap, 0, Value);
+    GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Value);
   end;
   Exceptions.Clear;
 end;
@@ -5333,7 +5328,7 @@ procedure TCodeProcessEC.PushHandler(Code: TCodeEC; Handler: TCodeUnitEC);
 var
   Entry: PCodeExceptionHandler;
 begin
-  Entry := HeapAlloc(GetProcessHeap, 0, SizeOf(TCodeExceptionHandler));
+  Entry := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, SizeOf(TCodeExceptionHandler));
   Entry.Code := Code;
   Entry.Handler := Handler;
   Handlers.Add(Entry);
@@ -5348,7 +5343,7 @@ begin
   if Count < 1 then
     Exit;
   Entry := Handlers[Count - 1];
-  HeapFree(GetProcessHeap, 0, Entry);
+  GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Entry);
   Handlers.Delete(Count - 1);
 end;
 
@@ -5367,7 +5362,7 @@ procedure TCodeProcessEC.PushException(Value: TVarEC);
 var
   Entry: PVarEC;
 begin
-  Entry := HeapAlloc(GetProcessHeap, 0, SizeOf(TVarEC));
+  Entry := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, SizeOf(TVarEC));
   Entry^ := TVarEC.Create(Value.RealVType);
   Entry^.Assume(Value, False);
   Exceptions.Add(Entry);
@@ -5382,7 +5377,7 @@ begin
   if Count < 1 then
     Exit;
   Entry := Exceptions[Count - 1];
-  HeapFree(GetProcessHeap, 0, Entry);
+  GameHeap.HeapFree(GameHeap.GetProcessHeap, 0, Entry);
   Exceptions.Delete(Count - 1);
 end;
 
@@ -5660,10 +5655,8 @@ var
   IntValue: Integer;
   Text: WideString;
   InsertSource: Boolean;
-  procedure AddScriptLocal(
-      TypeName,
-      Name: WideString
-  ); // @addr $46D2E8 @ida "void __usercall $name(unsigned __int16 *TypeName@<eax>, unsigned __int16 *Name@<edx>, void *ParentFrame@<^0>);"
+
+  procedure AddScriptLocal(TypeName, Name: WideString);
   begin
     if TypeName = 'unknown' then
       LocalVar.Add(Name, vkEmpty)
@@ -5680,9 +5673,8 @@ var
     else if TypeName = 'array' then
       LocalVar.Add(Name, vkArray);
   end;
-  function IsScriptLocalDeclaration(
-      Token: TCodeAnalyzerUnitEC
-  ): Boolean; // @addr $46D4A4 @ida "bool __usercall $name@<al>(TCodeAnalyzerUnitEC *Token@<eax>, void *ParentFrame@<^0>);"
+
+  function IsScriptLocalDeclaration(Token: TCodeAnalyzerUnitEC): Boolean;
   begin
     Result :=
         (Token <> nil)
@@ -5698,9 +5690,8 @@ var
                 or (Token.Text = 'array'))
             and IsNonIntegerScriptText(Token.Next.Text);
   end;
-  function CompileScriptLocals(
-      var Token: TCodeAnalyzerUnitEC
-  ): WideString; // @addr $46D5EC @ida "void __usercall $name(TCodeAnalyzerUnitEC **Token@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);"
+
+  function CompileScriptLocals(var Token: TCodeAnalyzerUnitEC): WideString;
   var
     Item: TCodeUnitEC;
     Next: TCodeAnalyzerUnitEC;
@@ -5746,6 +5737,7 @@ var
       end;
     end;
   end;
+
 begin
   ErrorText := '';
   Depth := 0;
@@ -6921,7 +6913,7 @@ end;
 procedure TCodeEC.RunDebug(Process: TCodeProcessEC; DebugContext: TScriptDebugState);
 var
   Item: TCodeUnitEC;
-  Events: array[0..1] of Dword;
+  Events: array[0..1] of TGameEventHandle;
   WaitResult: Dword;
   Handler: PCodeExceptionHandler;
   Pending: PVarEC;
@@ -6936,7 +6928,7 @@ begin
   Item := First;
   while Item <> nil do
   begin
-    WaitResult := WaitForSingleObject(DebugContext.StopEvent, 0);
+    WaitResult := WaitGameEvent(DebugContext.StopEvent, 0);
     if (WaitResult = WAIT_FAILED)
         or (WaitResult = WAIT_OBJECT_0)
         or (WaitResult = WAIT_ABANDONED_0) then
@@ -6944,8 +6936,8 @@ begin
     if (DebugContext.Paused and (Item.SourceLength > 0)) or Item.Breakpoint then
     begin
       DebugContext.CurrentUnit := Item;
-      ResetEvent(DebugContext.ResumeEvent);
-      WaitResult := WaitForMultipleObjects(Length(Events), @Events, False, INFINITE);
+      ResetGameEvent(DebugContext.ResumeEvent);
+      WaitResult := WaitGameEvents(Length(Events), @Events, False, INFINITE);
       if (WaitResult = WAIT_FAILED)
           or (WaitResult = WAIT_OBJECT_0)
           or ((WaitResult >= WAIT_ABANDONED_0)
@@ -7369,7 +7361,7 @@ begin
   while Start <= TextLength - SearchLength do
   begin
     if CompareMem(
-        Pointer(PtrUInt(PWideChar(Text)) + Start * SizeOf(WideChar)),
+        Pointer(PAnsiChar(Text) + Start * SizeOf(WideChar)),
         PWideChar(Search),
         SearchLength * 2) then
     begin
@@ -7416,7 +7408,6 @@ end;
 procedure EF_LowerCase(av: array of TVarEC; code: TCodeEC);
 var
   Text: WideString;
-  AnsiText: AnsiString;
   Start, Count: Integer;
 begin
   if High(av) < 1 then
@@ -7434,23 +7425,17 @@ begin
     av[0].SetString(Text);
     Exit;
   end;
-  if GetVersion < $80000000 then
-  begin
-    CharLowerBuffW(PWideChar(Text) + Start, Count);
-    av[0].SetString(Text);
-  end
-  else
-  begin
-    AnsiText := Text;
-    CharLowerBuffA(PAnsiChar(AnsiText) + Start, Count);
-    av[0].SetString(AnsiText);
-  end;
+  // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
+  Text :=
+      Copy(Text, 1, Start)
+          + WideLowerCase(Copy(Text, Start + 1, Count))
+          + Copy(Text, Start + Count + 1, MaxInt);
+  av[0].SetString(Text);
 end;
 
 procedure EF_UpperCase(av: array of TVarEC; code: TCodeEC);
 var
   Text: WideString;
-  AnsiText: AnsiString;
   Start, Count: Integer;
 begin
   if High(av) < 1 then
@@ -7468,32 +7453,26 @@ begin
     av[0].SetString(Text);
     Exit;
   end;
-  if GetVersion < $80000000 then
-  begin
-    CharUpperBuffW(PWideChar(Text) + Start, Count);
-    av[0].SetString(Text);
-  end
-  else
-  begin
-    AnsiText := Text;
-    // Native ANSI fallback lowercases even for UpperCase.
-    CharLowerBuffA(PAnsiChar(AnsiText) + Start, Count);
-    av[0].SetString(AnsiText);
-  end;
+  // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
+  Text :=
+      Copy(Text, 1, Start)
+          + WideUpperCase(Copy(Text, Start + 1, Count))
+          + Copy(Text, Start + Count + 1, MaxInt);
+  av[0].SetString(Text);
 end;
 
 procedure EF_LoadLibrary(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 1 then
     Exit;
-  av[0].SetDword(LoadNativeScriptLibrary(av[1].GetString));
+  av[0].SetDword(LoadScriptLibrary(av[1].GetString));
 end;
 
 procedure EF_FreeLibrary(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 1 then
     Exit;
-  av[0].SetInt(Ord(FreeNativeScriptLibrary(av[1].GetDword)));
+  av[0].SetInt(Integer(FreeScriptLibrary(av[1].GetDword)));
 end;
 
 procedure TVarEC.SetLibrarySignature(Signature: array of Dword);
@@ -7508,21 +7487,49 @@ end;
 
 procedure EF_LibraryFunction(av: array of TVarEC; code: TCodeEC);
 var
-  I: Integer;
-  Signature: WideString;
+  i: Integer;
+  Proc: Pointer;
+  KindName: WideString;
 begin
   if High(av) < 3 then
     Exit;
-  Signature := av[2].GetString + ',' + av[3].GetString;
-  for I := 4 to High(av) do
-    Signature := Signature + ',' + av[I].GetString;
-  if not InitNativeScriptFunction(av[0], av[1].GetDword, av[3].GetString, Signature) then
+  Proc := ScriptLibraryProc(av[1].GetDword, PAnsiChar(AnsiString(av[3].GetString)));
+  if Proc = nil then
   begin
     av[0].SetInt(0);
     Exit;
   end;
-  // CHANGE: PORTABILITY - Explicit imports can be rebound after a save/load too.
-  av[0].SetString(NativeScriptLibraryName(av[1].GetDword) + ',' + av[3].GetString);
+  av[0].ConvertToKind(vkLibraryFun);
+  SetLength(av[0].LibraryFunData, 2 + High(av) - 3);
+  if av[2].GetString = 'int' then
+    av[0].LibraryFunData[0] := 1
+  else if av[2].GetString = 'dword' then
+    av[0].LibraryFunData[0] := 2
+  else if av[2].GetString = 'float' then
+    av[0].LibraryFunData[0] := 3
+  else if av[2].GetString = 'str' then
+    av[0].LibraryFunData[0] := 4
+  else
+    av[0].LibraryFunData[0] := 0;
+  av[0].LibraryFunData[1] := Dword(Proc);
+  for i := 0 to High(av) - 3 - 1 do
+  begin
+    KindName := av[4 + i].GetString;
+    if KindName = 'int' then
+      av[0].LibraryFunData[2 + i] := 1
+    else if KindName = 'dword' then
+      av[0].LibraryFunData[2 + i] := 2
+    else if KindName = 'float' then
+      av[0].LibraryFunData[2 + i] := 3
+    else if KindName = 'str' then
+      av[0].LibraryFunData[2 + i] := 4
+    else if KindName = 'ref' then
+      av[0].LibraryFunData[2 + i] := 5
+    else if KindName = 'code' then
+      av[0].LibraryFunData[2 + i] := 6
+    else
+      raise ExceptionExpressionEC.Create('LibraryFunction. Unknown type');
+  end;
 end;
 
 procedure EF_New(av: array of TVarEC; code: TCodeEC);

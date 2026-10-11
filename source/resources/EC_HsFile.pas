@@ -1,19 +1,25 @@
-{$EXCESSPRECISION OFF}
 unit EC_HsFile;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  RTLFileSystem,
+  SysUtils,
   SyncObjs;
+
 type
+
   THashEC = class;
+
   THsFolderEC = class;
+
   TPackCollectionEC = class;
+
   TPackFileEC = class;
+
   PointerToTPackEntryEC = ^TPackEntryEC;
+
   TPackEntryEC = packed record
     StoredSize: Cardinal;
     DataSize: Cardinal;
@@ -26,7 +32,9 @@ type
     TargetOffset: Cardinal;
     ChildFolder: THsFolderEC;
   end;
+
   PPackEntryEC = PointerToTPackEntryEC;
+
   THsFolderEC = class(TObject)
     UpperName: AnsiString;
     OriginalName: AnsiString;
@@ -37,18 +45,18 @@ type
     EntryBuffer: PPackEntryEC;
     ChangedFlag: Boolean;
     InitializedEmptyFlag: Boolean;
-    Gap22: array[0..1] of Byte;
     constructor Create(FolderName: AnsiString);
     constructor CreateChild(FolderName: AnsiString; Parent: THsFolderEC);
     destructor Destroy; override;
     function GetEntry(Index: Cardinal): PPackEntryEC;
     function FindEntry(EntryName: AnsiString): PPackEntryEC;
     procedure InitializeEmpty;
-    function Load(FileHandle: Cardinal; SubtreeOffset: Cardinal): Boolean;
+    function Load(FileHandle: THandle; SubtreeOffset: Cardinal): Boolean;
     procedure Unload;
     function ResolveEntryByPath(EntryPath: AnsiString): PPackEntryEC;
     procedure UpdateParentEntry;
   end;
+
   THashSlotEC = packed record
     FullHash: Cardinal;
     MappedValue: Integer;
@@ -57,9 +65,11 @@ type
     KeySuffix: array[0..31] of AnsiChar;
     Gap30: array[0..3] of Byte;
   end;
+
   THashSlotArray = array[0..1023] of THashSlotEC;
+
   TPackOpenSlotEC = packed record
-    FileHandle: Cardinal;
+    FileHandle: THandle;
     IsAvailable: Boolean;
     DataStartOffset: Cardinal;
     CurrentDataOffset: Cardinal;
@@ -68,18 +78,17 @@ type
     DecompressedBlockBuffer: Pointer;
     UsesChainedBlocks: Boolean;
     CurrentBlockIndex: Integer;
-    // CHANGE: PERFORMANCE - Retain the sequential compressed-block position across reads.
-    // Host-only physical cursor; independent of the decoded-block cache and seeks.
     NextChainedBlockIndex: Cardinal;
     NextChainedBlockOffset: Cardinal;
   end;
+
   TPackOpenSlotArray = array[0..15] of TPackOpenSlotEC;
+
   TPackFileEC = class(TObject)
     NextPack: TPackFileEC;
     PrevPack: TPackFileEC;
     UseLooseFiles: Boolean;
-    GapD: array[0..2] of Byte;
-    PackageHandle: Cardinal;
+    PackageHandle: THandle;
     PackagePath: AnsiString;
     RootFolder: THsFolderEC;
     OpenSlots: TPackOpenSlotArray;
@@ -107,7 +116,9 @@ type
     function GetEntrySlotPosition(SlotIndex: Cardinal): Cardinal;
     function GetEntrySlotSize(SlotIndex: Cardinal): Cardinal;
   end;
+
   TPackFileArray = array[0..127] of TPackFileEC;
+
   THashEC = class(TObject)
     OperationCount: Cardinal;
     HitCount: Cardinal;
@@ -127,12 +138,12 @@ type
     procedure MaybeResetStatistics;
     procedure NoteStaleMappedValue;
   end;
+
   TPackCollectionEC = class(TObject)
     FirstPack: TPackFileEC;
     LastPack: TPackFileEC;
     NameToPackIndexHash: THashEC;
     UseFastNameIndex: Boolean;
-    Gap11: array[0..2] of Byte;
     PackByIndex: TPackFileArray;
     constructor Create;
     destructor Destroy; override;
@@ -156,27 +167,50 @@ type
     function GetEntryHandlePosition(Handle: Integer): Cardinal;
     function GetEntryHandleSize(Handle: Integer): Cardinal;
   end;
+
 var
+
   PackageCollection: TPackCollectionEC;
+
   PackageFileLock: TCriticalSection;
+
   LooseFileRoot: AnsiString;
+
 function OffsetPackPointer(Data: Pointer; ByteOffset: Cardinal): Pointer;
+
 function AnsiBeforeFirstDelimiter(Text: AnsiString; Delimiters: AnsiString): AnsiString;
+
 function AnsiAfterFirstDelimiter(Text: AnsiString; Delimiters: AnsiString): AnsiString;
+
 function MatchLookupKeySuffix(
     var Key: AnsiString;
     SuffixBytes: Pointer;
     SuffixLength: Integer
 ): Boolean;
+
 procedure CopyLookupKeySuffix(DestSuffixBytes: Pointer; SuffixLength: Integer; var Key: AnsiString);
+
 implementation
+
 uses
-  ZLib,
-  Math,
   EC_OKGF,
-  SysUtils,
-  Windows;
+  GameSystem
+{$IFDEF MSWINDOWS}
+  ,
+  Windows
+{$ENDIF}
+{$IFDEF UNIX}
+  ,
+  BaseUnix
+{$ENDIF}
+{$IFDEF WASI}
+  ,
+  wasiapi
+{$ENDIF}
+      ;
+
 const
+  DiskPackEntrySize = 158;
   // A collection handle combines the package index and its four-bit open slot.
   PackOpenSlotShift = 4;
   PackOpenSlotCount = 1 shl PackOpenSlotShift;
@@ -184,10 +218,60 @@ const
   PackCompressionBlockSize = 1 shl PackCompressionBlockShift;
   PackCompressedBufferSize = 72112;
   PackSlotRangeError = 'Номер файла не может быть более ';
+
+function ReadPackageFile(
+    Handle: THandle;
+    var Buffer;
+    ByteCount: Cardinal;
+    out BytesRead: Cardinal
+): Boolean;
+var
+  Count: LongInt;
+begin
+  Count := FileRead(Handle, Buffer, ByteCount);
+  Result := Count >= 0;
+  if Result then
+    BytesRead := Count
+  else
+    BytesRead := 0;
+end;
+
+function WritePackageFile(
+    Handle: THandle;
+    const Buffer;
+    ByteCount: Cardinal;
+    out BytesWritten: Cardinal
+): Boolean;
+var
+  Count: LongInt;
+begin
+  Count := FileWrite(Handle, Buffer, ByteCount);
+  Result := Count >= 0;
+  if Result then
+    BytesWritten := Count
+  else
+    BytesWritten := 0;
+end;
+
+function ClosePackageFile(Handle: THandle): Boolean;
+begin
+  // SysUtils.FileClose discards the result; the package API reports close failures.
+{$IFDEF MSWINDOWS}
+  Result := Windows.CloseHandle(Handle);
+{$ENDIF}
+{$IFDEF UNIX}
+  Result := fpClose(Handle) = 0;
+{$ENDIF}
+{$IFDEF WASI}
+  Result := __wasi_fd_close(Handle) = __WASI_ERRNO_SUCCESS;
+{$ENDIF}
+end;
+
 function OffsetPackPointer(Data: Pointer; ByteOffset: Cardinal): Pointer;
 begin
-  Result := Pointer(PtrUInt(Data) + ByteOffset);
+  Result := Pointer(PAnsiChar(Data) + ByteOffset);
 end;
+
 function AnsiBeforeFirstDelimiter(Text, Delimiters: AnsiString): AnsiString;
 var
   i, j: Integer;
@@ -205,6 +289,7 @@ begin
   end;
   Result := Text;
 end;
+
 function AnsiAfterFirstDelimiter(Text, Delimiters: AnsiString): AnsiString;
 var
   i, j: Integer;
@@ -222,11 +307,12 @@ begin
   end;
   Result := '';
 end;
+
 constructor TPackFileEC.Create;
 var
   i: Integer;
 begin
-  PackageHandle := INVALID_HANDLE_VALUE;
+  PackageHandle := THandle(-1);
   UseLooseFiles := False;
   PackagePath := '';
   RootFolder := nil;
@@ -237,15 +323,18 @@ begin
   for i := Low(OpenSlots) to High(OpenSlots) do
     OpenSlots[i].IsAvailable := True;
 end;
+
 destructor TPackFileEC.Destroy;
 begin
   CloseAllOpenEntrySlots;
   CloseForDestroy;
 end;
+
 procedure TPackFileEC.SetPackagePath(NewPackagePath: AnsiString);
 begin
   PackagePath := NewPackagePath;
 end;
+
 procedure TPackFileEC.CloseAllOpenEntrySlots;
 var
   i: Integer;
@@ -257,13 +346,13 @@ begin
       OpenSlots[i].IsAvailable := True;
     end;
 end;
+
 function TPackFileEC.Open: Boolean;
 var
   BytesRead: Cardinal;
 begin
-  if (PackageHandle <> INVALID_HANDLE_VALUE) or (RootFolder <> nil) then
+  if (PackageHandle <> THandle(-1)) or (RootFolder <> nil) then
     Close;
-
   if UseLooseFiles then
   begin
     RootSubtreeOffset := 0;
@@ -273,30 +362,29 @@ begin
     Exit;
   end;
 
-  PackageHandle :=
-      Windows.CreateFileA(
-          PAnsiChar(PackagePath),
-          GENERIC_READ or GENERIC_WRITE,
-          FILE_SHARE_READ or FILE_SHARE_WRITE,
-          nil,
-          OPEN_EXISTING,
-          FILE_ATTRIBUTE_NORMAL,
-          0
-      );
-  if PackageHandle = INVALID_HANDLE_VALUE then
+  PackageHandle := FileOpen(NativeGamePath(PackagePath), fmOpenReadWrite or fmShareDenyNone);
+  // Installed packages can be read-only, including browser HTTP assets.
+  if PackageHandle = THandle(-1) then
+    PackageHandle := FileOpen(NativeGamePath(PackagePath), fmOpenRead or fmShareDenyNone);
+  if PackageHandle = THandle(-1) then
   begin
     raise Exception.Create('Error openning package file [READ]:' + PackagePath);
-    PackageHandle := INVALID_HANDLE_VALUE;
+    PackageHandle := THandle(-1);
     Exit;
   end;
-  if not Windows
-      .ReadFile(PackageHandle, RootSubtreeOffset, SizeOf(RootSubtreeOffset), BytesRead, nil) then
+
+  if not ReadPackageFile(
+      PackageHandle,
+      RootSubtreeOffset,
+      SizeOf(RootSubtreeOffset),
+      BytesRead) then
   begin
-    Windows.CloseHandle(PackageHandle);
+    ClosePackageFile(PackageHandle);
     raise Exception.Create('Error reading package file:' + PackagePath);
-    PackageHandle := INVALID_HANDLE_VALUE;
+    PackageHandle := THandle(-1);
     Exit;
   end;
+
   RootFolder := THsFolderEC.Create('');
   if not RootFolder.Load(PackageHandle, RootSubtreeOffset) then
   begin
@@ -306,14 +394,16 @@ begin
     raise Exception.Create('Error reading file system of the package file:' + PackagePath);
     Exit;
   end;
+
   Result := True;
 end;
+
 function TPackFileEC.Close: Boolean;
 var
   Success: Boolean;
 begin
   Result := False;
-  if (PackageHandle = INVALID_HANDLE_VALUE) and (RootFolder = nil) then
+  if (PackageHandle = THandle(-1)) and (RootFolder = nil) then
     Exit;
   CloseAllOpenEntrySlots;
   if RootFolder <> nil then
@@ -321,20 +411,21 @@ begin
     RootFolder.Free;
     RootFolder := nil;
   end;
-  if PackageHandle <> INVALID_HANDLE_VALUE then
-    Success := Windows.CloseHandle(PackageHandle)
+  if PackageHandle <> THandle(-1) then
+    Success := ClosePackageFile(PackageHandle)
   else
     Success := True;
-  PackageHandle := INVALID_HANDLE_VALUE;
+  PackageHandle := THandle(-1);
   if Success then
     Result := True;
 end;
+
 function TPackFileEC.CloseForDestroy: Boolean;
 var
   Success: Boolean;
 begin
   Result := False;
-  if (PackageHandle = INVALID_HANDLE_VALUE) and (RootFolder = nil) then
+  if (PackageHandle = THandle(-1)) and (RootFolder = nil) then
     Exit;
   CloseAllOpenEntrySlots;
   if RootFolder <> nil then
@@ -342,14 +433,15 @@ begin
     RootFolder.Free;
     RootFolder := nil;
   end;
-  if PackageHandle <> INVALID_HANDLE_VALUE then
-    Success := Windows.CloseHandle(PackageHandle)
+  if PackageHandle <> THandle(-1) then
+    Success := ClosePackageFile(PackageHandle)
   else
     Success := True;
-  PackageHandle := INVALID_HANDLE_VALUE;
+  PackageHandle := THandle(-1);
   if Success then
     Result := True;
 end;
+
 function TPackFileEC.FindFreeOpenSlotIndex: Integer;
 var
   i: Integer;
@@ -362,11 +454,13 @@ begin
     end;
   Result := -1;
 end;
+
 function TPackFileEC.OpenEntryByPath(EntryPath: AnsiString; DesiredAccess: Cardinal): Integer;
 var
   Slot: Integer;
   Entry: PPackEntryEC;
   Position: Cardinal;
+  FilePath: UnicodeString;
 begin
   Result := -1;
   Slot := FindFreeOpenSlotIndex;
@@ -382,39 +476,30 @@ begin
   end
   else
   begin
-
-    if not RTLFileSystem.FileExists(LooseFileRoot + EntryPath) then
+    // Package keys above are unchanged; only loose files need OS path lookup.
+    FilePath := NativeGamePath(LooseFileRoot + EntryPath);
+    if not SysUtils.FileExists(FilePath) then
       Exit;
-    OpenSlots[Slot].FileHandle :=
-        Windows.CreateFileA(
-            PAnsiChar(LooseFileRoot + EntryPath),
-            DesiredAccess,
-            FILE_SHARE_READ,
-            nil,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            0
-        );
-    if OpenSlots[Slot].FileHandle = INVALID_HANDLE_VALUE then
+    OpenSlots[Slot].FileHandle := FileOpen(FilePath, DesiredAccess or fmShareDenyWrite);
+    if OpenSlots[Slot].FileHandle = THandle(-1) then
       Exit;
     OpenSlots[Slot].DataStartOffset := 0;
     OpenSlots[Slot].CurrentDataOffset := 0;
-    OpenSlots[Slot].DataSize :=
-        Windows.SetFilePointer(OpenSlots[Slot].FileHandle, 0, nil, FILE_END);
+    OpenSlots[Slot].DataSize := FileSeek(OpenSlots[Slot].FileHandle, Int64(0), fsFromEnd);
     OpenSlots[Slot].CompressedBlockBuffer := nil;
     OpenSlots[Slot].DecompressedBlockBuffer := nil;
     OpenSlots[Slot].UsesChainedBlocks := False;
     OpenSlots[Slot].CurrentBlockIndex := -1;
     if OpenSlots[Slot].DataSize = $FFFFFFFF then
       raise Exception.Create('Сбой в файловой системе :' + EntryPath);
-    Position := Windows.SetFilePointer(OpenSlots[Slot].FileHandle, 0, nil, FILE_BEGIN);
+    Position := FileSeek(OpenSlots[Slot].FileHandle, Int64(0), fsFromBeginning);
     if Position = $FFFFFFFF then
       raise Exception.Create('Сбой в файловой системе:' + EntryPath);
     OpenSlots[Slot].IsAvailable := False;
     Result := Slot;
     Exit;
   end;
-  if PackageHandle = INVALID_HANDLE_VALUE then
+  if PackageHandle = THandle(-1) then
     Exit;
   OpenSlots[Slot].FileHandle := PackageHandle;
   OpenSlots[Slot].DataStartOffset := Entry.TargetOffset + 4;
@@ -436,17 +521,17 @@ begin
     OpenSlots[Slot].DecompressedBlockBuffer := nil;
   end;
   Position :=
-      Windows.SetFilePointer(
+      FileSeek(
           OpenSlots[Slot].FileHandle,
-          OpenSlots[Slot].CurrentDataOffset,
-          nil,
-          FILE_BEGIN
+          Int64(OpenSlots[Slot].CurrentDataOffset),
+          fsFromBeginning
       );
   if Position = $FFFFFFFF then
     raise Exception.Create(
         'Сбой в пакетном файле :' + PackagePath + ':' + EntryPath);
   Result := Slot;
 end;
+
 function TPackFileEC.CreateLooseFile(FilePath: WideString): Integer;
 var
   Slot: Integer;
@@ -455,18 +540,8 @@ begin
   Slot := FindFreeOpenSlotIndex;
   if Slot = -1 then
     Exit;
-
-  OpenSlots[Slot].FileHandle :=
-      Windows.CreateFileW(
-          PWideChar(FilePath),
-          GENERIC_READ or GENERIC_WRITE,
-          FILE_SHARE_READ,
-          nil,
-          CREATE_ALWAYS,
-          FILE_ATTRIBUTE_NORMAL,
-          0
-      );
-  if OpenSlots[Slot].FileHandle = INVALID_HANDLE_VALUE then
+  OpenSlots[Slot].FileHandle := FileCreate(NativeGamePath(FilePath), fmShareDenyWrite, &666);
+  if OpenSlots[Slot].FileHandle = THandle(-1) then
     Exit;
   OpenSlots[Slot].DataStartOffset := 0;
   OpenSlots[Slot].CurrentDataOffset := 0;
@@ -478,6 +553,7 @@ begin
   OpenSlots[Slot].IsAvailable := False;
   Result := Slot;
 end;
+
 function TPackFileEC.CloseEntrySlot(SlotIndex: Cardinal): Boolean;
 begin
   Result := False;
@@ -505,7 +581,7 @@ begin
   end
   else
   begin
-    if not Boolean(Windows.CloseHandle(OpenSlots[SlotIndex].FileHandle)) then
+    if not Boolean(ClosePackageFile(OpenSlots[SlotIndex].FileHandle)) then
       raise Exception.Create(
           'Ошибка закрытия файла : ' + SysUtils.IntToStr(SlotIndex));
     if OpenSlots[SlotIndex].UsesChainedBlocks then
@@ -518,6 +594,7 @@ begin
     OpenSlots[SlotIndex].IsAvailable := True;
   end;
 end;
+
 function TPackFileEC.GetChainedBlockStoredSizeAtIndex(
     FirstBlockOffset,
     BlockIndex: Cardinal
@@ -528,8 +605,8 @@ begin
   Offset := FirstBlockOffset;
   while True do
   begin
-    Windows.SetFilePointer(PackageHandle, Offset, nil, FILE_BEGIN);
-    Windows.ReadFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead, nil);
+    FileSeek(PackageHandle, Int64(Offset), fsFromBeginning);
+    ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead);
     if BlockIndex = 0 then
       Break;
     Dec(BlockIndex);
@@ -537,6 +614,7 @@ begin
   end;
   Result := StoredSize;
 end;
+
 function TPackFileEC.ReadEntrySlot(
     SlotIndex: Cardinal;
     Buffer: Pointer;
@@ -572,43 +650,43 @@ begin
         ChunkSize := PackCompressionBlockSize - BlockOffset;
       if OpenSlots[SlotIndex].CurrentBlockIndex <> Integer(BlockIndex) then
       begin
-        // The original scans from the first header for every block (O(n^2)
-        // seeks for a sequential read). Keep the next physical header per slot.
-        // Nonsequential access retains the original traversal and seeds the cursor.
+        Result := False;
+        // Sequential reads need only the next header. Always seek explicitly:
+        // other open entries share the package handle and may have moved it.
         if BlockIndex = OpenSlots[SlotIndex].NextChainedBlockIndex then
         begin
-          Windows.SetFilePointer(
+          FileSeek(
               PackageHandle,
-              OpenSlots[SlotIndex].NextChainedBlockOffset,
-              nil,
-              FILE_BEGIN
+              Int64(OpenSlots[SlotIndex].NextChainedBlockOffset),
+              fsFromBeginning
           );
-          if not Windows.ReadFile(PackageHandle, StoredSize, 4, BytesRead, nil)
-              or (BytesRead <> 4) then
-          begin
-            Result := False;
-            Exit
-          end;
-          Inc(OpenSlots[SlotIndex].NextChainedBlockOffset, StoredSize + 4);
+          if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead)
+              or (BytesRead <> SizeOf(StoredSize)) then
+            Exit;
+          Inc(OpenSlots[SlotIndex].NextChainedBlockOffset, StoredSize + SizeOf(StoredSize));
         end
         else
         begin
           StoredSize :=
               GetChainedBlockStoredSizeAtIndex(OpenSlots[SlotIndex].DataStartOffset, BlockIndex);
           OpenSlots[SlotIndex].NextChainedBlockOffset :=
-              Windows.SetFilePointer(PackageHandle, 0, nil, FILE_CURRENT) + StoredSize;
+              FileSeek(PackageHandle, Int64(0), fsFromCurrent) + StoredSize;
         end;
         OpenSlots[SlotIndex].NextChainedBlockIndex := BlockIndex + 1;
+        if StoredSize > PackCompressedBufferSize then
+          Exit;
         Result :=
-            Windows.ReadFile(
+            ReadPackageFile(
                 PackageHandle,
                 OpenSlots[SlotIndex].CompressedBlockBuffer^,
                 StoredSize,
-                BytesRead,
-                nil
+                BytesRead
             );
-        if not Result then
+        if not Result or (BytesRead <> StoredSize) then
+        begin
+          Result := False;
           Exit;
+        end;
         OKGF_ZLib_UnCompress2(
             OpenSlots[SlotIndex].DecompressedBlockBuffer,
             PackCompressionBlockSize,
@@ -626,17 +704,17 @@ begin
   end
   else
   begin
-    Windows.SetFilePointer(
+    FileSeek(
         OpenSlots[SlotIndex].FileHandle,
-        OpenSlots[SlotIndex].CurrentDataOffset,
-        nil,
-        FILE_BEGIN
+        Int64(OpenSlots[SlotIndex].CurrentDataOffset),
+        fsFromBeginning
     );
-    Result := Windows.ReadFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesRead, nil);
+    Result := ReadPackageFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesRead);
     Result := Result and (ByteCount = BytesRead);
     Inc(OpenSlots[SlotIndex].CurrentDataOffset, BytesRead);
   end;
 end;
+
 function TPackFileEC.WriteEntrySlot(
     SlotIndex: Cardinal;
     Buffer: Pointer;
@@ -659,20 +737,19 @@ begin
   if OpenSlots[SlotIndex].UsesChainedBlocks then
     raise Exception.Create(
         'Ошибочная операция записи в сжатый файл');
-  Windows.SetFilePointer(
+  FileSeek(
       OpenSlots[SlotIndex].FileHandle,
-      OpenSlots[SlotIndex].CurrentDataOffset,
-      nil,
-      FILE_BEGIN
+      Int64(OpenSlots[SlotIndex].CurrentDataOffset),
+      fsFromBeginning
   );
-  Result :=
-      Windows.WriteFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesWritten, nil);
+  Result := WritePackageFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesWritten);
   Result := Result and (ByteCount = BytesWritten);
   Inc(OpenSlots[SlotIndex].CurrentDataOffset, BytesWritten);
   Size := OpenSlots[SlotIndex].CurrentDataOffset - OpenSlots[SlotIndex].DataStartOffset;
   if Size > OpenSlots[SlotIndex].DataSize then
     OpenSlots[SlotIndex].DataSize := Size;
 end;
+
 function TPackFileEC.SeekEntrySlot(SlotIndex, Offset: Cardinal; Origin: Integer): Boolean;
 var
   Position, BlockIndex: Cardinal;
@@ -688,9 +765,9 @@ begin
             + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
-  if Origin = FILE_CURRENT then
+  if Origin = fsFromCurrent then
     Offset := OpenSlots[SlotIndex].CurrentDataOffset + Offset - OpenSlots[SlotIndex].DataStartOffset
-  else if Origin = FILE_END then
+  else if Origin = fsFromEnd then
     Offset := OpenSlots[SlotIndex].DataSize - Offset;
   if OpenSlots[SlotIndex].UsesChainedBlocks then
   begin
@@ -704,11 +781,10 @@ begin
   else
   begin
     Position :=
-        Windows.SetFilePointer(
+        FileSeek(
             OpenSlots[SlotIndex].FileHandle,
-            OpenSlots[SlotIndex].DataStartOffset + Offset,
-            nil,
-            FILE_BEGIN
+            Int64(OpenSlots[SlotIndex].DataStartOffset + Offset),
+            fsFromBeginning
         );
     if Position = $FFFFFFFF then
       raise Exception.Create(
@@ -718,6 +794,7 @@ begin
   end;
   Result := True;
 end;
+
 function TPackFileEC.GetEntrySlotPosition(SlotIndex: Cardinal): Cardinal;
 begin
   Result := $FFFFFFFF;
@@ -733,6 +810,7 @@ begin
     Exit;
   Result := OpenSlots[SlotIndex].CurrentDataOffset - OpenSlots[SlotIndex].DataStartOffset;
 end;
+
 function TPackFileEC.GetEntrySlotSize(SlotIndex: Cardinal): Cardinal;
 begin
   Result := $FFFFFFFF;
@@ -748,41 +826,46 @@ begin
     Exit;
   Result := OpenSlots[SlotIndex].DataSize;
 end;
+
 constructor THsFolderEC.Create(FolderName: AnsiString);
 begin
   EntryBuffer := nil;
   HeaderSize := 12;
   EntryCount := 0;
-  EntryRecordSize := SizeOf(TPackEntryEC);
+  EntryRecordSize := DiskPackEntrySize;
   Parent := nil;
   OriginalName := FolderName;
   UpperName := SysUtils.UpperCase(FolderName);
   ChangedFlag := False;
   InitializedEmptyFlag := False;
 end;
+
 constructor THsFolderEC.CreateChild(FolderName: AnsiString; Parent: THsFolderEC);
 begin
   EntryBuffer := nil;
   HeaderSize := 12;
   EntryCount := 0;
-  EntryRecordSize := SizeOf(TPackEntryEC);
+  EntryRecordSize := DiskPackEntrySize;
   Self.Parent := Parent;
   OriginalName := FolderName;
   UpperName := SysUtils.UpperCase(FolderName);
   ChangedFlag := False;
   InitializedEmptyFlag := False;
 end;
+
 destructor THsFolderEC.Destroy;
 begin
   Unload;
 end;
+
 function THsFolderEC.GetEntry(Index: Cardinal): PPackEntryEC;
 begin
   if Index < EntryCount then
-    Result := PPackEntryEC(PByte(EntryBuffer) + SizeOf(TPackEntryEC) * Index)
+    Result := OffsetPackPointer(EntryBuffer, SizeOf(TPackEntryEC) * Index)
   else
-    Result := nil
+    Result := nil;
 end;
+
 function THsFolderEC.FindEntry(EntryName: AnsiString): PPackEntryEC;
 var
   i: Integer;
@@ -801,59 +884,67 @@ begin
       end;
   end;
 end;
+
 procedure THsFolderEC.InitializeEmpty;
 begin
   EntryCount := 0;
-  EntryRecordSize := SizeOf(TPackEntryEC);
+  EntryRecordSize := DiskPackEntrySize;
   HeaderSize := EntryRecordSize * EntryCount + 12;
   EntryBuffer := nil;
   InitializedEmptyFlag := True;
   UpdateParentEntry;
 end;
-function THsFolderEC.Load(FileHandle, SubtreeOffset: Cardinal): Boolean;
-// The last four disk bytes are a saved PE32 pointer, never a native pointer.
-const
-  DiskEntrySize = 158;
+
+function THsFolderEC.Load(FileHandle: THandle; SubtreeOffset: Cardinal): Boolean;
 var
   BytesRead: Cardinal;
-  I: Integer;
+  DiskEntry: array[0..DiskPackEntrySize - 1] of Byte;
+  Success: Boolean;
+  i: Integer;
   Entry: PPackEntryEC;
   Folder: THsFolderEC;
-  Disk: array[0..DiskEntrySize - 1] of Byte;
 begin
   Result := False;
   if EntryBuffer <> nil then
     Exit;
   InitializedEmptyFlag := False;
   ChangedFlag := False;
-  if Windows.SetFilePointer(FileHandle, SubtreeOffset, nil, FILE_BEGIN) <> SubtreeOffset then
+  FileSeek(FileHandle, Int64(SubtreeOffset), fsFromBeginning);
+  Success := ReadPackageFile(FileHandle, HeaderSize, 12, BytesRead);
+  if not Success then
     Exit;
-  if not Windows.ReadFile(FileHandle, HeaderSize, 12, BytesRead, nil) or (BytesRead <> 12) then
+  if BytesRead <> 12 then
     Exit;
-  if (EntryRecordSize <> DiskEntrySize) or (EntryCount > 1000000) then
+  if EntryRecordSize <> DiskPackEntrySize then
     Exit;
   EntryBuffer := AllocMem(EntryCount * SizeOf(TPackEntryEC));
-  for I := 0 to Integer(EntryCount) - 1 do
+  for i := 0 to EntryCount - 1 do
   begin
-    if not Windows.ReadFile(FileHandle, Disk, DiskEntrySize, BytesRead, nil)
-        or (BytesRead <> DiskEntrySize) then
+    Success := ReadPackageFile(FileHandle, DiskEntry, DiskPackEntrySize, BytesRead);
+    if not Success or (BytesRead <> EntryRecordSize) then
     begin
       Unload;
       Exit
     end;
-    Entry := GetEntry(I);
-    Move(Disk, Entry^, DiskEntrySize - 4);
+    // The disk record ends in a saved 32-bit pointer, which is discarded.
+    // In-memory entries have a native-sized ChildFolder and a different stride.
+    Move(DiskEntry, GetEntry(i)^, DiskPackEntrySize - SizeOf(Cardinal));
+  end;
+  for i := 0 to EntryCount - 1 do
+  begin
+    Entry := GetEntry(i);
     Entry.ChildFolder := nil;
     Entry.KindCopy := Entry.Kind;
   end;
-  for I := 0 to Integer(EntryCount) - 1 do
+  for i := 0 to EntryCount - 1 do
   begin
-    Entry := GetEntry(I);
+    Entry := GetEntry(i);
     if (Entry.Kind = 3) and (Entry.Flags = 0) then
     begin
       Folder := THsFolderEC.CreateChild(Entry.OriginalName + '', Self);
       Entry.ChildFolder := Folder;
-      if not Folder.Load(FileHandle, Entry.TargetOffset) then
+      Success := Folder.Load(FileHandle, Entry.TargetOffset);
+      if not Success then
       begin
         Unload;
         Exit
@@ -862,6 +953,7 @@ begin
   end;
   Result := True;
 end;
+
 procedure THsFolderEC.Unload;
 var
   i: Integer;
@@ -889,6 +981,7 @@ begin
     UpdateParentEntry;
   end;
 end;
+
 function THsFolderEC.ResolveEntryByPath(EntryPath: AnsiString): PPackEntryEC;
 var
   Head, Tail: AnsiString;
@@ -915,6 +1008,7 @@ begin
       Result := Entry;
   end;
 end;
+
 procedure THsFolderEC.UpdateParentEntry;
 var
   Entry: PPackEntryEC;
@@ -934,6 +1028,7 @@ begin
     Parent.ChangedFlag := True;
   end;
 end;
+
 constructor TPackCollectionEC.Create;
 var
   i: Integer;
@@ -945,10 +1040,12 @@ begin
   for i := Low(PackByIndex) to High(PackByIndex) do
     PackByIndex[i] := nil;
 end;
+
 destructor TPackCollectionEC.Destroy;
 begin
   Clear(False);
 end;
+
 procedure TPackCollectionEC.Clear(FreePacks: Boolean);
 var
   i: Integer;
@@ -963,6 +1060,7 @@ begin
   while FirstPack <> nil do
     RemovePack(FirstPack, FreePacks);
 end;
+
 procedure TPackCollectionEC.AddPackToFront(Pack: TPackFileEC);
 var
   Item: TPackFileEC;
@@ -1003,6 +1101,7 @@ begin
     end;
   end;
 end;
+
 procedure TPackCollectionEC.AddPackToBack(Pack: TPackFileEC);
 var
   Item: TPackFileEC;
@@ -1043,6 +1142,7 @@ begin
     end;
   end;
 end;
+
 procedure TPackCollectionEC.RemovePack(Pack: TPackFileEC; FreePack: Boolean);
 var
   Item: TPackFileEC;
@@ -1070,6 +1170,7 @@ begin
     Item := Item.NextPack;
   end;
 end;
+
 function TPackCollectionEC.OpenAllPackages: Boolean;
 var
   Pack: TPackFileEC;
@@ -1101,6 +1202,7 @@ begin
   end;
   Result := True;
 end;
+
 function TPackCollectionEC.CloseAllPackages: Boolean;
 var
   Pack: TPackFileEC;
@@ -1118,6 +1220,7 @@ begin
   end;
   Result := True;
 end;
+
 function TPackCollectionEC.GetPackByIndex(PackIndex: Integer): TPackFileEC;
 var
   Pack: TPackFileEC;
@@ -1132,6 +1235,7 @@ begin
   end;
   Result := Pack;
 end;
+
 function TPackCollectionEC.OpenEntryByPathAcrossPackages(
     EntryPath: AnsiString;
     DesiredAccess: Cardinal;
@@ -1193,6 +1297,7 @@ begin
   if Slot <> -1 then
     Result := Index * PackOpenSlotCount + Slot;
 end;
+
 function TPackCollectionEC.CreateLooseFile(FilePath: WideString): Integer;
 var
   Slot: Integer;
@@ -1205,6 +1310,7 @@ begin
       Result := Slot;
   end;
 end;
+
 function TPackCollectionEC.CloseEntryHandle(Handle: Integer): Boolean;
 var
   Pack: TPackFileEC;
@@ -1216,6 +1322,7 @@ begin
   if Pack <> nil then
     Result := Pack.CloseEntrySlot(Handle - Index * PackOpenSlotCount);
 end;
+
 function TPackCollectionEC.ReadEntryHandle(
     Handle: Integer;
     var Buffer;
@@ -1231,6 +1338,7 @@ begin
   if Pack <> nil then
     Result := Pack.ReadEntrySlot(Handle - Index * PackOpenSlotCount, @Buffer, ByteCount);
 end;
+
 function TPackCollectionEC.WriteEntryHandle(
     Handle: Integer;
     var Buffer;
@@ -1246,6 +1354,7 @@ begin
   if Pack <> nil then
     Result := Pack.WriteEntrySlot(Handle - Index * PackOpenSlotCount, @Buffer, ByteCount);
 end;
+
 function TPackCollectionEC.SeekEntryHandle(
     Handle: Integer;
     Offset: Cardinal;
@@ -1261,6 +1370,7 @@ begin
   if Pack <> nil then
     Result := Pack.SeekEntrySlot(Handle - Index * PackOpenSlotCount, Offset, Origin);
 end;
+
 function TPackCollectionEC.GetEntryHandlePosition(Handle: Integer): Cardinal;
 var
   Pack: TPackFileEC;
@@ -1272,6 +1382,7 @@ begin
   if Pack <> nil then
     Result := Pack.GetEntrySlotPosition(Handle - Index * PackOpenSlotCount);
 end;
+
 function TPackCollectionEC.GetEntryHandleSize(Handle: Integer): Cardinal;
 var
   Pack: TPackFileEC;
@@ -1283,6 +1394,7 @@ begin
   if Pack <> nil then
     Result := Pack.GetEntrySlotSize(Handle - Index * PackOpenSlotCount);
 end;
+
 function MatchLookupKeySuffix(
     var Key: AnsiString;
     SuffixBytes: Pointer;
@@ -1308,6 +1420,7 @@ begin
     Inc(j);
   end;
 end;
+
 procedure CopyLookupKeySuffix(DestSuffixBytes: Pointer; SuffixLength: Integer; var Key: AnsiString);
 var
   i, j, First, KeyLength: Integer;
@@ -1324,14 +1437,17 @@ begin
     Inc(j);
   end;
 end;
+
 constructor THashEC.Create;
 begin
   InitializeEmptyTable(Length(Slots));
 end;
+
 destructor THashEC.Destroy;
 begin
   ReleaseTable;
 end;
+
 function THashEC.ComputeLookupBucketAndFullHash(
     var Key: AnsiString;
     out FullHash: Cardinal
@@ -1351,6 +1467,7 @@ begin
   FullHash := Hash;
   Result := Hash and High(Slots);
 end;
+
 function THashEC.FindOrInsertKeySlot(Key: AnsiString): Integer;
 var
   Bucket, Hash, i: Cardinal;
@@ -1404,10 +1521,12 @@ begin
   end;
   Result := Found;
 end;
+
 procedure THashEC.SetSlotMappedValue(SlotIndex, Value: Integer);
 begin
   Slots[SlotIndex].MappedValue := Value;
 end;
+
 function THashEC.InitializeEmptyTable(BucketCount: Integer): Boolean;
 var
   i: Integer;
@@ -1421,14 +1540,17 @@ begin
     Slots[i].MappedValue := -1;
   Result := True;
 end;
+
 function THashEC.ReleaseTable: Boolean;
 begin
   Result := True;
 end;
+
 function THashEC.GetSlotMappedValue(SlotIndex: Integer): Integer;
 begin
   Result := Slots[SlotIndex].MappedValue;
 end;
+
 procedure THashEC.MaybeResetStatistics;
 begin
   if (OperationCount mod 100 = 0) and (OperationCount <> 0) then
@@ -1440,8 +1562,10 @@ begin
     MissCount := 0;
   end;
 end;
+
 procedure THashEC.NoteStaleMappedValue;
 begin
   Inc(StaleValueCount);
 end;
+
 end.

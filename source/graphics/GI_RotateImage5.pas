@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_RotateImage5;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -15,39 +14,32 @@ uses
   Types,
   Direct3D9,
   GR_DX;
+
 type
+
   TRotateImage5GI = class;
+
   TRotateImage5GI = class(TObjectGI)
     ImageCache: TCHSAIControlEC;
     RotationCache: TCRotateBufControlEC;
     RotatedImage: TGraphBufPalGR;
     RenderedAngle: Byte;
-    Gap12D: array[0..2] of Byte;
     RenderedFrameIndex: Cardinal;
     FrameIndex: Cardinal;
     Angle: Byte;
     Alpha: Byte;
     ImageDirty: Boolean;
-    Gap13B: array[0..0] of Byte;
     Unknown13C: TObject;
     Vertices: array[0..3] of TScreenVertexGR;
     FrameTexture: IDirect3DTexture9;
-    TopLeftX: array[0..255] of Single;
-    Gap5B4: array[0..3] of Byte;
-    TopLeftY: array[0..255] of Single;
-    Gap9B8: array[0..3] of Byte;
-    TopRightX: array[0..255] of Single;
-    GapDBC: array[0..3] of Byte;
-    TopRightY: array[0..255] of Single;
-    Gap11C0: array[0..3] of Byte;
-    BottomRightX: array[0..255] of Single;
-    Gap15C4: array[0..3] of Byte;
-    BottomRightY: array[0..255] of Single;
-    Gap19C8: array[0..3] of Byte;
-    BottomLeftX: array[0..255] of Single;
-    Gap1DCC: array[0..3] of Byte;
-    BottomLeftY: array[0..255] of Single;
-    Gap21D0: array[0..3] of Byte;
+    TopLeftX: array[0..256] of Single;
+    TopLeftY: array[0..256] of Single;
+    TopRightX: array[0..256] of Single;
+    TopRightY: array[0..256] of Single;
+    BottomRightX: array[0..256] of Single;
+    BottomRightY: array[0..256] of Single;
+    BottomLeftX: array[0..256] of Single;
+    BottomLeftY: array[0..256] of Single;
     procedure Clear; override;
     procedure LoadFromConfigPath(const Path: WideString); override;
     procedure Draw(ClipRect: TRect); override;
@@ -63,11 +55,16 @@ type
     function GetFrameCount: Cardinal;
     procedure QueueImagePath(PendingLoads: TList; Path: WideString);
   end;
+
 var
+
   RotateImageConstructionStage: Integer = -1;
+
 implementation
+
 uses
   GlobalsV,
+  EC_Struct,
   SysUtils,
   Math,
   EC_Cache,
@@ -75,7 +72,8 @@ uses
   GR_Main,
   GI_Main,
   GR_GraphBuf,
-  EC_Mem;
+  EC_Mem,
+  aMyFunction;
 
 constructor TRotateImage5GI.Create(Owner: TObjectGI);
 begin
@@ -148,8 +146,7 @@ end;
 
 procedure TRotateImage5GI.SetAngle(Value: Byte);
 begin
-  // Preserve the native byte comparison operand order.
-  if Byte(Value + 0) <> Angle then
+  if Value <> Angle then
   begin
     Angle := Value;
     ImageDirty := True;
@@ -159,7 +156,7 @@ end;
 
 procedure TRotateImage5GI.SetFrameIndex(Value: Cardinal);
 begin
-  if Value + 0 <> FrameIndex then
+  if Value <> FrameIndex then
   begin
     FrameIndex := Value;
     ImageDirty := True;
@@ -169,7 +166,7 @@ end;
 
 procedure TRotateImage5GI.SetAlpha(Value: Byte);
 begin
-  if Byte(Value + 0) <> Alpha then
+  if Value <> Alpha then
   begin
     Alpha := Value;
     ImageDirty := True;
@@ -204,10 +201,10 @@ begin
     except
       raise Exception.Create('Error in TRotateImage5GI.SetImage');
     end;
-    Radius := Sqr(Pivot.X - 0) + Sqr(Pivot.Y - 0);
-    Radius := Max(Radius, Sqr(Pivot.X - ImageSize.X) + Sqr(Pivot.Y - ImageSize.Y));
-    Radius := Max(Radius, Sqr(Pivot.X - ImageSize.X) + Sqr(Pivot.Y - 0));
-    Radius := Max(Radius, Sqr(Pivot.X - 0) + Sqr(Pivot.Y - ImageSize.Y));
+    Radius := SquaredDistanceToPoint(Pivot, 0, 0);
+    Radius := Max(Radius, SquaredDistanceToPoint(Pivot, ImageSize.X, ImageSize.Y));
+    Radius := Max(Radius, SquaredDistanceToPoint(Pivot, ImageSize.X, 0));
+    Radius := Max(Radius, SquaredDistanceToPoint(Pivot, 0, ImageSize.Y));
     Radius := Floor(Sqrt(Radius) * 2.0 + 2.0);
     SetSize(Classes.Point(Trunc(Radius), Trunc(Radius)));
     SetOrigin(Classes.Point(ClientSize.X div 2, ClientSize.Y div 2));
@@ -219,9 +216,9 @@ begin
     BottomY := ImageSize.Y - Pivot.Y - 1;
     CenterX := ClientSize.X / 2.0;
     CenterY := ClientSize.Y / 2.0;
-    for I := Low(TopLeftX) to High(TopLeftX) do
+    for I := 0 to 255 do
     begin
-      Radians := I / 256.0 * 360.0 * 3.1415926 / 180.0;
+      Radians := I / 256.0 * 360.0 * GamePi / 180.0;
       C := Cos(Radians);
       S := Sin(Radians);
       TopLeftX[I] := Trunc(LeftX * C - TopY * S) + CenterX;
@@ -251,6 +248,7 @@ begin
   Result := False;
   if inherited ContainsPoint(Point) then
   begin
+    Point := ScreenToLogicalPoint(Point);
     if HardwareRenderingEnabled then
     begin
       if FrameTexture <> nil then
@@ -374,8 +372,8 @@ var
   Rotation: TCRotateBufEC;
   OldClip: TRect;
 begin
-  // The supplied clip is in the same coordinate space as the sprite. Observer
-  // world coordinates may be negative or far beyond the physical window.
+  // Bounds and the incoming clip are in the same scaled control coordinates.
+  // Comparing against screen pixels would discard visible ships when zoomed out.
   if (HitTestBounds.Right < ClipRect.Left)
       or (HitTestBounds.Left > ClipRect.Right)
       or (HitTestBounds.Bottom < ClipRect.Top)
@@ -400,7 +398,7 @@ begin
           ImageCache.Release;
       end;
     end;
-    Vertices[0].Color := (Cardinal(Alpha) shl 24) or $FFFFFF;
+    Vertices[0].Color := (Cardinal(Alpha) shl 24) or RgbWhite;
     Vertices[1].Color := Vertices[0].Color;
     Vertices[2].Color := Vertices[0].Color;
     Vertices[3].Color := Vertices[0].Color;

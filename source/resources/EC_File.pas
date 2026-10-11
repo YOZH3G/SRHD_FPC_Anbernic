@@ -1,14 +1,16 @@
-{$EXCESSPRECISION OFF}
 unit EC_File;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct;
+
 type
+
   TFileEC = class;
+
   TFileEC = class(TObjectEx)
     Handle: Integer;
     OpenDepth: Integer;
@@ -30,13 +32,13 @@ type
     procedure WriteBuffer(Source: Pointer; ByteCount: Cardinal);
     function ReadWideString: WideString;
   end;
+
 implementation
+
 uses
-  Math,
   EC_HsFile,
   SyncObjs,
-  SysUtils,
-  Windows;
+  SysUtils;
 
 constructor TFileEC.Create;
 begin
@@ -50,13 +52,18 @@ begin
   inherited Destroy;
 end;
 
+// Package operations may raise on I/O or decoding errors. Always release their
+// shared lock on the calling thread, including when a loader exits on failure.
 procedure TFileEC.Reset;
 begin
   if Handle <> -1 then
   begin
     PackageFileLock.Enter;
-    PackageCollection.CloseEntryHandle(Handle);
-    PackageFileLock.Leave;
+    try
+      PackageCollection.CloseEntryHandle(Handle);
+    finally
+      PackageFileLock.Leave;
+    end;
   end;
   OpenDepth := 0;
   Handle := -1;
@@ -74,13 +81,13 @@ begin
   if OpenDepth = 0 then
   begin
     PackageFileLock.Enter;
-    Handle :=
-        PackageCollection.OpenEntryByPathAcrossPackages(
-            AnsiString(FileName),
-            GENERIC_READ or GENERIC_WRITE,
-            False
-        );
-    PackageFileLock.Leave;
+    try
+      Handle :=
+          PackageCollection
+              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenReadWrite, False);
+    finally
+      PackageFileLock.Leave;
+    end;
     if Handle = -1 then
       raise Exception.Create('TFileEC.Open. FileName=' + FileName);
   end;
@@ -92,10 +99,13 @@ begin
   if OpenDepth = 0 then
   begin
     PackageFileLock.Enter;
-    Handle :=
-        PackageCollection
-            .OpenEntryByPathAcrossPackages(AnsiString(FileName), GENERIC_READ, FirstPackageOnly);
-    PackageFileLock.Leave;
+    try
+      Handle :=
+          PackageCollection
+              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
+    finally
+      PackageFileLock.Leave;
+    end;
     if Handle = -1 then
       raise Exception.Create('TFileEC.Open. FileName=' + FileName);
   end;
@@ -107,10 +117,13 @@ begin
   if OpenDepth = 0 then
   begin
     PackageFileLock.Enter;
-    Handle :=
-        PackageCollection
-            .OpenEntryByPathAcrossPackages(AnsiString(FileName), GENERIC_READ, FirstPackageOnly);
-    PackageFileLock.Leave;
+    try
+      Handle :=
+          PackageCollection
+              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
+    finally
+      PackageFileLock.Leave;
+    end;
     if Handle = -1 then
     begin
       Result := False;
@@ -126,8 +139,11 @@ begin
   OpenDepth := 1;
   ReleaseHandle;
   PackageFileLock.Enter;
-  Handle := PackageCollection.CreateLooseFile(FileName);
-  PackageFileLock.Leave;
+  try
+    Handle := PackageCollection.CreateLooseFile(FileName);
+  finally
+    PackageFileLock.Leave;
+  end;
   if Handle = -1 then
   begin
     Handle := -1;
@@ -144,8 +160,11 @@ begin
     if Handle <> -1 then
     begin
       PackageFileLock.Enter;
-      PackageCollection.CloseEntryHandle(Handle);
-      PackageFileLock.Leave;
+      try
+        PackageCollection.CloseEntryHandle(Handle);
+      finally
+        PackageFileLock.Leave;
+      end;
     end;
     Handle := -1;
     OpenDepth := 0;
@@ -157,12 +176,18 @@ var
   Size: Cardinal;
 begin
   AcquireReadWriteHandle;
-  PackageFileLock.Enter;
-  Size := PackageCollection.GetEntryHandleSize(Handle);
-  PackageFileLock.Leave;
-  if Size = $FFFFFFFF then
-    raise Exception.Create('TFileEC.GetSize. FileName=' + FileName);
-  ReleaseHandle;
+  try
+    PackageFileLock.Enter;
+    try
+      Size := PackageCollection.GetEntryHandleSize(Handle);
+    finally
+      PackageFileLock.Leave;
+    end;
+    if Size = $FFFFFFFF then
+      raise Exception.Create('TFileEC.GetSize. FileName=' + FileName);
+  finally
+    ReleaseHandle;
+  end;
   Result := Size;
 end;
 
@@ -176,20 +201,29 @@ var
   Success: Boolean;
 begin
   PackageFileLock.Enter;
-  Success := PackageCollection.SeekEntryHandle(Handle, Offset, Origin);
-  PackageFileLock.Leave;
+  try
+    Success := PackageCollection.SeekEntryHandle(Handle, Offset, Origin);
+  finally
+    PackageFileLock.Leave;
+  end;
   if not Success then
     raise Exception.Create('TFileEC.SetPointer. FileName=' + FileName);
   PackageFileLock.Enter;
-  Result := PackageCollection.GetEntryHandlePosition(Handle);
-  PackageFileLock.Leave;
+  try
+    Result := PackageCollection.GetEntryHandlePosition(Handle);
+  finally
+    PackageFileLock.Leave;
+  end;
 end;
 
 function TFileEC.GetPointer: Cardinal;
 begin
   PackageFileLock.Enter;
-  Result := PackageCollection.GetEntryHandlePosition(Handle);
-  PackageFileLock.Leave;
+  try
+    Result := PackageCollection.GetEntryHandlePosition(Handle);
+  finally
+    PackageFileLock.Leave;
+  end;
 end;
 
 procedure TFileEC.ReadBuffer(Dest: Pointer; ByteCount: Cardinal);
@@ -197,16 +231,22 @@ var
   Success: Boolean;
 begin
   PackageFileLock.Enter;
-  Success := PackageCollection.ReadEntryHandle(Handle, Dest^, ByteCount);
-  PackageFileLock.Leave;
+  try
+    Success := PackageCollection.ReadEntryHandle(Handle, Dest^, ByteCount);
+  finally
+    PackageFileLock.Leave;
+  end;
   if not Success then
     raise Exception.Create(
         'TFileEC.Read. FileName='
             + FileName
             + ' kolbyte='
             + SysUtils.IntToStr(ByteCount)
+{$IFNDEF WASI}
             + ' GetLastError='
-            + SysUtils.IntToStr(Windows.GetLastError));
+            + SysUtils.IntToStr(GetLastOSError)
+{$ENDIF}
+    );
 end;
 
 procedure TFileEC.WriteBuffer(Source: Pointer; ByteCount: Cardinal);
@@ -216,8 +256,11 @@ begin
   if ByteCount > 0 then
   begin
     PackageFileLock.Enter;
-    Success := PackageCollection.WriteEntryHandle(Handle, Source^, ByteCount);
-    PackageFileLock.Leave;
+    try
+      Success := PackageCollection.WriteEntryHandle(Handle, Source^, ByteCount);
+    finally
+      PackageFileLock.Leave;
+    end;
     if not Success then
       raise Exception.Create(
           'TFileEC.Write. FileName=' + FileName + ' kolbyte=' + SysUtils.IntToStr(ByteCount));

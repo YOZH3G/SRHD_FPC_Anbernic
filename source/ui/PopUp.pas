@@ -1,21 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit PopUp;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   Classes,
   SyncObjs;
+
 type
+
   TfPopUpController = class;
+
   TfPopUpController = class(TObjectGI)
     LastTick: Cardinal;
     PauseRemaining: Cardinal;
     MovingUp: Boolean;
-    Gap129: array[0..2] of Byte;
     MotionRemainder: Single;
     QueueLock: TCriticalSection;
     TextQueue: TList;
@@ -26,10 +27,13 @@ type
     procedure AdvancePopups(Tick: Cardinal);
     procedure QueueNotification(Text: WideString; ImagePath: WideString);
   end;
+
 var
+
   PopupController: TfPopUpController = nil;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_Panel,
   GI_Image,
@@ -115,7 +119,7 @@ begin
     SetDepth(-1000);
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     SetPositionModeW(True);
-    MessageLoop := TObject(RegisteredScreens[Ord(CurrentScreenId)]) as TMessageLoopGI;
+    MessageLoop := TObject(RegisteredScreens[CurrentScreenId]) as TMessageLoopGI;
     while TextQueue.Count > 0 do
     begin
       Text := PWideString(TextQueue[0])^;
@@ -215,8 +219,4 @@ begin
   QueueLock.Leave;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TMessageLoopGI.ClassName;
-end;
 end.

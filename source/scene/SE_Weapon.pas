@@ -1,24 +1,29 @@
-{$EXCESSPRECISION OFF}
 unit SE_Weapon;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
   GI_Label,
   GI_MessageLoop,
   GI_PSWeapon,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TWeaponEffect = class;
+
   TWeaponSE = class;
+
   PointerToTWeaponEffectItem = ^TWeaponEffectItem;
+
   PWeaponEffectItem = PointerToTWeaponEffectItem;
+
   TWeaponEffectItem = record
     Next: PWeaponEffectItem;
     Prev: PWeaponEffectItem;
@@ -31,9 +36,9 @@ type
     AtTarget: Boolean;
     AutoAnimation: Boolean;
     LoopAnimation: Boolean;
-    Gap27: array[0..0] of Byte;
     SkipTime: Integer;
   end;
+
   TWeaponEffect = class(TObject)
     Owner: TObjectGI;
     FirstItem: PWeaponEffectItem;
@@ -43,13 +48,11 @@ type
     SourcePoint: TPointF;
     TargetPoint: TPointF;
     Started: Boolean;
-    Gap29: array[0..2] of Byte;
     LeftTime: Integer;
     Direction: Single;
     AnimationInterval: Integer;
     AnimationCountdown: Integer;
     BeforeEnd: Boolean;
-    Gap3D: array[0..2] of Byte;
     constructor Create(AEffectIndex: Integer; AOwner: TObjectGI);
     destructor Destroy; override;
     procedure Clear;
@@ -64,16 +67,15 @@ type
     procedure SetSourcePoint(Point: TPointF);
     procedure SetTargetPoint(Point: TPointF);
   end;
+
   TWeaponSE = class(TObjectSE)
     ShotSoundPath: WideString;
     HitSoundPath: WideString;
     PlayShotSound: Boolean;
-    Gap55: array[0..2] of Byte;
     SourceObject: TObjectSE;
     TargetObject: TObjectSE;
     HitDamage: Integer;
     TargetDestroyed: Boolean;
-    Gap65: array[0..2] of Byte;
     DestructionEffect: Integer;
     DestructionFrameInterval: Integer;
     DestructionDetachStep: Integer;
@@ -89,13 +91,11 @@ type
     ExtraDestructionAnimations: array[0..5] of TgaiGI;
     DamageLabel: TLabelGI;
     ImmediateDestruction: Boolean;
-    GapB5: array[0..2] of Byte;
     DestructionAlpha: Single;
     DestructionAlphaStep: Single;
     DamageLabelPoint: TPointF;
     GapC8: array[0..0] of Byte;
     ProjectileFinished: Boolean;
-    GapCA: array[0..1] of Byte;
     StepIndex: Integer;
     ShotVisual: Integer;
     procedure AttachToSpace(ASpace: TSpaceSE); override;
@@ -114,11 +114,12 @@ type
     function GetTargetPoint: TPointF;
     function GetSourcePoint: TPointF;
   end;
+
 procedure InitializeWeaponVisualResources;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  ObserverHooks,
   Classes,
   Math,
   SysUtils,
@@ -379,7 +380,7 @@ begin
     if CountDelimitedPartsW(GraphKey, ',') > 2 then
       HitVariant := StrToInt(ExtractDelimitedPartW(GraphKey, 2, ','))
     else if UseRandomHit then
-      HitVariant := PresentationRandom(ExtractDigitsToIntW(WeaponConfig.GetParam('HitCount'))) + 1;
+      HitVariant := Random(ExtractDigitsToIntW(WeaponConfig.GetParam('HitCount'))) + 1;
   end;
   if HitVariant > 0 then
     HitEffect := TWeaponEffect.Create(HitVariant, Space.MapPanel);
@@ -549,7 +550,7 @@ begin
       );
       TargetAnimation.StopAutoPlayback;
       TargetAnimationInterval := 3;
-      if FilmSoundEffectsEnabled and not ObserverVisualRandom then
+      if FilmSoundEffectsEnabled then
         if SoundInSpaceEnabled then
           if Space.ContainsMapPoint(GetTargetPoint) then
             SoundManager.PlaySound(HitSoundPath);
@@ -597,7 +598,7 @@ begin
   end;
   if HasDestruction then
     if ImmediateDestruction then
-      if FilmSoundEffectsEnabled and not ObserverVisualRandom then
+      if FilmSoundEffectsEnabled then
         if SoundInSpaceEnabled then
           if Space.ContainsMapPoint(GetTargetPoint) then
             SoundManager.PlaySound(HitSoundPath);
@@ -773,7 +774,7 @@ begin
           for Index := Low(ExtraDestructionAnimations) to High(ExtraDestructionAnimations) do
             if ExtraDestructionAnimations[Index] <> nil then
               ExtraDestructionAnimations[Index].SetActive(True);
-          if FilmSoundEffectsEnabled and not ObserverVisualRandom then
+          if FilmSoundEffectsEnabled then
             if SoundInSpaceEnabled then
               if Space.ContainsMapPoint(GetTargetPoint) then
                 SoundManager.PlaySound(HitSoundPath);
@@ -796,7 +797,7 @@ begin
           for Index := Low(ExtraDestructionAnimations) to High(ExtraDestructionAnimations) do
             if ExtraDestructionAnimations[Index] <> nil then
               ExtraDestructionAnimations[Index].SetActive(True);
-          if FilmSoundEffectsEnabled and not ObserverVisualRandom then
+          if FilmSoundEffectsEnabled then
             if SoundInSpaceEnabled then
               if Space.ContainsMapPoint(GetTargetPoint) then
                 SoundManager.PlaySound(HitSoundPath);
@@ -822,7 +823,7 @@ begin
           for Index := Low(ExtraDestructionAnimations) to High(ExtraDestructionAnimations) do
             if ExtraDestructionAnimations[Index] <> nil then
               ExtraDestructionAnimations[Index].SetActive(True);
-          if FilmSoundEffectsEnabled and not ObserverVisualRandom then
+          if FilmSoundEffectsEnabled then
             if SoundInSpaceEnabled then
               if Space.ContainsMapPoint(GetTargetPoint) then
                 SoundManager.PlaySound(HitSoundPath);
@@ -933,9 +934,8 @@ end;
 procedure TWeaponSE.LoadTemplate(Block: TBlockParEC);
 var
   PaletteBlock, Palettes: TBlockParEC;
-  function GetWeaponTemplateParam(
-      Name: WideString
-  ): WideString; // @addr $6A0150 @ida "void __usercall $name(unsigned __int16 *Name@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x6A02A2, 0x6A02BF"
+
+  function GetWeaponTemplateParam(Name: WideString): WideString;
   begin
     if (PaletteBlock <> nil) and (PaletteBlock.CountParams(Name) > 0) then
       Result := PaletteBlock.GetParam(Name)
@@ -944,6 +944,7 @@ var
     else
       Result := '';
   end;
+
 begin
   inherited LoadTemplate(Block);
   PaletteBlock := nil;
@@ -1282,9 +1283,4 @@ begin
   LoadRadiationPalettes;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TRuinsSE.ClassName;
-  TShip2SE.ClassName;
-end;
 end.

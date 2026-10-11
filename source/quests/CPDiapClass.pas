@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit CPDiapClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   ValueListClass;
+
 type
+
   TCPDiapazone = class;
+
   TCPDiapazone = class(TObjectEx)
     RangeStarts: array of Int64;
     RangeEnds: array of Int64;
@@ -31,9 +33,10 @@ type
     procedure AddValue(Value: Extended);
     procedure LoadFromText(Text: WideString);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   SysUtils,
   TextFieldClass;

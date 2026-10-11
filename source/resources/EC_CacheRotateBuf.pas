@@ -1,32 +1,37 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheRotateBuf;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Cache;
+
 type
+
   TCRotateBufControlEC = class;
+
   TCRotateBufEC = class;
+
   TCRotateBufControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCRotateBufEC = class(TCacheDataEC)
     Buffer: Pointer;
     procedure LoadFromKey(const Key: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreateRotateBuf(Control: TCacheControlEC): TCRotateBufEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Str,
   GR_Main,
@@ -99,8 +104,4 @@ begin
     raise Exception.Create('TCRotateBufEC.Load. Error create rotate buf.');
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCRotateBufEC.ClassName;
-end;
 end.

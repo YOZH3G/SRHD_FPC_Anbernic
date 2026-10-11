@@ -1,22 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit EC_CachePlanetTempl;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Cache,
   Classes;
+
 type
+
   TCPlanetTemplControlEC = class;
+
   TCPlanetTemplEC = class;
+
   TCPlanetTemplControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCPlanetTemplEC = class(TCacheDataEC)
     TemplateData: Pointer;
     ImageHeight: Integer;
@@ -24,11 +28,12 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreatePlanetTemplate(Control: TCacheControlEC): TCPlanetTemplEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   EC_CachePalBitmap,
   EC_Struct,
   GR_Main,
@@ -112,8 +117,4 @@ begin
   Bitmap.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCPlanetTemplEC.ClassName;
-end;
 end.

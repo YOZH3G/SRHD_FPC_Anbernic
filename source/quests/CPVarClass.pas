@@ -1,24 +1,29 @@
-{$EXCESSPRECISION OFF}
 unit CPVarClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   CPDiapClass,
   EC_Struct;
+
+const
+
+  QuestNumericLimit = 2000000000;
+
 type
+
   TCPVariant = class;
+
   {$Z1}
   TCPValueKind = (cpvkRange = 0, cpvkFloat = 1, cpvkInteger = 2);
+
   TCPVariant = class(TObjectEx)
     Range: TCPDiapazone;
     FloatValue: Extended;
-    Gap12: array[0..1] of Byte;
     IntValue: Integer;
     ValueKind: TCPValueKind;
-    Gap19: array[0..2] of Byte;
     constructor Create;
     destructor Destroy; override;
     procedure Reset;
@@ -29,9 +34,10 @@ type
     function AsExtended: Extended;
     function AsInteger: Integer;
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str;
 
 constructor TCPVariant.Create;
@@ -150,10 +156,10 @@ begin
     Result := Range.GetRandomValue
   else if ValueKind = cpvkFloat then
   begin
-    if FloatValue < -2000000000 then
-      Result := -2000000000
-    else if FloatValue > 2000000000 then
-      Result := 2000000000
+    if FloatValue < -QuestNumericLimit then
+      Result := -QuestNumericLimit
+    else if FloatValue > QuestNumericLimit then
+      Result := QuestNumericLimit
     else
       Result := System.Round(FloatValue + 1E-11);
   end

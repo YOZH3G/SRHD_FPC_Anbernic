@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit fPanelRuins;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_MessageLoop;
+
 type
+
   TfPanelRuins = class;
+
   TfPanelRuins = class(TObjectEx)
     Screen: TMessageLoopGI;
     constructor Create;
@@ -27,15 +29,16 @@ type
     procedure TakeOffForStationTravel;
     procedure ProcessKeyDown(Key: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aRanger,
   fEquipmentShop,
   fGalaxy2,
   Classes,
-  Windows,
+  Types,
+  GameInput,
   GR_Main,
   GR_Music,
   Globals,
@@ -128,7 +131,7 @@ begin
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.DockedTo.TypeId = Byte(rstBusinessCenter)) and (GetPlayer.DebtDefaultCount > 1) then
+  if (GetPlayer.DockedTo.TypeId = rstBusinessCenter) and (GetPlayer.DebtDefaultCount > 1) then
     ShowMessageBoxGI(
         Screen,
         LocalizedColorText('FormRuins.BK.DebtNoAccess'),
@@ -153,7 +156,7 @@ begin
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.DockedTo.TypeId = Byte(rstBusinessCenter)) and (GetPlayer.DebtDefaultCount > 1) then
+  if (GetPlayer.DockedTo.TypeId = rstBusinessCenter) and (GetPlayer.DebtDefaultCount > 1) then
     ShowMessageBoxGI(
         Screen,
         LocalizedColorText('FormRuins.BK.DebtNoAccess'),
@@ -178,7 +181,7 @@ begin
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.DockedTo.TypeId = Byte(rstBusinessCenter)) and (GetPlayer.DebtDefaultCount > 1) then
+  if (GetPlayer.DockedTo.TypeId = rstBusinessCenter) and (GetPlayer.DebtDefaultCount > 1) then
     ShowMessageBoxGI(
         Screen,
         LocalizedColorText('FormRuins.BK.DebtNoAccess'),
@@ -211,8 +214,7 @@ procedure TfPanelRuins.TakeOffForStationTravel;
 var
   Index: Integer;
 begin
-
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(189);
   CaptureSavePreview;
   CaptureGalaxyPreview(Screen);
   SaveManagerReturnScreenId := FormToId(Screen);
@@ -229,7 +231,7 @@ begin
   PlayerStar.RefreshSpaceObjectPositions;
   RestoreTemporaryShopStock;
   RunGlobalScriptsForContext(GetPlayer.CurrentStar, 1);
-  if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(3) then
+  if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heHolyFanaticism) then
     Galaxy.EnableDominatorSurfaces
   else
     Galaxy.DisableDominatorSurfaces;
@@ -274,8 +276,4 @@ begin
     HangarClicked(nil);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphButtonGI.ClassName;
-end;
 end.

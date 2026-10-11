@@ -1,24 +1,25 @@
-{$EXCESSPRECISION OFF}
 unit GI_AImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
   GI_Main,
   GI_MessageLoop,
   Types;
+
 type
+
   TAImageGI = class;
+
   TAImageGI = class(TObjectGI)
     FrameTimer: PCallbackTimerGI;
     ImageKindX: TImageKindXGI;
     ImageKindY: TImageKindYGI;
     HalfAlpha: Boolean;
-    Gap127: array[0..0] of Byte;
     CurrentFrame: TObjectGI;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
@@ -36,10 +37,10 @@ type
     function HitTest(Point: TPoint): Boolean;
     procedure LoadAnimationProperties(Block: TBlockParEC);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   GI_Image,
   EC_Str,
@@ -229,8 +230,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TImageGI.ClassName;
-end;
 end.

@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit ab_Zone;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   Classes,
   EC_Buf,
   EC_Struct,
@@ -14,15 +14,19 @@ uses
   ab_Global,
   ab_WorldImage,
   ab_WorldLine;
+
 type
+
   PointerToTabZone = ^TabZone;
+
   PointerToTabZoneLink = ^TabZoneLink;
+
   PabZone = PointerToTabZone;
+
   TabZone = record
     Prev: PabZone;
     Next: PabZone;
     RouteIndex: Integer;
-    GapC: array[0..3] of Byte;
     Longitude: Double;
     PolarAngle: Double;
     RadiusDegrees: Double;
@@ -41,9 +45,10 @@ type
     NextBonusTick: Integer;
     Kind: Integer;
     Segments: array[0..3] of PPolyLineSegmentGI;
-    Gap8C: array[0..3] of Byte;
   end;
+
   PabZoneLink = PointerToTabZoneLink;
+
   TabZoneLink = record
     Prev: PabZoneLink;
     Next: PabZoneLink;
@@ -54,57 +59,98 @@ type
     WorldLine: PabWorldLine;
     Segments: array[0..1] of PPolyLineSegmentGI;
   end;
+
 var
-  ZoneHeap: Cardinal = 0;
+
+  ZoneHeap: TGameHeapHandle = 0;
+
   FirstZone: PabZone = nil;
+
   LastZone: PabZone = nil;
+
   SelectedZone: PabZone = nil;
-  ZoneLinkHeap: Cardinal = 0;
+
+  ZoneLinkHeap: TGameHeapHandle = 0;
+
   FirstZoneLink: PabZoneLink = nil;
+
   LastZoneLink: PabZoneLink = nil;
+
   SelectedZoneLink: PabZoneLink = nil;
+
 procedure ab_Zone_Clear;
+
 function ab_Zone_Add: PabZone;
+
 procedure ab_Zone_Delete(Zone: PabZone);
+
 procedure ab_Zone_UpdatePosition(Zone: PabZone);
+
 procedure ab_Zone_UpdateImages(Zone: PabZone);
+
 procedure ab_Zone_ClearImages;
+
 procedure ab_Zone_ClearSegments(Zone: PabZone);
+
 function ab_Zone_CountKind(Kind: Integer): Integer;
+
 function ab_Zone_Get(Index: Integer): PabZone;
+
 function ab_Zone_GetKind(Kind: Integer; Index: Integer): PabZone;
+
 procedure ab_ZoneLink_Clear;
+
 function ab_ZoneLink_Add: PabZoneLink;
+
 procedure ab_ZoneLink_Delete(Link: PabZoneLink);
+
 procedure ab_ZoneLink_UpdateDistance(Link: PabZoneLink);
+
 procedure ab_ZoneLink_ClearImages;
+
 procedure ab_ZoneLink_ClearSegments(Link: PabZoneLink);
+
 procedure ab_Zone_Load(Buffer: TBufEC);
+
 function ab_Zone_RandomKind(Kind: Integer): PabZone;
+
 function ab_Zone_RandomPosition(Zone: PabZone): TSphericalBearingState;
+
 function ab_Zone_FindContainingOrNearest(
     Longitude: Double;
     PolarAngle: Double;
     var Nearest: PabZone
 ): Boolean;
+
 function ab_Zone_FindNearestOutside(Longitude: Double; PolarAngle: Double): PabZone;
+
 function ab_Zone_FindNearestEnabled(Longitude: Double; PolarAngle: Double): PabZone;
+
 function ab_Zone_IsInsideKind10(Longitude: Double; PolarAngle: Double): Boolean;
+
 function ab_Zone_FindRoute(Source: PabZone; Target: PabZone): PabZone;
+
 procedure ab_Zone_BuildRoutes(Zone: PabZone);
+
 procedure ab_Zone_BuildAllRoutes;
+
 function ab_Zone_GetRoute(Source: PabZone; Target: PabZone): PabZone;
+
 function ab_Zone_IsHeadingInside(
     Source: TSphericalBearingState;
     Zone: PabZone;
     var BearingDelta: Double;
     var AngularRadius: Double
 ): Boolean;
+
 function ab_Zone_FindReachableRouteZone(Source: PabZone): PabZone;
+
 function ab_Zone_RandomRoute(Source: PabZone; Steps: Integer): PabZone;
+
 implementation
+
 uses
-  Windows,
+  Types,
   SysUtils,
   Math,
   EC_Mem,
@@ -119,7 +165,7 @@ begin
     ab_Zone_Delete(LastZone);
   if ZoneHeap <> 0 then
   begin
-    HeapDestroy(ZoneHeap);
+    GameHeap.HeapDestroy(ZoneHeap);
     ZoneHeap := 0;
   end;
 end;
@@ -130,7 +176,7 @@ var
 begin
   if ZoneHeap = 0 then
   begin
-    ZoneHeap := HeapCreate(1, $8000, 0);
+    ZoneHeap := GameHeap.HeapCreate(1, $8000, 0);
     if ZoneHeap = 0 then
       raise Exception.Create('ab_Zone_Add.HeapCreate');
   end;
@@ -377,7 +423,7 @@ begin
     ab_ZoneLink_Delete(LastZoneLink);
   if ZoneLinkHeap <> 0 then
   begin
-    HeapDestroy(ZoneLinkHeap);
+    GameHeap.HeapDestroy(ZoneLinkHeap);
     ZoneLinkHeap := 0;
   end;
 end;
@@ -388,7 +434,7 @@ var
 begin
   if ZoneLinkHeap = 0 then
   begin
-    ZoneLinkHeap := HeapCreate(1, $8000, 0);
+    ZoneLinkHeap := GameHeap.HeapCreate(1, $8000, 0);
     if ZoneLinkHeap = 0 then
       raise Exception.Create('ab_ZoneLink_Add.HeapCreate');
   end;
@@ -668,9 +714,8 @@ var
   Zone: PabZone;
   Link: PabZoneLink;
   BestDistance: Double;
-  procedure PropagateZoneDistances(
-      Zone: PabZone
-  ); // @addr $554A64 @ida "void __usercall $name(TabZone *Zone@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x554ac5,0x554b13,0x554ba1"
+
+  procedure PropagateZoneDistances(Zone: PabZone);
   var
     Link: PabZoneLink;
   begin
@@ -694,6 +739,7 @@ var
       Link := Link.Next;
     end;
   end;
+
 begin
   if (FirstZone = LastZone) or (FirstZoneLink = nil) or (Source = Target) then
   begin

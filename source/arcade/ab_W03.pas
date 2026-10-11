@@ -1,23 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit ab_W03;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW03 = class;
+
   TabW03 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapB9: array[0..2] of Byte;
     procedure Advance; override;
     procedure UpdateVisuals; override;
     constructor Create;
@@ -25,12 +26,12 @@ type
     procedure Launch(Owner: TabObject; Amount: Integer; Offset: Single);
     procedure Explode;
   end;
+
 var
+
   ProjectileCount: Integer = 0;
-procedure LinkRecoveredTypes;
+
 implementation
-uses
-  Math;
 
 constructor TabW03.Create;
 var
@@ -124,8 +125,4 @@ begin
   inherited UpdateVisuals;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabW03.ClassName;
-end;
 end.

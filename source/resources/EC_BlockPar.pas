@@ -1,18 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit EC_BlockPar;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct;
+
 type
+
   TBlockParEC = class;
+
   TBlockParElEC = class;
+
   {$Z4}
   TBlockParKind = (bpkText = 0, bpkString = 1, bpkBlock = 2);
+
   TBlockParElEC = class(TObjectEx)
     Prev: TBlockParElEC;
     Next: TBlockParElEC;
@@ -30,6 +34,7 @@ type
     procedure MakeChildBlock;
     procedure CopyFrom(Source: TBlockParElEC);
   end;
+
   TBlockParEC = class(TObjectEx)
     FirstEntry: TBlockParElEC;
     LastEntry: TBlockParElEC;
@@ -37,7 +42,6 @@ type
     StringParamCount: Integer;
     ChildBlockCount: Integer;
     UseSortedIndex: Boolean;
-    Gap19: array[0..2] of Byte;
     SortedEntries: array of TBlockParElEC;
     SortedEntryCount: Integer;
     constructor Create;
@@ -98,13 +102,18 @@ type
     procedure LoadFromDecodedBuffer(Buf: TBufEC);
     procedure LoadFromEncryptedDatFile(const FileName: WideString);
   end;
+
 const
+
   BlockDatSeedKey: Cardinal = $B1E8C689;
+
   BlockDatCrcKey1: Cardinal = $7DB6C99D;
+
   BlockDatCrcKey2: Cardinal = $C83FCBF3;
+
 implementation
+
 uses
-  Math,
   EC_File,
   aMyFunction,
   BlockParException,
@@ -112,7 +121,7 @@ uses
   EC_Str,
   GlobalsV,
   SysUtils,
-  Windows;
+  Types;
 
 constructor TBlockParElEC.Create;
 begin
@@ -262,7 +271,8 @@ var
   Index, Seen: Integer;
   Entry: TBlockParElEC;
   Block: TBlockParEC;
-  function NextBlockPathComponent: Boolean; // @addr 0x846BE0 @ida "bool __cdecl $name(void *ParentFrame);" @note "Nested helper of TBlockParEC.FindEntryByPath."
+
+  function NextBlockPathComponent: Boolean; { Nested helper of TBlockParEC.FindEntryByPath. }
   var
     Ch: WideChar;
     i: Integer;
@@ -285,7 +295,8 @@ var
     Cursor := i + 1;
     Result := True;
   end;
-  procedure ParseBlockPathOccurrence; // @addr 0x846C74 @ida "void __cdecl $name(void *ParentFrame);" @note "Nested helper of TBlockParEC.FindEntryByPath."
+
+  procedure ParseBlockPathOccurrence; { Nested helper of TBlockParEC.FindEntryByPath. }
   var
     i, Limit: Integer;
     Ch: WideChar;
@@ -311,20 +322,22 @@ var
       Inc(i);
     end;
   end;
+
   function MatchBlockPathComponent(
       Name: WideString
-  ): Boolean; // @addr 0x846D24 @ida "bool __usercall $name@<al>(unsigned __int16 *Name@<eax>, void *ParentFrame);" @note "Nested helper of TBlockParEC.FindEntryByPath; native clones its value parameter."
+  ): Boolean; { Nested helper of TBlockParEC.FindEntryByPath; native clones its value parameter. }
   begin
     if Length(Name) <> PartLength then
       Result := False
     else
       Result :=
           SysUtils.CompareMem(
-              Pointer(PtrUInt(PWideChar(Path)) + Start * 2),
+              Pointer(PAnsiChar(PWideChar(Path)) + Start * SizeOf(WideChar)),
               PWideChar(Name),
               PartLength * 2
           );
   end;
+
 begin
   PathLength := Length(Path);
   Cursor := 0;
@@ -484,9 +497,9 @@ begin
     Inc(SortedEntryCount);
     Exit;
   end;
-  Windows.MoveMemory(
-      @SortedEntries[Index + 1],
-      @SortedEntries[Index],
+  System.Move(
+      Pointer(@SortedEntries[Index])^,
+      Pointer(@SortedEntries[Index + 1])^,
       (SortedEntryCount - Index) * SizeOf(SortedEntries[0])
   );
   SortedEntries[Index] := Entry;
@@ -511,9 +524,9 @@ begin
         if Head.GroupCount > 0 then
           SortedEntries[Index + 1].GroupCount := Entry.GroupCount;
       if Index < SortedEntryCount - 1 then
-        Windows.MoveMemory(
-            @SortedEntries[Index],
-            @SortedEntries[Index + 1],
+        System.Move(
+            Pointer(@SortedEntries[Index + 1])^,
+            Pointer(@SortedEntries[Index])^,
             (SortedEntryCount - Index - 1) * SizeOf(SortedEntries[0])
         );
       Dec(SortedEntryCount);
@@ -998,6 +1011,7 @@ begin
     begin
       if Index = 0 then
       begin
+
         Result := Entry.ItemType;
         Exit;
       end;
@@ -1102,7 +1116,8 @@ procedure TBlockParEC.WriteWideText(Dest: TBufEC; Indent: Integer; Sorted: Boole
 var
   Entry: TBlockParElEC;
   i: Integer;
-  procedure WriteWideBlockEntry; // @addr 0x848B8C @ida "void __cdecl $name(void *ParentFrame);" @note "Nested helper of TBlockParEC.WriteWideText."
+
+  procedure WriteWideBlockEntry; { Nested helper of TBlockParEC.WriteWideText. }
   var
     j: Integer;
   begin
@@ -1170,7 +1185,8 @@ procedure TBlockParEC.WriteAnsiText(Dest: TBufEC; Indent: Integer; Sorted: Boole
 var
   Entry: TBlockParElEC;
   i: Integer;
-  procedure WriteAnsiBlockEntry; // @addr 0x848E74 @ida "void __cdecl $name(void *ParentFrame);" @note "Nested helper of TBlockParEC.WriteAnsiText."
+
+  procedure WriteAnsiBlockEntry; { Nested helper of TBlockParEC.WriteAnsiText. }
   var
     j: Integer;
   begin
@@ -1500,41 +1516,49 @@ var
   Buf: TBufEC;
   FileObj: TFileEC;
   Crc: Cardinal;
-  Seed, ByteCount: Integer;
-  Position: Cardinal;
+  Seed: Integer;
+  ByteCount: Integer;
+  ExpectedOuter, Position: Cardinal;
 begin
   FileObj := TFileEC.Create;
-  try
-    FileObj.SetFileName(FileName);
-    FileObj.AcquireReadHandle(False);
-    Position := FileObj.GetPointer;
-    FileObj.ReadBuffer(@ByteCount, SizeOf(ByteCount));
-    FileObj.ReadBuffer(@Crc, SizeOf(Crc)); // Legacy envelope checksum.
-    ByteCount := ByteCount xor (BlockDatCrcKey1 xor BlockDatCrcKey2);
-    if FileObj.GetSize - FileObj.GetPointer = Cardinal(ByteCount) then
-      Position := FileObj.GetPointer;
-    FileObj.SetPointer(Position, FILE_BEGIN);
-    ByteCount := FileObj.GetSize - FileObj.GetPointer;
-    FileObj.ReadBuffer(@Crc, SizeOf(Crc));
-    FileObj.ReadBuffer(@Seed, SizeOf(Seed));
-    Seed := Seed xor BlockDatSeedKey;
+  FileObj.SetFileName(WideString(PWideChar(FileName)));
+  FileObj.AcquireReadHandle(False);
+  Position := FileObj.GetPointer;
+  FileObj.ReadBuffer(@ByteCount, SizeOf(ByteCount));
+  FileObj.ReadBuffer(@ExpectedOuter, SizeOf(ExpectedOuter));
+  ByteCount := ByteCount xor (BlockDatCrcKey1 xor BlockDatCrcKey2);
+  if FileObj.GetSize - FileObj.GetPointer = Cardinal(ByteCount) then
+  begin
     Buf := TBufEC.Create;
-    try
-      Buf.SetSize(ByteCount - SizeOf(Crc) - SizeOf(Seed));
-      FileObj.ReadBuffer(Buf.Data, Buf.DataSize);
-      Buf.ApplyDatXorCipher(Seed);
-      if Buf.ComputeCrc32 = Crc then
-      begin
-        Buf.ExpandZlibPayloadInPlace;
-        Buf.SetPosition(0);
-        LoadFromDecodedBuffer(Buf);
-      end;
-    finally
-      Buf.Free;
-    end;
-  finally
-    FileObj.Free;
+    Buf.SetSize(ByteCount + 4);
+    Position := FileObj.GetPointer;
+    FileObj.ReadBuffer(Pointer(PAnsiChar(Buf.Data) + 4), Buf.DataSize - 4);
+    Crc := Buf.ComputeCrc32Range(4, Buf.DataSize) xor BlockDatCrcKey1;
+    PCardinal(Buf.Data)^ := Crc;
+    Crc := Buf.ComputeCrc32 xor BlockDatCrcKey2;
+    Buf.Free;
+    if Crc <> ExpectedOuter then
+      GR_Main.CCInterface.SetResourceChecksumFailed(True);
+  end
+  else
+    GR_Main.CCInterface.SetResourceChecksumFailed(True);
+  FileObj.SetPointer(Position, fsFromBeginning);
+  ByteCount := FileObj.GetSize - FileObj.GetPointer;
+  FileObj.ReadBuffer(@Crc, SizeOf(Crc));
+  FileObj.ReadBuffer(@Seed, SizeOf(Seed));
+  Seed := Seed xor BlockDatSeedKey;
+  Buf := TBufEC.Create;
+  Buf.SetSize(ByteCount - 4 - 4);
+  FileObj.ReadBuffer(Buf.Data, Buf.DataSize);
+  Buf.ApplyDatXorCipher(Seed);
+  if Buf.ComputeCrc32 = Crc then
+  begin
+    Buf.ExpandZlibPayloadInPlace;
+    Buf.SetPosition(0);
+    LoadFromDecodedBuffer(Buf);
   end;
+  Buf.Free;
+  FileObj.Free;
 end;
 
 end.

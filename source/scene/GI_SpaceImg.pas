@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_SpaceImg;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   GI_MessageLoop,
   EC_Struct,
-  EC_BlockPar,
-  Types;
+  EC_BlockPar;
+
 type
+
   TSpaceImgGI = class;
+
   PointerToTSpaceImageGI = ^TSpaceImageGI;
+
   TSpaceImageGI = record
     TemplateIndex: Integer;
     FrameIndex: Integer;
@@ -21,24 +24,23 @@ type
     Y: Single;
     Depth: Single;
     InverseDepth: Single;
-    Gap1C: array[0..3] of Byte;
     OrbitCenter: TVector3D;
     Unknown38: TVector3D;
     ImageSize: TPoint;
     ImageOffset: TPoint;
     PixelPosition: TPoint;
     OrbitStepDegrees: Double;
-    Unknown70: Integer;
-    Gap74: array[0..3] of Byte;
+    SavedTemplateIndex: Integer;
     OrbitAngleRadians: Double;
     OrbitRadius: Double;
   end;
+
   PSpaceImageGI = PointerToTSpaceImageGI;
+
   TSpaceImgGI = class(TObjectGI)
     ImageCount: Integer;
     Images: PSpaceImageGI;
     ViewDirty: Boolean;
-    Gap129: array[0..2] of Byte;
     ViewPosition: TPointF;
     AnimationTimer: PCallbackTimerGI;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -61,7 +63,9 @@ type
     procedure SetViewPosition(Position: TPointF);
     procedure LoadSpaceImageProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   EC_Mem,
   EC_CacheGAI,
@@ -69,15 +73,16 @@ uses
   GR_Main,
   GR_gi,
   GR_DX,
-  Windows,
   Direct3D9,
   aMyFunction,
   Math;
+
 constructor TSpaceImgGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
   ViewDirty := True;
 end;
+
 destructor TSpaceImgGI.Destroy;
 begin
   if AnimationTimer <> nil then
@@ -88,6 +93,7 @@ begin
   ClearImages;
   inherited Destroy;
 end;
+
 procedure TSpaceImgGI.ClearImages;
 begin
   if Images <> nil then
@@ -97,6 +103,7 @@ begin
   end;
   ImageCount := 0;
 end;
+
 function TSpaceImgGI.AllocateImage(Depth: Single): PSpaceImageGI;
 var
   Image: PSpaceImageGI;
@@ -116,15 +123,16 @@ begin
   J := ImageCount - 1;
   while J > I do
   begin
-    CopyMemory(
-        AddPointerOffset(Images, J * SizeOf(TSpaceImageGI)),
-        AddPointerOffset(Images, (J - 1) * SizeOf(TSpaceImageGI)),
+    System.Move(
+        Pointer(AddPointerOffset(Images, (J - 1) * SizeOf(TSpaceImageGI)))^,
+        Pointer(AddPointerOffset(Images, J * SizeOf(TSpaceImageGI)))^,
         SizeOf(TSpaceImageGI)
     );
     Dec(J);
   end;
   Result := AddPointerOffset(Images, I * SizeOf(TSpaceImageGI));
 end;
+
 function TSpaceImgGI.AddImage(TemplateIndex: Integer; X, Y, Depth: Single): PSpaceImageGI;
 var
   Image: PSpaceImageGI;
@@ -146,7 +154,7 @@ begin
     TCGaiControlEC(SpaceImageTemplates[Image.TemplateIndex].CacheControl).Release;
   end;
   Image.Unknown38 := MakeVector3D(0, 0, 0);
-  Image.Unknown70 := 0;
+  Image.SavedTemplateIndex := 0;
   Image.OrbitAngleRadians := 0;
   Image.OrbitRadius := 0;
   Image.OrbitCenter := MakeVector3D(0, 0, 0);
@@ -154,6 +162,7 @@ begin
   ViewDirty := True;
   Result := Image;
 end;
+
 function TSpaceImgGI.NearestImageDistance(X, Y: Single): Single;
 var
   I: Integer;
@@ -171,6 +180,7 @@ begin
   end;
   Result := Sqrt(Result);
 end;
+
 procedure TSpaceImgGI.UpdateImageOrbitAndFrame(Image: PSpaceImageGI);
 var
   Data: TCGaiEC;
@@ -192,6 +202,7 @@ begin
     TCGaiControlEC(SpaceImageTemplates[Image.TemplateIndex].CacheControl).Release;
   end;
 end;
+
 procedure TSpaceImgGI.ProjectImages;
 var
   I: Integer;
@@ -210,10 +221,12 @@ begin
   end;
   ViewDirty := False;
 end;
+
 function TSpaceImgGI.GetImage(Index: Integer): PSpaceImageGI;
 begin
   Result := AddPointerOffset(Images, Index * SizeOf(TSpaceImageGI));
 end;
+
 procedure TSpaceImgGI.AnimateImages(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Image: PSpaceImageGI;
@@ -239,8 +252,7 @@ begin
     end;
     if (Image.OrbitRadius <> 0) and (Image.OrbitStepDegrees <> 0) then
     begin
-      Image.OrbitAngleRadians :=
-          (3.1415926 / 180) * Image.OrbitStepDegrees + Image.OrbitAngleRadians;
+      Image.OrbitAngleRadians := (GamePi / 180) * Image.OrbitStepDegrees + Image.OrbitAngleRadians;
       Image.X := Sin(Image.OrbitAngleRadians) * Image.OrbitRadius + Image.OrbitCenter.X;
       Image.Y := Image.OrbitCenter.Y - Cos(Image.OrbitAngleRadians) * Image.OrbitRadius;
     end;
@@ -248,6 +260,7 @@ begin
   end;
   ProjectImages;
 end;
+
 procedure TSpaceImgGI.SetViewPosition(Position: TPointF);
 begin
   if (ViewPosition.X <> Position.X) or (ViewPosition.Y <> Position.Y) then
@@ -259,12 +272,18 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TSpaceImgGI.Invalidate;
 var
   Image: PSpaceImageGI;
   I: Integer;
   Bounds: TRect;
 begin
+  if GetDisplayScale <> 1 then
+  begin
+    MessageLoop.InvalidateViewport;
+    Exit;
+  end;
   Image := Images;
   for I := 0 to ImageCount - 1 do
   begin
@@ -276,6 +295,7 @@ begin
     Image := AddPointerOffset(Image, SizeOf(TSpaceImageGI));
   end;
 end;
+
 procedure TSpaceImgGI.OnActivate;
 begin
   inherited OnActivate;
@@ -286,6 +306,7 @@ begin
   end;
   AnimationTimer := MessageLoop.ScheduleCallbackTimer(10, 10, AnimateImages);
 end;
+
 procedure TSpaceImgGI.OnDeactivate;
 begin
   if AnimationTimer <> nil then
@@ -295,22 +316,27 @@ begin
   end;
   inherited OnDeactivate;
 end;
+
 procedure TSpaceImgGI.LoadFromConfigPath(const Path: WideString);
 begin
   inherited LoadFromConfigPath(Path);
   LoadSpaceImageProperties(UiStyleConfig.GetBlockByPath(Path));
 end;
+
 procedure TSpaceImgGI.LoadFromBlock(Block: TBlockParEC);
 begin
   inherited LoadFromBlock(Block);
   LoadSpaceImageProperties(Block);
 end;
+
 procedure TSpaceImgGI.LoadSpaceImageProperties(Block: TBlockParEC);
 begin
 end;
+
 procedure TSpaceImgGI.UpdateAutoGeometry;
 begin
 end;
+
 procedure TSpaceImgGI.Draw(ClipRect: TRect);
 var
   Image: PSpaceImageGI;
@@ -323,11 +349,9 @@ begin
   for I := 0 to High(SpaceImageTemplates) do
     SpaceImageTemplates[I].CachedData := nil;
   try
-
     for I := 0 to High(SpaceImageTemplates) do
       SpaceImageTemplates[I].CachedData :=
           AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[I].CacheControl));
-
     Image := Images;
     for I := 0 to ImageCount - 1 do
     begin
@@ -337,7 +361,6 @@ begin
       Bounds.Bottom := Bounds.Top + Image.ImageSize.Y;
       if IntersectRects(Intersection, Bounds, ClipRect) then
       begin
-
         Data := TCGaiEC(SpaceImageTemplates[Image.TemplateIndex].CachedData);
         Frame := Data.LoadFrameGi(Data.GetSequenceFrameIndex(0, Image.FrameIndex));
         if HardwareRenderingEnabled then
@@ -349,7 +372,7 @@ begin
               Bounds.Left + Origin.X,
               Bounds.Top + Origin.Y,
               255,
-              $FFFFFF,
+              RgbWhite,
               @ClipRect,
               False,
               False
@@ -376,4 +399,5 @@ begin
       end;
   end;
 end;
+
 end.

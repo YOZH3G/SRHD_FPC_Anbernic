@@ -1,23 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit ab_W08;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW08 = class;
+
   TabW08 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapB9: array[0..2] of Byte;
     Generation: Integer;
     ExpireTick: Integer;
     procedure Advance; override;
@@ -32,10 +33,10 @@ type
         Origin: TabObject
     );
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   ab_Ship,
   GlobalsV,
   aMyFunction;
@@ -163,8 +164,4 @@ begin
   inherited UpdateVisuals;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabShip.ClassName;
-end;
 end.

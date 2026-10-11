@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit PathClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -13,8 +12,11 @@ uses
   ParameterDeltaClass,
   SequenceClass,
   TextFieldClass;
+
 type
+
   TPath = class;
+
   TPath = class(TObjectEx)
     ParameterChanges: TList;
     Priority: Double;
@@ -56,9 +58,10 @@ type
     procedure LoadLegacyV1FromReader(Reader: TBufEC);
     procedure LoadLegacyV0FromReader(Reader: TBufEC);
   end;
+
 implementation
+
 uses
-  Math,
   CalcParseClass,
   EC_Str,
   ParameterClass;

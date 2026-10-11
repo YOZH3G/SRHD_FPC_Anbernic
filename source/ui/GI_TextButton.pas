@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_TextButton;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -12,9 +11,15 @@ uses
   EC_CacheFont,
   GI_MessageLoop,
   Types;
+
 type
+
   TTextButtonGI = class;
+
   TTextButtonGI = class(TObjectGI)
+  private
+    TouchPreview: Boolean;
+  public
     FontCache: TCFontControlEC;
     ImageCache: TCBitmapControlEC;
     Kind: Integer;
@@ -25,7 +30,6 @@ type
     BorderDarkColor: Cardinal;
     Hover: Boolean;
     Down: Boolean;
-    Gap142: array[0..5] of Byte;
     DownCallback: TObjectNotifyEventGI;
     UpCallback: TObjectNotifyEventGI;
     procedure Clear; override;
@@ -35,6 +39,9 @@ type
     procedure OnMouseLeave; override;
     procedure OnActivate; override;
     procedure OnDeactivate; override;
+    procedure CancelPointerInput; override;
+    function BeginTouchPress(Point: TPoint): Boolean; override;
+    procedure CancelTouchPress; override;
     procedure ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint); override;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); override;
     procedure Draw(ClipRect: TRect); override;
@@ -42,9 +49,10 @@ type
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
   end;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Str,
   GR_Main,
@@ -53,6 +61,7 @@ uses
 constructor TTextButtonGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiTap;
   FontCache := TCFontControlEC.Create;
   GlobalCache.ResetControl(FontCache);
   ImageCache := TCBitmapControlEC.Create;
@@ -75,6 +84,7 @@ end;
 
 procedure TTextButtonGI.Clear;
 begin
+  CancelTouchPress;
   inherited Clear;
   CaptionColor := CurrentPixelFormat.PackRgbBytes(255, 255, 255);
   CaptionActiveColor := CurrentPixelFormat.PackRgbBytes(255, 0, 0);
@@ -98,16 +108,48 @@ end;
 
 procedure TTextButtonGI.OnDeactivate;
 begin
+  CancelTouchPress;
   inherited OnDeactivate;
   Hover := False;
   Down := False;
   Invalidate;
 end;
 
+procedure TTextButtonGI.CancelPointerInput;
+begin
+  CancelTouchPress;
+  inherited CancelPointerInput;
+  // Only normal buttons have a transient press. A latched button's Down state
+  // is its value; keep it, and never dispatch release callbacks on cancellation.
+  if (Kind = 0) and Down then
+  begin
+    Down := False;
+    Invalidate;
+  end;
+end;
+
+function TTextButtonGI.BeginTouchPress(Point: TPoint): Boolean;
+begin
+  Result := inherited BeginTouchPress(Point);
+  if Result then
+  begin
+    TouchPreview := True;
+    Invalidate;
+  end;
+end;
+
+procedure TTextButtonGI.CancelTouchPress;
+begin
+  if not TouchPreview then
+    Exit;
+  TouchPreview := False;
+  Invalidate;
+end;
+
 procedure TTextButtonGI.OnMouseEnter;
 begin
   inherited OnMouseEnter;
-  if not IsOccludedAtPoint(AbsolutePosition) then
+  if not IsOccludedAtPoint(LogicalToScreenPoint(AbsolutePosition)) then
   begin
     Hover := True;
     Invalidate;
@@ -133,6 +175,8 @@ end;
 
 procedure TTextButtonGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonDown(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
@@ -165,6 +209,8 @@ end;
 
 procedure TTextButtonGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonUp(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
@@ -338,7 +384,7 @@ begin
           Caption,
           ClipRect
       );
-      if not Down then
+      if not (Down or TouchPreview) then
       begin
         ScreenRenderBuffer.DrawHorizontalLine16Clipped(
             HitTestBounds.Left,

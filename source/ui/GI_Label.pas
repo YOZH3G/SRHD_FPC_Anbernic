@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_Label;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -16,9 +15,13 @@ uses
   GR_DX,
   GR_GraphBuf,
   Types;
+
 type
+
   TLabelGI = class;
+
   TCreateLabelControlEventGI = function(Sender: TLabelGI; Item: PFontObjectEC): TObjectGI of object;
+
   TLabelGI = class(TObjectGI)
     FontCache: TCFontControlEC;
     EmbeddedImage: TImageGI;
@@ -29,16 +32,13 @@ type
     TextShadowOffset: Integer;
     TextShadowColor: Cardinal;
     BorderEnabled: Boolean;
-    Gap141: array[0..2] of Byte;
     BorderLightColor: Cardinal;
     BorderDarkColor: Cardinal;
     TextAlignX: TTextAlignXGI;
     TextAlignY: TTextAlignYGI;
-    Gap14E: array[0..1] of Byte;
     TextLeft: Integer;
     TextTop: Integer;
     WordWrapEnabled: Boolean;
-    Gap159: array[0..2] of Byte;
     AutoHeightPadding: Integer;
     CreateEmbeddedControl: TCreateLabelControlEventGI;
     TextTexture: TTextureGR;
@@ -80,8 +80,11 @@ type
     procedure UpdateEmbeddedControls(Font: TCFontEC);
     procedure RemoveUnusedEmbeddedControls(Font: TCFontEC);
   end;
+
 function MeasureLabelTextBounds(const Text: WideString; const FontName: WideString): TRect;
+
 function MeasureWrappedLabelBounds(Width: Integer; TextLines: TStringsEC; Font: TCFontEC): TRect;
+
 procedure DrawWrappedLabelLines(
     Buffer: TGraphBufGR;
     Width: Integer;
@@ -90,6 +93,7 @@ procedure DrawWrappedLabelLines(
     TextLines: TStringsEC;
     Font: TCFontEC
 );
+
 procedure RenderLabelTextToBuffer(
     Buffer: TGraphBufGR;
     Width: Integer;
@@ -101,12 +105,13 @@ procedure RenderLabelTextToBuffer(
     BorderColor: Cardinal;
     ShadowColor: Cardinal
 );
+
 implementation
+
 uses
   EC_Cache,
   GR_Main,
   Math,
-  Windows,
   SysUtils,
   GlobalsV,
   Direct3D9;
@@ -568,7 +573,7 @@ begin
     if HardwareRenderingEnabled then
       Position := Classes.Point(Item.X, Item.Y)
     else
-      Position := ToLocalPoint(Classes.Point(Item.X, Item.Y));
+      Position := LogicalToLocalPoint(Classes.Point(Item.X, Item.Y));
     Child := FirstChild;
     while Child <> nil do
     begin
@@ -755,14 +760,16 @@ var
   Color: Cardinal;
   Texture: IDirect3DTexture9;
   Bounds: TRect;
+
   procedure SwitchLabelDrawFont(
       FontName: WideString
-  ); // @addr 0x48A85C @ida "void __usercall $name(unsigned __int16 *FontName@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x48A943,0x48A971,0x48A99F,0x48A9D1,0x48A9FF,0x48AA2A,0x48AA55,0x48AA80" @note "Nested Draw helper; caller removes the parent-frame argument."
+  ); { Nested Draw helper; caller removes the parent-frame argument. }
   begin
     FontCache.SetCacheKey(FontName);
     if TextTexture <> nil then
       TextTexture.ReleaseSurfaces;
   end;
+
 begin
   Font := nil;
   if FontCache <> nil then
@@ -892,7 +899,7 @@ begin
             AbsolutePosition.X,
             AbsolutePosition.Y,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False

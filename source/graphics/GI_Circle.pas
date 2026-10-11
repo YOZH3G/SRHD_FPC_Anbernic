@@ -1,22 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit GI_Circle;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   GR_GraphBuf,
   Types;
+
 type
+
   TCircleGI = class;
+
   {$Z1}
   TCircleKindGI = (ckSimple = 0, ckCircle = 1, ckFill = 2, ckShrLight = 3, ckMulLight = 4);
+
   TCircleGI = class(TObjectGI)
     Kind: TCircleKindGI;
-    Gap121: array[0..2] of Byte;
     Color: Cardinal;
     FillColor: Cardinal;
     Center: TPoint;
@@ -24,7 +26,6 @@ type
     ShrLightInner: Byte;
     ShrLightOuter: Byte;
     LightBufferDirty: Boolean;
-    Gap13B: array[0..0] of Byte;
     LightBuffer: TGraphBufGR;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
@@ -45,7 +46,9 @@ type
     procedure SetShrLightOuter(Value: Byte);
     procedure LoadShapeProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   GlobalsV,
   GR_Main,
@@ -405,6 +408,9 @@ begin
   else if Kind = ckMulLight then
   begin
     // The native branch retains only this renderer test.
+    if HardwareRenderingEnabled then
+    begin
+    end;
   end;
 end;
 

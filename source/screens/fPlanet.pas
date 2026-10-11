@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit fPlanet;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   fPanelLoad,
   fPanelMain,
   fPanelPlanet;
+
 type
+
   TfPlanet = class;
+
   TfPlanet = class(TMessageLoopGIWithMainPanel)
     PlanetPanel: TfPanelPlanet;
     LoadPanel: TfPanelLoad;
@@ -30,15 +32,15 @@ type
     procedure EndTurnClicked(Sender: TObjectGI);
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aCalc,
   Classes,
   SysUtils,
-  Windows,
   Types,
+  GameInput,
   GR_Main,
   Globals,
   GlobalsV,
@@ -126,7 +128,7 @@ begin
   if GetPlayer.CurrentPlanet.IsMainPiratePlanet then
     SoundSection := 0
   else
-    SoundSection := GetPlayer.CurrentPlanet.RaceId + 1;
+    SoundSection := Ord(GetPlayer.CurrentPlanet.RaceId) + 1;
   if GetPlayer.CurrentPlanet <> TemporaryShopPlanet then
   begin
     SelectMusic;
@@ -148,7 +150,7 @@ begin
   begin
     Event := AddGalaxyEvent('PlayerDeath');
     Event.AddTextData('PlanetCaptured');
-    GameEndReason := 2;
+    GameEndReason := gerPlayerDeath;
     RequestedScreenId := screenGameEnd;
     RequestClose(1);
     Exit;
@@ -167,7 +169,7 @@ begin
   end;
   if DispatchPendingScriptRequests then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(94);
     Exit;
   end;
   if (GetPlayer.CurrentPlanet <> nil)
@@ -177,15 +179,18 @@ begin
     RequestClose(1);
     Exit;
   end;
+  if GR_Main.CCInterface.GetResourceChecksumFailed
+      and not GR_Main.CCInterface.GetTamperDetected then
+    GR_Main.CCInterface.SetTamperDetected(True);
   MainPanel.RebuildMessageButtons(False);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnEnteringForm, nil, nil, 0);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(94);
 end;
 
 procedure TfPlanet.OnClose;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(95);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
   MainPanel.OnClose;
@@ -276,7 +281,7 @@ begin
               mbgOK or mbgCancel or mbgQuestion)
           <> mbgResultOK) then
     Exit;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(162);
   CaptureSavePreview;
   CaptureGalaxyPreview(Self);
   SaveManagerReturnScreenId := FormToId(Self);
@@ -311,7 +316,7 @@ begin
               > 0) then
       begin
         QuestNumber := Quest.QuestNumber;
-        if (Quest.QuestNumber < 10000)
+        if (Quest.QuestNumber < FirstLicensedQuestId)
             or ((LanguageDataConfig.GetBlock('PlanetQuest').CountBlocks('PlanetQuestLic') > 0)
                 and (LanguageDataConfig
                         .GetBlock('PlanetQuest')
@@ -340,16 +345,16 @@ begin
           Text,
           '<CurPlanet>',
           (Quest.ObjectiveTarget as TPlanet).Name,
-          '<color=255,240,100>'
+          TextHighlightColorTag
       );
       ReplaceTextToken(
           Text,
           '<CurStar>',
           (Quest.ObjectiveTarget as TPlanet).CurrentStar.Name,
-          '<color=255,240,100>'
+          TextHighlightColorTag
       );
-      ReplaceTextToken(Text, '<FromPlanet>', Quest.Planet.Name, '<color=255,240,100>');
-      ReplaceTextToken(Text, '<FromStar>', Quest.Planet.CurrentStar.Name, '<color=255,240,100>');
+      ReplaceTextToken(Text, '<FromPlanet>', Quest.Planet.Name, TextHighlightColorTag);
+      ReplaceTextToken(Text, '<FromStar>', Quest.Planet.CurrentStar.Name, TextHighlightColorTag);
     end;
     SetText(Text);
     Window.SetSize(
@@ -392,14 +397,14 @@ begin
   Window.SetPosition(
       Classes.Point(
           GameScreenWidth - 10 - Window.ClientSize.X,
-          GameScreenHeight - GiScalePixels(90) - Window.ClientSize.Y
+          MainPanel.ContentLayoutHeight - GiScalePixels(90) - Window.ClientSize.Y
       )
   );
 end;
 
 procedure TfPlanet.EndTurnClicked(Sender: TObjectGI);
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(96);
   RestoreTemporaryShopStock;
   MainPanel.EndTurnClicked(Sender);
   RefreshPlanetInfo;
@@ -408,7 +413,7 @@ begin
   if ExitCode = 0 then
   begin
     BuildTemporaryShopSlotGrid;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(97);
   end;
 end;
 
@@ -445,9 +450,9 @@ begin
   if TurnCalculationPhase
       in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10002);
     ExecuteGameplayUiCode(Block, Key);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20002);
   end;
 end;
 
@@ -460,13 +465,11 @@ begin
     MusicManager.RequestFadeOut;
     Exit;
   end;
-  if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+  if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
   begin
     if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F].InternalName
-              + 'Pirate'
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate'
       )
     else
       MusicManager.PlayCategory('Nation.PiratePlanetMain');
@@ -475,13 +478,4 @@ begin
     MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPlanet.ClassName;
-  TWindowGI.ClassName;
-end;
 end.

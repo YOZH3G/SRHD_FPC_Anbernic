@@ -1,22 +1,32 @@
-{$EXCESSPRECISION OFF}
 unit GR_GraphBuf;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+{$POINTERMATH ON}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   Direct3D9,
   Types;
+
 type
+
   TGraphBufGR = class;
+
   TPixelFormatGR = class;
+
   PointerToTColorBGRA = ^TColorBGRA;
+
+  PointerToTColorRGB = ^TColorRGB;
+
   PointerToTColorRGBA = ^TColorRGBA;
+
   PointerToTColorRGBAArray = ^TColorRGBAArray;
+
   PointerToTPixelWordsGR = ^TPixelWordsGR;
+
   TPixelFormatGR = class(TObject)
     RedMask: Cardinal;
     GreenMask: Cardinal;
@@ -45,27 +55,46 @@ type
     function UnpackGreen(Color: Cardinal): Byte;
     function UnpackBlue(Color: Cardinal): Byte;
   end;
+
+  TColorRGB = packed record
+    R: Byte;
+    G: Byte;
+    B: Byte;
+  end;
+
+  PColorRGB = PointerToTColorRGB;
+
   TColorRGBA = packed record
     R: Byte;
     G: Byte;
     B: Byte;
     A: Byte;
   end;
+
   PColorRGBA = PointerToTColorRGBA;
+
   TColorRGBAArray = array[0..0] of TColorRGBA;
+
   PColorRGBAArray = PointerToTColorRGBAArray;
+
   TColorBGRA = packed record
     B: Byte;
     G: Byte;
     R: Byte;
     A: Byte;
   end;
+
   PColorBGRA = PointerToTColorBGRA;
+
   TPixelWordsGR = array[0..0] of Word;
+
   PPixelWordsGR = PointerToTPixelWordsGR;
+
   TGraphBufGR = class(TObjectEx)
     Width: Integer;
     Height: Integer;
+    // Logical display extent; Width/Height remain the captured raster dimensions.
+    ScreenSnapshotSize: TPoint;
     PitchBytes: Integer;
     Pixels: Pointer;
     StorageKind: Integer;
@@ -73,15 +102,14 @@ type
     BytesPerPixel: Integer;
     UseTexture: Boolean;
     UsesTextureStorage: Boolean;
-    TextureFlag22: Boolean;
-    Gap23: array[0..0] of Byte;
+    KeepTextureUntilReplacement: Boolean;
     Texture: IDirect3DTexture9;
     TextureLocked: Boolean;
     TextureLockedReadOnly: Boolean;
-    Gap2A: array[0..1] of Byte;
     constructor Create(AUseTexture: Boolean);
     destructor Destroy; override;
     procedure Clear;
+    function HasPixels: Boolean;
     function GetPixels: Pointer;
     procedure AllocateNative(Width: Integer; Height: Integer);
     procedure AllocateNativePitch(Width: Integer; Height: Integer; PitchBytes: Integer);
@@ -151,7 +179,7 @@ type
         X4: Integer;
         Color: Word;
         Alpha: Byte;
-        constref Clip: TRect
+        Clip: TRect
     );
     procedure DrawLine16Clipped(First: TPoint; Last: TPoint; Color: Cardinal; Clip: TRect);
     procedure DrawAntialiasedLine(FirstPoint: TPoint; SecondPoint: TPoint; Color: Cardinal);
@@ -211,7 +239,7 @@ type
         VerticalAlign: Integer;
         Filter: Integer
     );
-    procedure RescaleRGBA_HW(
+    procedure RescaleRgbaLinear(
         Width: Cardinal;
         Height: Cardinal;
         CropToAspect: Boolean;
@@ -222,7 +250,7 @@ type
     procedure AdjustBrightness(Percent: Integer);
     procedure ConvertToGrayscale;
     function GetTexture: IDirect3DTexture9;
-    procedure LoadFromScreen(UnusedOption: Byte);
+    procedure LoadFromScreen(UnusedOption: Byte; NativeResolution: Boolean = False);
     procedure LockTexture(ReadOnly: Boolean);
     procedure UnlockTexture;
     procedure ConvertBgraToRgb24;
@@ -242,9 +270,10 @@ type
         Clip: TRect
     );
   end;
+
 implementation
+
 uses
-  GameNative,
   EC_OKGF,
   EC_Mem,
   GR_DX,
@@ -254,7 +283,10 @@ uses
   Math,
   SysUtils,
   Classes,
-  Windows;
+  FPImage,
+  FPWriteJPEG,
+  GameGraphics,
+  GameSystem;
 
 procedure TPixelFormatGR.RebuildChannelMetrics;
 var
@@ -395,13 +427,14 @@ begin
   inherited Create;
   Width := 0;
   Height := 0;
+  ScreenSnapshotSize := Classes.Point(0, 0);
   PitchBytes := 0;
   StorageKind := 0;
   BitsPerPixel := 0;
   BytesPerPixel := 0;
-  UseTexture := AUseTexture and HardwareRenderingEnabled;
+  UseTexture := AUseTexture;
   UsesTextureStorage := False;
-  TextureFlag22 := False;
+  KeepTextureUntilReplacement := False;
   Texture := nil;
   TextureLocked := False;
   TextureLockedReadOnly := False;
@@ -424,13 +457,22 @@ begin
   end;
   Texture := nil;
   UsesTextureStorage := False;
-  TextureFlag22 := False;
+  KeepTextureUntilReplacement := False;
   Width := 0;
   Height := 0;
+  ScreenSnapshotSize := Classes.Point(0, 0);
   PitchBytes := 0;
   StorageKind := 0;
   BitsPerPixel := 0;
   BytesPerPixel := 0;
+end;
+
+function TGraphBufGR.HasPixels: Boolean;
+begin
+  Result :=
+      (Width > 0)
+          and (Height > 0)
+          and ((Pixels <> nil) or (UsesTextureStorage and (Texture <> nil)));
 end;
 
 function TGraphBufGR.GetPixels: Pointer;
@@ -740,44 +782,38 @@ begin
 end;
 
 procedure TGraphBufGR.DrawHorizontalLine16(X, Y, Count: Integer; Color: Cardinal);
-var
-  P: PByte;
-  I: Integer;
 begin
   if Count = 0 then
     Exit;
   if Count < 0 then
   begin
     X := X + Count + 1;
-    Count := -Count
+    Count := -Count;
   end;
   LockTexture(False);
-  P := PByte(Pixels) + Y * PitchBytes + X * 2;
-  for I := 1 to Count do
-  begin
-    PWord(P)^ := Word(Color);
-    Inc(P, 2)
-  end;
+  // The original REP STOSW clobbered EDI. Pascal preserves callee-saved registers.
+  FillWord(PByte(PAnsiChar(Pixels) + Y * PitchBytes + X * SizeOf(Word))^, Count, Word(Color));
 end;
 
 procedure TGraphBufGR.DrawVerticalLine16(X, Y, Count: Integer; Color: Cardinal);
 var
-  P: PByte;
-  I: Integer;
+  Data: PByte;
+  Index: Integer;
 begin
   if Count = 0 then
     Exit;
   if Count < 0 then
   begin
     Y := Y + Count + 1;
-    Count := -Count
+    Count := -Count;
   end;
   LockTexture(False);
-  P := PByte(Pixels) + Y * PitchBytes + X * 2;
-  for I := 1 to Count do
+  Data := PByte(PAnsiChar(Pixels) + Y * PitchBytes + X * SizeOf(Word));
+  // The original loop clobbered EDI and EBX. Pascal preserves callee-saved registers.
+  for Index := 1 to Count do
   begin
-    PWord(P)^ := Word(Color);
-    Inc(P, PitchBytes)
+    WriteWordEC(Data, Word(Color));
+    Inc(Data, PitchBytes);
   end;
 end;
 
@@ -890,7 +926,7 @@ procedure TGraphBufGR.DrawAlphaTrapezium16(
     X1, Y1, X2, Y2, X3, X4: Integer;
     Color: Word;
     Alpha: Byte;
-    constref Clip: TRect
+    Clip: TRect
 );
 begin
   LockTexture(False);
@@ -943,32 +979,30 @@ var
   X, FirstX, LastX, FirstY, LastY: Integer;
   Steep: Boolean;
   Temp, X1, Y1, X2, Y2: Double;
-  function LineFraction(
-      Value: Double
-  ): Double; // @addr $866B20 @ida "double __userpurge $name@<st0>(double Value@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x00867012 0x00867056 0x00867070 0x00867182 0x008671CB 0x008671E2 0x008672E3 0x008672FD"
+
+  function LineFraction(Value: Double): Double;
   begin
     Result := Value - Floor(Value);
   end;
-  procedure PlotLinePixel(
-      X, Y: Integer;
-      Color: Cardinal;
-      Alpha: Integer
-  ); // @addr $866B8C @ida "void __userpurge $name(int X@<eax>, int Y@<edx>, unsigned int Color@<ecx>, int Alpha@<^0>, void *ParentFrame@<^4>);" @stackpop 4 @calls "0x008670A3 0x008670CA 0x008670F2 0x00867119 0x0086721E 0x00867251 0x00867287 0x008672BC 0x00867330 0x00867357 0x0086737F 0x008673A6"
+
+  procedure PlotLinePixel(X, Y: Integer; Color: Cardinal; Alpha: Integer);
   var
     Source, Dest: PColorRGBA;
     Denominator: Cardinal;
+
     function BlendLineChannel(
         DestColor,
         DestAlpha,
         SourceColor,
         SourceAlpha,
         Denominator: Cardinal
-    ): Cardinal; // @addr $866B4C @ida "unsigned int __userpurge $name@<eax>(unsigned int DestColor@<eax>, unsigned int DestAlpha@<edx>, unsigned int SourceColor@<ecx>, unsigned int SourceAlpha@<^4>, unsigned int Denominator@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x00866D3F 0x00866D6E 0x00866D9E"
+    ): Cardinal;
     begin
       Result :=
           ((255 - SourceAlpha) * DestColor * DestAlpha + SourceAlpha * SourceColor * 255)
               div Denominator;
     end;
+
   begin
     if (Alpha = 0)
         or (X < 0)
@@ -995,6 +1029,7 @@ var
       Dest.B := BlendLineChannel(Dest.B, Dest.A, Source.B, Source.A, Denominator);
     end;
   end;
+
 begin
   LockTexture(False);
   X1 := FirstPoint.X;
@@ -1096,7 +1131,7 @@ end;
 procedure TGraphBufGR.FillPixels(Value: Byte);
 begin
   LockTexture(False);
-  FillMemory(Pixels, PitchBytes * Height, Value);
+  System.FillChar(Pointer(Pixels)^, PitchBytes * Height, Value);
 end;
 
 procedure TGraphBufGR.FillPixels16(Color: Word);
@@ -1107,37 +1142,42 @@ end;
 
 procedure TGraphBufGR.FillRect32(Rect: TRect; Color: Cardinal);
 var
-  X, Y: Integer;
-  P: PCardinal;
+  Data: PByte;
+  Rows, Columns, Row: Integer;
 begin
   LockTexture(False);
-  for Y := Rect.Top to Rect.Bottom - 1 do
+  Columns := Rect.Right - Rect.Left;
+  Rows := Rect.Bottom - Rect.Top;
+  if Columns <= 0 then
+    Exit;
+  Data := PByte(PAnsiChar(Pixels) + Rect.Top * PitchBytes + Rect.Left * SizeOf(TColorRGBA));
+  for Row := 1 to Rows do
   begin
-    P := PCardinal(PByte(Pixels) + Y * PitchBytes + Rect.Left * 4);
-    for X := Rect.Left to Rect.Right - 1 do
-    begin
-      P^ := Color;
-      Inc(P)
-    end
-  end
+    FillDWord(Data^, Columns, Color);
+    Inc(Data, PitchBytes);
+  end;
 end;
 
 procedure TGraphBufGR.ScaleAlpha(Rect: TRect; Alpha: Byte);
 var
-  X, Y: Integer;
-  P, Table: PByte;
+  Data, Table: PByte;
+  Rows, Columns, Row, Column, RowSkip: Integer;
 begin
   LockTexture(False);
-  Table := PByte(Ex_OKGF_MulTable256x256) + Integer(Alpha) * 256;
-  for Y := Rect.Top to Rect.Bottom - 1 do
+  Columns := Rect.Right - Rect.Left;
+  Rows := Rect.Bottom - Rect.Top;
+  RowSkip := PitchBytes - Columns * SizeOf(TColorRGBA);
+  Data := PByte(PAnsiChar(Pixels) + Rect.Top * PitchBytes + Rect.Left * SizeOf(TColorRGBA) + 3);
+  Table := PByte(PAnsiChar(Ex_OKGF_MulTable256x256) + (Integer(Alpha) shl 8));
+  for Row := 1 to Rows do
   begin
-    P := PByte(Pixels) + Y * PitchBytes + Rect.Left * 4 + 3;
-    for X := Rect.Left to Rect.Right - 1 do
+    for Column := 1 to Columns do
     begin
-      P^ := Table[P^];
-      Inc(P, 4)
-    end
-  end
+      Data^ := Table[Data^];
+      Inc(Data, SizeOf(TColorRGBA));
+    end;
+    Inc(Data, RowSkip);
+  end;
 end;
 
 procedure TGraphBufGR.FlipHorizontal16;
@@ -1148,7 +1188,7 @@ var
 begin
   LockTexture(False);
   LeftRow := Pixels;
-  RightRow := Pointer(PtrUInt(Pixels) + (Width - 1) * 2);
+  RightRow := Pointer(PAnsiChar(Pixels) + (Width - 1) * SizeOf(Word));
   for Y := 0 to Height - 1 do
   begin
     LeftPixel := LeftRow;
@@ -1207,24 +1247,48 @@ begin
   Pixels := NewPixels;
   Width := NewWidth;
   Height := NewHeight;
+  ScreenSnapshotSize := Classes.Point(0, 0);
   PitchBytes := NewPitch;
 end;
 
 procedure TGraphBufGR.Stretch16(Width, Height: Cardinal);
 var
   Data: Pointer;
+  X, Y: Cardinal;
+  SourceRow, DestRow: PWord;
 begin
   if (Width = Cardinal(Self.Width)) and (Height = Cardinal(Self.Height)) then
     Exit;
-  if (Cardinal(Self.Width) < 1) or (Cardinal(Self.Height) < 1) or (Width < 1) or (Height < 1) then
+  if (Self.Width < 1) or (Self.Height < 1) or (Width < 1) or (Height < 1) then
     Exit;
   Data := AllocEC(Width * Height * SizeOf(Word));
-  Ex_OKGR_StretchGdi_WORD(Data, Width, Height, Pixels, Self.Width, Self.Height);
-  FreeEC(Pixels);
+  try
+    LockTexture(True);
+    try
+      // Copy packed RGB565 pixels without interpolating their individual bytes.
+      for Y := 0 to Height - 1 do
+      begin
+        SourceRow :=
+            PWord(PByte(Pixels) + (QWord(Y) * Cardinal(Self.Height) div Height) * PitchBytes);
+        DestRow := PWord(PByte(Data) + Y * Width * SizeOf(Word));
+        for X := 0 to Width - 1 do
+          DestRow[X] := SourceRow[QWord(X) * Cardinal(Self.Width) div Width];
+      end;
+    finally
+      UnlockTexture;
+    end;
+  except
+    FreeEC(Data);
+    raise;
+  end;
+  Clear;
   Pixels := Data;
   Self.Width := Width;
   Self.Height := Height;
   PitchBytes := Width * SizeOf(Word);
+  ScreenSnapshotSize := Classes.Point(0, 0);
+  BitsPerPixel := 16;
+  BytesPerPixel := SizeOf(Word);
 end;
 
 procedure TGraphBufGR.ConvertRgbTo565;
@@ -1430,6 +1494,7 @@ begin
   Self.Width := Width;
   Self.Height := Height;
   PitchBytes := Width * 3;
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
 procedure TGraphBufGR.RescaleRgba(Width, Height, Filter: Integer);
@@ -1460,12 +1525,12 @@ begin
   Self.Width := Width;
   Self.Height := Height;
   PitchBytes := Width * SizeOf(TColorRGBA);
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
-// CHANGE: BUGFIX - Use bilinear filtering for background resizing to avoid a brightness grid.
 procedure TGraphBufGR.RescaleBilinearRgba(Width, Height: Integer);
 var
-  X, Y, SourceX, YPosition, YStep, XStep, PixelX, NextPixelX, FractionX: Integer;
+  X, Y, SourceX, YPosition, YStep, XStep, PixelX, FractionX: Integer;
   BottomWeight, TopWeight, TopLeftWeight, TopRightWeight, BottomLeftWeight, BottomRightWeight:
       Integer;
   TopRow, BottomRow: PColorRGBAArray;
@@ -1494,7 +1559,6 @@ begin
     for X := 0 to Width - 1 do
     begin
       PixelX := SourceX shr 16;
-      NextPixelX := Min(PixelX + 1, Self.Width - 1);
       FractionX := SourceX and $FFFF;
       TopRightWeight := (TopWeight * FractionX) shr 16;
       TopLeftWeight := TopWeight - TopRightWeight;
@@ -1502,27 +1566,27 @@ begin
       BottomLeftWeight := BottomWeight - BottomRightWeight;
       Dest.R :=
           (TopRow^[PixelX].R * TopLeftWeight
-                  + TopRow^[NextPixelX].R * TopRightWeight
+                  + TopRow^[PixelX + 1].R * TopRightWeight
                   + BottomRow^[PixelX].R * BottomLeftWeight
-                  + BottomRow^[NextPixelX].R * BottomRightWeight)
+                  + BottomRow^[PixelX + 1].R * BottomRightWeight)
               shr 16;
       Dest.G :=
           (TopRow^[PixelX].G * TopLeftWeight
-                  + TopRow^[NextPixelX].G * TopRightWeight
+                  + TopRow^[PixelX + 1].G * TopRightWeight
                   + BottomRow^[PixelX].G * BottomLeftWeight
-                  + BottomRow^[NextPixelX].G * BottomRightWeight)
+                  + BottomRow^[PixelX + 1].G * BottomRightWeight)
               shr 16;
       Dest.B :=
           (TopRow^[PixelX].B * TopLeftWeight
-                  + TopRow^[NextPixelX].B * TopRightWeight
+                  + TopRow^[PixelX + 1].B * TopRightWeight
                   + BottomRow^[PixelX].B * BottomLeftWeight
-                  + BottomRow^[NextPixelX].B * BottomRightWeight)
+                  + BottomRow^[PixelX + 1].B * BottomRightWeight)
               shr 16;
       Dest.A :=
           (TopRow^[PixelX].A * TopLeftWeight
-                  + TopRow^[NextPixelX].A * TopRightWeight
+                  + TopRow^[PixelX + 1].A * TopRightWeight
                   + BottomRow^[PixelX].A * BottomLeftWeight
-                  + BottomRow^[NextPixelX].A * BottomRightWeight)
+                  + BottomRow^[PixelX + 1].A * BottomRightWeight)
               shr 16;
       Inc(SourceX, XStep);
       Inc(Dest);
@@ -1536,6 +1600,7 @@ begin
   Self.Width := Width;
   Self.Height := Height;
   PitchBytes := Width * SizeOf(TColorRGBA);
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
 procedure TGraphBufGR.FillPolygon32(Points: array of TPoint; Color: Cardinal);
@@ -1666,61 +1731,96 @@ end;
 
 procedure TGraphBufGR.CopyRect32(Dest: TPoint; Source: TGraphBufGR; Rect: TRect);
 var
-  Y, W, H: Integer;
-  S, D: PByte;
+  Src, Dst: PByte;
+  Columns, Rows, Column, Row, SrcSkip, DstSkip: Integer;
 begin
-  W := Rect.Right - Rect.Left;
-  H := Rect.Bottom - Rect.Top;
-  if (W <= 0) or (H <= 0) then
+  Src :=
+      PByte(
+          PAnsiChar(Source.GetPixels)
+              + Rect.Top * Source.PitchBytes
+              + Rect.Left * SizeOf(TColorRGBA)
+      );
+  Columns := Rect.Right - Rect.Left;
+  Rows := Rect.Bottom - Rect.Top;
+  if (Columns = 0) or (Rows = 0) then
     Exit;
-  S := PByte(Source.GetPixels) + Rect.Top * Source.PitchBytes + Rect.Left * 4;
-  D := PByte(GetPixels) + Dest.Y * PitchBytes + Dest.X * 4;
-  for Y := 1 to H do
+  SrcSkip := Source.PitchBytes - Columns * SizeOf(TColorRGBA);
+  Dst := PByte(PAnsiChar(GetPixels) + Dest.Y * PitchBytes + Dest.X * SizeOf(TColorRGBA));
+  DstSkip := PitchBytes - Columns * SizeOf(TColorRGBA);
+  // Copy forward one pixel at a time, including when source and destination overlap.
+  // A whole-row Move would change the original loop's overlapping-copy behavior.
+  for Row := 1 to Rows do
   begin
-    Move(S^, D^, W * 4);
-    Inc(S, Source.PitchBytes);
-    Inc(D, PitchBytes)
-  end
+    for Column := 1 to Columns do
+    begin
+      Move(Src^, Dst^, SizeOf(TColorRGBA));
+      Inc(Src, SizeOf(TColorRGBA));
+      Inc(Dst, SizeOf(TColorRGBA));
+    end;
+    Inc(Src, SrcSkip);
+    Inc(Dst, DstSkip);
+  end;
 end;
 
 procedure TGraphBufGR.BlendRect32(Dest: TPoint; Source: TGraphBufGR; Rect: TRect);
 var
-  X, Y, C, A, W, H: Integer;
-  S, D, Table: PByte;
+  Src, Dst: PByte;
+  Columns, Rows, Column, Row, Channel: Integer;
+  Table: PByte;
+  SrcSkip, DstSkip, Alpha: Integer;
 begin
-  W := Rect.Right - Rect.Left;
-  H := Rect.Bottom - Rect.Top;
+  Src :=
+      PByte(
+          PAnsiChar(Source.GetPixels)
+              + Rect.Top * Source.PitchBytes
+              + Rect.Left * SizeOf(TColorRGBA)
+      );
+  Columns := Rect.Right - Rect.Left;
+  Rows := Rect.Bottom - Rect.Top;
+  SrcSkip := Source.PitchBytes - Columns * SizeOf(TColorRGBA);
+  Dst := PByte(PAnsiChar(GetPixels) + Dest.Y * PitchBytes + Dest.X * SizeOf(TColorRGBA));
+  DstSkip := PitchBytes - Columns * SizeOf(TColorRGBA);
   Table := Ex_OKGF_MulTable256x256;
-  for Y := 0 to H - 1 do
+  for Row := 1 to Rows do
   begin
-    S := PByte(Source.GetPixels) + (Rect.Top + Y) * Source.PitchBytes + Rect.Left * 4;
-    D := PByte(GetPixels) + (Dest.Y + Y) * PitchBytes + Dest.X * 4;
-    for X := 0 to W - 1 do
+    for Column := 1 to Columns do
     begin
-      A := S[3];
-      for C := 0 to 2 do
-        D[C] := Byte(Table[Integer(S[C]) * 256 + A] + Table[Integer(D[C]) * 256 + 255 - A]);
-      D[3] := Min(255, Integer(D[3]) + A);
-      Inc(S, 4);
-      Inc(D, 4)
-    end
-  end
+      for Channel := 0 to 2 do
+      begin
+        Alpha := PColorRGBA(Src).A;
+        Dst[Channel] :=
+            Byte(
+                Table[(Integer(Src[Channel]) shl 8) + Alpha]
+                    + Table[(Integer(Dst[Channel]) shl 8) + 255 - Alpha]
+            );
+      end;
+      // Preserve the original saturated sum of both alpha bytes.
+      Alpha := Integer(PColorRGBA(Src).A) + PColorRGBA(Dst).A;
+      PColorRGBA(Dst).A := Min(Alpha, 255);
+      Inc(Src, SizeOf(TColorRGBA));
+      Inc(Dst, SizeOf(TColorRGBA));
+    end;
+    Inc(Src, SrcSkip);
+    Inc(Dst, DstSkip);
+  end;
 end;
 
 procedure TGraphBufGR.MakeShadow;
 var
-  X, Y: Integer;
-  P: PCardinal;
+  Data: PByte;
+  Column, Row: Integer;
 begin
-  for Y := 0 to Height - 1 do
+  Data := GetPixels;
+  for Row := 1 to Height do
   begin
-    P := PCardinal(PByte(GetPixels) + Y * PitchBytes);
-    for X := 0 to Width - 1 do
+    for Column := 1 to Width do
     begin
-      P^ := (P^ shr 2) and $FF000000;
-      Inc(P)
-    end
-  end
+      // Keep only one quarter of the original alpha; RGB becomes black.
+      WriteIntegerEC(Data, Integer((ReadDWordEC(Data) shr 2) and $FF000000));
+      Inc(Data, SizeOf(TColorRGBA));
+    end;
+    Inc(Data, PitchBytes - Width * SizeOf(TColorRGBA));
+  end;
 end;
 
 procedure TGraphBufGR.SaveToBuffer(Buffer: TBufEC);
@@ -1733,7 +1833,7 @@ begin
   Buffer.AddDWord(PitchBytes);
   Size := PitchBytes * Height;
   Buffer.SetSize(Buffer.DataSize + Size);
-  CopyMemory(AddPointerOffset(Buffer.Data, Buffer.Position), GetPixels, Size);
+  System.Move(Pointer(GetPixels)^, Pointer(AddPointerOffset(Buffer.Data, Buffer.Position))^, Size);
 end;
 
 procedure TGraphBufGR.LoadFromBuffer(Buffer: TBufEC);
@@ -1749,7 +1849,7 @@ begin
   if Buffer.DataSize - Buffer.Position < Size then
     RaiseWideMessage('load bin');
   Pixels := AllocEC(Size);
-  CopyMemory(GetPixels, AddPointerOffset(Buffer.Data, Buffer.Position), Size);
+  System.Move(Pointer(AddPointerOffset(Buffer.Data, Buffer.Position))^, Pointer(GetPixels)^, Size);
   BytesPerPixel := Cardinal(PitchBytes) div Cardinal(Width);
   BitsPerPixel := BytesPerPixel * 8;
 end;
@@ -1757,38 +1857,70 @@ end;
 procedure TGraphBufGR.SavePng(FileName: WideString);
 begin
   LockTexture(True);
-  WritePngFile(PAnsiChar(AnsiString(FileName)), GetPixels, PitchBytes, Width, Height, 1, 1);
+  WritePngFile(FileName, Pixels, PitchBytes, Width, Height, 1, 1);
 end;
 
 procedure TGraphBufGR.SaveBmp(FileName: WideString);
 begin
   LockTexture(True);
-  WriteBmpFile(
-      PAnsiChar(AnsiString(FileName)),
-      GetPixels,
-      PitchBytes,
-      32,
-      $FF0000,
-      $FF00,
-      $FF,
-      0,
-      Width,
-      Height
-  );
+  WriteBmpFile(FileName, Pixels, PitchBytes, 32, $FF0000, $FF00, $FF, 0, Width, Height);
 end;
 
 procedure TGraphBufGR.SaveJpeg(FileName: WideString; Quality: Integer);
+var
+  Image: TFPMemoryImage;
+  Writer: TFPWriterJPEG;
+  Output: TFileStream;
+  Encoded: TMemoryStream;
+  Pixel: PColorBGRA;
+  Color: TFPColor;
+  X, Y: Integer;
 begin
-  if sr_save_jpeg(
-          PAnsiChar(NativePath(UTF8Encode(FileName))),
-          GetPixels,
-          Width,
-          Height,
-          PitchBytes,
-          BytesPerPixel,
-          Quality)
-      = 0 then
-    raise Exception.Create('Could not write JPEG: ' + UTF8Encode(FileName))
+  // Keep the original BMP fallback when JPEG encoding fails.
+  SaveBmp(FileName);
+  try
+    Image := TFPMemoryImage.Create(Width, Height);
+    try
+      // CaptureScreenshot supplies BGRA32 in both rendering modes.
+      LockTexture(True);
+      for Y := 0 to Height - 1 do
+      begin
+        Pixel := PColorBGRA(PAnsiChar(Pixels) + Y * PitchBytes);
+        for X := 0 to Width - 1 do
+        begin
+          Color.Red := Pixel.R * 257;
+          Color.Green := Pixel.G * 257;
+          Color.Blue := Pixel.B * 257;
+          Color.Alpha := $FFFF;
+          Image.Colors[X, Y] := Color;
+          Inc(Pixel);
+        end;
+      end;
+      Writer := TFPWriterJPEG.Create;
+      try
+        Writer.CompressionQuality := Quality;
+        Encoded := TMemoryStream.Create;
+        try
+          // Finish encoding before opening the file so an encoder failure keeps the BMP.
+          Image.SaveToStream(Encoded, Writer);
+          Encoded.Position := 0;
+          Output := TFileStream.Create(UTF8Encode(NativeGamePath(FileName)), fmCreate);
+          try
+            Output.CopyFrom(Encoded, 0);
+          finally
+            Output.Free;
+          end;
+        finally
+          Encoded.Free;
+        end;
+      finally
+        Writer.Free;
+      end;
+    finally
+      Image.Free;
+    end;
+  except
+  end;
 end;
 
 procedure TGraphBufGR.DrawNinePatch(
@@ -1798,10 +1930,8 @@ procedure TGraphBufGR.DrawNinePatch(
 );
 var
   TileRect: TRect;
-  procedure TilePatch(
-      X, Y, Width, Height: Integer;
-      Rect: TRect
-  ); // @addr $868D90 @ida "void __userpurge $name(int X@<eax>, int Y@<edx>, int Width@<ecx>, int Height@<^4>, TRect *Rect@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x869065 0x8690AB 0x8690EB 0x869131 0x86917D"
+
+  procedure TilePatch(X, Y, Width, Height: Integer; Rect: TRect);
   var
     TileX, TileY, TileWidth, TileHeight: Integer;
   begin
@@ -1832,6 +1962,7 @@ var
       Inc(TileY, TileHeight);
     end;
   end;
+
 begin
   if Width <= 0 then
     Width := Self.Width - X;
@@ -2023,7 +2154,7 @@ begin
   );
   if UseTexture and (BitsPerPixel = 32) then
   begin
-    if not TextureFlag22 then
+    if not KeepTextureUntilReplacement then
       Texture := nil;
     NewTexture.UnlockRect(0);
     Texture := NewTexture;
@@ -2042,49 +2173,145 @@ begin
   Self.Width := Width;
   Self.Height := Height;
   PitchBytes := DestPitch;
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
-procedure TGraphBufGR.RescaleRGBA_HW(
+procedure TGraphBufGR.RescaleRgbaLinear(
     Width, Height: Cardinal;
     CropToAspect: Boolean;
     HorizontalAlign, VerticalAlign: Integer
 );
+type
+  TLinearSample = record
+    First, Last: Integer;
+    Weight: Cardinal;
+  end;
 var
   Left, Top, CropWidth, CropHeight: Cardinal;
+  X, Y, Channel, DestPitch: Integer;
+  Columns: array of TLinearSample;
+  Row: TLinearSample;
+  TopRow, BottomRow, DestPixel: PByte;
+  TopValue, BottomValue: Cardinal;
+  Dest: Pointer;
+  NewTexture: IDirect3DTexture9;
+  Locked: TD3DLockedRect;
+
+  function SampleAt(Index, SourceSize, DestSize: Integer): TLinearSample;
+  var
+    Position: Double;
+  begin
+    // StretchRect with linear filtering samples pixel centers and clamps edges.
+    // The older RescaleBilinearRgba uses a different (size - 1) / size mapping.
+    Position := EnsureRange((Index + 0.5) * SourceSize / DestSize - 0.5, 0.0, SourceSize - 1.0);
+    Result.First := Trunc(Position);
+    Result.Last := Min(Result.First + 1, SourceSize - 1);
+    Result.Weight := Trunc((Position - Result.First) * 65536);
+  end;
+
 begin
-  if (Width = 0) or (Height = 0) or (Self.Width < 1) or (Self.Height < 1) then
-    Exit;
   if (Width = Cardinal(Self.Width)) and (Height = Cardinal(Self.Height)) then
     Exit;
-  // Native uses D3D StretchRect with linear filtering. OKGF filter 1 is a
-  // different downsampling kernel: its unnormalized weights create a grid
-  // at ratios such as 1920 -> 1280. Reuse the recovered bilinear routine,
-  // retaining the native aspect crop and alignment before resizing.
+  if (Width = 0)
+      or (Height = 0)
+      or (Self.Width <= 0)
+      or (Self.Height <= 0)
+      or (BitsPerPixel <> 32)
+      or (QWord(Width) * Height > High(Integer) div 4) then
+    raise Exception.Create('Invalid RGBA rescale dimensions or pixel format');
+  Left := 0;
+  Top := 0;
+  CropWidth := Self.Width;
+  CropHeight := Self.Height;
   if CropToAspect then
   begin
-    CropWidth := Self.Width;
-    CropHeight := Round((Height / Width) * Cardinal(Self.Width));
+    CropHeight := Max(1, Round((Height / Width) * Cardinal(Self.Width)));
     if CropHeight > Cardinal(Self.Height) then
     begin
-      CropWidth := Round((Width / Height) * Cardinal(Self.Height));
+      CropWidth := Max(1, Round((Width / Height) * Cardinal(Self.Height)));
       CropHeight := Self.Height;
     end;
     if HorizontalAlign = 1 then
       Left := (Cardinal(Self.Width) - CropWidth) shr 1
     else if HorizontalAlign = 2 then
-      Left := Cardinal(Self.Width) - CropWidth
-    else
-      Left := 0;
+      Left := Cardinal(Self.Width) - CropWidth;
     if VerticalAlign = 1 then
       Top := (Cardinal(Self.Height) - CropHeight) shr 1
     else if VerticalAlign = 2 then
-      Top := Cardinal(Self.Height) - CropHeight
-    else
-      Top := 0;
-    if (CropWidth <> Cardinal(Self.Width)) or (CropHeight <> Cardinal(Self.Height)) then
-      Crop(Classes.Rect(Left, Top, Left + CropWidth, Top + CropHeight));
+      Top := Cardinal(Self.Height) - CropHeight;
   end;
-  RescaleBilinearRgba(Width, Height);
+  SetLength(Columns, Width);
+  for X := 0 to Integer(Width) - 1 do
+    Columns[X] := SampleAt(X, CropWidth, Width);
+  Dest := nil;
+  NewTexture := nil;
+  LockTexture(True);
+  try
+    try
+      // Cache loaders run off the render thread. Work only on CPU pixels; the
+      // platform texture storage uploads them when the main thread draws.
+      if UseTexture then
+      begin
+        NewTexture := GR_CreateTexture(Width, Height, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+        NewTexture.LockRect(0, Locked, nil, 0);
+        Dest := Locked.Bits;
+        DestPitch := Locked.Pitch;
+      end
+      else
+      begin
+        DestPitch := Width * SizeOf(TColorRGBA);
+        Dest := AllocEC(DestPitch * Height);
+      end;
+      for Y := 0 to Integer(Height) - 1 do
+      begin
+        Row := SampleAt(Y, CropHeight, Height);
+        TopRow := PByte(Pixels) + (SizeInt(Top) + Row.First) * PitchBytes + Left * 4;
+        BottomRow := PByte(Pixels) + (SizeInt(Top) + Row.Last) * PitchBytes + Left * 4;
+        DestPixel := PByte(Dest) + SizeInt(Y) * DestPitch;
+        for X := 0 to Integer(Width) - 1 do
+        begin
+          for Channel := 0 to 3 do
+          begin
+            TopValue :=
+                TopRow[Columns[X].First * 4 + Channel] * (65536 - Columns[X].Weight)
+                    + TopRow[Columns[X].Last * 4 + Channel] * Columns[X].Weight;
+            BottomValue :=
+                BottomRow[Columns[X].First * 4 + Channel] * (65536 - Columns[X].Weight)
+                    + BottomRow[Columns[X].Last * 4 + Channel] * Columns[X].Weight;
+            // Keep both interpolation axes until the final rounding, including alpha.
+            // The 64-bit products are also required on 32-bit hosts.
+            DestPixel[Channel] :=
+                (QWord(TopValue) * (65536 - Row.Weight)
+                        + QWord(BottomValue) * Row.Weight
+                        + $80000000)
+                    shr 32;
+          end;
+          Inc(DestPixel, 4);
+        end;
+      end;
+      if NewTexture <> nil then
+        NewTexture.UnlockRect(0);
+    except
+      if NewTexture = nil then
+        FreeEC(Dest);
+      raise;
+    end;
+  finally
+    UnlockTexture;
+  end;
+  if not UsesTextureStorage and (StorageKind = 0) then
+    FreeEC(Pixels);
+  Texture := NewTexture;
+  UsesTextureStorage := UseTexture;
+  if UseTexture then
+    Pixels := nil
+  else
+    Pixels := Dest;
+  StorageKind := 0;
+  Self.Width := Width;
+  Self.Height := Height;
+  PitchBytes := DestPitch;
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
 procedure TGraphBufGR.Crop(Rect: TRect);
@@ -2126,9 +2353,9 @@ begin
   Y := 0;
   while Y < NewHeight do
   begin
-    CopyMemory(
-        AddPointerOffset(Dest, Y * NewPitch),
-        AddPointerOffset(Source, Y * PitchBytes),
+    System.Move(
+        Pointer(AddPointerOffset(Source, Y * PitchBytes))^,
+        Pointer(AddPointerOffset(Dest, Y * NewPitch))^,
         NewWidth * BytesPerPixel
     );
     Inc(Y);
@@ -2137,7 +2364,7 @@ begin
   if UseTexture then
   begin
     NewTexture.UnlockRect(0);
-    if not TextureFlag22 then
+    if not KeepTextureUntilReplacement then
       Texture := nil;
     Texture := NewTexture;
   end
@@ -2151,6 +2378,7 @@ begin
   Width := NewWidth;
   Height := NewHeight;
   PitchBytes := NewPitch;
+  ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
 procedure TGraphBufGR.AdjustBrightness(Percent: Integer);
@@ -2159,7 +2387,7 @@ var
   Pixel: PByte;
   Table: array[0..255] of SmallInt;
 begin
-  for C := 0 to 255 do
+  for C := Low(Table) to High(Table) do
   begin
     Table[C] := (Percent + 100) * C div 100;
     Table[C] := Max(0, Min(255, Table[C]));
@@ -2168,7 +2396,7 @@ begin
   begin
     for Y := 0 to Height - 1 do
     begin
-      Pixel := Pointer(PtrUInt(GetPixels) + PitchBytes * Y);
+      Pixel := Pointer(PAnsiChar(GetPixels) + PitchBytes * Y);
       for X := 0 to Width - 1 do
       begin
         C := PWord(Pixel)^;
@@ -2180,7 +2408,7 @@ begin
         R := Table[R];
         C := (B shr 3) or ((G shr 2) shl 5) or ((R shr 3) shl 11);
         PWord(Pixel)^ := C;
-        Inc(Pixel, 2);
+        Inc(Pixel, SizeOf(Word));
       end;
     end;
   end
@@ -2188,13 +2416,13 @@ begin
   begin
     for Y := 0 to Height - 1 do
     begin
-      Pixel := Pointer(PtrUInt(GetPixels) + PitchBytes * Y);
+      Pixel := Pointer(PAnsiChar(GetPixels) + PitchBytes * Y);
       for X := 0 to Width - 1 do
       begin
-        Pixel^ := Table[Pixel^];
-        PByte(PtrUInt(Pixel) + 1)^ := Table[PByte(PtrUInt(Pixel) + 1)^];
-        PByte(PtrUInt(Pixel) + 2)^ := Table[PByte(PtrUInt(Pixel) + 2)^];
-        Inc(Pixel, 4);
+        PColorBGRA(Pixel).B := Table[PColorBGRA(Pixel).B];
+        PByte(@PColorBGRA(Pixel).G)^ := Table[PByte(@PColorBGRA(Pixel).G)^];
+        PByte(@PColorBGRA(Pixel).R)^ := Table[PByte(@PColorBGRA(Pixel).R)^];
+        Inc(Pixel, SizeOf(TColorRGBA));
       end;
     end;
   end;
@@ -2213,7 +2441,7 @@ begin
     BWeight := 7471;
     for Y := 0 to Height - 1 do
     begin
-      Pixel := Pointer(PtrUInt(GetPixels) + PitchBytes * Y);
+      Pixel := Pointer(PAnsiChar(GetPixels) + PitchBytes * Y);
       for X := 0 to Width - 1 do
       begin
         C := PWord(Pixel)^;
@@ -2225,7 +2453,7 @@ begin
         B := R;
         C := (R shl 11) or (G shl 5) or B;
         PWord(Pixel)^ := C;
-        Inc(Pixel, 2);
+        Inc(Pixel, SizeOf(Word));
       end;
     end;
   end
@@ -2233,17 +2461,17 @@ begin
   begin
     for Y := 0 to Height - 1 do
     begin
-      Pixel := Pointer(PtrUInt(GetPixels) + PitchBytes * Y);
+      Pixel := Pointer(PAnsiChar(GetPixels) + PitchBytes * Y);
       for X := 0 to Width - 1 do
       begin
-        B := Pixel^;
-        G := PByte(PtrUInt(Pixel) + 1)^;
-        R := PByte(PtrUInt(Pixel) + 2)^;
+        B := PColorBGRA(Pixel).B;
+        G := PByte(@PColorBGRA(Pixel).G)^;
+        R := PByte(@PColorBGRA(Pixel).R)^;
         C := Trunc(R * 0.299 + G * 0.587 + B * 0.114);
-        Pixel^ := C;
-        PByte(PtrUInt(Pixel) + 1)^ := C;
-        PByte(PtrUInt(Pixel) + 2)^ := C;
-        Inc(Pixel, 4);
+        PColorBGRA(Pixel).B := C;
+        PByte(@PColorBGRA(Pixel).G)^ := C;
+        PByte(@PColorBGRA(Pixel).R)^ := C;
+        Inc(Pixel, SizeOf(TColorRGBA));
       end;
     end;
   end;
@@ -2254,12 +2482,13 @@ var
   Locked: TD3DLockedRect;
   Y: Cardinal;
   RowBytes: Integer;
+
   procedure CopyRgbToOpaqueRgba(
       Dest: Pointer;
       DestPitch: Integer;
       Source: Pointer;
       SourcePitch, Width, Height: Integer
-  ); // @addr $86A154 @ida "void __userpurge $name(void *Dest@<eax>, int DestPitch@<edx>, void *Source@<ecx>, int SourcePitch@<^8>, int Width@<^4>, int Height@<^0>, void *ParentFrame@<^12>);" @stackpop 12 @calls "0x86A2BE"
+  );
   var
     X, Y: Integer;
   begin
@@ -2269,12 +2498,12 @@ var
       X := 0;
       while X < Width do
       begin
-        CopyMemory(
-            AddPointerOffset(Dest, X * SizeOf(TColorRGBA)),
-            AddPointerOffset(Source, X * 3),
-            3
+        System.Move(
+            Pointer(AddPointerOffset(Source, X * SizeOf(TColorRGB)))^,
+            Pointer(AddPointerOffset(Dest, X * SizeOf(TColorRGBA)))^,
+            SizeOf(TColorRGB)
         );
-        PByte(AddPointerOffset(Dest, X * SizeOf(TColorRGBA) + 3))^ := 255;
+        PByte(AddPointerOffset(Dest, Integer(@PColorRGBA(X * SizeOf(TColorRGBA)).A)))^ := 255;
         Inc(X);
       end;
       Dest := AddPointerOffset(Dest, DestPitch);
@@ -2282,6 +2511,7 @@ var
       Inc(Y);
     end;
   end;
+
 begin
   if not UsesTextureStorage and (Texture = nil) then
   begin
@@ -2303,9 +2533,9 @@ begin
       Y := 0;
       while Y < Cardinal(Height) do
       begin
-        CopyMemory(
-            AddPointerOffset(Locked.Bits, Locked.Pitch * Y),
-            AddPointerOffset(Pixels, PitchBytes * Y),
+        System.Move(
+            Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+            Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
             RowBytes
         );
         Inc(Y);
@@ -2317,24 +2547,24 @@ begin
   Result := Texture;
 end;
 
-procedure TGraphBufGR.LoadFromScreen(UnusedOption: Byte);
+procedure TGraphBufGR.LoadFromScreen(UnusedOption: Byte; NativeResolution: Boolean);
 var
   Offscreen, RenderTarget: IDirect3DSurface9;
+  Snapshot: IDirect3DTexture9;
   Locked: TD3DLockedRect;
   Y: Cardinal;
   ErrorCode: Integer;
-  Desc: TD3DSurfaceDesc;
-  procedure SetRowAlpha(
-      Pixels: Pointer;
-      Count, Alpha: Integer
-  ); // @addr $86A400 @ida "void __usercall $name(void *Pixels@<eax>, int Count@<edx>, int Alpha@<ecx>, void *ParentFrame@<^0>);"
+  Desc, SnapshotDesc: TD3DSurfaceDesc;
+
+  procedure SetRowAlpha(Pixels: Pointer; Count, Alpha: Integer);
   var
     X: Integer;
   begin
     Alpha := Alpha and $FF;
     for X := 0 to Count - 1 do
-      PByte(AddPointerOffset(Pixels, X * SizeOf(TColorRGBA) + 3))^ := Alpha;
+      PByte(AddPointerOffset(Pixels, Integer(@PColorRGBA(X * SizeOf(TColorRGBA)).A)))^ := Alpha;
   end;
+
 begin
   try
     if HardwareRenderingEnabled then
@@ -2345,6 +2575,43 @@ begin
         ErrorCode := RenderTarget.GetDesc(Desc);
         if ErrorCode = 0 then
         begin
+          if NativeResolution then
+          begin
+            Snapshot := CaptureGameGraphicsSurface(RenderTarget);
+            if Snapshot <> nil then
+            begin
+              Clear;
+              Snapshot.GetLevelDesc(0, SnapshotDesc);
+              if UseTexture then
+              begin
+                Width := SnapshotDesc.Width;
+                Height := SnapshotDesc.Height;
+                BitsPerPixel := 32;
+                BytesPerPixel := SizeOf(TColorRGBA);
+                Texture := Snapshot;
+                UsesTextureStorage := True;
+                LockTexture(True);
+                UnlockTexture;
+              end
+              else
+              begin
+                AllocateRgbaTight(SnapshotDesc.Width, SnapshotDesc.Height);
+                Snapshot.LockRect(0, Locked, nil, D3DLOCK_READONLY);
+                try
+                  for Y := 0 to Cardinal(Height) - 1 do
+                    System.Move(
+                        Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
+                        Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+                        Width * SizeOf(TColorRGBA)
+                    );
+                finally
+                  Snapshot.UnlockRect(0);
+                end;
+              end;
+              ScreenSnapshotSize := Classes.Point(Desc.Width, Desc.Height);
+              Exit;
+            end;
+          end;
           ErrorCode :=
               Direct3DDevice.CreateOffscreenPlainSurface(
                   Desc.Width,
@@ -2366,13 +2633,7 @@ begin
               BytesPerPixel := SizeOf(TColorRGBA);
               if UseTexture then
               begin
-                Texture :=
-                    GR_CreateTexture(
-                        GameScreenWidth,
-                        GameScreenHeight,
-                        D3DFMT_A8R8G8B8,
-                        D3DPOOL_MANAGED
-                    );
+                Texture := GR_CreateTexture(Width, Height, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
                 UsesTextureStorage := True;
                 LockTexture(False);
               end
@@ -2386,9 +2647,9 @@ begin
                 Offscreen.LockRect(Locked, nil, 0);
                 for Y := 0 to Cardinal(Height) - 1 do
                 begin
-                  CopyMemory(
-                      AddPointerOffset(Pixels, PitchBytes * Y),
-                      AddPointerOffset(Locked.Bits, Locked.Pitch * Y),
+                  System.Move(
+                      Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
+                      Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
                       Width * SizeOf(TColorRGBA)
                   );
                   SetRowAlpha(AddPointerOffset(Pixels, PitchBytes * Y), Width, 255);
@@ -2449,15 +2710,6 @@ procedure TGraphBufGR.LockTexture(ReadOnly: Boolean);
 var
   Locked: TD3DLockedRect;
 begin
-  // CPU-only buffers (notably the minimap) temporarily draw with hardware
-  // disabled. Invalidate their uploaded texture on every writable access.
-  if not ReadOnly and not UsesTextureStorage then
-    Texture := nil;
-
-  if HardwareRenderingEnabled and (Self = ScreenRenderBuffer) then
-    if sr_gpu_software_pixels(Pixels, PitchBytes) = 0 then
-      raise Exception.Create('SDL software fallback: ' + string(sr_error));
-
   if TextureLockedReadOnly and not ReadOnly then
     UnlockTexture;
   if not TextureLocked then
@@ -2503,7 +2755,7 @@ begin
   if Cardinal(Height) < 1 then
     Exit;
   LockTexture(True);
-  NewPitch := Width * 3;
+  NewPitch := Width * SizeOf(TColorRGB);
   NewPixels := AllocEC(NewPitch * Height);
   Dest := NewPixels;
   Source := Pixels;
@@ -2513,12 +2765,12 @@ begin
     X := 0;
     while X < Cardinal(Width) do
     begin
-      PByte(AddPointerOffset(Dest, X * 3))^ :=
-          PByte(AddPointerOffset(Source, X * SizeOf(TColorRGBA) + 2))^;
-      PByte(AddPointerOffset(Dest, X * 3 + 1))^ :=
-          PByte(AddPointerOffset(Source, X * SizeOf(TColorRGBA) + 1))^;
-      PByte(AddPointerOffset(Dest, X * 3 + 2))^ :=
-          PByte(AddPointerOffset(Source, X * SizeOf(TColorRGBA)))^;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).R :=
+          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).R)))^;
+      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).G)))^ :=
+          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).G)))^;
+      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).B)))^ :=
+          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).B;
       Inc(X);
     end;
     Dest := AddPointerOffset(Dest, NewPitch);
@@ -2552,15 +2804,13 @@ var
   X, Y, SignX, SignY, Quadrant: Integer;
   PreviousCoverage, Coverage: Single;
   PreviousX: Integer;
-  procedure PlotCirclePixel16(
-      X,
-      Y,
-      Alpha: Integer
-  ); // @addr $86AC88 @ida "void __usercall $name(int X@<eax>, int Y@<edx>, int Alpha@<ecx>, void *ParentFrame@<^0>);" @calls "0x86ad6f 0x86ad8f 0x86ae87 0x86aeb8 0x86AEED 0x86AF19"
+
+  procedure PlotCirclePixel16(X, Y, Alpha: Integer);
   begin
     if (X >= Clip.Left) and (X < Clip.Right) and (Y >= Clip.Top) and (Y < Clip.Bottom) then
       BlendPixel16(X, Y, Color, Alpha);
   end;
+
 begin
   X := Radius;
   PreviousX := Radius;
@@ -2616,17 +2866,13 @@ var
   X, FirstX, LastX, FirstY, LastY: Integer;
   Steep: Boolean;
   Temp, StartX, StartY, FinishX, FinishY: Double;
-  function LineFraction16(
-      Value: Double
-  ): Double; // @addr $86AF54 @ida "double __userpurge $name@<st0>(double Value@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x86b27a 0x86b2be 0x86B2D8 0x86B3D6 0x86b41f 0x86B436 0x86b523 0x86B53D"
+
+  function LineFraction16(Value: Double): Double;
   begin
     Result := Value - Floor(Value);
   end;
-  procedure PlotLinePixel16(
-      X,
-      Y,
-      Alpha: Integer
-  ); // @addr $86AF80 @ida "void __usercall $name(int X@<eax>, int Y@<edx>, int Alpha@<ecx>, void *ParentFrame@<^0>);" @calls "0x86B306 0x86B328 0x86B34B 0x86B36D 0x86B46D 0x86b49b 0x86b4cc 0x86B4FC 0x86B56B 0x86b58d 0x86b5b0 0x86b5d2"
+
+  procedure PlotLinePixel16(X, Y, Alpha: Integer);
   begin
     if (X >= Clip.Left)
         and (X < Clip.Right)
@@ -2635,6 +2881,7 @@ var
         and (Alpha > 0) then
       BlendPixel16(X, Y, Color, Alpha);
   end;
+
 begin
   StartX := X1;
   StartY := Y1;

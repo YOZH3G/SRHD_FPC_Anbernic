@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit SE_Ship2;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
@@ -13,11 +13,14 @@ uses
   GI_MessageLoop,
   GI_RotateImage5,
   GI_Tail,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TShip2AnimSE = class;
+
   TShip2SE = class;
+
   TShip2AnimSE = class(TObject)
     Prev: TShip2AnimSE;
     Next: TShip2AnimSE;
@@ -29,6 +32,7 @@ type
     procedure Clear;
     procedure Load(Specification: WideString);
   end;
+
   TShip2SE = class(TObjectSE)
     ImageSize: TPoint;
     ImageScale: TPointF;
@@ -37,7 +41,6 @@ type
     Angle: Byte;
     Alpha: Byte;
     AlphaLimit: Byte;
-    Gap6F: array[0..0] of Byte;
     MinimapImagePath: WideString;
     AlternateImagePath: WideString;
     MinimapImageOrigin: TPoint;
@@ -53,7 +56,6 @@ type
     WeaponPortCount: Cardinal;
     WeaponPorts: array[1..10] of TPointF;
     SharedAnimations: Boolean;
-    Gap169: array[0..2] of Byte;
     FirstAnimation: TShip2AnimSE;
     LastAnimation: TShip2AnimSE;
     FirstReducedAnimation: TShip2AnimSE;
@@ -65,7 +67,7 @@ type
     CurrentFrameIndex: Integer;
     AnimationTimer: PCallbackTimerGI;
     StateTimer: PCallbackTimerGI;
-    TotalAnimationWeight: PtrInt;
+    TotalAnimationWeight: Integer;
     TotalReducedAnimationWeight: Integer;
     TailMode: Integer;
     PanelPartnerImage: WideString;
@@ -115,10 +117,10 @@ type
     procedure AdvanceAnimation(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure SelectNextAnimation(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  ObserverHooks,
   Math,
   SysUtils,
   aMyFunction,
@@ -610,7 +612,7 @@ var
   Radians, Sine, Cosine: Double;
 begin
   Point := ScaleImagePoint(Point);
-  Radians := Angle / 256 * 6.2831852;
+  Radians := Angle / 256 * GameTwoPi;
   Sine := Sin(Radians);
   Cosine := Cos(Radians);
   Result.X := Point.X * Cosine - Point.Y * Sine + Position.X;
@@ -625,7 +627,7 @@ begin
   Point := ScaleImagePoint(MakePointF(Seed mod ImageSize.X, (Seed * 45452 + 3247) mod ImageSize.Y));
   Point.X := Point.X * TargetSizeScale;
   Point.Y := Point.Y * TargetSizeScale;
-  Radians := Heading / 256 * 6.2831852;
+  Radians := Heading / 256 * GameTwoPi;
   Sine := Sin(Radians);
   Cosine := Cos(Radians);
   Result.X := Point.X * Cosine - Point.Y * Sine + Position.X;
@@ -643,7 +645,7 @@ begin
     Exit;
   end;
   Point := ScaleImagePoint(WeaponPorts[1 + (Sqr(Seed) div 11) mod WeaponPortCount]);
-  Radians := Heading / 256 * 6.2831852;
+  Radians := Heading / 256 * GameTwoPi;
   Sine := Sin(Radians);
   Cosine := Cos(Radians);
   Result.X := Point.X * Cosine - Point.Y * Sine + Position.X;
@@ -751,15 +753,11 @@ end;
 
 procedure TShip2SE.AdvanceAnimation(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
-  with Image.HitTestBounds do
-    if (Cardinal(GameScreenWidth) * -0.1 > Right)
-        or (Cardinal(GameScreenWidth) * 1.1 < Left)
-        or (Cardinal(GameScreenHeight) * -0.1 > Bottom)
-        or (Cardinal(GameScreenHeight) * 1.1 < Top) then
-    begin
-      SetTailsEmitting(False);
-      Exit;
-    end;
+  if not ControlIntersectsViewport(Image, 0.1) then
+  begin
+    SetTailsEmitting(False);
+    Exit;
+  end;
   SetTailsEmitting(True);
   Inc(CurrentFrameIndex);
   if CurrentAnimation.FrameCount > CurrentFrameIndex then
@@ -798,7 +796,7 @@ begin
   begin
     if NextAnimation = LastAnimation then
       Exit;
-    Weight := PresentationRandom(TotalAnimationWeight);
+    Weight := Random(TotalAnimationWeight);
     Animation := FirstAnimation;
     while Animation <> nil do
     begin
@@ -815,7 +813,7 @@ begin
   begin
     if NextAnimation = LastReducedAnimation then
       Exit;
-    Weight := PresentationRandom(TotalReducedAnimationWeight);
+    Weight := Random(TotalReducedAnimationWeight);
     Animation := FirstReducedAnimation;
     while Animation <> nil do
     begin
@@ -960,9 +958,4 @@ begin
   MapImage.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TProcessSE.ClassName;
-  TShip2SE.ClassName;
-end;
 end.

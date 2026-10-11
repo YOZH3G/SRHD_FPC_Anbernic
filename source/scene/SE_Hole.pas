@@ -1,21 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit SE_Hole;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
   GI_Image,
   GI_MessageLoop,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   THoleSE = class;
+
   THoleSE = class(TObjectSE)
     ImagePath: WideString;
     MapImagePath: WideString;
@@ -39,10 +41,10 @@ type
     procedure SetState(Value: Integer);
     procedure AnimationCycleComplete(Sender: TObjectGI);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   Globals,
   GR_Main,
@@ -220,8 +222,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TProcessSE.ClassName;
-end;
 end.

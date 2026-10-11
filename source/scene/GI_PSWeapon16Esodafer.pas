@@ -1,41 +1,47 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon16Esodafer;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTEsodaferParticle = ^TEsodaferParticle;
+
   PEsodaferParticle = PointerToTEsodaferParticle;
+
   TEsodaferParticle = record
     Prev: PEsodaferParticle;
     Next: PEsodaferParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..2] of Byte;
   end;
+
   TEsodaferPalette = array[0..2] of Word;
+
 var
+
   EsodaferPalettes: array of TEsodaferPalette;
+
 type
+
   TPSWeapon16Esodafer = class;
+
   TPSWeapon16Esodafer = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PEsodaferParticle;
     LastParticle: PEsodaferParticle;
     Colors: TEsodaferPalette;
     ProjectionBounds: TRect;
-    Gap152: array[0..5] of Byte;
     OriginalLength: Double;
     LengthScale: Double;
     procedure UpdateHitTestBounds; override;
@@ -52,10 +58,12 @@ type
     function AddParticle: PEsodaferParticle;
     procedure ClearParticles;
   end;
+
 procedure LoadEsodaferPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Math,
@@ -66,8 +74,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877954
-// @unit-finalization $697674
 
 constructor TPSWeapon16Esodafer.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -209,7 +215,8 @@ var
   I: Integer;
   Distance, Angle, Speed: Single;
   Particle, Current, Spark: PEsodaferParticle;
-  function AcquireEsodaferParticle: PEsodaferParticle; // @addr $6967A8 @ida "TEsodaferParticle *__usercall $name@<eax>(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x696C50, 0x696DB8"
+
+  function AcquireEsodaferParticle: PEsodaferParticle;
   var
     Candidate: PEsodaferParticle;
   begin
@@ -220,6 +227,7 @@ var
       Candidate := AddParticle;
     Result := Candidate;
   end;
+
 begin
   Invalidate;
   if (FirstParticle = nil) and (RemainingTicks >= 24) then
@@ -282,10 +290,10 @@ begin
       begin
         Spark := AcquireEsodaferParticle;
         Spark.Position := Current.Position;
-        Spark.Color := Colors[PresentationRandom(3)];
+        Spark.Color := Colors[Random(3)];
         Spark.Alpha := Current.Alpha;
         Speed := 0.06 * Distance / RemainingTicks;
-        Angle := PresentationRandom(360) * 0.01745329252;
+        Angle := Random(360) * 0.01745329252;
         Spark.Velocity :=
             MakePointF(
                 Cos(Angle) * Speed + Current.Velocity.X,
@@ -293,8 +301,8 @@ begin
             );
         Spark.State := 2;
       end
-      else if ((Current.State = 2) and (PresentationRandom(101) < 3))
-          or ((Current.State = 3) and (PresentationRandom(101) < 10)) then
+      else if ((Current.State = 2) and (Random(101) < 3))
+          or ((Current.State = 3) and (Random(101) < 10)) then
       begin
         if Current.Alpha > 100 then
         begin
@@ -305,13 +313,13 @@ begin
           begin
             Spark := AcquireEsodaferParticle;
             Spark.Position := Current.Position;
-            Spark.Color := Colors[PresentationRandom(3)];
+            Spark.Color := Colors[Random(3)];
             Spark.Alpha := Current.Alpha;
             if Current.State = 3 then
               Speed := 20.0 / RemainingTicks
             else
               Speed := 0.04 * Distance / RemainingTicks;
-            Angle := PresentationRandom(360) * 0.01745329252;
+            Angle := Random(360) * 0.01745329252;
             Spark.Velocity :=
                 MakePointF(
                     Cos(Angle) * Speed + Current.Velocity.X,
@@ -344,7 +352,7 @@ begin
       begin
         Current.Position.Y := (Current.Position.Y - Distance) * 0.3 + Distance;
         Speed := 40.0 / RemainingTicks;
-        Angle := PresentationRandom(360) * 0.01745329252;
+        Angle := Random(360) * 0.01745329252;
         if Current.State = 2 then
           Current.Velocity := MakePointF(Cos(Angle) * Speed, Sin(Angle) * Speed)
         else

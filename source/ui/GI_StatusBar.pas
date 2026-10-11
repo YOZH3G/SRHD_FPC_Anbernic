@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit GI_StatusBar;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_Image,
   GI_MessageLoop,
   GI_Panel,
   Types;
+
 type
+
   TStatusBarGI = class;
+
   TStatusBarGI = class(TPanelGI)
     Minimum: Double;
     Maximum: Double;
@@ -31,9 +33,10 @@ type
     procedure UpdateImageLayout;
     procedure LoadStatusProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   Classes,
   EC_Str,

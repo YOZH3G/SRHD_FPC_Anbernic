@@ -1,17 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheSound;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
   EC_Cache;
+
 type
+
   TCSoundControlEC = class;
+
   TCSoundEC = class;
+
   TWaveFormatEx = packed record
     FormatTag: Word;
     Channels: Word;
@@ -21,38 +24,48 @@ type
     BitsPerSample: Word;
     ExtraSize: Word;
   end;
+
   TWaveFileHeader = packed record
-    Gap0: array[0..21] of Byte;
+    RiffId: Cardinal;
+    RiffSize: Cardinal;
+    WaveId: Cardinal;
+    FormatId: Cardinal;
+    FormatSize: Cardinal;
+    FormatTag: Word;
     Channels: Word;
     SamplesPerSecond: Cardinal;
-    Gap1C: array[0..3] of Byte;
+    AverageBytesPerSecond: Cardinal;
     BlockAlign: Word;
     BitsPerSample: Word;
     DataId: Cardinal;
     DataSize: Cardinal;
   end;
+
   TCSoundControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCSoundEC = class(TCacheDataEC)
     Format: TWaveFormatEx;
-    Gap32: array[0..1] of Byte;
     SampleData: Pointer;
     SampleDataSize: Cardinal;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireCachedSound(Control: TCacheControlEC): TCSoundEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
+  DirectSound,
   EC_Mem,
   GR_Main,
-  MMSystem;
+  GameSystem;
+
 const
   WaveDataChunkId = $61746164; // little-endian 'data'
   WaveChunkHeaderSize = 2 * SizeOf(Cardinal);
@@ -144,8 +157,4 @@ begin
   SourceBuffer.ReadBytes(SampleData, SampleDataSize);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCSoundEC.ClassName;
-end;
 end.

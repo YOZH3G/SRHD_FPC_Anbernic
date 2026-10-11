@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit ab_StopLine;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   EC_Buf,
   EC_Struct,
   GI_PolyLine,
@@ -13,29 +13,34 @@ uses
   ab_Global,
   ab_WorldImage,
   ab_WorldLine;
+
 type
+
   PointerToTabStopPoint = ^TabStopPoint;
+
   PointerToTabStopLine = ^TabStopLine;
+
   PabStopPoint = PointerToTabStopPoint;
+
   TabStopPoint = record
     Prev: PabStopPoint;
     Next: PabStopPoint;
     Longitude: Double;
     PolarAngle: Double;
     Radius: Single;
-    Gap1C: array[0..3] of Byte;
     Position: TVector3D;
     ScreenX: Integer;
     ScreenY: Integer;
     Projected: Boolean;
-    Gap41: array[0..2] of Byte;
     Kind: Integer;
     WorldImage: PabWorldImage;
     Gap4C: array[0..7] of Byte;
     Segments: array[0..3] of PPolyLineSegmentGI;
     Gap64: array[0..11] of Byte;
   end;
+
   PabStopLine = PointerToTabStopLine;
+
   TabStopLine = record
     Prev: PabStopLine;
     Next: PabStopLine;
@@ -48,39 +53,66 @@ type
     WorldLine: PabWorldLine;
     Collidable: Boolean;
     Visible: Boolean;
-    Gap26: array[0..1] of Byte;
     Segments: array[0..1] of PPolyLineSegmentGI;
     Gap30: array[0..3] of Byte;
   end;
+
 var
-  StopPointHeap: Cardinal = 0;
+
+  StopPointHeap: TGameHeapHandle = 0;
+
   FirstStopPoint: PabStopPoint = nil;
+
   LastStopPoint: PabStopPoint = nil;
+
   SelectedStopPoint: PabStopPoint = nil;
-  StopLineHeap: Cardinal = 0;
+
+  StopLineHeap: TGameHeapHandle = 0;
+
   FirstStopLine: PabStopLine = nil;
+
   LastStopLine: PabStopLine = nil;
+
   SelectedStopLine: PabStopLine = nil;
+
   FirstCollisionLine: PabStopLine = nil;
+
   StopPointIndex: array of PabStopPoint;
+
 procedure ab_StopPoint_Clear;
+
 function ab_StopPoint_Add: PabStopPoint;
+
 procedure ab_StopPoint_Delete(Point: PabStopPoint);
+
 procedure ab_StopPoint_UpdatePosition(Point: PabStopPoint);
+
 procedure ab_StopPoint_ClearImages;
+
 procedure ab_StopPoint_ClearSegments(Point: PabStopPoint);
+
 procedure ab_StopPoint_BuildIndex;
+
 procedure ab_StopPoint_ClearIndex;
+
 function ab_StopPoint_Count: Integer;
+
 procedure ab_StopLine_Clear;
+
 function ab_StopLine_Add: PabStopLine;
+
 procedure ab_StopLine_Delete(Line: PabStopLine);
+
 procedure ab_StopLine_AddLatitude(PolarAngle: Double; Step: Double);
+
 procedure ab_StopLine_UpdateWorldLines;
+
 procedure ab_StopLine_UpdateColors;
+
 procedure ab_StopLine_ClearSegments(Line: PabStopLine);
-procedure ab_StopLine_PrepareCollision(Line: PabStopLine);
+
 procedure ab_StopLine_BuildCollisionList;
+
 function ab_StopLine_ReflectMovement(
     Source: TSphericalBearingState;
     Target: TSphericalBearingState;
@@ -88,29 +120,32 @@ function ab_StopLine_ReflectMovement(
     var Speed: Double;
     var UnusedResult: Double
 ): Boolean;
+
 procedure ab_StopLine_GetDistances(
     Source: TSphericalBearingState;
     var ForwardDistance: Double;
     var BackwardDistance: Double
 );
+
 function ab_StopLine_IsBlocked(
     SourceLongitude: Double;
     SourcePolarAngle: Double;
     TargetLongitude: Double;
     TargetPolarAngle: Double
 ): Boolean;
+
 procedure ab_StopLine_Load(Buffer: TBufEC);
+
 implementation
+
 uses
   aMyFunction,
-  Windows,
+  Types,
   SysUtils,
   Math,
   EC_Mem,
   Globals,
   GlobalsV;
-// @unit-initialization $877868
-// @unit-finalization $55663C
 
 procedure ab_StopPoint_Clear;
 begin
@@ -119,7 +154,7 @@ begin
     ab_StopPoint_Delete(LastStopPoint);
   if StopPointHeap <> 0 then
   begin
-    HeapDestroy(StopPointHeap);
+    GameHeap.HeapDestroy(StopPointHeap);
     StopPointHeap := 0;
   end;
 end;
@@ -130,7 +165,7 @@ var
 begin
   if StopPointHeap = 0 then
   begin
-    StopPointHeap := HeapCreate(1, $8000, 0);
+    StopPointHeap := GameHeap.HeapCreate(1, $8000, 0);
     if StopPointHeap = 0 then
       raise Exception.Create('ab_StopPoint_Add.HeapCreate');
   end;
@@ -273,7 +308,7 @@ begin
     ab_StopLine_Delete(LastStopLine);
   if StopLineHeap <> 0 then
   begin
-    HeapDestroy(StopLineHeap);
+    GameHeap.HeapDestroy(StopLineHeap);
     StopLineHeap := 0;
   end;
 end;
@@ -284,7 +319,7 @@ var
 begin
   if StopLineHeap = 0 then
   begin
-    StopLineHeap := HeapCreate(1, $8000, 0);
+    StopLineHeap := GameHeap.HeapCreate(1, $8000, 0);
     if StopLineHeap = 0 then
       raise Exception.Create('ab_StopLine_Add.HeapCreate');
   end;
@@ -425,10 +460,6 @@ begin
     end;
 end;
 
-procedure ab_StopLine_PrepareCollision(Line: PabStopLine);
-begin
-end;
-
 procedure ab_StopLine_BuildCollisionList;
 var
   Line, Previous: PabStopLine;
@@ -438,7 +469,6 @@ begin
   Line := FirstStopLine;
   while Line <> nil do
   begin
-    ab_StopLine_PrepareCollision(Line);
     Line.NextCollision := nil;
     if Line.Collidable then
     begin
@@ -463,10 +493,11 @@ var
   LengthSquared: Single;
   Matrix: TMatrix4D;
   Normal, A, B, Direction, Movement: TVector3D;
+
   function IntersectCollisionParameters(
       A, B, C, D: TVector3D;
       var FirstT, SecondT: Double
-  ): Boolean; // @addr $5558A8 @ida "bool __userpurge $name@<al>(TVector3D *A@<eax>, TVector3D *B@<edx>, TVector3D *C@<ecx>, TVector3D *D@<^8>, double *FirstT@<^4>, double *SecondT@<^0>, void *ParentFrame@<^12>);" @stackpop 12 @calls "0x555d81"
+  ): Boolean;
   begin
     FirstT := (B.X - A.X) * (D.Y - C.Y) - (B.Y - A.Y) * (D.X - C.X);
     if FirstT = 0 then
@@ -479,17 +510,15 @@ var
     FirstT := ((A.Y - C.Y) * (D.X - C.X) - (A.X - C.X) * (D.Y - C.Y)) * FirstT;
     Result := True;
   end;
-  function CollisionLineDistance(
-      A,
-      B,
-      Point: TVector3D
-  ): Double; // @addr $555998 @ida "double __usercall $name@<st0>(TVector3D *A@<eax>, TVector3D *B@<edx>, TVector3D *Point@<ecx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x555cf2"
+
+  function CollisionLineDistance(A, B, Point: TVector3D): Double;
   var
     Cross: Double;
   begin
     Cross := (A.Y - Point.Y) * (B.X - A.X) - (A.X - Point.X) * (B.Y - A.Y);
     Result := Cross * InverseLengthSquared * LineLength;
   end;
+
 begin
   Result := False;
   if FirstStopLine <> nil then
@@ -594,10 +623,8 @@ var
   Line: PabStopLine;
   Matrix, View, Rotation: TMatrix4D;
   A, B, Hit: TVector3D;
-  function IntersectCollisionLines(
-      A, B, C, D: TVector3D;
-      var Hit: TVector3D
-  ): Boolean; // @addr $555F4C @ida "bool __userpurge $name@<al>(TVector3D *A@<eax>, TVector3D *B@<edx>, TVector3D *C@<ecx>, TVector3D *D@<^4>, TVector3D *Hit@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x556302"
+
+  function IntersectCollisionLines(A, B, C, D: TVector3D; var Hit: TVector3D): Boolean;
   var
     DX1, DY1, DX2, DY2, Denominator: Double;
   begin
@@ -618,6 +645,7 @@ var
       Hit.Y := (Hit.X - C.X) * DY2 / DX2 + C.Y;
     Result := True;
   end;
+
 begin
   ForwardDistance := 1e20;
   BackwardDistance := 1e20;
@@ -736,8 +764,8 @@ begin
     Line.Collidable := Buffer.GetBoolean;
     if Line.Visible then
     begin
-      Line.FirstColor := PCardinal(PtrInt(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
-      Line.LastColor := PCardinal(PtrInt(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
+      Line.FirstColor := PCardinal(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
+      Line.LastColor := PCardinal(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
     end;
   end;
 end;

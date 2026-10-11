@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ab_W04;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW04 = class;
+
   TabW04 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
@@ -27,10 +29,10 @@ type
     procedure Launch(Owner: TabObject; Amount: Integer; Offset: Single);
     procedure LaunchChild(Parent: TabW04; Angle: Single);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   ab_Ship,
   GlobalsV;
@@ -158,8 +160,4 @@ begin
   inherited UpdateVisuals;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabShip.ClassName;
-end;
 end.

@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fLoad;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types,
   Classes,
@@ -12,9 +11,13 @@ uses
   EC_BlockPar,
   GI_MessageLoop,
   fPanelLoad;
+
 type
+
   TCacheLoader = class;
+
   TfLoad = class;
+
   TCacheLoader = class(TThreadEC)
     PendingLoads: TList;
     TotalLoadCount: Integer;
@@ -22,12 +25,12 @@ type
     procedure Execute; override;
     procedure SetPendingLoads(Loads: TList; StartImmediately: Boolean);
   end;
+
   TfLoad = class(TMessageLoopGI)
     ProgressTimer: PCallbackTimerGI;
     LoadProgress: Single;
     DisplayedProgress: Single;
     LoadingFinished: Boolean;
-    GapDD: array[0..2] of Byte;
     IntroSkipRequest: Integer;
     IntroTimer: PCallbackTimerGI;
     IntroStartedAt: Cardinal;
@@ -49,25 +52,36 @@ type
     procedure StartIntroItem(Index: Integer);
     procedure UpdateIntro(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
+
 var
+
   IntroFinished: Boolean = False;
+
   IntroPlaying: Boolean;
+
 procedure QueueCommonLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
+
 procedure QueueSpaceLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
+
 procedure QueueHyperspaceLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
+
 procedure QueueArcadeLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
+
 procedure RemoveDuplicateCacheLoads(PendingLoads: TList);
+
 procedure QueueConfiguredLoadingAssets(PendingLoads: TList; Path: WideString);
+
 procedure LoadPendingAssets(PendingLoads: TList);
-procedure LinkRecoveredTypes;
+
 implementation
 
 uses
+  fPanelMain,
   EC_CacheGAI,
-  Windows,
+  GameInput,
   SysUtils,
   Math,
-  MMSystem,
+  GameSystem,
   EC_Cache,
   EC_Str,
   GR_Main,
@@ -86,16 +100,13 @@ begin
     QueueConfiguredLoadingAssets(PendingLoads, 'LoadGame');
     RemoveDuplicateCacheLoads(PendingLoads);
   end;
-
   if AnimMenuShip then
   begin
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', 'Bm.FormMain3.2ShipA1');
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', 'Bm.FormMain3.2ShipA2');
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', 'Bm.FormMain3.2ShipA3');
   end;
-
   if Cardinal(GameScreenWidth) >= 1600 then
-
   begin
     if AnimMenuShip then
     begin
@@ -103,21 +114,20 @@ begin
       GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', 'Bm.FormMain3.AnimGaalShip02A');
       GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', 'Bm.FormMain3.AnimGaalShip03A');
     end;
-
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.AnimGaalShip01');
-
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.AnimGaalShip02');
     GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.AnimGaalShip03');
   end;
-
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.2Ship1');
-
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.2Ship2');
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.2Ship3');
-
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain2.2AnimCaption');
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GI', 'Bm.FormMain3.2BG');
+  if ScreenLoadMode = 4 then
+  begin
+  end;
 end;
+
 procedure QueueSpaceLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
 var
   Template: TSputnikTempl;
@@ -137,29 +147,29 @@ begin
   Gate := TGateSE.Create('Gate', Classes.Point(0, 0));
   Gate.QueueImageLoad(PendingLoads, Owner);
   Gate.Free;
-
   for I := 0 to High(SpaceImageTemplates) do
     if TCGaiControlEC(SpaceImageTemplates[I].CacheControl) <> nil then
       TCGaiControlEC(SpaceImageTemplates[I].CacheControl).QueueLoadIfMissing(PendingLoads);
-
   GlobalCache.QueueNamedLoadIfMissing(PendingLoads, 'GAI', PlayerStar.GetBackgroundImagePath(I));
   QueueConfiguredLoadingAssets(PendingLoads, 'Space');
   if SoundEnabled then
     QueueConfiguredLoadingAssets(PendingLoads, 'SpaceSound');
   RemoveDuplicateCacheLoads(PendingLoads);
-
 end;
+
 procedure QueueHyperspaceLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
 begin
   PlayerStar.QueueHyperspaceShipImageLoads(PendingLoads, Owner);
   RemoveDuplicateCacheLoads(PendingLoads);
 end;
+
 procedure QueueArcadeLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
 begin
   ab_Object_QueueImageLoads(PendingLoads, Owner);
   QueueConfiguredLoadingAssets(PendingLoads, 'AB');
   RemoveDuplicateCacheLoads(PendingLoads);
 end;
+
 procedure RemoveDuplicateCacheLoads(PendingLoads: TList);
 var
   I, J: Integer;
@@ -184,6 +194,7 @@ begin
     Inc(I);
   end;
 end;
+
 procedure QueueConfiguredLoadingAssets(PendingLoads: TList; Path: WideString);
 var
   I, Count: Integer;
@@ -198,6 +209,7 @@ begin
     GlobalCache
         .QueueNamedLoadIfMissing(PendingLoads, Block.GetParamName(I), Block.GetParamValue(I));
 end;
+
 procedure LoadPendingAssets(PendingLoads: TList);
 var
   I, Count: Integer;
@@ -207,13 +219,13 @@ begin
   for I := 0 to Count - 1 do
   begin
     Control := TCacheControlEC(PendingLoads[I]);
-
     Control.AcquireData;
     Control.Release;
     Control.Free;
   end;
   PendingLoads.Clear;
 end;
+
 procedure TCacheLoader.Execute;
 var
   I, Count: Integer;
@@ -222,7 +234,6 @@ begin
   if PendingLoads <> nil then
   begin
     Count := PendingLoads.Count;
-
     for I := 0 to Count - 1 do
     begin
       while (Flag18 or ((Galaxy <> nil) and Galaxy.Destroying))
@@ -232,10 +243,8 @@ begin
       Control := TCacheControlEC(PendingLoads[I]);
       if not ExitScreenLoop and not IsStopRequested then
       begin
-
         Control.AcquireData;
         Control.Release;
-
       end;
       Control.Free;
       Inc(CompletedLoadCount);
@@ -243,8 +252,8 @@ begin
     PendingLoads.Free;
     PendingLoads := nil;
   end;
-
 end;
+
 procedure TCacheLoader.SetPendingLoads(Loads: TList; StartImmediately: Boolean);
 begin
   if IsRunning then
@@ -256,11 +265,13 @@ begin
   if StartImmediately then
     Start;
 end;
+
 constructor TfLoad.Create;
 begin
   inherited Create;
   LoadPanel := TfPanelLoad.Create;
 end;
+
 destructor TfLoad.Destroy;
 begin
   if LoadPanel <> nil then
@@ -270,6 +281,7 @@ begin
   end;
   inherited Destroy;
 end;
+
 procedure TfLoad.InitializeLayout;
 var
   Root: TObjectGI;
@@ -286,17 +298,11 @@ begin
   AppendLogLineThreadSafe('ok');
   LoadPanel.InitializeLayout(Self);
 end;
+
 procedure TfLoad.OnOpen;
 var
   Loads: TList;
-  PollMs: Integer;
 begin
-  // CHANGE: PERFORMANCE - Skip travel waits/presentation when fast transitions are enabled.
-  DeferScreenPresentation := FastTravelTransitions and (ScreenLoadMode = 2);
-  if DeferScreenPresentation then
-    PollMs := 1
-  else
-    PollMs := 20;
   IntroSkipRequest := 0;
   LoadPanel.OnOpen;
   ContentPanel.KeyDownCallback := IntroKeyDown;
@@ -323,7 +329,7 @@ begin
   if Loads.Count > 0 then
   begin
     CacheLoader.SetPendingLoads(Loads, False);
-    ProgressTimer := ScheduleCallbackTimer(PollMs, PollMs, UpdateLoadingProgress);
+    ProgressTimer := ScheduleCallbackTimer(20, 20, UpdateLoadingProgress);
   end
   else
   begin
@@ -334,8 +340,7 @@ begin
   begin
     CacheLoader.Start;
     LoadPanel.SetProgress(0);
-    if not DeferScreenPresentation then
-      LoadPanel.Show;
+    LoadPanel.Show;
   end
   else
   begin
@@ -347,7 +352,10 @@ begin
     StartIntroItem(1);
   end;
 end;
+
 procedure TfLoad.OnClose;
+var
+  ScreenId: TGameScreenId;
 begin
   with GetByName('Film') as TxvidGI do
     ImageClose;
@@ -366,7 +374,6 @@ begin
   end;
   if (ScreenLoadMode = 0) or (ScreenLoadMode = 3) then
   begin
-
     MainMenuScreen.InitializeLayout;
     PlanetQuestScreen.InitializeLayout;
     LoadScreen.InitializeLayout;
@@ -404,12 +411,16 @@ begin
     LoadQuestScreen.InitializeLayout;
     LoadArcadeScreen.InitializeLayout;
     AchievementsScreen.InitializeLayout;
-
+    // Anchor the shared HUD after each owner has positioned its content tree.
+    for ScreenId := Low(TGameScreenId) to High(TGameScreenId) do
+      if TObject(RegisteredScreens[ScreenId]) is TMessageLoopGIWithMainPanel then
+        TMessageLoopGIWithMainPanel(RegisteredScreens[ScreenId]).MainPanel.FinalizeLayout;
   end;
   IntroFinished := True;
   RequestedScreenId := PostLoadScreenId;
   PostLoadScreenId := screenNone;
 end;
+
 procedure TfLoad.UpdateLoadingProgress(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if not LoadingFinished then
@@ -429,19 +440,21 @@ begin
   end;
   if not LoadingFinished then
     Exit;
-  // Keep intro playback, but do not wait for a cosmetic progress ramp.
+  if 0.999 > DisplayedProgress then
+    Exit;
   if not IntroPlaying then
   begin
-    DisplayedProgress := 1;
     LoadPanel.SetProgress(1);
     Present;
     RequestClose(1);
   end;
 end;
+
 procedure TfLoad.IntroMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   IntroSkipRequest := 1;
 end;
+
 procedure TfLoad.IntroKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
   if Key <> 0 then
@@ -451,6 +464,7 @@ begin
       Inc(IntroSkipRequest);
   end;
 end;
+
 procedure TfLoad.StartIntroItem(Index: Integer);
 var
   Block: TBlockParEC;
@@ -539,7 +553,7 @@ begin
       while not MusicManager.IsPlaying do
         SysUtils.Sleep(1);
     end;
-  IntroStartedAt := timeGetTime;
+  IntroStartedAt := GameTickCount;
   if IntroTimer <> nil then
   begin
     CancelCallbackTimer(IntroTimer);
@@ -548,11 +562,12 @@ begin
   IntroSkipRequest := 0;
   IntroTimer := ScheduleCallbackTimer(5, 5, UpdateIntro);
 end;
+
 procedure TfLoad.UpdateIntro(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Fraction: Double;
 begin
-  Fraction := (timeGetTime - IntroStartedAt) / IntroDurationMs;
+  Fraction := (GameTickCount - IntroStartedAt) / IntroDurationMs;
   if Fraction > 1 then
     Fraction := 1;
   if (Fraction >= 1) or (IntroSkipRequest > 0) then
@@ -586,9 +601,5 @@ begin
       SetFramePosition(Round((SequenceFrameCount - 1) * Fraction), True);
   end;
 end;
-procedure LinkRecoveredTypes;
-begin
-  TgaiGI.ClassName;
-  TxvidGI.ClassName;
-end;
+
 end.

@@ -1,36 +1,43 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheLightPal;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  Windows,
+  Types,
   Classes,
   EC_Buf,
   EC_Cache;
+
 type
+
   TCLightPalControlEC = class;
+
   TCLightPalEC = class;
+
   TCLightPalControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCLightPalEC = class(TCacheDataEC)
     PaletteData: PWord;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreateLightPalette(Control: TCacheControlEC): TCLightPalEC;
+
 procedure GetLightPaletteMaskInfo(
     Mask: Cardinal;
     Shift: PCardinal;
     BitCount: PCardinal;
     LevelCount: PCardinal
 );
+
 function BuildLightPalette(
     Palette: PCardinal;
     ColorCount: Integer;
@@ -38,11 +45,12 @@ function BuildLightPalette(
     GreenMask: Cardinal;
     BlueMask: Cardinal
 ): PWord;
+
 procedure FreeLightPalette(Palette: PWord);
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   GR_GraphBufPal,
   EC_Mem,
@@ -153,10 +161,10 @@ begin
           (Word(R shr RDiscard) shl RShift)
               or (Word(G shr GDiscard) shl GShift)
               or (Word(B shr BDiscard) shl BShift);
-      Dest := PWord(PtrUInt(Dest) + 2);
+      Dest := PWord(PAnsiChar(Dest) + SizeOf(Word));
       Inc(Brightness);
     until Brightness = BrightnessLevels;
-    Palette := PCardinal(PtrUInt(Palette) + 4);
+    Palette := PCardinal(PAnsiChar(Palette) + SizeOf(Cardinal));
   end;
   Result := First;
 end;
@@ -209,8 +217,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCLightPalEC.ClassName;
-end;
 end.

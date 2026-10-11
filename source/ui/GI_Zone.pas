@@ -1,22 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit GI_Zone;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   Types;
+
 type
+
   TZoneGI = class;
+
   {$Z1}
   TZoneKindGI = (zkRect = 0, zkCircle = 1);
+
   TZoneGI = class(TObjectGI)
     Kind: TZoneKindGI;
     CursorInside: Boolean;
-    Gap122: array[0..5] of Byte;
     EnterCallback: TObjectNotifyEventGI;
     LeaveCallback: TObjectNotifyEventGI;
     ZoneMouseDownCallback: TObjectMouseEventGI;
@@ -38,7 +40,9 @@ type
     function HitTest(Point: TPoint): Boolean;
     procedure LoadZoneProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   aMyFunction,
   EC_Struct,
@@ -74,6 +78,7 @@ begin
     Result := ContainsPoint(Point)
   else if Kind = zkCircle then
   begin
+    Point := ScreenToLogicalPoint(Point);
     if HitTestBounds.Right - HitTestBounds.Left < HitTestBounds.Bottom - HitTestBounds.Top then
       Diameter := HitTestBounds.Right - HitTestBounds.Left
     else

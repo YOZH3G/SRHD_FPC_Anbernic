@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit LocationClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -13,8 +12,11 @@ uses
   ParameterDeltaClass,
   SequenceClass,
   TextFieldClass;
+
 type
+
   TLocation = class;
+
   TLocation = class(TObjectEx)
     ParameterChanges: TList;
     EditorX: Integer;
@@ -24,7 +26,6 @@ type
     EventCount: Integer;
     Events: array of TEvent;
     UseEventExpression: Boolean;
-    Gap21: array[0..2] of Byte;
     NextEventIndex: Integer;
     EventExpression: TTextField;
     IsDeath: Boolean;
@@ -32,7 +33,6 @@ type
     IsStart: Boolean;
     IsSuccess: Boolean;
     IsFailure: Boolean;
-    Gap31: array[0..2] of Byte;
     VisitLimit: Integer;
     VisitCount: Integer;
     Sequence: TSequence;
@@ -59,7 +59,9 @@ type
     procedure LoadLegacyV0FromReader(Reader: TBufEC);
     function SelectEvent(var Parameters: TList): TEvent;
   end;
+
 implementation
+
 uses
   CalcParseClass,
   EC_Str,
@@ -626,7 +628,7 @@ end;
 
 function TLocation.SelectEvent(var Parameters: TList): TEvent;
 var
-  i, j, Attempts: Integer;
+  i, j, Attempts, ScanEnd: Integer;
   Found: Boolean;
   Text: WideString;
   Calc: TCalcParse;
@@ -671,8 +673,11 @@ begin
         end
         else if Attempts > Max(20, EventCount * 2) then
         begin
+          // Native $4E855E exhausts to i+EventCount+1; Break retains the nonblank event.
+          // Keep that extra step in the modulo below when every event text is blank.
+          ScanEnd := i + EventCount;
           j := i + 1;
-          while j <= i + EventCount do
+          while j <= ScanEnd do
           begin
             Text := TrimWideString(Events[1 + j mod EventCount].Text.Text);
             if Text <> '' then

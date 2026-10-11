@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit GI_RadioGroup;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   Types;
+
 type
+
   TRadioGroupGI = class;
+
   TRadioGroupGI = class(TObjectGI)
     SelectionChangedCallback: TObjectNotifyEventGI;
     procedure Clear; override;
@@ -26,10 +28,10 @@ type
     procedure SelectItem(Name: WideString);
     procedure ItemClick(Sender: TObjectGI; MouseState: Cardinal; Point: TPoint);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   Classes,
   SysUtils,
   EC_Str,
@@ -47,6 +49,7 @@ end;
 
 procedure TRadioGroupGI.Clear;
 begin
+
 end;
 
 procedure TRadioGroupGI.SetConfigPath(const Path: WideString);
@@ -175,8 +178,4 @@ begin
     SelectItem(TrimWideString(Block.GetParam('Checked')));
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TTransImageGI.ClassName;
-end;
 end.

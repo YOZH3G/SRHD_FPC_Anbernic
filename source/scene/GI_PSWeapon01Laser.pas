@@ -1,42 +1,50 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon01Laser;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTBeamLaserParticle = ^TBeamLaserParticle;
+
   PBeamLaserParticle = PointerToTBeamLaserParticle;
+
   TBeamLaserParticle = record
     Prev: PBeamLaserParticle;
     Next: PBeamLaserParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..2] of Byte;
   end;
+
   TBeamLaserPalette = array[0..8] of Single;
+
 var
+
   BeamLaserPalettes: array of TBeamLaserPalette;
+
   BeamLaserWidths: array of Single;
+
   BeamLaserDurations: array of Integer;
+
 type
+
   TPSWeapon01Laser = class;
+
   TPSWeapon01Laser = class(TPSWeaponGI)
     HalfWidth: Single;
     FirstParticle: PBeamLaserParticle;
     LastParticle: PBeamLaserParticle;
     ProjectionBounds: TRect;
-    Gap14C: array[0..3] of Byte;
     OriginalLength: Double;
     LengthScale: Double;
     PaletteIndex: Integer;
@@ -54,10 +62,12 @@ type
     procedure RemoveParticle(Particle: PBeamLaserParticle);
     procedure ClearParticles;
   end;
+
 procedure LoadBeamLaserPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Math,
@@ -68,8 +78,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $8778EC
-// @unit-finalization $6882E4
 
 constructor TPSWeapon01Laser.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -287,12 +295,12 @@ begin
               Spark.Position.X := Current.Position.X;
               Spark.Position.Y := Current.Position.Y;
               Spark.Color := Current.Color;
-              Angle := PresentationRandom(16) / 8.0 * Pi;
-              Power := PresentationRandom(50);
+              Angle := Random(16) / 8.0 * Pi;
+              Power := Random(50);
               Spark.Velocity.X := Sin(Angle) * (Power + 50) / 50.0;
               Spark.Velocity.Y := Cos(Angle) * (Power + 50) / 50.0;
               Spark.State := 2;
-              Power := (Current.Alpha shr 1) - PresentationRandom(100);
+              Power := (Current.Alpha shr 1) - Random(100);
               if Power < 0 then
                 Power := 0;
               Spark.Alpha := Power;

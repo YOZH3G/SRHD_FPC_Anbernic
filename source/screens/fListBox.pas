@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit fListBox;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   Types,
   GI_MessageLoop,
   GI_GraphButton,
   GI_PanelScrollBar;
+
 type
+
   TfListBox = class;
+
   TfListBox = class(TMessageLoopGI)
     SelectedIndex: Integer;
     AcceptButton: TGraphButtonGI;
@@ -34,6 +36,7 @@ type
     procedure ChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure ChoiceDoubleClick(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
   end;
+
 function ShowListDialog(
     Parent: TMessageLoopGI;
     var SelectedIndex: Integer;
@@ -42,11 +45,11 @@ function ShowListDialog(
     OffsetX: Integer;
     OffsetY: Integer
 ): Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  GameInput,
   GI_Window,
   GI_Frame,
   GI_Label,
@@ -183,6 +186,7 @@ end;
 
 procedure TfListBox.OnClose;
 begin
+
 end;
 
 procedure TfListBox.PopulateChoices;
@@ -283,7 +287,7 @@ var
   Dialog: TfListBox;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -308,13 +312,9 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
   if Result = 254 then
     BreakUiMessage;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TLabelGI.ClassName;
-end;
 end.

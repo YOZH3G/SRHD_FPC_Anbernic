@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_TransImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -12,14 +11,16 @@ uses
   GI_Main,
   GI_MessageLoop,
   Types;
+
 type
+
   TTransImageGI = class;
+
   TTransImageGI = class(TObjectGI)
     ImageCache: TCTBitmapControlEC;
     ImageKindX: TImageKindXGI;
     ImageKindY: TImageKindYGI;
     HalfAlpha: Boolean;
-    Gap127: array[0..0] of Byte;
     procedure Clear; override;
     procedure QueueImageLoad(PendingLoads: TList); override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -33,15 +34,17 @@ type
     procedure SetImageKindY(Value: TImageKindYGI);
     procedure SetHalfAlpha(Value: Boolean);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   EC_Mem,
   GlobalsV,
   GR_Main,
   GR_DX,
   SysUtils;
+
 constructor TTransImageGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
@@ -50,18 +53,21 @@ begin
   ImageKindX := ikxCenter;
   ImageKindY := ikyCenter;
 end;
+
 destructor TTransImageGI.Destroy;
 begin
   ImageCache.Free;
   ImageCache := nil;
   inherited Destroy;
 end;
+
 procedure TTransImageGI.Clear;
 begin
   ImageKindX := ikxCenter;
   ImageKindY := ikyCenter;
   inherited Clear;
 end;
+
 procedure TTransImageGI.SetImagePath(const ImagePath: WideString);
 begin
   if ImageCache.CacheKey <> ImagePath then
@@ -70,6 +76,7 @@ begin
     ImageCache.SetCacheKey(ImagePath);
   end;
 end;
+
 function TTransImageGI.GetContentSize: TPoint;
 var
   Bitmap: TCTBitmapEC;
@@ -81,6 +88,7 @@ begin
     ImageCache.Release;
   end;
 end;
+
 procedure TTransImageGI.SetImageKindX(Value: TImageKindXGI);
 begin
   if ImageKindX <> Value then
@@ -89,6 +97,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TTransImageGI.SetImageKindY(Value: TImageKindYGI);
 begin
   if ImageKindY <> Value then
@@ -97,6 +106,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TTransImageGI.SetHalfAlpha(Value: Boolean);
 begin
   if HalfAlpha <> Value then
@@ -105,6 +115,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TTransImageGI.LoadFromConfigPath(const Path: WideString);
 var
   Block: TBlockParEC;
@@ -140,6 +151,7 @@ begin
   if Block.CountParams('HalfAlpha') > 0 then
     SetHalfAlpha(ParseEnabledNameGI(Block.GetParam('HalfAlpha')));
 end;
+
 procedure TTransImageGI.LoadFromBlock(Block: TBlockParEC);
 var
   Bitmap: TCTBitmapEC;
@@ -170,6 +182,7 @@ begin
   if Block.CountParams('HalfAlpha') > 0 then
     SetHalfAlpha(ParseEnabledNameGI(Block.GetParam('HalfAlpha')));
 end;
+
 procedure TTransImageGI.Draw(ClipRect: TRect);
 var
   Bitmap: TCTBitmapEC;
@@ -241,9 +254,7 @@ begin
     begin
       Exit;
     end;
-
     AppendLogLineThreadSafe('Test');
-
     Y := Top;
     while (Y < Bottom) do
     begin
@@ -267,8 +278,10 @@ begin
     ImageCache.Release;
   end;
 end;
+
 procedure TTransImageGI.QueueImageLoad(PendingLoads: TList);
 begin
   ImageCache.QueueLoadIfMissing(PendingLoads);
 end;
+
 end.

@@ -1,21 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit SE_Ruins;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
   GI_Image,
   GI_MessageLoop,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TRuinsSE = class;
+
   TRuinsSE = class(TObjectSE)
     ImagePath: WideString;
     StaticImagePath: WideString;
@@ -26,18 +28,14 @@ type
     FrameIndex: Integer;
     Alpha: Byte;
     AlphaLimit: Byte;
-    Gap6A: array[0..1] of Byte;
     WeaponPortCount: Cardinal;
     WeaponPorts: array[1..10] of TPointF;
     HasTransitionImages: Boolean;
-    GapC1: array[0..2] of Byte;
     State: Integer;
     FadeTimer: PCallbackTimerGI;
     KeepSize: Boolean;
-    GapCD: array[0..2] of Byte;
     PanelPartnerImage: WideString;
     HideOnStarInfo: Boolean;
-    GapD5: array[0..2] of Byte;
     procedure AttachToSpace(ASpace: TSpaceSE); override;
     procedure DetachFromSpace; override;
     procedure SetPosition(APosition: TPointF); override;
@@ -56,10 +54,10 @@ type
     procedure AdvanceFade(Timer: PCallbackTimerGI; UserData: PtrInt);
     function GetWeaponPortPoint(Seed: Cardinal): TPointF;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  ObserverHooks,
   Math,
   SysUtils,
   EC_Str,
@@ -124,7 +122,7 @@ begin
       Animation.SequenceIndex := 0;
       Animation.UpdateAutoGeometry;
       if not (State in [2, 3]) then
-        FrameIndex := PresentationRandom(Animation.SequenceFrameCount - 1);
+        FrameIndex := Random(Animation.SequenceFrameCount - 1);
       Animation.SetSequenceFrame(FrameIndex);
       Animation.RestartPlayback;
       Animation.SetAlpha(Math.Min(Alpha, AlphaLimit) shr Space.AlphaShift);
@@ -366,9 +364,8 @@ end;
 procedure TRuinsSE.LoadTemplate(Block: TBlockParEC);
 var
   Index: Integer;
-  function ParseRuinsPoint(
-      PointText: WideString
-  ): TPoint; // @addr $71DEA8 @ida "void __usercall $name(unsigned __int16 *PointText@<eax>, TPoint *Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x71E2B1"
+
+  function ParseRuinsPoint(PointText: WideString): TPoint;
   begin
     if CountDelimitedPartsW(PointText, ',') < 2 then
       raise Exception.Create('GetPointGI. tstr=' + PointText);
@@ -378,9 +375,8 @@ var
             StrToInt(ExtractDelimitedPartW(PointText, 1, ','))
         );
   end;
-  function ParseRuinsEnabled(
-      Name: WideString
-  ): Boolean; // @addr $71DFEC @ida "bool __usercall $name@<al>(unsigned __int16 *Name@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x71E22D"
+
+  function ParseRuinsEnabled(Name: WideString): Boolean;
   begin
     if (Name = 'Yes')
         or (Name = 'yes')
@@ -392,6 +388,7 @@ var
     else
       Result := False;
   end;
+
 begin
   inherited LoadTemplate(Block);
   ImagePath := Block.GetParam('Image');
@@ -449,8 +446,4 @@ begin
   MapImage.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TProcessSE.ClassName;
-end;
 end.

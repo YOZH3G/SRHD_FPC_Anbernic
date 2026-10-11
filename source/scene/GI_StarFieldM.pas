@@ -1,28 +1,34 @@
-{$EXCESSPRECISION OFF}
 unit GI_StarFieldM;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_Panel,
-  Types;
+  GI_Panel;
+
 type
+
   TStarFieldMGI = class;
+
   PointerToTMovingStarPixel = ^TMovingStarPixel;
+
   PointerToTMovingStarColorTable = ^TMovingStarColorTable;
+
   TMovingStarPalette = array[0..31] of Word;
+
   TMovingStarColorTable = array[0..15] of TMovingStarPalette;
+
   PMovingStarColorTable = PointerToTMovingStarColorTable;
+
   TMovingStarPixel = record
     ByteOffset: Integer;
     PreviousByteOffset: Integer;
     Gap8: array[0..7] of Byte;
     SavedPixel: Word;
-    Gap12: array[0..1] of Byte;
     Position: TPointF;
     Velocity: TPointF;
     Acceleration: TPointF;
@@ -30,11 +36,12 @@ type
     PixelPosition: TPoint;
     PaletteIndex: Integer;
     Color: Word;
-    Gap42: array[0..1] of Byte;
     ColorPosition: Single;
     ColorStep: Single;
   end;
+
   PMovingStarPixel = PointerToTMovingStarPixel;
+
   TStarFieldMGI = class(TPanelGI)
     Stars: PMovingStarPixel;
     StarCount: Integer;
@@ -68,7 +75,9 @@ type
     procedure AnimateStars(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure SetViewPosition(Position: TPointF);
   end;
+
 implementation
+
 uses
   Classes,
   EC_Mem,

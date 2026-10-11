@@ -1,36 +1,43 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon11Desintegrator;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTDesintegratorParticle = ^TDesintegratorParticle;
+
   PDesintegratorParticle = PointerToTDesintegratorParticle;
+
   TDesintegratorParticle = record
     Prev: PDesintegratorParticle;
     Next: PDesintegratorParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..0] of Byte;
     RemainingTicks: Word;
     BaseAlpha: Integer;
   end;
+
   TDesintegratorPalette = array[0..0] of Word;
+
 var
+
   DesintegratorPalettes: array of TDesintegratorPalette;
+
 type
+
   TPSWeapon11Desintegrator = class;
+
   TPSWeapon11Desintegrator = class(TPSWeaponGI)
     HalfWidth: Integer;
     Wavelength: Integer;
@@ -40,7 +47,6 @@ type
     PendingSparkSteps: Integer;
     Color: Word;
     ProjectionBounds: TRect;
-    Gap15A: array[0..5] of Byte;
     LengthScale: Double;
     OriginalLength: Double;
     procedure UpdateHitTestBounds; override;
@@ -59,10 +65,12 @@ type
     procedure ClearParticles;
     procedure AdvanceImpactSparks(ClipRect: TRect);
   end;
+
 procedure LoadDesintegratorPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Classes,
@@ -74,8 +82,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877934
-// @unit-finalization $693468
 
 constructor TPSWeapon11Desintegrator.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -295,7 +301,7 @@ begin
             Spark.Position := MakePointF(0, 0);
             Spark.Color := Current.Color;
             Spark.Alpha := Current.BaseAlpha;
-            Angle := PresentationRandom(12) * Pi / 6.0;
+            Angle := Random(12) * Pi / 6.0;
             Spark.Velocity := MakePointF(Sin(Angle) * 1.0, Cos(Angle) * 1.0);
             Spark.State := 2;
             Spark.RemainingTicks := 18;
@@ -441,7 +447,7 @@ var
   I: Integer;
 begin
   for I := 1 to PendingSparkSteps do
-    AdvanceImpactSparks(ClipRect);
+    AdvanceImpactSparks(Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight));
   PendingSparkSteps := 0;
   TargetX := TargetPoint.X - LocalPosition.X + AbsolutePosition.X;
   TargetY := TargetPoint.Y - LocalPosition.Y + AbsolutePosition.Y;

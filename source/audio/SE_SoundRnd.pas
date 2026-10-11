@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit SE_SoundRnd;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   EC_BlockPar;
+
 type
+
   TSoundRndSE = class;
+
   TSoundRndUnitSE = record
     Weight: Integer;
     Group: Integer;
@@ -19,6 +21,7 @@ type
     SoundWeights: array of Integer;
     TotalSoundWeight: Integer;
   end;
+
   TSoundRndSE = class(TObjectEx)
     Prev: TSoundRndSE;
     Next: TSoundRndSE;
@@ -31,16 +34,24 @@ type
     procedure LoadFromBlock(Block: TBlockParEC);
     function SelectSound(GroupIndex: Integer): WideString;
   end;
+
 var
+
   FirstRandomSound: TSoundRndSE = nil;
+
   LastRandomSound: TSoundRndSE = nil;
+
 function CreateRandomSound: TSoundRndSE;
+
 procedure FreeRandomSound(Sound: TSoundRndSE);
+
 procedure FreeAllRandomSounds;
+
 function FindRandomSound(Name: WideString; var GroupIndex: Integer): TSoundRndSE;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   GR_Main,
   aMyFunction;

@@ -111,3 +111,18 @@ int SDL_PollEvent(SDL_Event *e) {
     }
     return real_poll(e);
 }
+
+/* Dummy video does not generate activation events. Match a focused real window. */
+SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags) {
+    static SDL_Window *(*create_window)(const char *, int, int, int, int, Uint32);
+    if (!create_window) create_window = dlsym(RTLD_NEXT, "SDL_CreateWindow");
+    SDL_Window *window = create_window(title, x, y, w, h, flags);
+    if (window) {
+        SDL_Event event = {0};
+        event.type = SDL_WINDOWEVENT;
+        event.window.windowID = SDL_GetWindowID(window);
+        event.window.event = SDL_WINDOWEVENT_FOCUS_GAINED;
+        SDL_PushEvent(&event);
+    }
+    return window;
+}

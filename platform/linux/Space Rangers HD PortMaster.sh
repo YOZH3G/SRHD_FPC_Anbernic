@@ -68,5 +68,5 @@ if declare -F pm_platform_helper >/dev/null; then
 fi
 $GPTOKEYB "$binary" -c "$gamedir/rangers.gptk" &
 controls_pid=$!
-"./$binary" --game-dir="$gamedir/game" --user-dir="$gamedir/profile" --fullscreen --renderer=software --transitions=fast --no-thumbnail-cache --on-screen-keyboard "$@"
+"./$binary" --game-dir="$gamedir/game" --user-dir="$gamedir/profile" --fullscreen --renderer=sdl --on-screen-keyboard "$@"
 exit $?

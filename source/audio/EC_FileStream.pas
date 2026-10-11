@@ -1,16 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit EC_FileStream;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameEvents,
   EC_Thread,
   EC_File,
   SyncObjs;
+
 type
+
   TFileStreamEC = class;
+
   TFileStreamEC = class(TThreadEC)
     BlockSize: Integer;
     BufferCapacity: Integer;
@@ -22,7 +25,6 @@ type
     SourceFile: TFileEC;
     FileSize: Integer;
     EndOfFile: Boolean;
-    Gap51: array[0..2] of Byte;
     BufferLock: TCriticalSection;
     procedure Execute; override;
     constructor Create(BufferBytes: Integer; const FileName: WideString);
@@ -30,12 +32,13 @@ type
     procedure SwapBuffers;
     function Read(Destination: Pointer; ByteCount: Integer): Integer;
   end;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Mem,
-  Windows;
+  Types;
 
 constructor TFileStreamEC.Create(BufferBytes: Integer; const FileName: WideString);
 begin
@@ -57,8 +60,8 @@ end;
 destructor TFileStreamEC.Destroy;
 begin
   RequestStop;
-  if IsRunning then
-    WaitForIdle(INFINITE);
+  // Cleanup must join even when the worker has an exception waiting to be reported.
+  WaitGameEvent(IdleEvent, INFINITE);
   if SourceFile <> nil then
   begin
     SourceFile.Free;
@@ -142,7 +145,7 @@ begin
     Chunk := ReadAvailable;
   if Chunk > 0 then
   begin
-    CopyMemory(Destination, AddPointerOffset(ReadBuffer, ReadPosition), Chunk);
+    System.Move(Pointer(AddPointerOffset(ReadBuffer, ReadPosition))^, Pointer(Destination)^, Chunk);
     Inc(ReadPosition, Chunk);
     Dec(ReadAvailable, Chunk);
     Destination := AddPointerOffset(Destination, Chunk);
@@ -167,7 +170,8 @@ begin
       Chunk := ReadAvailable;
     if Chunk > 0 then
     begin
-      CopyMemory(Destination, AddPointerOffset(ReadBuffer, ReadPosition), Chunk);
+      System
+          .Move(Pointer(AddPointerOffset(ReadBuffer, ReadPosition))^, Pointer(Destination)^, Chunk);
       Inc(ReadPosition, Chunk);
       Dec(ReadAvailable, Chunk);
       Destination := AddPointerOffset(Destination, Chunk);
@@ -182,7 +186,8 @@ begin
       Chunk := ReadAvailable;
     if Chunk > 0 then
     begin
-      CopyMemory(Destination, AddPointerOffset(ReadBuffer, ReadPosition), Chunk);
+      System
+          .Move(Pointer(AddPointerOffset(ReadBuffer, ReadPosition))^, Pointer(Destination)^, Chunk);
       Inc(ReadPosition, Chunk);
       Dec(ReadAvailable, Chunk);
       Destination := AddPointerOffset(Destination, Chunk);

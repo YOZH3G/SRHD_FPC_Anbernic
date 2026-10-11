@@ -1,15 +1,38 @@
-{$EXCESSPRECISION OFF}
 unit EC_Buf;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_File,
   EC_Struct;
+
+const
+
+  SeedRngMultiplier = 16807;
+
+  SeedRngQuotient = 127773;
+
+  SeedRngRemainder = 2836;
+
+  SeedRngModulus = $7FFFFFFF;
+
 type
+
   TBufEC = class;
+
+  PointerToTEncodedTableHeaderEC = ^TEncodedTableHeaderEC;
+
+  TEncodedTableHeaderEC = packed record
+    Version: Integer;
+    SeedHighWord: Word;
+    SeedLowWord: Word;
+    Checksum: Cardinal;
+  end;
+
+  PEncodedTableHeaderEC = PointerToTEncodedTableHeaderEC;
+
   TBufEC = class(TObjectEx)
     DataSize: Integer;
     Capacity: Integer;
@@ -80,15 +103,18 @@ type
     procedure LoadFromWideFilePath(FileName: PWideChar);
     procedure SaveToFile(DestFile: TFileEC);
   end;
+
 implementation
+
 uses
-  ZLib,
   CrcUnit,
   EC_Mem,
+  EC_OKGF,
   GR_Main,
   Math,
   SysUtils,
-  Windows;
+  Types;
+
 const
   BufferGrowthSlack = 256;
   CarriageReturnCode = 13;
@@ -195,20 +221,20 @@ end;
 
 procedure TBufEC.SetByteAt(Offset: Integer; Value: Byte);
 begin
-  EnsureWriteCapacityAtOffset(Offset, 1);
-  WriteByteEC(Pointer(PtrUInt(Data) + Offset), Value);
+  EnsureWriteCapacityAtOffset(Offset, SizeOf(Value));
+  WriteByteEC(PAnsiChar(Data) + Offset, Value);
 end;
 
 procedure TBufEC.SetInt32At(Offset: Integer; Value: Integer);
 begin
-  EnsureWriteCapacityAtOffset(Offset, 4);
-  WriteIntegerEC(Pointer(PtrUInt(Data) + Offset), Value);
+  EnsureWriteCapacityAtOffset(Offset, SizeOf(Value));
+  WriteIntegerEC(PAnsiChar(Data) + Offset, Value);
 end;
 
 procedure TBufEC.AddBytes(Source: Pointer; ByteCount: Integer);
 begin
   EnsureWriteCapacity(ByteCount);
-  Windows.CopyMemory(AddPointerOffset(Data, Position), Source, ByteCount);
+  System.Move(Pointer(Source)^, Pointer(AddPointerOffset(Data, Position))^, ByteCount);
   Inc(Position, ByteCount);
 end;
 
@@ -218,7 +244,8 @@ var
 begin
   ByteCount := Length(Value);
   EnsureWriteCapacity(ByteCount + 1);
-  Windows.CopyMemory(AddPointerOffset(Data, Position), PAnsiChar(Value), ByteCount + 1);
+  System
+      .Move(Pointer(PAnsiChar(Value))^, Pointer(AddPointerOffset(Data, Position))^, ByteCount + 1);
   Position := Position + ByteCount + 1;
 end;
 
@@ -228,8 +255,11 @@ var
 begin
   ByteCount := Length(Value) * SizeOf(WideChar);
   EnsureWriteCapacity(ByteCount + SizeOf(WideChar));
-  Windows
-      .CopyMemory(AddPointerOffset(Data, Position), PWideChar(Value), ByteCount + SizeOf(WideChar));
+  System.Move(
+      Pointer(PWideChar(Value))^,
+      Pointer(AddPointerOffset(Data, Position))^,
+      ByteCount + SizeOf(WideChar)
+  );
   Position := Position + ByteCount + SizeOf(WideChar);
 end;
 
@@ -241,7 +271,7 @@ begin
   if ByteCount > 0 then
   begin
     EnsureWriteCapacity(ByteCount);
-    Windows.CopyMemory(AddPointerOffset(Data, Position), PAnsiChar(Value), ByteCount);
+    System.Move(Pointer(PAnsiChar(Value))^, Pointer(AddPointerOffset(Data, Position))^, ByteCount);
     Inc(Position, ByteCount);
   end;
 end;
@@ -254,7 +284,7 @@ begin
   if ByteCount > 0 then
   begin
     EnsureWriteCapacity(ByteCount);
-    Windows.CopyMemory(AddPointerOffset(Data, Position), PWideChar(Value), ByteCount);
+    System.Move(Pointer(PWideChar(Value))^, Pointer(AddPointerOffset(Data, Position))^, ByteCount);
     Inc(Position, ByteCount);
   end;
 end;
@@ -345,26 +375,26 @@ end;
 
 function TBufEC.GetByteAt(Offset: Integer): Byte;
 begin
-  EnsureReadableAtOffset(Offset, 1);
-  Result := ReadByteEC(Pointer(PtrUInt(Data) + Offset));
+  EnsureReadableAtOffset(Offset, SizeOf(Result));
+  Result := ReadByteEC(PAnsiChar(Data) + Offset);
 end;
 
 function TBufEC.GetUInt32At(Offset: Integer): Cardinal;
 begin
-  EnsureReadableAtOffset(Offset, 4);
-  Result := ReadDWordEC(Pointer(PtrUInt(Data) + Offset));
+  EnsureReadableAtOffset(Offset, SizeOf(Result));
+  Result := ReadDWordEC(PAnsiChar(Data) + Offset);
 end;
 
 function TBufEC.GetInt32At(Offset: Integer): Integer;
 begin
-  EnsureReadableAtOffset(Offset, 4);
-  Result := ReadIntegerEC(Pointer(PtrUInt(Data) + Offset));
+  EnsureReadableAtOffset(Offset, SizeOf(Result));
+  Result := ReadIntegerEC(PAnsiChar(Data) + Offset);
 end;
 
 function TBufEC.ReadBytes(Dest: Pointer; ByteCount: Integer): Pointer;
 begin
   EnsureReadable(ByteCount);
-  Windows.CopyMemory(Dest, AddPointerOffset(Data, Position), ByteCount);
+  System.Move(Pointer(AddPointerOffset(Data, Position))^, Pointer(Dest)^, ByteCount);
   Inc(Position, ByteCount);
   Result := Dest;
 end;
@@ -376,13 +406,17 @@ begin
   Count := GetWideStringLengthAt(Position);
   if Count > 0 then
   begin
-    EnsureReadable(Count * 2 + 2);
-    Windows.CopyMemory(Dest, Pointer(PtrUInt(Data) + Position), Count * 2 + 2);
-    Position := Position + Count * 2 + 2;
+    EnsureReadable(Count * SizeOf(WideChar) + SizeOf(WideChar));
+    System.Move(
+        Pointer(PAnsiChar(Data) + Position)^,
+        Pointer(Dest)^,
+        Count * SizeOf(WideChar) + SizeOf(WideChar)
+    );
+    Position := Position + Count * SizeOf(WideChar) + SizeOf(WideChar);
   end
   else
   begin
-    Inc(Position, 2);
+    Inc(Position, SizeOf(WideChar));
     Dest^ := #0;
   end;
   Result := Dest;
@@ -391,66 +425,66 @@ end;
 function TBufEC.GetByte: Byte;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Result := ReadByteEC(PAnsiChar(Data) + Position);
   Inc(Position, SizeOf(Result));
 end;
 
 function TBufEC.GetWideChar: WideChar;
 begin
-  EnsureReadable(2);
-  Result := ReadWideCharEC(Pointer(PtrUInt(Data) + Position));
+  EnsureReadable(SizeOf(Result));
+  Result := ReadWideCharEC(PAnsiChar(Data) + Position);
   Inc(Position, 2);
 end;
 
 function TBufEC.GetWord: Word;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Result := ReadWordEC(PAnsiChar(Data) + Position);
   Inc(Position, SizeOf(Result));
 end;
 
 function TBufEC.GetUInt32: Cardinal;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Result := ReadDWordEC(PAnsiChar(Data) + Position);
   Inc(Position, SizeOf(Result));
 end;
 
 function TBufEC.GetInt32: Integer;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Result := ReadIntegerEC(PAnsiChar(Data) + Position);
   Inc(Position, SizeOf(Result));
 end;
 
 function TBufEC.GetSingle: Single;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Result := ReadSingleEC(PAnsiChar(Data) + Position);
   Inc(Position, SizeOf(Result));
-  if IsNan(Result) then
-  begin
-    Result := 0;
-    AppendLogLineThreadSafe('Warning! NaN encountered, replaced with zero.')
-  end;
-end;
-
-function TBufEC.GetDouble: Double;
-begin
-  EnsureReadable(8);
-  Result := ReadDoubleEC(Pointer(PtrUInt(Data) + Position));
   if IsNan(Result) then
   begin
     Result := 0;
     AppendLogLineThreadSafe('Warning! NaN encountered, replaced with zero.');
   end;
-  Inc(Position, 8);
+end;
+
+function TBufEC.GetDouble: Double;
+begin
+  EnsureReadable(SizeOf(Result));
+  Result := ReadDoubleEC(PAnsiChar(Data) + Position);
+  if IsNan(Result) then
+  begin
+    Result := 0;
+    AppendLogLineThreadSafe('Warning! NaN encountered, replaced with zero.');
+  end;
+  Inc(Position, SizeOf(Result));
 end;
 
 function TBufEC.GetBoolean: Boolean;
 begin
   EnsureReadable(SizeOf(Result));
-  Move((PByte(Data) + Position)^, Result, SizeOf(Result));
+  Move((PAnsiChar(Data) + Position)^, Result, SizeOf(Result));
   Inc(Position, SizeOf(Result));
 end;
 
@@ -472,6 +506,7 @@ end;
 function TBufEC.GetWideStringLengthAt(Offset: Integer): Integer;
 var
   Count, Cursor: Integer;
+
 begin
   Cursor := Offset;
   Count := 0;
@@ -548,7 +583,7 @@ begin
   Count := GetAnsiTextLineLength;
   if Count > 0 then
   begin
-    Windows.CopyMemory(Dest, Pointer(PtrUInt(Data) + Position), Count);
+    System.Move(Pointer(PAnsiChar(Data) + Position)^, Pointer(Dest)^, Count);
     Dest[Count] := #0;
     Inc(Position, Count);
   end
@@ -556,13 +591,13 @@ begin
     Dest^ := #0;
   if Position < DataSize then
   begin
-    Ch := ReadByteEC(Pointer(PtrUInt(Data) + Position));
-    if (Ch = 0) or (Ch = 13) or (Ch = 10) then
+    Ch := ReadByteEC(PAnsiChar(Data) + Position);
+    if (Ch = 0) or (Ch = CarriageReturnCode) or (Ch = LineFeedCode) then
       Inc(Position, 1);
     if Position < DataSize then
     begin
-      Ch := ReadByteEC(Pointer(PtrUInt(Data) + Position));
-      if (Ch = 0) or (Ch = 13) or (Ch = 10) then
+      Ch := ReadByteEC(PAnsiChar(Data) + Position);
+      if (Ch = 0) or (Ch = CarriageReturnCode) or (Ch = LineFeedCode) then
         Inc(Position, 1);
     end;
   end;
@@ -595,22 +630,22 @@ begin
   Count := GetWideTextLineLength;
   if Count > 0 then
   begin
-    Windows.CopyMemory(Dest, Pointer(PtrUInt(Data) + Position), Count * 2);
+    System.Move(Pointer(PAnsiChar(Data) + Position)^, Pointer(Dest)^, Count * SizeOf(WideChar));
     Dest[Count] := #0;
-    Inc(Position, Count * 2);
+    Inc(Position, Count * SizeOf(WideChar));
   end
   else
     Dest^ := #0;
   if Position + 1 < DataSize then
   begin
-    Ch := ReadWordEC(Pointer(PtrUInt(Data) + Position));
-    if (Ch = 0) or (Ch = 13) or (Ch = 10) then
-      Inc(Position, 2);
+    Ch := ReadWordEC(PAnsiChar(Data) + Position);
+    if (Ch = 0) or (Ch = CarriageReturnCode) or (Ch = LineFeedCode) then
+      Inc(Position, SizeOf(WideChar));
     if Position + 1 < DataSize then
     begin
-      Ch := ReadWordEC(Pointer(PtrUInt(Data) + Position));
-      if (Ch = 0) or (Ch = 13) or (Ch = 10) then
-        Inc(Position, 2);
+      Ch := ReadWordEC(PAnsiChar(Data) + Position);
+      if (Ch = 0) or (Ch = CarriageReturnCode) or (Ch = LineFeedCode) then
+        Inc(Position, SizeOf(WideChar));
     end;
   end;
   Result := Dest;
@@ -656,25 +691,31 @@ end;
 
 function TBufEC.CompressZlibPayloadInPlace(FastMode: Boolean): Boolean;
 var
-  N: Integer;
+  Mode, ByteCount: Integer;
   Buffer: Pointer;
 begin
-  Result := False;
+  Mode := 0;
+  if FastMode = True then
+    Mode := 0;
   if DataSize < 8 then
+  begin
+    Result := False;
     Exit;
+  end;
   Buffer := AllocEC(DataSize);
-  N := OKGF_ZLib_Compress(Buffer, Data, DataSize, Ord(FastMode));
-  if N = 0 then
+  ByteCount := OKGF_ZLib_Compress(Buffer, Data, DataSize, Mode);
+  if ByteCount = 0 then
   begin
     FreeEC(Buffer);
-    Exit
+    Result := False;
+    Exit;
   end;
   FreeEC(Data);
   Data := Buffer;
-  DataSize := N;
-  Capacity := N;
+  DataSize := ByteCount;
+  Capacity := ByteCount;
   Position := 0;
-  Result := True
+  Result := True;
 end;
 
 function TBufEC.ExpandZlibPayloadInPlace: Boolean;
@@ -713,20 +754,25 @@ procedure TBufEC.ApplyDatXorCipher(Seed: Integer);
 var
   State, i: Integer;
   Cursor: PByte;
-  function StepDatXorSeedState: Integer; // @addr 0x86D108 @ida "int __cdecl $name(void *ParentFrame);" @note "Nested helper of TBufEC.ApplyDatXorCipher; requires its parent stack frame."
+
+  function StepDatXorSeedState:
+      Integer; { Nested helper of TBufEC.ApplyDatXorCipher; requires its parent stack frame. }
   begin
-    State := 16807 * (State mod 127773) - 2836 * (State div 127773);
+    State :=
+        SeedRngMultiplier * (State mod SeedRngQuotient)
+            - SeedRngRemainder * (State div SeedRngQuotient);
     if State <= 0 then
-      State := State + $7FFFFFFF;
+      State := State + SeedRngModulus;
     Result := State - 1;
   end;
+
 begin
   State := Seed;
   Cursor := Data;
   for i := 0 to DataSize - 1 do
   begin
     Cursor^ := Cursor^ xor Byte(StepDatXorSeedState);
-    Cursor := PByte(PtrUInt(Cursor) + 1);
+    Cursor := PByte(PAnsiChar(Cursor) + 1);
   end;
 end;
 
@@ -737,7 +783,7 @@ end;
 
 function TBufEC.ComputeCrc32Range(StartOffset, EndOffset: Integer): Cardinal;
 begin
-  Result := CrcUnit.ComputeCrc32(Pointer(PtrUInt(Data) + StartOffset), EndOffset - StartOffset)
+  Result := CrcUnit.ComputeCrc32(Pointer(PAnsiChar(Data) + StartOffset), EndOffset - StartOffset)
 end;
 
 procedure TBufEC.UpdateEmbeddedCrc32(StartOffset, EndOffset, CrcOffset: Integer);
@@ -748,12 +794,13 @@ begin
     raise Exception.Create('CRC update error');
   if CrcOffset + 8 > EndOffset then
     raise Exception.Create('CRC update error');
-  WholeCrc := ExtendCrc32(0, Pointer(PtrUInt(Data) + StartOffset), EndOffset - StartOffset);
+  WholeCrc := ExtendCrc32(0, Pointer(PAnsiChar(Data) + StartOffset), EndOffset - StartOffset);
   PreviousPrefixCrc :=
-      ExtendCrc32(0, Pointer(PtrUInt(Data) + StartOffset), CrcOffset - StartOffset + 8);
-  PCardinal(PtrUInt(Data) + CrcOffset)^ := WholeCrc;
-  NewPrefixCrc := ExtendCrc32(0, Pointer(PtrUInt(Data) + StartOffset), CrcOffset - StartOffset + 4);
-  WriteCrc32Correction(NewPrefixCrc, PreviousPrefixCrc, Pointer(CrcOffset + 4 + PtrUInt(Data)));
+      ExtendCrc32(0, Pointer(PAnsiChar(Data) + StartOffset), CrcOffset - StartOffset + 8);
+  PCardinal(PAnsiChar(Data) + CrcOffset)^ := WholeCrc;
+  NewPrefixCrc :=
+      ExtendCrc32(0, Pointer(PAnsiChar(Data) + StartOffset), CrcOffset - StartOffset + 4);
+  WriteCrc32Correction(NewPrefixCrc, PreviousPrefixCrc, Pointer(CrcOffset + 4 + PAnsiChar(Data)));
 end;
 
 procedure TBufEC.LoadFromFileChunk(SourceFile: TFileEC; ByteCount: Integer);
@@ -782,9 +829,10 @@ begin
         SourceFile.ReadBuffer(Cursor, ChunkSize);
         Cursor := AddPointerOffset(Cursor, ChunkSize);
         ByteCount := (ByteCount - ChunkSize);
-        // Native yields for 1 ms after every 256 KiB. The host uses preemptive
-        // worker threads; sleeping here only stalls loading while FileLock is
-        // held, including other threads waiting to read unrelated resources.
+        if (ByteCount > 0) then
+        begin
+          SysUtils.Sleep(1);
+        end;
       until ByteCount <= 0;
     end;
   except

@@ -1,16 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ab_WorldLine;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   EC_Struct,
   GI_PolyLine;
+
 type
+
   PointerToTabWorldLine = ^TabWorldLine;
+
   PabWorldLine = PointerToTabWorldLine;
+
   TabWorldLine = record
     Prev: PabWorldLine;
     Next: PabWorldLine;
@@ -23,15 +27,22 @@ type
     FrontEndColor: Cardinal;
     BackEndColor: Cardinal;
     ShowBehindSphere: Boolean;
-    Gap51: array[0..6] of Byte;
   end;
+
 var
-  WorldLineHeap: Cardinal = 0;
+
+  WorldLineHeap: TGameHeapHandle = 0;
+
   FirstWorldLine: PabWorldLine = nil;
+
   LastWorldLine: PabWorldLine = nil;
+
 procedure ab_WorldLine_Clear;
+
 function ab_WorldLine_Add: PabWorldLine;
+
 procedure ab_WorldLine_Delete(Line: PabWorldLine);
+
 function ab_WorldLine_Create(
     First: TVector3D;
     Last: TVector3D;
@@ -40,6 +51,7 @@ function ab_WorldLine_Create(
     BackColor: Cardinal;
     ShowBehindSphere: Boolean
 ): PabWorldLine;
+
 procedure ab_WorldLine_Set(
     Line: PabWorldLine;
     First: TVector3D;
@@ -49,11 +61,13 @@ procedure ab_WorldLine_Set(
     BackColor: Cardinal;
     ShowBehindSphere: Boolean
 );
+
 procedure ab_WorldLine_Update;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  Types,
   Classes,
   SysUtils,
   EC_Mem,
@@ -67,7 +81,7 @@ begin
     ab_WorldLine_Delete(LastWorldLine);
   if WorldLineHeap <> 0 then
   begin
-    HeapDestroy(WorldLineHeap);
+    GameHeap.HeapDestroy(WorldLineHeap);
     WorldLineHeap := 0;
   end;
 end;
@@ -78,7 +92,7 @@ var
 begin
   if WorldLineHeap = 0 then
   begin
-    WorldLineHeap := HeapCreate(1, $8000, 0);
+    WorldLineHeap := GameHeap.HeapCreate(1, $8000, 0);
     if WorldLineHeap = 0 then
       raise Exception.Create('ab_WorldLine_Add.HeapCreate');
   end;

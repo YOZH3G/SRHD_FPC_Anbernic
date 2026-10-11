@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit EventClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   TextFieldClass;
+
 type
+
   TEvent = class;
+
   TEvent = class(TObjectEx)
     Text: TTextField;
     Picture: TTextField;
@@ -20,9 +22,10 @@ type
     procedure ClearTextFields;
     procedure Assign(Source: TEvent);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str;
 
 constructor TEvent.Create;

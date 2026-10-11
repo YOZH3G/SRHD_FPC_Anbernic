@@ -1,39 +1,50 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon09MResonator;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
   GI_PSWeapon,
-  GI_GAI,
-  Types;
+  GI_GAI;
+
 type
+
   PointerToTMResonatorParticle = ^TMResonatorParticle;
+
   PMResonatorParticle = PointerToTMResonatorParticle;
+
   TMResonatorParticle = record
     Kind: Integer;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    GapF: array[0..0] of Byte;
     Velocity: TPointF;
     DelayTicks: Byte;
     MovementDelay: Byte;
     Unknown1A: Byte;
     Unknown1B: Byte;
   end;
+
   TMResonatorPalette = array[0..0] of Word;
+
   TGAISet = array[0..0] of WideString;
+
 var
+
   MResonatorPalettes: array of TMResonatorPalette;
+
   MResonatorAnimationPaths: array of TGAISet;
+
 type
+
   TPSWeapon09BranchGI = class;
+
   TPSWeapon09MResonator = class;
+
   TPSWeapon09MResonator = class(TPSWeaponGI)
     Unknown130: Integer;
     Particles: PMResonatorParticle;
@@ -44,7 +55,6 @@ type
     AnimationPosition: TPointF;
     AnimationVelocity: TPointF;
     Unknown158: Byte;
-    Gap159: array[0..2] of Byte;
     AnimationPath: WideString;
     procedure UpdateHitTestBounds; override;
     procedure SetPosition(Position: TPoint); override;
@@ -56,6 +66,7 @@ type
     destructor Destroy; override;
     procedure ClearParticles;
   end;
+
   TPSWeapon09BranchGI = class(TPSWeaponGI)
     Unknown130: Integer;
     Particles: PMResonatorParticle;
@@ -63,7 +74,6 @@ type
     ParticleCapacity: Integer;
     OriginalLength: Single;
     Unknown144: Byte;
-    Gap145: array[0..0] of Byte;
     ParticleColor: Word;
     procedure UpdateHitTestBounds; override;
     procedure SetPosition(Position: TPoint); override;
@@ -77,9 +87,13 @@ type
     procedure GrowParticles;
     function AddParticle: PMResonatorParticle;
   end;
+
 procedure LoadMResonatorPalettes;
+
 implementation
+
 uses
+  GI_Main,
   GlobalsV,
   SysUtils,
   Classes,
@@ -91,8 +105,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877924
-// @unit-finalization $690E78
 
 constructor TPSWeapon09BranchGI.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -127,10 +139,7 @@ end;
 
 procedure TPSWeapon09BranchGI.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon09BranchGI.ClearParticles;
@@ -384,10 +393,7 @@ end;
 
 procedure TPSWeapon09MResonator.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon09MResonator.ClearParticles;
@@ -403,6 +409,8 @@ end;
 
 procedure TPSWeapon09MResonator.Advance(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
+  Particle: PMResonatorParticle;
+  Count, I: Integer;
   Angle, PX, PY, Sine, Cosine, Scale: Single;
 begin
   if RemainingTicks = 90 then
@@ -426,6 +434,19 @@ begin
     Animation.StopAutoPlayback;
     AnimationVelocity := MakePointF(0, (OriginalLength - 24.0) / 30.0);
     AnimationPosition := MakePointF(0, 24.0 - AnimationVelocity.Y);
+  end;
+  Particle := Particles;
+  Count := ParticleCount;
+  I := 0;
+  while Count > 0 do
+  begin
+    // Native dormant particle branch still evaluates Kind before advancing.
+    if Particle.Kind = 1 then
+    begin
+    end;
+    Inc(I);
+    Particle := AddPointerOffset(Particles, I * SizeOf(TMResonatorParticle));
+    Dec(Count);
   end;
   if Animation <> nil then
   begin

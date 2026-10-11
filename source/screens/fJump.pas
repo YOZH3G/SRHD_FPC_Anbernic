@@ -1,26 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit fJump;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   fPanelLoad;
+
 type
+
   TfJump = class;
+
   TfJump = class(TMessageLoopGI)
     TransitionTimer: PCallbackTimerGI;
     LoadingStarted: Boolean;
     NoPendingLoads: Boolean;
-    GapD6: array[0..1] of Byte;
     Progress: Single;
     LoadPanel: TfPanelLoad;
     MovieStartTick: Cardinal;
     MovieTimer: PCallbackTimerGI;
     RestoreOrdersOnArrival: Boolean;
-    GapE9: array[0..2] of Byte;
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure SelectMusic; override;
@@ -32,8 +32,9 @@ type
     procedure AdvanceMovie(Timer: PCallbackTimerGI; UserData: PtrInt);
     function StopMovie: Boolean;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   EC_Cache,
   EC_Struct,
@@ -42,8 +43,7 @@ uses
   Classes,
   Types,
   Math,
-  Windows,
-  MMSystem,
+  GameSystem,
   Globals,
   GlobalsV,
   GR_Main,
@@ -97,30 +97,20 @@ end;
 procedure TfJump.OnOpen;
 var
   MovieConfig, MoviePath: WideString;
-  PollMs: Integer;
-  procedure BeginTravel; cdecl; // @addr $670C2C @ida "void __cdecl $name(void *ParentFrame);"
+
+  procedure BeginTravel; cdecl;
   begin
     if TransitionTimer <> nil then
     begin
       CancelCallbackTimer(TransitionTimer);
       TransitionTimer := nil;
     end;
-    TransitionTimer := ScheduleCallbackTimer(PollMs, PollMs, AdvanceTravel);
+    TransitionTimer := ScheduleCallbackTimer(20, 20, AdvanceTravel);
     LoadPanel.SetProgress(0);
-    if not DeferScreenPresentation then
-      LoadPanel.Show;
+    LoadPanel.Show;
   end;
 begin
-
-  // CHANGE: PERFORMANCE - Skip travel waits/presentation when fast transitions are enabled.
-  DeferScreenPresentation := FastTravelTransitions and not GetPlayer.IsDockedToShip;
-  if DeferScreenPresentation then
-    PollMs := 1
-  else
-    PollMs := 20;
-  // These resources are immutable and often shared by adjacent systems. Keep
-  // them under the normal LRU budget instead of forcing disk reads every jump.
-  GlobalCache.TrimToBudget(GlobalCache.ResidentByteLimit);
+  EvictStarAndBackgroundCaches;
   ReleaseAllTextureSurfaces;
   if not GetPlayer.IsDockedToShip then
   begin
@@ -130,13 +120,12 @@ begin
     LoadingStarted := False;
     NoPendingLoads := False;
     if GetPlayer.InHyperspace or GetPlayer.IsDockedToShip then
-      TransitionTimer := ScheduleCallbackTimer(PollMs, PollMs, AdvanceTravel)
+      TransitionTimer := ScheduleCallbackTimer(20, 20, AdvanceTravel)
     else
       AdvanceLoading(nil, 0);
     Progress := 0;
     LoadPanel.SetProgress(0);
-    if not DeferScreenPresentation then
-      LoadPanel.Show;
+    LoadPanel.Show;
     Present;
   end
   else if GetPlayer.IsDockedToShip then
@@ -155,9 +144,9 @@ begin
     end;
     LoadPanel.SetProgress(1);
     LoadPanel.Hide;
-    if GetPlayer.DockedTo.TypeId = Byte(rstMilitaryBase) then
+    if GetPlayer.DockedTo.TypeId = rstMilitaryBase then
       MovieConfig := LanguageDataConfig.GetParamByPathOrMarker('FormRuins.WB.HyperJumpVideo')
-    else if GetPlayer.DockedTo.TypeId = Byte(rstDominion) then
+    else if GetPlayer.DockedTo.TypeId = rstDominion then
       MovieConfig := LanguageDataConfig.GetParamByPathOrMarker('FormRuins.CB.HyperJumpVideo')
     else
     begin
@@ -179,7 +168,7 @@ begin
           while not MusicManager.IsPlaying do
             SysUtils.Sleep(1);
         end;
-        MovieStartTick := timeGetTime;
+        MovieStartTick := GameTickCount;
         if MovieTimer <> nil then
         begin
           CancelCallbackTimer(MovieTimer);
@@ -265,7 +254,7 @@ begin
   else
   begin
     if not (GetPlayer.Order in [soJump, soJumpHole, soTeleport])
-        or ((GetPlayer.Order = soJumpHole) and (GetPlayer.OrderStateData = -65536)) then
+        or ((GetPlayer.Order = soJumpHole) and (GetPlayer.OrderStateData = HoleExitOrderState)) then
     begin
       QueueGalaxyTurnCalculation;
       StarMapScreen.SetMapCenterManually(TruncatePointF(GetPlayer.Position));
@@ -292,15 +281,9 @@ end;
 procedure TfJump.AdvanceLoading(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Loads: TList;
-  PollMs: Integer;
 begin
-  if DeferScreenPresentation then
-    PollMs := 1
-  else
-    PollMs := 20;
   if not LoadingStarted then
   begin
-
     LoadingStarted := True;
     if TransitionTimer <> nil then
     begin
@@ -312,11 +295,11 @@ begin
     if Loads.Count > 0 then
     begin
       CacheLoader.SetPendingLoads(Loads, True);
-      TransitionTimer := ScheduleCallbackTimer(PollMs, PollMs, AdvanceLoading);
+      TransitionTimer := ScheduleCallbackTimer(20, 20, AdvanceLoading);
     end
     else
     begin
-      TransitionTimer := ScheduleCallbackTimer(PollMs, PollMs, AdvanceLoading);
+      TransitionTimer := ScheduleCallbackTimer(20, 20, AdvanceLoading);
       NoPendingLoads := True;
       Loads.Free;
     end;
@@ -334,11 +317,8 @@ begin
     if Progress > 0.99 then
       Progress := 1;
     LoadPanel.SetProgress(Progress);
-    // Travel is finished before this phase; only pending assets gate arrival.
-    if NoPendingLoads or not CacheLoader.IsRunning then
+    if (NoPendingLoads or not CacheLoader.IsRunning) and (Progress >= 1) then
     begin
-      Progress := 1;
-      LoadPanel.SetProgress(1);
       if TransitionTimer <> nil then
       begin
         CancelCallbackTimer(TransitionTimer);
@@ -366,7 +346,7 @@ end;
 
 procedure TfJump.AdvanceMovie(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
-  if (GetByName('Film') as TxvidGI).SetPlaybackTime(timeGetTime - MovieStartTick) then
+  if (GetByName('Film') as TxvidGI).SetPlaybackTime(GameTickCount - MovieStartTick) then
     StopMovie;
 end;
 
@@ -393,9 +373,4 @@ procedure TfJump.SelectMusic;
 begin
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TRuins.ClassName;
-  TxvidGI.ClassName;
-end;
 end.

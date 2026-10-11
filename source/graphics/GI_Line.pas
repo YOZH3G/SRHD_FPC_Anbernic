@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit GI_Line;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   Types;
+
 type
+
   TLineGI = class;
+
   TLineGI = class(TObjectGI)
     Color: Cardinal;
     procedure Clear; override;
@@ -22,9 +24,10 @@ type
     procedure SetColor(Value: Cardinal);
     procedure LoadLineProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   Classes,
   GI_Main,

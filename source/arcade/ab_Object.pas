@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ab_Object;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Struct,
@@ -12,12 +11,14 @@ uses
   GI_Tail,
   ab_Global,
   GR_Sound;
+
 type
+
   TabObject = class;
+
   TabObject = class(TObjectEx)
     Prev: TabObject;
     Next: TabObject;
-    GapC: array[0..3] of Byte;
     State: TSphericalBearingState;
     Mass: Double;
     Thrust: Double;
@@ -27,14 +28,12 @@ type
     DistanceTravelled: Double;
     CollisionRadius: Double;
     Collidable: Boolean;
-    Gap61: array[0..6] of Byte;
     ZoneRadius: Double;
     DeletionPending: Boolean;
     WallCollisionEnabled: Boolean;
     GravityEnabled: Boolean;
     ZoneDamageEnabled: Boolean;
     Active: Boolean;
-    Gap75: array[0..2] of Byte;
     SourceObject: TabObject;
     InitialRandomSeed: Cardinal;
     RandomState: Cardinal;
@@ -66,16 +65,25 @@ type
     function FindCollision: TabObject;
     function RandomRange(BoundA: Integer; BoundB: Integer): Integer;
   end;
+
 var
+
   FirstArcadeObject: TabObject = nil;
+
   LastArcadeObject: TabObject = nil;
+
 procedure ab_Object_Clear;
+
 procedure ab_Object_Add(Obj: TabObject);
+
 procedure ab_Object_Delete(Obj: TabObject);
+
 procedure ab_Object_QueueImageLoads(PendingLoads: TList; Owner: TObjectGI);
+
 procedure ab_Object_UpdateSounds;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   Math,
   aMyFunction,
@@ -85,7 +93,8 @@ uses
   ab_Ship,
   ab_ShipAI,
   ab_Zone,
-  ab_StopLine;
+  ab_StopLine,
+  EC_Buf;
 
 constructor TabObject.Create;
 begin
@@ -421,7 +430,9 @@ end;
 
 function TabObject.RandomRange(BoundA, BoundB: Integer): Integer;
 begin
-  RandomState := 16807 * (RandomState mod 127773) - 2836 * (RandomState div 127773);
+  RandomState :=
+      SeedRngMultiplier * (RandomState mod SeedRngQuotient)
+          - SeedRngRemainder * (RandomState div SeedRngQuotient);
   Result := Integer(RandomState) - 1;
   if Result < 0 then
     Result := -Result;
@@ -541,9 +552,4 @@ begin
     end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabHit.ClassName;
-  TabShipAI.ClassName;
-end;
 end.

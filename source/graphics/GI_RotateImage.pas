@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_RotateImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -12,13 +11,15 @@ uses
   EC_CacheRotateBuf,
   GI_MessageLoop,
   Types;
+
 type
+
   TRotateImageGI = class;
+
   TRotateImageGI = class(TObjectGI)
     ImageCache: TCBitmapControlEC;
     RotationCache: TCRotateBufControlEC;
     Angle: Byte;
-    Gap129: array[0..2] of Byte;
     procedure Clear; override;
     procedure UpdateHitTestBounds; override;
     function GetLocalBounds: TRect; override;
@@ -31,9 +32,10 @@ type
     procedure SetAngle(Value: Byte);
     procedure SetImage(Path: WideString; ImageSize: TPoint);
   end;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   GR_Main,
   GI_Main,

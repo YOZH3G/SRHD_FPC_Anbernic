@@ -1,21 +1,27 @@
-{$EXCESSPRECISION OFF}
 unit EC_Cache;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameEvents,
   EC_Data,
   EC_Buf,
   EC_Struct,
   SyncObjs,
   Classes;
+
 type
+
   TCacheControlEC = class;
+
   TCacheDataEC = class;
+
   TCacheEC = class;
+
   TCacheDataClass = Pointer;
+
   TCacheControlEC = class(TObjectEx)
     PrevBoundControl: TCacheControlEC;
     NextBoundControl: TCacheControlEC;
@@ -35,6 +41,7 @@ type
     function AcquireDataFromDirectKey(CacheDataClass: TCacheDataClass): TCacheDataEC;
     procedure EvictData(CacheDataClass: TCacheDataClass);
   end;
+
   TCacheDataEC = class(TObjectEx)
     PrevData: TCacheDataEC;
     NextData: TCacheDataEC;
@@ -42,7 +49,8 @@ type
     LastBoundControl: TCacheControlEC;
     CacheKey: WideString;
     ResidentBytes: Integer;
-    LoadCompleteEvent: Cardinal;
+    LoadCompleteEvent: TGameEventHandle;
+    LoadFailure: string;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); virtual;
     procedure LoadFromKey(const Key: WideString); virtual;
     constructor Create;
@@ -50,6 +58,7 @@ type
     procedure AppendControl(Control: TCacheControlEC);
     procedure UnlinkControl(Control: TCacheControlEC);
   end;
+
   TCacheEC = class(TObjectEx)
     CacheLock: TCriticalSection;
     MostRecentData: TCacheDataEC;
@@ -77,13 +86,19 @@ type
         const Key: WideString
     );
   end;
+
 procedure EvictMainMenuShipCachesWhenAddressSpaceHigh;
+
 procedure EvictRuinsAndGovernmentCaches;
+
 procedure EvictStarAndBackgroundCaches;
+
 procedure EvictBlockChildrenFromCache(BlockPath: WideString; CacheDataClass: TCacheDataClass);
+
 implementation
+
 uses
-  Math,
+  GameSystem,
   EC_CacheSound,
   EC_CacheBitmap,
   EC_CacheTBitmap,
@@ -96,7 +111,7 @@ uses
   EC_Str,
   GlobalsV,
   SysUtils,
-  Windows;
+  Types;
 
 constructor TCacheControlEC.Create;
 begin
@@ -170,60 +185,75 @@ begin
   else
   begin
     GlobalCache.CacheLock.Enter;
-    if BoundData = nil then
-    begin
-      BoundData := GlobalCache.FindDataByKeyAndClass(CacheKey, CacheDataClass);
+    try
       if BoundData = nil then
       begin
-        Data := CreateData;
-        Data.CacheKey := CacheKey;
-        if CacheLoadLoggingEnabled then
-          AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
-        Data.LoadCompleteEvent := CreateEvent(nil, True, False, nil);
-        Data.AppendControl(Self);
-        BoundData := Data;
-        RetainCount := 1;
-        GlobalCache.AddDataToLruHead(Data);
-        GlobalCache.CacheLock.Leave;
-        PartCount := CountDelimitedPartsW(CacheKey, '?');
-        if PartCount < 2 then
+        BoundData := GlobalCache.FindDataByKeyAndClass(CacheKey, CacheDataClass);
+        if BoundData = nil then
         begin
-          Path := CacheKey;
-          LoadOption := '';
+          Data := CreateData;
+          Data.CacheKey := CacheKey;
+          if CacheLoadLoggingEnabled then
+            AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
+          Data.LoadCompleteEvent := CreateGameEvent(True, False);
+          Data.AppendControl(Self);
+          BoundData := Data;
+          RetainCount := 1;
+          GlobalCache.AddDataToLruHead(Data);
+          GlobalCache.CacheLock.Leave;
+          Buffer := nil;
+          try
+            try
+              PartCount := CountDelimitedPartsW(CacheKey, '?');
+              if PartCount < 2 then
+              begin
+                Path := CacheKey;
+                LoadOption := '';
+              end
+              else
+              begin
+                Path := ExtractDelimitedPartW(CacheKey, 0, '?');
+                LoadOption := ExtractDelimitedRangeW(CacheKey, 1, PartCount - 1, '?');
+              end;
+              Buffer := GlobalCache.OpenDataBuffer(Path);
+              Data.LoadFromConfigBuffer(Buffer, LoadOption);
+            except
+              on E: Exception do
+              begin
+                Data.LoadFailure := E.ClassName + ': ' + E.Message;
+                raise;
+              end;
+            end;
+          finally
+            GlobalCache.CacheLock.Enter;
+            Inc(GlobalCache.ResidentBytes, Data.ResidentBytes);
+            SetGameEvent(Data.LoadCompleteEvent);
+            Buffer.Free;
+          end;
         end
         else
         begin
-          Path := ExtractDelimitedPartW(CacheKey, 0, '?');
-          LoadOption := ExtractDelimitedRangeW(CacheKey, 1, PartCount - 1, '?');
-        end;
-        Buffer := GlobalCache.OpenDataBuffer(Path);
-        try
-          Data.LoadFromConfigBuffer(Buffer, LoadOption);
-        finally
-          GlobalCache.CacheLock.Enter;
-          Inc(GlobalCache.ResidentBytes, Data.ResidentBytes);
-          SetEvent(Data.LoadCompleteEvent);
-          CloseHandle(Data.LoadCompleteEvent);
-          Data.LoadCompleteEvent := 0;
-          Buffer.Free;
+          // Pin the cache entry before releasing the lock: a completed load may
+          // otherwise be evicted before this thread enters its wait.
+          BoundData.AppendControl(Self);
+          RetainCount := 1;
+          if BoundData.LoadCompleteEvent <> 0 then
+          begin
+            GlobalCache.CacheLock.Leave;
+            WaitGameEvent(BoundData.LoadCompleteEvent, INFINITE);
+            GlobalCache.CacheLock.Enter;
+          end;
         end;
       end
       else
-      begin
-        if BoundData.LoadCompleteEvent <> 0 then
-        begin
-          GlobalCache.CacheLock.Leave;
-          WaitForSingleObject(BoundData.LoadCompleteEvent, INFINITE);
-          GlobalCache.CacheLock.Enter;
-        end;
-        BoundData.AppendControl(Self);
         RetainCount := 1;
-      end;
-    end
-    else
-      RetainCount := 1;
-    GlobalCache.TouchData(BoundData);
-    GlobalCache.CacheLock.Leave;
+      // All waiters observe the loader's failure instead of using partial data.
+      if BoundData.LoadFailure <> '' then
+        raise Exception.Create(BoundData.LoadFailure);
+      GlobalCache.TouchData(BoundData);
+    finally
+      GlobalCache.CacheLock.Leave;
+    end;
   end;
   Result := BoundData;
   GlobalCache.TrimToBudget(GlobalCache.ResidentByteLimit);
@@ -240,47 +270,61 @@ begin
   else
   begin
     GlobalCache.CacheLock.Enter;
-    if BoundData = nil then
-    begin
-      BoundData := GlobalCache.FindDataByKeyAndClass(CacheKey, CacheDataClass);
+    try
       if BoundData = nil then
       begin
-        Data := CreateData;
-        Data.CacheKey := CacheKey;
-        if CacheLoadLoggingEnabled then
-          AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
-        Data.AppendControl(Self);
-        Data.LoadCompleteEvent := CreateEvent(nil, True, False, nil);
-        BoundData := Data;
-        RetainCount := 1;
-        GlobalCache.AddDataToLruHead(Data);
-        GlobalCache.CacheLock.Leave;
-        try
-          Data.LoadFromKey(CacheKey);
-        finally
-          GlobalCache.CacheLock.Enter;
-          Inc(GlobalCache.ResidentBytes, Data.ResidentBytes);
-          SetEvent(Data.LoadCompleteEvent);
-          CloseHandle(Data.LoadCompleteEvent);
-          Data.LoadCompleteEvent := 0;
+        BoundData := GlobalCache.FindDataByKeyAndClass(CacheKey, CacheDataClass);
+        if BoundData = nil then
+        begin
+          Data := CreateData;
+          Data.CacheKey := CacheKey;
+          if CacheLoadLoggingEnabled then
+            AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
+          Data.AppendControl(Self);
+          Data.LoadCompleteEvent := CreateGameEvent(True, False);
+          BoundData := Data;
+          RetainCount := 1;
+          GlobalCache.AddDataToLruHead(Data);
+          GlobalCache.CacheLock.Leave;
+          try
+            try
+              Data.LoadFromKey(CacheKey);
+            except
+              on E: Exception do
+              begin
+                Data.LoadFailure := E.ClassName + ': ' + E.Message;
+                raise;
+              end;
+            end;
+          finally
+            GlobalCache.CacheLock.Enter;
+            Inc(GlobalCache.ResidentBytes, Data.ResidentBytes);
+            SetGameEvent(Data.LoadCompleteEvent);
+          end;
+        end
+        else
+        begin
+          // Pin the cache entry before releasing the lock: a completed load may
+          // otherwise be evicted before this thread enters its wait.
+          BoundData.AppendControl(Self);
+          RetainCount := 1;
+          if BoundData.LoadCompleteEvent <> 0 then
+          begin
+            GlobalCache.CacheLock.Leave;
+            WaitGameEvent(BoundData.LoadCompleteEvent, INFINITE);
+            GlobalCache.CacheLock.Enter;
+          end;
         end;
       end
       else
-      begin
-        if BoundData.LoadCompleteEvent <> 0 then
-        begin
-          GlobalCache.CacheLock.Leave;
-          WaitForSingleObject(BoundData.LoadCompleteEvent, INFINITE);
-          GlobalCache.CacheLock.Enter;
-        end;
-        BoundData.AppendControl(Self);
         RetainCount := 1;
-      end;
-    end
-    else
-      RetainCount := 1;
-    GlobalCache.TouchData(BoundData);
-    GlobalCache.CacheLock.Leave;
+      // All waiters observe the loader's failure instead of using partial data.
+      if BoundData.LoadFailure <> '' then
+        raise Exception.Create(BoundData.LoadFailure);
+      GlobalCache.TouchData(BoundData);
+    finally
+      GlobalCache.CacheLock.Leave;
+    end;
   end;
   Result := BoundData;
   GlobalCache.TrimToBudget(GlobalCache.ResidentByteLimit);
@@ -322,6 +366,9 @@ end;
 
 destructor TCacheDataEC.Destroy;
 begin
+  // Keep the completion event alive while other cache users can wait on it.
+  // The original closed it immediately after signalling, racing those waiters.
+  CloseGameEvent(LoadCompleteEvent);
   while FirstBoundControl <> nil do
     UnlinkControl(LastBoundControl);
   inherited Destroy;
@@ -525,12 +572,12 @@ begin
         Break;
       Control := Control.NextBoundControl;
     end;
-    if Control <> nil then
-      Continue;
-    RemainingBytes := RemainingBytes - Removed.ResidentBytes;
-    // DCC32 O- folds +0 after register selection, evaluating the size first.
-    Dec(ResidentBytes, Removed.ResidentBytes + 0);
-    RemoveAndFreeData(Removed);
+    if Control = nil then
+    begin
+      RemainingBytes := RemainingBytes - Removed.ResidentBytes;
+      Dec(ResidentBytes, Removed.ResidentBytes);
+      RemoveAndFreeData(Removed);
+    end;
   end;
   CacheLock.Leave;
 end;
@@ -628,8 +675,8 @@ var
   Status: TMemoryStatusEx;
 begin
   Status.Length := SizeOf(Status);
-  GlobalMemoryStatusEx(Status);
-  if GetHeapStatus.TotalAllocated >= $30000000 then
+  QueryGameMemory(Status);
+  if (Status.TotalVirtual - Status.AvailVirtual) >= $30000000 then
   begin
     Control := TCacheControlEC.Create;
     GlobalCache.ResetControl(Control);
@@ -670,7 +717,6 @@ procedure EvictStarAndBackgroundCaches;
 begin
   EvictBlockChildrenFromCache('Bm.Star', TCGaiEC);
   EvictBlockChildrenFromCache('Bm.BGO', TCGaiEC);
-
 end;
 
 procedure EvictBlockChildrenFromCache(BlockPath: WideString; CacheDataClass: TCacheDataClass);

@@ -1,23 +1,27 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheTBitmap;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types,
   Classes,
   EC_Buf,
   EC_Cache;
+
 type
+
   TCTBitmapControlEC = class;
+
   TCTBitmapEC = class;
+
   TCTBitmapControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCTBitmapEC = class(TCacheDataEC)
     TransBuffer: Pointer;
     PixelSize: TPoint;
@@ -25,11 +29,12 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireCachedTransBitmap(Control: TCacheControlEC): TCTBitmapEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Str,
   GR_Main,
@@ -118,8 +123,4 @@ begin
   Bitmap.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCTBitmapEC.ClassName;
-end;
 end.

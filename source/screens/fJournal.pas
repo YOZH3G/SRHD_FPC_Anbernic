@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fJournal;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_Main,
   EC_BlockPar,
@@ -12,13 +11,15 @@ uses
   GI_PanelScrollBar,
   Types,
   fPanelMain;
+
 type
+
   TfJournal = class;
+
   TfJournal = class(TMessageLoopGIWithMainPanel)
     InfoPanel: TPanelScrollBarGI;
     ContentHeight: Integer;
     JournalSelected: Boolean;
-    GapDD: array[0..2] of Byte;
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure ProcessCallbackTimers; override;
@@ -56,15 +57,17 @@ type
     procedure CopyInputClicked(Sender: TObjectGI);
     procedure PasteInputClicked(Sender: TObjectGI);
   end;
+
 function RunJournal(ParentLoop: TMessageLoopGI): Boolean;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   ThreadCalc,
   aCalc,
   aScript,
   Classes,
-  Windows,
+  GameInput,
   Math,
   SysUtils,
   EC_Str,
@@ -91,8 +94,6 @@ uses
   GlobalsV,
   Globals,
   GR_Main;
-// @unit-initialization $877870
-// @unit-finalization $564058
 
 constructor TfJournal.Create;
 begin
@@ -119,7 +120,7 @@ begin
       SetPosition(
           Types.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
   end;
@@ -179,12 +180,12 @@ begin
   ToggleJournalNews(nil);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnEnteringForm, nil, nil, 0);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(201);
 end;
 
 procedure TfJournal.OnClose;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(202);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
   InfoPanel.FreeOwnedChildren;
@@ -214,31 +215,12 @@ var
       't',
       'u',
       'v'
-  ); // @addr $87AF6C
+  );
 var
   // The native sum loop tests index < 20; the selection loop stops before index 19.
-  TelevisionClipWeights: array[0..19] of Integer = (
-      9,
-      5,
-      9,
-      9,
-      7,
-      5,
-      7,
-      1,
-      3,
-      1,
-      0,
-      3,
-      3,
-      2,
-      3,
-      2,
-      3,
-      4,
-      5,
-      3
-  ); // @addr $87AFBC Selection uses each weight plus one. @indexrefs "$561935,$561965"
+  TelevisionClipWeights: array[0..19] of Integer =
+      (9, 5, 9, 9, 7, 5, 7, 1, 3, 1, 0, 3, 3, 2, 3, 2, 3, 4, 5, 3);
+
 procedure TfJournal.RefreshTelevisionAnimation(Sender: TObjectGI);
 var
   I, Choice: Integer;
@@ -315,8 +297,8 @@ var
   ButtonPrefix: WideString;
   PinWidth: Integer;
 begin
-  Text := ReplaceAllWideString(Text, '<color=255,240,100>', '<color=0,0,0>');
-  Text := ReplaceAllWideString(Text, '<color=0,255,0>', '<color=255,255,0>');
+  Text := ReplaceAllWideString(Text, TextHighlightColorTag, BlackColorTag);
+  Text := ReplaceAllWideString(Text, GreenColorTag, YellowColorTag);
   Image := TImageGI.Create(InfoPanel);
   if Compact = 0 then
     Image.SetImagePath('GI,Bm.FormInfo2.' + GiResourceSuffix + 'CaptionL')
@@ -429,7 +411,7 @@ end;
 
 procedure TfJournal.AddEntryText(Text: WideString; Align: TTextAlignXGI; FontName: WideString);
 begin
-  Text := ReplaceAllWideString(Text, '<color=255,240,100>', '<color=0,50,200>');
+  Text := ReplaceAllWideString(Text, TextHighlightColorTag, DialogHighlightColorTag);
   with TLabelGI.Create(InfoPanel) do
   begin
     if FontName = '' then
@@ -531,6 +513,7 @@ end;
 
 procedure TfJournal.MainPanelKeyUp(Sender: TObjectGI; Key: Cardinal);
 begin
+
 end;
 
 procedure TfJournal.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
@@ -551,14 +534,13 @@ begin
       (GetPlayer <> nil)
           and (GetPlayer.IsDockedToShip
               or (GetPlayer.IsOnPlanet
-                  and (GetPlayer.CurrentPlanet.OwnerId
-                      in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])));
+                  and (GetPlayer.CurrentPlanet.OwnerId in [oiMaloc..oiGaal, oiPirate])));
 end;
 
 procedure TfJournal.PinEntryClicked(Sender: TObjectGI);
 begin
   SoundManager.PlaySound('Sound.UserMsgAdd');
-  AddOrUpdatePlayerBubble(7, Galaxy.CurrentTurn, Sender.HelpText, '');
+  AddOrUpdatePlayerBubble(pmUserNote, Galaxy.CurrentTurn, Sender.HelpText, '');
   MainPanel.RebuildMessageButtons(False);
   (Sender as TGraphButtonGI).SetDisabled(True);
   BreakUiMessage;
@@ -642,7 +624,7 @@ begin
                   LocalizedText('FormInfo.ExtractRecordDone'),
                   '<FileName>',
                   FileName,
-                  '<color=255,240,100>'
+                  TextHighlightColorTag
               ),
               mbgOK or mbgUnused04
           );
@@ -664,7 +646,7 @@ begin
                 LocalizedText('FormInfo.ExtractNewsDone'),
                 '<FileName>',
                 FileName,
-                '<color=255,240,100>'
+                TextHighlightColorTag
             ),
             mbgOK or mbgUnused04
         );
@@ -693,13 +675,12 @@ begin
         MusicManager.RequestFadeOut
       else if GetPlayer.IsOnPlanet then
       begin
-        if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+        if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
         begin
           if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
             MusicManager.PlayCategory(
                 'Nation.'
-                    + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                        .InternalName
+                    + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                     + 'Pirate'
             )
           else
@@ -713,18 +694,15 @@ begin
       begin
         if not MusicInPlanetEnabled then
           MusicManager.RequestFadeOut
-        else if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+        else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
           MusicManager.PlayCategory(
               'Nation.'
-                  + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F]
-                      .InternalName
+                  + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
                   + 'Pirate'
           )
         else
           MusicManager.PlayCategory(
-              'Nation.'
-                  + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F]
-                      .InternalName
+              'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
           );
       end;
     end
@@ -764,8 +742,8 @@ begin
       Break;
     Entry := GetPlayer.NewsEntries[I];
     AddEntryHeading(
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn) + HeadingSuffix, '<color=255,240,100>'),
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn), '<color=255,240,100>')
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn) + HeadingSuffix, TextHighlightColorTag),
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn), TextHighlightColorTag)
             + #13#10
             + ' '
             + #13#10
@@ -796,8 +774,8 @@ begin
   begin
     Entry := GetPlayer.JournalRecords[I];
     AddEntryHeading(
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), '<color=255,240,100>'),
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), '<color=255,240,100>')
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), TextHighlightColorTag),
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), TextHighlightColorTag)
             + #13#10
             + ' '
             + #13#10
@@ -815,7 +793,7 @@ begin
     AddEntryText(
         FormatText1(
             LocalizedColorText('FormInfo.RecordCount'),
-            '<color=0,50,200>',
+            DialogHighlightColorTag,
             '<Count>',
             IntToStr(Displayed)
         ),
@@ -871,7 +849,7 @@ var
   CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
-  ParentLoop.RootUiObject.NativeHook50;
+  ParentLoop.RootUiObject.OnModalSuspend;
   ParentLoop.CaptureCursorState(@State);
   ParentLoop.SetCursorActive(False);
   ParentLoop.DrawQueuedUpdateRects;
@@ -886,7 +864,7 @@ begin
   ParentLoop.InvalidateViewport;
   ParentLoop.RestoreCursorState(@State);
   ParentLoop.UpdateCursorPosition;
-  ParentLoop.RootUiObject.NativeHook48;
+  ParentLoop.RootUiObject.OnModalResume;
   ParentLoop.Present;
   PostMouseMoveMessage;
 end;
@@ -897,20 +875,10 @@ begin
       and (TurnCalculationPhase
           in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10001);
     ExecuteGameplayUiCode(Block, Key);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20001);
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TEditGI.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit SE_Sputnik;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Buf,
@@ -13,8 +13,11 @@ uses
   GI_MessageLoop,
   GI_Planet,
   SE_Space;
+
 type
+
   TSputnikSE = class;
+
   TSputnikSE = class(TObjectSE)
     ImagePath: WideString;
     DepthOrder: Integer;
@@ -32,7 +35,6 @@ type
     SurfaceMapOffset: Integer;
     DisplayRadius: Integer;
     LightAngle: Byte;
-    Gap8D: array[0..2] of Byte;
     InclinationCos: Single;
     InclinationSin: Single;
     RotationCos: Single;
@@ -56,14 +58,15 @@ type
     procedure AdvanceOrbitTimer(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure AdvanceRotationTimer(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
+
 implementation
+
 uses
   Math,
   GlobalsV,
   Globals,
   GR_Main,
-  aMyFunction,
-  Types;
+  aMyFunction;
 
 procedure TSputnikSE.AttachToSpace(ASpace: TSpaceSE);
 begin
@@ -195,7 +198,7 @@ begin
     DisplayRadius := MaxDisplayRadius;
   if Cardinal(GameScreenHeight) < 768 then
     DisplayRadius := Round(DisplayRadius * 800 / 1024);
-  LightAngle := Round(ArcTan2(-Position.X, Position.Y) * 180 / 3.1415926 * 256 / 360);
+  LightAngle := Round(ArcTan2(-Position.X, Position.Y) * 180 / GamePi * 256 / 360);
   Index := DisplayRadius - MinimumSatelliteTemplateRadius;
   Template := SatelliteRenderTemplates[Index];
   PlanetControl.SetImageFromTemplate(Template.MaskName, ImagePath, Template.Radius);

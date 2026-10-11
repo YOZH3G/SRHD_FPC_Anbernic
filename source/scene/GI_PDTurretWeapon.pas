@@ -1,37 +1,39 @@
-{$EXCESSPRECISION OFF}
 unit GI_PDTurretWeapon;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   TPSPDWeaponGI = class;
+
   PointerToTPDWeaponParticle = ^TPDWeaponParticle;
+
   PPDWeaponParticle = PointerToTPDWeaponParticle;
+
   TPDWeaponParticle = record
     Kind: Integer;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    GapF: array[0..0] of Byte;
     Velocity: TPointF;
     Gap18: array[0..1] of Byte;
     Unknown1A: Byte;
-    Gap1B: array[0..0] of Byte;
   end;
+
   TPSPDWeaponGI = class(TPSWeaponGI)
     Particles: PPDWeaponParticle;
     ParticleCount: Integer;
     ParticleCapacity: Integer;
     OriginalLength: Single;
     ParticleColor: Word;
-    Gap142: array[0..1] of Byte;
     procedure UpdateHitTestBounds; override;
     procedure SetPosition(Position: TPoint); override;
     procedure SetActive(Enabled: Boolean); override;
@@ -45,8 +47,11 @@ type
     procedure GrowParticles;
     function AddParticle: PPDWeaponParticle;
   end;
+
 implementation
+
 uses
+  GI_Main,
   GlobalsV,
   Math,
   EC_Mem,
@@ -85,10 +90,7 @@ end;
 
 procedure TPSPDWeaponGI.UpdateHitTestBounds;
 begin
-  HitTestBounds.Left := 0;
-  HitTestBounds.Top := 0;
-  HitTestBounds.Right := GameScreenWidth;
-  HitTestBounds.Bottom := GameScreenHeight;
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSPDWeaponGI.SetActive(Enabled: Boolean);

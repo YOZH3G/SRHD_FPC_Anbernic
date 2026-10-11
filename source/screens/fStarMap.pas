@@ -1,12 +1,12 @@
-{$EXCESSPRECISION OFF}
 unit fStarMap;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  GR_GraphBuf,
+  Types,
+  GameEvents,
   Classes,
   EC_BlockPar,
   EC_Struct,
@@ -22,7 +22,6 @@ uses
   GI_StarField,
   GI_Window,
   SE_Space,
-  Types,
   aAsteroid,
   aEFilm,
   aGalaxy,
@@ -30,18 +29,38 @@ uses
   aShip,
   fPanelLoad,
   fPanelMain;
+
 type
+
   TfStarMap = class;
+
   {$Z1}
   TStarMapMode = (smmInactive = 0, smmOrders = 1, smmTurnFilm = 2);
+
   {$Z1}
   TStarMapResumeMode = (smrNormal = 0, smrOrders = 1, smrTurnFilm = 2, smrWaitForTurn = 3);
+
   {$Z4}
   TStarMapPathKind = (smpNone = 0, smpAsteroid = 1, smpShip = 2);
+
   TStarMapReservedEntry = packed record
     Data: array[0..7] of Byte;
   end;
+
   TfStarMap = class(TMessageLoopGIWithMainPanel)
+  private
+    AppliedSpaceZoomPercent: Integer;
+    PinchZoomSavePending: Boolean;
+    TouchItem: TItem;
+    TouchItemId, TouchItemTurn: Integer;
+    TouchItemStar: TStar;
+    TouchItemWasPickupTarget: Boolean;
+    procedure ApplySpaceZoom(Scale: Double);
+    procedure UpdateSpaceZoom;
+    function TouchItemInspectionEnabled: Boolean;
+    function TouchItemSelectionValid: Boolean;
+    procedure ClearTouchItem;
+  public
     LoadPanel: TfPanelLoad;
     Mode: TStarMapMode;
     ResumeMode: TStarMapResumeMode;
@@ -49,7 +68,6 @@ type
     ScrollRightHeld: Boolean;
     ScrollUpHeld: Boolean;
     ScrollDownHeld: Boolean;
-    GapDE: array[0..1] of Byte;
     CenterShipButton: TGraphButtonGI;
     GapE4: array[0..3] of Byte;
     TerronFadeImage: TObjectGI;
@@ -62,7 +80,6 @@ type
     PlanetBattleState: Integer;
     DisplayedObject: TObject;
     SuppressMiddleFollowCycle: Boolean;
-    Gap10D: array[0..2] of Byte;
     SpaceEffectsTimer: PCallbackTimerGI;
     CursorObject: TObject;
     MapScrollTimer: PCallbackTimerGI;
@@ -72,7 +89,6 @@ type
     SelectedWeapons: array[0..4] of Boolean;
     InterceptorSelectionActive: Boolean;
     CustomSelectionActive: Boolean;
-    Gap129: array[0..2] of Byte;
     CustomSelectionItem: TItem;
     CustomSelectionInfoName: WideString;
     CustomSelectionRadius: Integer;
@@ -95,11 +111,10 @@ type
     SpacePanelTarget: Integer;
     SpacePanelTimer: PCallbackTimerGI;
     AnimateSpacePanelOnResume: Boolean;
-    Gap181: array[0..2] of Byte;
     DeferredEndTurnTimer: PCallbackTimerGI;
     PathAsteroid: TAsteroid;
     FilmFrameTimer: PCallbackTimerGI;
-    FilmStepIndex: PtrInt;
+    FilmStepIndex: Integer;
     NextFilmCommand: PEFilmCommand;
     FilmProgressTimer: PCallbackTimerGI;
     ContinueTurnCalculation: Boolean;
@@ -118,7 +133,6 @@ type
     FilmCameraShakeOffset: TPointF;
     FilmCameraSpeed: Single;
     FilmCameraMoving: Boolean;
-    Gap1D9: array[0..2] of Byte;
     ReservedEntries1: array of TStarMapReservedEntry;
     ReservedEntries2: array of TStarMapReservedEntry;
     ReservedFilmState1E4: Integer;
@@ -154,18 +168,18 @@ type
     HitObjectSize: TPoint;
     BattleMusicSelected: Boolean;
     EndTurnAfterOpen: Boolean;
-    Gap296: array[0..1] of Byte;
     PendingSceneObjects: TList;
-    StarThumbnailCache: TStringList;
-    StarThumbnailTurn: Integer;
-    StarThumbnailSystem: TStar;
-    procedure ClearStarThumbnails;
-    procedure LoadStarThumbnail(Obj: TObject; Buffer: TGraphBufGR; Size: TPoint);
     procedure DrawFrame; override;
     procedure OnOpen; override;
     procedure OnClose; override;
+    procedure CancelPointerInput; override;
+    procedure ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer); override;
     procedure SelectMusic; override;
     procedure ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer); override;
+    function CanPanGesture(Point: TPoint): Boolean; override;
+    procedure ProcessPanGesture(DX, DY: Double; Point: TPoint); override;
+    procedure ProcessPinchGesture(Factor: Double; Point: TPoint); override;
+    procedure EndPinchGesture; override;
     procedure InitializeLayout; override;
     procedure UpdateActionCursor(CanTake: Boolean); override;
     procedure ExecuteUiCode(Block: TBlockParEC; Key: Cardinal); override;
@@ -226,8 +240,6 @@ type
     function IsMapPointBlocked(Sender: TObjectGI; Point: TPoint): Boolean;
     procedure MapLeftButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure MapMiddleButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
-    // FPC host boundary: a local world can finish playback without campaign jobs.
-    function CompleteHostedTurnFilm: Boolean; virtual;
     procedure MapRightButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure MapMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure OrderKeyDown(Sender: TObjectGI; Key: Cardinal);
@@ -283,7 +295,9 @@ type
     procedure TerronTransformationFrame(Sender: TObjectGI);
     procedure TerronTransformationFinished(Sender: TObjectGI);
   end;
+
 var
+
   PanelSlideCurve: array[0..15] of Single = (
       0,
       0.033,
@@ -302,15 +316,22 @@ var
       1.011,
       1
   );
+
   FilmCameraLookAheadSteps: Integer = 30;
+
 function GetTurnFilmFrameInterval(Activity: Integer): Integer;
-procedure LinkRecoveredTypes;
+
 implementation
 
 uses
+  GameWindow,
+  GameGraphics,
+  GameSystem,
   EC_Cache,
   GI_GI,
   GI_Main,
+  GI_Inspection,
+  EC_CacheBitmap,
   Globals,
   GlobalsV,
   SE_Process,
@@ -324,8 +345,7 @@ uses
   aMyFunction,
   fLoad,
   fFilmFile,
-  Windows,
-  Messages,
+  GameInput,
   GI_MultiImage,
   aGalaxyStruct,
   aScript,
@@ -366,107 +386,72 @@ uses
   aTranclucator,
   ab_MainForm;
 
-// Cache only images. Rebuild names, ownership, relations and script-provided
-// information on every opening. Buffers copied into controls remain owned by
-// those controls, so invalidation cannot leave dangling UI references.
-procedure TfStarMap.ClearStarThumbnails;
-var
-  I: Integer;
+type
+  // A marker follows a world point, but its child draws in enlarged UI pixels.
+  // Scaling the image directly would also scale its position and camera offset.
+  TSpaceMarkerGI = class(TObjectGI)
+    ScreenOffset: TPoint;
+    function GetChildAbsolutePosition(LocalPosition: TPoint; ModeW: Boolean): TPoint; override;
+    procedure UpdateAutoGeometry; override;
+  end;
+
+function SpaceMarkerScale: Single;
 begin
-  if StarThumbnailCache <> nil then
-  begin
-    for I := 0 to StarThumbnailCache.Count - 1 do
-      StarThumbnailCache.Objects[I].Free;
-    StarThumbnailCache.Clear;
-  end;
-  StarThumbnailSystem := nil;
+  Result := 1;
+  if HardwareRenderingEnabled then
+    Result := Max(1, GetGameMobileUiScale);
 end;
-// CHANGE: PERFORMANCE - Reuse rendered thumbnails within the current system and turn.
-procedure TfStarMap.LoadStarThumbnail(Obj: TObject; Buffer: TGraphBufGR; Size: TPoint);
-var
-  Key, Path: WideString;
-  Index, Y: Integer;
-  Thumbnail: TGraphBufGR;
+
+function TSpaceMarkerGI.GetChildAbsolutePosition(LocalPosition: TPoint; ModeW: Boolean): TPoint;
 begin
-  if StarThumbnailCache = nil then
-  begin
-    StarThumbnailCache := TStringList.Create;
-    StarThumbnailCache.CaseSensitive := True;
-  end;
-  if not CacheInfoThumbnails
-      or (StarThumbnailSystem <> GetPlayer.CurrentStar)
-      or (StarThumbnailTurn <> Galaxy.CurrentTurn)
-      or (StarThumbnailCache.Count >= 128) then
-  begin
-    ClearStarThumbnails;
-    StarThumbnailSystem := GetPlayer.CurrentStar;
-    StarThumbnailTurn := Galaxy.CurrentTurn;
-  end;
-  Path := '';
-  if Obj is TStar then
-    Path := ExtractDelimitedPartW(TStarSE(TStar(Obj).Graphic).StaticImagePath, 1, ',')
-  else if Obj is TPlanet then
-    Path :=
-        TPlanetSE(TPlanet(Obj).Graphic).ImagePath
-            + '|'
-            + TPlanetSE(TPlanet(Obj).Graphic).RuinsImagePath
-  else if Obj is TRuins then
-  begin
-    if TShip(Obj).Graphic is TRuinsSE then
-      Path := ExtractDelimitedPartW(TRuinsSE(TShip(Obj).Graphic).StaticImagePath, 1, ',')
-    else
-      Path := ExtractDelimitedPartW(TShip2SE(TShip(Obj).Graphic).AlternateImagePath, 1, ',');
-  end
-  else
-    Path := TCustomSystemInfo(Obj).Icon;
-  Key :=
-      IntToHex(PtrUInt(Obj), SizeOf(Pointer) * 2)
-          + ':'
-          + IntToStr(Size.X)
-          + ':'
-          + IntToStr(Size.Y)
-          + ':'
-          + Path;
-  if Obj is TPlanet then
-    Key := Key + ':' + IntToStr(TPlanetSE(TPlanet(Obj).Graphic).Radius);
-  Index := StarThumbnailCache.IndexOf(UTF8Encode(Key));
-  if Index >= 0 then
-    Thumbnail := TGraphBufGR(StarThumbnailCache.Objects[Index])
-  else
-  begin
-    Thumbnail := TGraphBufGR.Create(False);
-    try
-      if Obj is TPlanet then
-        TPlanetSE(TPlanet(Obj).Graphic).RenderToBuffer(Self, Thumbnail, True)
-      else
-        LoadGiByPathIntoGraphBuf(Path, Thumbnail);
-      if (Thumbnail.Width > 0)
-          and (Thumbnail.Height > 0)
-          and ((Size.X < Thumbnail.Width)
-              or (Size.Y < Thumbnail.Height)
-              or (Obj is TCustomSystemInfo)) then
-      begin
-        if Thumbnail.Width >= Thumbnail.Height then
-          Thumbnail
-              .RescaleRgba(Size.X, Max(1, Round(Size.X / Thumbnail.Width * Thumbnail.Height)), 5)
-        else
-          Thumbnail
-              .RescaleRgba(Max(1, Round(Size.Y / Thumbnail.Height * Thumbnail.Width)), Size.Y, 5);
-      end;
-      StarThumbnailCache.AddObject(UTF8Encode(Key), Thumbnail);
-    except
-      Thumbnail.Free;
-      raise;
-    end;
-  end;
-  Buffer.AllocateRgbaTight(Thumbnail.Width, Thumbnail.Height);
-  for Y := 0 to Thumbnail.Height - 1 do
-    Move(
-        PByte(Thumbnail.GetPixels)[Y * Thumbnail.PitchBytes],
-        PByte(Buffer.GetPixels)[Y * Buffer.PitchBytes],
-        Thumbnail.Width * 4
-    );
+  Result := ScaledChildPosition(AbsolutePosition, LocalPosition, FirstChild.DisplayScale);
 end;
+
+procedure TSpaceMarkerGI.UpdateAutoGeometry;
+var
+  Scale: Single;
+begin
+  FirstChild.DisplayScale := SpaceMarkerScale / GetDisplayScale;
+  FirstChild.SetPosition(
+      Classes
+          .Point(Round(ScreenOffset.X / SpaceMarkerScale), Round(ScreenOffset.Y / SpaceMarkerScale))
+  );
+  Scale := FirstChild.DisplayScale;
+  SetSize(
+      Classes.Point(Ceil(FirstChild.ClientSize.X * Scale), Ceil(FirstChild.ClientSize.Y * Scale))
+  );
+  SetOrigin(
+      Classes.Point(
+          Round((FirstChild.OriginPoint.X - FirstChild.LocalPosition.X) * Scale),
+          Round((FirstChild.OriginPoint.Y - FirstChild.LocalPosition.Y) * Scale)
+      )
+  );
+end;
+
+procedure ScaleSpaceMarker(Control: TObjectGI; OffsetX: Integer = 0; OffsetY: Integer = 0);
+var
+  Marker: TSpaceMarkerGI;
+  Scale: Single;
+begin
+  Scale := SpaceMarkerScale;
+  if not HardwareRenderingEnabled then
+    Exit;
+  Marker := TSpaceMarkerGI.Create(Control.Parent);
+  Marker.SetDepth(Control.Depth);
+  Marker.SetPositionModeW(Control.PositionModeW);
+  Marker.ScreenOffset := Classes.Point(OffsetX, OffsetY);
+  Marker.SetPosition(SubtractPoints(Control.LocalPosition, Marker.ScreenOffset));
+  Marker.UserValue := Control.UserValue;
+  Marker.UserIndex := Control.UserIndex;
+  Control.Reparent(Marker);
+  Control.DisplayScale := Scale;
+  Control.SetPositionModeW(False);
+  Control.SetPosition(Classes.Point(0, 0));
+  Marker.UpdateAutoGeometry;
+  Marker.UpdateAbsolutePosition;
+  Marker.UpdateSubtreeHitBounds;
+end;
+
 constructor TfStarMap.Create;
 begin
   inherited Create;
@@ -479,10 +464,9 @@ begin
   PendingHoleRefresh := nil;
   PendingSceneObjects := TList.Create;
 end;
+
 destructor TfStarMap.Destroy;
 begin
-  ClearStarThumbnails;
-  FreeAndNil(StarThumbnailCache);
   ReservedEntries1 := nil;
   ReservedEntries2 := nil;
   if LoadPanel <> nil then
@@ -495,14 +479,17 @@ begin
   PendingSceneObjects := nil;
   inherited Destroy;
 end;
+
 function TfStarMap.GetMapCenter: TPoint;
 begin
   if MapControls = nil then
     MapControls := GetByName('MainPanel') as TPanelGI;
   Result := MapControls.ScrollOffset;
 end;
+
 procedure TfStarMap.SetMapCenterManually(Point: TPoint);
 begin
+  ClearTouchItem;
   if MapControls = nil then
     MapControls := GetByName('MainPanel') as TPanelGI;
   MapControls.SetScrollOffset(Point);
@@ -510,6 +497,7 @@ begin
     SpaceProcess.Space.MapScrollChanged(nil);
   FilmCameraFollow := False;
 end;
+
 procedure TfStarMap.SetMapCenter(Center: TPoint);
 begin
   if MapControls = nil then
@@ -518,6 +506,76 @@ begin
   if SpaceProcess.IsSpaceOpen then
     SpaceProcess.Space.MapScrollChanged(nil);
 end;
+
+procedure TfStarMap.ApplySpaceZoom(Scale: Double);
+var
+  Control: TObjectGI;
+  Size, Center: TPoint;
+
+  procedure FitBackground(const Name: WideString);
+  var
+    Background: TObjectGI;
+  begin
+    Background := GetByName(Name);
+    Background.DisplayScale := Scale;
+    // These layers project their own parallax; they do not use world scrolling.
+    Background.SetPosition(
+        Classes.Point(
+            Center.X - MapControls.AbsolutePosition.X,
+            Center.Y - MapControls.AbsolutePosition.Y
+        )
+    );
+    Background.SetOrigin(Center);
+    Background.SetSize(Size);
+    Background.UpdateAbsolutePosition;
+    Background.UpdateSubtreeHitBounds;
+  end;
+
+begin
+  if MapControls = nil then
+    Exit;
+  if not HardwareRenderingEnabled then
+    Scale := 1;
+  MapControls.ChildWorldScale := Scale;
+  Size := Classes.Point(Ceil(GameScreenWidth / Scale), Ceil(GameScreenHeight / Scale));
+  Center :=
+      Classes.Point(
+          Round(MapControls.AbsolutePosition.X / Scale),
+          Round(MapControls.AbsolutePosition.Y / Scale)
+      );
+  FitBackground('StarField');
+  FitBackground('SpaceImg');
+  StarField.MarkViewDirty;
+  (GetByName('SpaceImg') as TSpaceImgGI).ProjectImages;
+  Control := MapControls.FirstChild;
+  while Control <> nil do
+  begin
+    if Control is TSpaceMarkerGI then
+      Control.UpdateAutoGeometry;
+    Control := Control.NextSibling;
+  end;
+  MapControls.UpdateAbsolutePosition;
+  MapControls.UpdateSubtreeHitBounds;
+  if (SpaceProcess <> nil)
+      and SpaceProcess.IsSpaceOpen
+      and (SpaceProcess.Space.MapPanel = MapControls) then
+  begin
+    SpaceProcess.Space.MapScrollChanged(nil);
+    if (Mode = smmOrders) and (GetPlayer <> nil) then
+      RefreshActionRanges;
+  end;
+  FullFrameRedrawRequested := True;
+  InvalidateViewport;
+end;
+
+procedure TfStarMap.UpdateSpaceZoom;
+begin
+  if AppliedSpaceZoomPercent = SpaceZoomPercent then
+    Exit;
+  AppliedSpaceZoomPercent := SpaceZoomPercent;
+  ApplySpaceZoom(SpaceZoomPercent / 100);
+end;
+
 procedure TfStarMap.CenterMapForTalk(Position: TPointF);
 var
   Offset: TPoint;
@@ -529,9 +587,37 @@ begin
   else if (TalkPlanet <> nil) and (TalkPlanet.CurrentStar = GetPlayer.CurrentStar) then
     SetMapCenter(SubtractPoints(TruncatePointF(Position), Offset));
 end;
+
 procedure TfStarMap.InitializeLayout;
+var
+  HudSize, HudOffset: TPoint;
+  HudExtraWidth, HudExtraHeight: Integer;
+  HudScale: Single;
+
+  procedure PlaceHud(Control: TObjectGI; X, Y: Integer);
+  begin
+    // HUD geometry stays in its own logical coordinates; the world keeps the
+    // normal viewport and its original click, pan and camera coordinates.
+    Control.SetPosition(
+        Classes.Point(
+            Control.LocalPosition.X + HudOffset.X + X,
+            Control.LocalPosition.Y + HudOffset.Y + Y
+        )
+    );
+    Control.DisplayScale := HudScale;
+  end;
+
 begin
   inherited InitializeLayout;
+  HudSize := GetMobileHudLayoutSize;
+  HudScale := Min(GameScreenWidth / HudSize.X, GameScreenHeight / HudSize.Y);
+  HudOffset :=
+      Classes.Point(
+          (HudSize.X shr 1) - (GameScreenWidth shr 1),
+          (HudSize.Y shr 1) - (GameScreenHeight shr 1)
+      );
+  HudExtraWidth := HudSize.X - 1024;
+  HudExtraHeight := HudSize.Y - 768;
   MainPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
   AppendLogTextThreadSafe('fStarMap... ');
@@ -547,63 +633,33 @@ begin
       SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
       SetPosition(Classes.Point(-(GameScreenWidth shr 1), -(GameScreenHeight shr 1)));
     end;
-    with FindByNameRecursive('LargeHelp') do
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y - ExtraScreenHeight div 2));
-    with FindByNameRecursive('MapPanel') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y - ExtraScreenHeight div 2
-          )
-      );
-    with FindByNameRecursive('CenterShip') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y - ExtraScreenHeight div 2
-          )
-      );
-    with FindByNameRecursive('MapPanelA') do
+    PlaceHud(FindByNameRecursive('LargeHelp'), 0, -HudExtraHeight div 2);
+    PlaceHud(FindByNameRecursive('MapPanel'), HudExtraWidth div 2, -HudExtraHeight div 2);
+    PlaceHud(FindByNameRecursive('CenterShip'), HudExtraWidth div 2, -HudExtraHeight div 2);
+    PlaceHud(FindByNameRecursive('MapPanelA'), HudExtraWidth div 2, -HudExtraHeight div 2);
+    PlaceHud(
+        FindByNameRecursive('MapPanelA').NextSibling,
+        HudExtraWidth div 2,
+        -HudExtraHeight div 2
+    );
+    PlaceHud(FindByNameRecursive('FPS'), 0, -HudExtraHeight div 2);
+    PlaceHud(FindByNameRecursive('Mods'), 0, -HudExtraHeight div 2);
+    with FindByNameRecursive('PanelMain') do
     begin
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y - ExtraScreenHeight div 2
-          )
-      );
-      with NextSibling do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2,
-                LocalPosition.Y - ExtraScreenHeight div 2
-            )
-        );
+      SetPosition(Classes.Point(-(GameScreenWidth shr 1), -(GameScreenHeight shr 1)));
+      DisplayScale := HudScale;
     end;
-    with FindByNameRecursive('FPS') do
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y - ExtraScreenHeight div 2));
-    with FindByNameRecursive('Mods') do
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y - ExtraScreenHeight div 2));
-    FindByNameRecursive('PanelMain')
-        .SetPosition(Classes.Point(-(GameScreenWidth shr 1), -(GameScreenHeight shr 1)));
-    with FindByNameRecursive('PanelSpace') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+    PlaceHud(FindByNameRecursive('PanelSpace'), HudExtraWidth div 2, HudExtraHeight div 2);
     if GiResourceVariant = 2 then
       FindByNameRecursive('PanelLoad')
           .SetPosition(Classes.Point(-(GameScreenWidth shr 1), -(GameScreenHeight shr 1)))
     else if GiResourceVariant = 1 then
       FindByNameRecursive('PanelLoad').SetPosition(Classes.Point(-400, -300));
-    with FindByNameRecursive('MapPartnerDuty').Parent do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y - ExtraScreenHeight div 2
-          )
-      );
+    PlaceHud(
+        FindByNameRecursive('MapPartnerDuty').Parent,
+        HudExtraWidth div 2,
+        -HudExtraHeight div 2
+    );
     with FindByNameRecursive('CircleActionColor') do
     begin
       SetPosition(Classes.Point(-(GameScreenWidth shr 1), -(GameScreenHeight shr 1)));
@@ -750,7 +806,10 @@ begin
   (GetByName('MapPanel') as TGraphBufGI).BindExternalGraphBuf(RenderScratchBuffer);
   BattleMusicSelected := False;
   EndTurnAfterOpen := False;
+  AppliedSpaceZoomPercent := 0;
+  UpdateSpaceZoom;
 end;
+
 procedure TfStarMap.OnOpen;
 var
   Entry: PEFilmEndEntry;
@@ -763,37 +822,34 @@ begin
   if DispatchPendingScriptRequests then
     Exit;
   EvictMainMenuShipCachesWhenAddressSpaceHigh;
-  if not ShipScreen.FlagD4 then
-    aCalc.WaitForTurnCalculationUI;
+  if not ShipScreen.ReopenRequested then
+    Galaxy.CheckIntegrityChecksum(1116)
+  else
+    Galaxy.ClearIntegrityStatus;
   LoadPanel.OnOpen;
   BreakOnNextFilm := False;
   AnimateSpacePanelOnResume := False;
-  if RobotAutoWin and (PlanetBattleState = 1) then
-    PlanetBattleState := AutoWinRobotBattle;
   if PlanetBattleState = 1 then
   begin
     MapIndex := FindRobotMapById(PlanetBattleMapId);
     StartText := RobotMapDefinitions[MapIndex].RobotsStart;
-    ReplaceTextToken(StartText, '<Star>', GetPlayer.CurrentStar.Name, '<color=255,240,100>');
-    ReplaceTextToken(StartText, '<Player>', GetPlayer.Name, '<color=255,240,100>');
+    ReplaceTextToken(StartText, '<Star>', GetPlayer.CurrentStar.Name, TextHighlightColorTag);
+    ReplaceTextToken(StartText, '<Player>', GetPlayer.Name, TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(StartText);
     StartText := WideString(IntToStr(1)) + StartText;
-    StartText :=
-        WideString(IntToStr(Min(Integer(Galaxy.GetDifficultyTierIndex) and $7F, 3) + 1))
-            + StartText;
+    StartText := WideString(IntToStr(Min(Galaxy.GetDifficultyTierIndex, 3) + 1)) + StartText;
     StartText := WideString(IntToStr(6)) + StartText;
     WinText := RobotMapDefinitions[MapIndex].RobotsWin;
-    ReplaceTextToken(WinText, '<Star>', GetPlayer.CurrentStar.Name, '<color=255,240,100>');
-    ReplaceTextToken(WinText, '<Player>', GetPlayer.Name, '<color=255,240,100>');
+    ReplaceTextToken(WinText, '<Star>', GetPlayer.CurrentStar.Name, TextHighlightColorTag);
+    ReplaceTextToken(WinText, '<Player>', GetPlayer.Name, TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(WinText);
     LossText := RobotMapDefinitions[MapIndex].RobotsLoss;
-    ReplaceTextToken(LossText, '<Star>', GetPlayer.CurrentStar.Name, '<color=255,240,100>');
-    ReplaceTextToken(LossText, '<Player>', GetPlayer.Name, '<color=255,240,100>');
+    ReplaceTextToken(LossText, '<Star>', GetPlayer.CurrentStar.Name, TextHighlightColorTag);
+    ReplaceTextToken(LossText, '<Player>', GetPlayer.Name, TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(LossText);
     if TerronShip <> nil then
       TerronName := TerronShip.GetFullName(' ');
-    if IsTurnCalculationRunning
-        and (WaitForSingleObject(ScriptUiRequestEvent, 0) <> WAIT_OBJECT_0) then
+    if IsTurnCalculationRunning and (WaitGameEvent(ScriptUiRequestEvent, 0) <> WAIT_OBJECT_0) then
       WaitForTurnCalculation;
     if not MemorySnapshotActive then
       SaveGameToMemorySnapshot;
@@ -855,12 +911,12 @@ begin
     with GetPlayer.PlanetBattleHistory[High(GetPlayer.PlanetBattleHistory)] do
     begin
       MapId := PlanetBattleMapId;
-      Statistics[0] := RobotBattleStatistics[0];
-      Statistics[1] := RobotBattleStatistics[1];
-      Statistics[2] := RobotBattleStatistics[2];
-      Statistics[3] := RobotBattleStatistics[3];
-      Statistics[4] := RobotBattleStatistics[4];
-      Statistics[5] := RobotBattleStatistics[5];
+      Statistics.SignedTimeMs := RobotBattleStatistics.SignedTimeMs;
+      Statistics.RobotsBuilt := RobotBattleStatistics.RobotsBuilt;
+      Statistics.RobotsDestroyed := RobotBattleStatistics.RobotsDestroyed;
+      Statistics.TurretsBuilt := RobotBattleStatistics.TurretsBuilt;
+      Statistics.TurretsDestroyed := RobotBattleStatistics.TurretsDestroyed;
+      Statistics.BuildingsDestroyed := RobotBattleStatistics.BuildingsDestroyed;
       ResultCode := 1;
       CompletionMode := PlanetBattleState;
       DateTurn := Galaxy.CurrentTurn;
@@ -870,7 +926,7 @@ begin
     GetPlayer.OrderTakeoff;
     FilmCameraFollow := True;
     PlayerStar.RefreshSpaceObjectPositions;
-    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(3) then
+    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heHolyFanaticism) then
       Galaxy.EnableDominatorSurfaces
     else
       Galaxy.DisableDominatorSurfaces;
@@ -901,12 +957,12 @@ begin
     with GetPlayer.PlanetBattleHistory[High(GetPlayer.PlanetBattleHistory)] do
     begin
       MapId := PlanetBattleMapId;
-      Statistics[0] := RobotBattleStatistics[0];
-      Statistics[1] := RobotBattleStatistics[1];
-      Statistics[2] := RobotBattleStatistics[2];
-      Statistics[3] := RobotBattleStatistics[3];
-      Statistics[4] := RobotBattleStatistics[4];
-      Statistics[5] := RobotBattleStatistics[5];
+      Statistics.SignedTimeMs := RobotBattleStatistics.SignedTimeMs;
+      Statistics.RobotsBuilt := RobotBattleStatistics.RobotsBuilt;
+      Statistics.RobotsDestroyed := RobotBattleStatistics.RobotsDestroyed;
+      Statistics.TurretsBuilt := RobotBattleStatistics.TurretsBuilt;
+      Statistics.TurretsDestroyed := RobotBattleStatistics.TurretsDestroyed;
+      Statistics.BuildingsDestroyed := RobotBattleStatistics.BuildingsDestroyed;
       ResultCode := 1;
       CompletionMode := PlanetBattleState;
       DateTurn := Galaxy.CurrentTurn;
@@ -914,7 +970,8 @@ begin
     Inc(GetPlayer.PlanetBattles);
     PlanetBattleState := 0;
     LoadRobotScreen.LoadCompletionData;
-    LoadRobotScreen.RecordCompletion(PlanetBattleMapId, -RobotBattleStatistics[0] div 1000, 2);
+    LoadRobotScreen
+        .RecordCompletion(PlanetBattleMapId, -RobotBattleStatistics.SignedTimeMs div 1000, 2);
     LoadRobotScreen.SaveCompletionData;
     TryAddAchievementProgress('IRONMAN', 1);
     if TerronShip <> nil then
@@ -922,7 +979,7 @@ begin
     GetPlayer.OrderTakeoff;
     FilmCameraFollow := True;
     PlayerStar.RefreshSpaceObjectPositions;
-    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(3) then
+    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heHolyFanaticism) then
       Galaxy.EnableDominatorSurfaces
     else
       Galaxy.DisableDominatorSurfaces;
@@ -950,7 +1007,7 @@ begin
   else
   begin
     PlanetBattleState := 0;
-    if not ShipScreen.FlagD4 then
+    if not ShipScreen.ReopenRequested then
       GetPlayer.CancelInvalidTravelOrder;
     ClearMapAnimations;
     GetByName('FPS').SetActive(ShowFrameRate);
@@ -998,8 +1055,9 @@ begin
       StartOrderMode;
     end;
     ResumeMode := smrNormal;
-    GetByName('MapPanelA').SetActive((GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(1));
-    if ShipScreen.FlagD4 then
+    GetByName('MapPanelA')
+        .SetActive((GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heBlindness));
+    if ShipScreen.ReopenRequested then
     begin
       SetCursorActive(False);
       MainPanel.RefreshMoneyAndCargo;
@@ -1010,6 +1068,7 @@ begin
       RequestedScreenId := screenShip;
       RequestClose(1);
       HideLargeHelp;
+      Galaxy.ClearIntegrityStatus;
     end
     else
     begin
@@ -1030,17 +1089,118 @@ begin
       HideLargeHelp;
       PlayerStar.RefreshMovementStepParameters;
       if GetPlayer <> nil then
-        GetPlayer.ScriptItemsAct($18, nil, nil, 0);
-      aCalc.WaitForTurnCalculationUI;
+        GetPlayer.ScriptItemsAct(satOnEnteringForm, nil, nil, 0);
+      Galaxy.PrimeIntegrityChecksum(1117);
       if EndTurnAfterOpen then
       begin
         EndTurnAfterOpen := False;
-        ShipScreen.FlagD4 := False;
+        ShipScreen.ReopenRequested := False;
         EndTurnClicked(nil);
       end;
     end;
   end;
 end;
+
+procedure TfStarMap.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  ClearTouchItem;
+  ScrollLeftHeld := False;
+  ScrollRightHeld := False;
+  ScrollUpHeld := False;
+  ScrollDownHeld := False;
+end;
+
+function TfStarMap.TouchItemInspectionEnabled: Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if (Mode <> smmOrders)
+      or ScannerSelectionActive
+      or TalkSelectionActive
+      or InterceptorSelectionActive
+      or CustomSelectionActive then
+    Exit;
+  for Index := 0 to High(SelectedWeapons) do
+    if SelectedWeapons[Index] then
+      Exit;
+  Result := True;
+end;
+
+function TfStarMap.TouchItemSelectionValid: Boolean;
+begin
+  // Membership is checked before dereferencing: scripts can remove loot while
+  // an inspector is open, and an address can be reused for a different item.
+  Result :=
+      (TouchItem <> nil)
+          and TouchItemInspectionEnabled
+          and (GetPlayer <> nil)
+          and (Galaxy <> nil)
+          and (PlayerStar <> nil)
+          and (PlayerStar = TouchItemStar)
+          and (Galaxy.CurrentTurn = TouchItemTurn)
+          and (PlayerStar.Items.IndexOf(TouchItem) >= 0)
+          and (TouchItem.Id = TouchItemId)
+          and (GetPlayer.HasPickupTarget(TouchItem) = TouchItemWasPickupTarget);
+end;
+
+procedure TfStarMap.ClearTouchItem;
+begin
+  if TouchItem = nil then
+    Exit;
+  TouchItem := nil;
+  ShowObjectInfo(nil);
+end;
+
+procedure TfStarMap.ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer);
+begin
+  // The legacy double-click dispatch sends both down and double-click. An
+  // ordinary item tap has one action regardless of the previous tap's timing.
+  if (Message = WM_LBUTTONDBLCLK)
+      and GamePointerInputIsTouch
+      and TouchItemInspectionEnabled
+      and ((FindObjectAtCursor is TItem)
+          or ((TouchItem <> nil)
+              and (ItemInfoWindow.ContainsPoint(GetCursorPoint)
+                  or StandardInfoPanel.ContainsPoint(GetCursorPoint)))) then
+    Message := WM_LBUTTONDOWN;
+  if TouchItem <> nil then
+  begin
+    if (Message = WM_KEYDOWN) and (WParam = VK_ESCAPE) then
+    begin
+      ClearTouchItem;
+      Exit;
+    end;
+    if (Message = WM_GAME_TOUCH_DRAG_BEGIN) and TouchItemSelectionValid then
+    begin
+      // Give a description its scroll ownership before deciding whether this
+      // gesture leaves the selected loot. A world drag still dismisses it.
+      inherited ProcessWindowMessage(Message, WParam, LParam);
+      if not InspectionOwnsTouch(ItemInfoWindow) and not InspectionOwnsTouch(StandardInfoPanel) then
+        ClearTouchItem;
+      Exit;
+    end;
+    if not TouchItemSelectionValid
+        or (Message = WM_KEYDOWN)
+        or (Message = WM_MOUSEWHEEL)
+        or (Message = WM_GAME_PAN_BEGIN)
+        or (Message = WM_GAME_TOUCH_DRAG_BEGIN)
+        or (Message = WM_MBUTTONDOWN)
+        or (Message = WM_RBUTTONDOWN)
+        or (Message = WM_RBUTTONDBLCLK)
+        or ((Message = WM_GAME_TOUCH_BEGIN) and (WParam = MK_RBUTTON))
+        or (not GamePointerInputIsTouch
+            and ((Message = WM_LBUTTONDOWN) or (Message = WM_LBUTTONDBLCLK))) then
+    begin
+      ClearTouchItem;
+      if Message = WM_MBUTTONDOWN then
+        CursorObject := FindObjectAtCursor;
+    end;
+  end;
+  inherited ProcessWindowMessage(Message, WParam, LParam);
+end;
+
 procedure TfStarMap.OnClose;
 var
   Stage: Integer;
@@ -1048,7 +1208,7 @@ begin
   Stage := 0;
   try
     if (Galaxy <> nil) and (Mode = smmOrders) then
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(2);
     Stage := 1;
     if DeferredEndTurnTimer <> nil then
     begin
@@ -1094,7 +1254,6 @@ begin
       SecondaryFilm.ReleaseWeaponSceneObjects;
     Stage := 9;
     (GetByName('InfoStarPanel') as TPanelGI).FreeOwnedChildren;
-    ClearStarThumbnails;
     Stage := 10;
     MainPanel.OnClose;
     Stage := 11;
@@ -1112,13 +1271,14 @@ begin
       SpaceProcess.CloseSpace;
     Stage := 14;
     if CacheLoader.IsRunning then
-      CacheLoader.WaitForIdle($FFFFFFFF);
+      CacheLoader.WaitForIdle(INFINITE);
     Stage := 15;
     WaitForTurnCalculation;
     Stage := 16;
     if GetPlayer <> nil then
-      GetPlayer.ScriptItemsAct($19, nil, nil, 0);
+      GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
     CacheLoadLoggingEnabled := False;
+    Galaxy.ClearIntegrityStatus;
     Stage := 17;
     if AuxRenderBuffer <> nil then
       AuxRenderBuffer.Clear;
@@ -1126,10 +1286,12 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('TfStarMap.AfterRun, label = ' + IntToStr(Stage));
+      E.Message := 'TfStarMap.AfterRun, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      raise;
     end;
   end;
 end;
+
 procedure TfStarMap.RestorePendingSceneObjects;
 var
   Entry: PEFilmEndEntry;
@@ -1169,6 +1331,7 @@ begin
     PendingHoleRefresh := nil;
   end;
 end;
+
 procedure TfStarMap.BuildSpaceBackground(
     StarField: TStarFieldGI;
     SpaceImage: TSpaceImgGI;
@@ -1270,7 +1433,7 @@ begin
       SpaceImage.AddImage(SelectSpaceImageTemplate(Kind), X, Y, Depth);
       Seed := StepRandomSeed(Seed);
     end;
-    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(2) then
+    if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heChekumash) then
     begin
       Attempts := 0;
       repeat
@@ -1305,7 +1468,7 @@ begin
           );
       Image.OrbitCenter := Galaxy.SpaceBackgroundEntries[Index].OrbitCenter;
       Image.OrbitStepDegrees := Galaxy.SpaceBackgroundEntries[Index].OrbitStepDegrees;
-      Image.Unknown70 := Galaxy.SpaceBackgroundEntries[Index].ImageIndex;
+      Image.SavedTemplateIndex := Galaxy.SpaceBackgroundEntries[Index].ImageIndex;
       Image.FrameIndex := Galaxy.SpaceBackgroundEntries[Index].FrameIndex;
       SpaceImage.UpdateImageOrbitAndFrame(Image);
     end;
@@ -1319,6 +1482,7 @@ begin
     StarField.SetBackgroundImage(WideString('Bm.BGO.bg' + IntToStr(BackgroundIndex)));
   StarField.BackgroundScale := Diameter * 3 / 2000.0;
 end;
+
 procedure TfStarMap.SaveSpaceImageState(SpaceImage: TSpaceImgGI);
 var
   Index, SavedCount: Integer;
@@ -1331,7 +1495,7 @@ begin
     Image := SpaceImage.GetImage(Index);
     if Image.TemplateIndex >= 100 then
     begin
-      Galaxy.SpaceBackgroundEntries[SavedCount].ImageIndex := Image.Unknown70;
+      Galaxy.SpaceBackgroundEntries[SavedCount].ImageIndex := Image.SavedTemplateIndex;
       Galaxy.SpaceBackgroundEntries[SavedCount].OrbitCenter := Image.OrbitCenter;
       Galaxy.SpaceBackgroundEntries[SavedCount].Position :=
           MakeVector3D(Image.X, Image.Y, Image.Depth);
@@ -1343,10 +1507,12 @@ begin
   end;
   SetLength(Galaxy.SpaceBackgroundEntries, SavedCount);
 end;
+
 procedure TfStarMap.SaveSpaceBackground;
 begin
   SaveSpaceImageState(GetByName('SpaceImg') as TSpaceImgGI);
 end;
+
 procedure TfStarMap.DeferredEndTurn(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if DeferredEndTurnTimer <> nil then
@@ -1356,17 +1522,18 @@ begin
   end;
   EndTurnClicked(nil);
 end;
+
 procedure TfStarMap.EndTurnClicked(Sender: TObjectGI);
 var
   WaitResult: Cardinal;
-  Events: array[0..1] of Windows.THandle;
+  Events: array[0..1] of TGameEventHandle;
   EventList: Pointer;
 begin
-  if not MainPanel.NavigationLocked and not ShipScreen.FlagD4 then
+  if not MainPanel.NavigationLocked and not ShipScreen.ReopenRequested then
   begin
     if TrailingFilmEffects <> nil then
       TrailingFilmEffects.RemoveLinkedWeaponEffects;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(3);
     if not IsTurnCalculationRunningUI
         and (TurnCalculationPhase <> tcpGalaxyRunning)
         and (TurnCalculationPhase <> tcpPlayerStarRunning) then
@@ -1392,7 +1559,8 @@ begin
       Events[0] := TurnCalculationThread.IdleEvent;
       Events[1] := TalkRequestEvent;
       EventList := @Events;
-      WaitResult := WaitForMultipleObjects(Length(Events), EventList, False, INFINITE);
+      WaitResult := WaitGameEvents(Length(Events), EventList, False, INFINITE);
+      TurnCalculationThread.CheckFailure;
       if not ExitScreenLoop then
       begin
         if (TurnCalculationThread.IdleEvent = 0) or (WaitResult = WAIT_OBJECT_0) then
@@ -1403,7 +1571,7 @@ begin
           StartTurnFilm;
         end
         else if WaitResult = WAIT_FAILED then
-          raise Exception.Create('Error GetLastError()=' + IntToStr(Int64(GetLastError)))
+          raise Exception.Create('Failed waiting for script UI event')
         else if WaitResult = WAIT_OBJECT_0 + 1 then
         begin
           ScriptDialogIndex := -1;
@@ -1416,9 +1584,10 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.MapKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if MainPanel.NavigationLocked or ShipScreen.FlagD4 then
+  if MainPanel.NavigationLocked or ShipScreen.ReopenRequested then
     Exit;
   if IsVirtualKeyDown(VK_CONTROL) and (Key = VK_ADD) then
   begin
@@ -1446,9 +1615,9 @@ begin
         if Galaxy.SpecialSimulationMode <> 0 then
           Exit;
         CaptureSavePreview;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(91);
         CaptureGalaxyPreview(Self);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(92);
         ResumeMode := smrOrders;
         SaveManagerReturnScreenId := FormToId(Self);
         SaveManagerMode := smmSave;
@@ -1477,16 +1646,16 @@ begin
         MainPanel.QuickLoad(1)
       else if Key = VK_NUMPAD0 then
       begin
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(55);
         GetPlayer.TogglePickupTargets(False);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(56);
         RebuildTargetMarkers;
       end
       else if Key = VK_DECIMAL then
       begin
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(55);
         GetPlayer.TogglePickupTargets(True);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(56);
         RebuildTargetMarkers;
       end
       else if Key = VK_INSERT then
@@ -1556,6 +1725,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.MapKeyUp(Sender: TObjectGI; Key: Cardinal);
 begin
   if Mode = smmOrders then
@@ -1581,6 +1751,7 @@ begin
     ShowObjectInfo(FindObjectAtCursor);
   end;
 end;
+
 procedure TfStarMap.OpenFilmHistoryClicked(Sender: TObjectGI);
 begin
   if (Mode = smmOrders) and not IsTurnCalculationRunningUI and (FilmHistory.GetCount > 0) then
@@ -1589,6 +1760,7 @@ begin
     RequestClose(1);
   end;
 end;
+
 procedure TfStarMap.RefreshScoreModsLabel;
 var
   Text: WideString;
@@ -1597,8 +1769,11 @@ begin
   begin
     if Galaxy.HasVisibleScoreModFlags then
     begin
-      Text := Galaxy.FinalizationName;
-      if (Length(Text) = 0) and Galaxy.EditableStateApplied then
+      Text :=
+          DecodeTextW(
+              Galaxy.FinalizationNameEncoded
+          ); // User-supplied FinalizationName, encoded when editable state is applied.
+      if (Length(Text) = 0) and GR_Main.CCInterface.GetEditableStateApplied then
         Text := LookupLocalizedTextByKey('Cheat.Warning')
       else if (Length(Text) > 0) and (Galaxy.GetCheatPoints <> 0) then
         Text := Text + ' + ' + LookupLocalizedTextByKey('Cheat.Warning');
@@ -1658,6 +1833,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.BuildShipPathOverlay(
     Ship: TShip;
     DelayEndImage: Boolean;
@@ -1733,15 +1909,15 @@ begin
       if Index >= Ship.CurrentStar.Ships.Count then
         Break;
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(13);
     Ship.OrderDestination := Point;
     Ship.ClearMovementPath;
     Ship.BuildFullPathTo(Ship.OrderDestination);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(14);
   end
   else if Ship.Order = soLand then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(15);
     Ship.ClearMovementPath;
     if (Ship = GetPlayer) and (Ship.OrderTarget is TPlanet) then
     begin
@@ -1762,28 +1938,28 @@ begin
             AddPointsF((Ship.OrderTarget as TPlanet).GetPosition, Ship.OrderDestination)
         );
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(16);
   end
   else if Ship.Order = soJumpHole then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(17);
     Ship.ClearMovementPath;
     Ship.BuildFullPathTo(Ship.OrderDestination);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(18);
   end
   else if Ship.Order = soJump then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(19);
     Ship.ClearMovementPath;
-    Ship.BuildOrderMovementPath(999999);
-    aCalc.WaitForTurnCalculationUI;
+    Ship.BuildOrderMovementPath(FullPathNodeLimit);
+    Galaxy.PrimeIntegrityChecksum(20);
   end
   else if (Ship <> GetPlayer) and (Ship.Order = soMove) then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(21);
     Ship.ClearMovementPath;
     Ship.BuildFullPathTo(Ship.OrderDestination);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(22);
   end;
   if Ship.MovementPath.ActiveHead <> nil then
   begin
@@ -1865,11 +2041,11 @@ begin
       begin
         if (Ship is TKling) and (Ship as TKling).ShouldKamikaze then
           EndImage.SetImagePath('Bm.PI.PathEndKamikaze')
-        else if Ship.GetFollowMode = 3 then
+        else if Ship.GetFollowMode = fmKamikaze then
           EndImage.SetImagePath('Bm.PI.PathEndKamikaze')
-        else if Ship.GetFollowMode = 0 then
+        else if Ship.GetFollowMode = fmFollowNear then
           EndImage.SetImagePath('Bm.PI.PathEndFollowNear')
-        else if Ship.GetFollowMode = 1 then
+        else if Ship.GetFollowMode = fmMinWeaponRange then
           EndImage.SetImagePath('Bm.PI.PathEndFollowMin')
         else
           EndImage.SetImagePath('Bm.PI.PathEndFollowMax');
@@ -1889,7 +2065,7 @@ begin
         EndImage.HelpText := 'Bm.PI.PathEndAutoBattle';
         PlayerPathTimer :=
             ScheduleCallbackTimer(
-                GetDoubleClickTime + 50,
+                GameDoubleClickTime + 50,
                 999,
                 UpdatePathEndImage,
                 PtrInt(EndImage)
@@ -1897,16 +2073,16 @@ begin
       end
       else if Ship.Order = soFollowShip then
       begin
-        if Ship.GetFollowMode = 0 then
+        if Ship.GetFollowMode = fmFollowNear then
           EndImage.HelpText := 'Bm.PI.PathEndFollowNear'
-        else if Ship.GetFollowMode = 1 then
+        else if Ship.GetFollowMode = fmMinWeaponRange then
           EndImage.HelpText := 'Bm.PI.PathEndFollowMin'
         else
           EndImage.HelpText := 'Bm.PI.PathEndFollowMax';
         EndImage.SetImagePath(InitialImagePath);
         PlayerPathTimer :=
             ScheduleCallbackTimer(
-                GetDoubleClickTime + 50,
+                GameDoubleClickTime + 50,
                 999,
                 UpdatePathEndImage,
                 PtrInt(EndImage)
@@ -1931,6 +2107,7 @@ begin
     EndImage.SetOrigin(HalfPoint(ImageSize));
     EndImage.SetSize(ImageSize);
     EndImage.RestartPlayback;
+    ScaleSpaceMarker(EndImage);
     LabelGI := TLabelGI.Create(Owner);
     if Ship = GetPlayer then
       LabelGI.SetDepth(UnitPathEndDepth)
@@ -1952,7 +2129,13 @@ begin
     else
       LabelGI.SetText(IntToStr(LandingTurns));
     LabelGI.SetPositionModeW(True);
-    LabelGI.SetPosition(AddPoints(EndPosition, Classes.Point(20, -32)));
+    LabelGI.SetPosition(
+        AddPoints(
+            EndPosition,
+            Classes.Point(Round(20 * SpaceMarkerScale), Round(-32 * SpaceMarkerScale))
+        )
+    );
+    ScaleSpaceMarker(LabelGI, Round(20 * SpaceMarkerScale), Round(-32 * SpaceMarkerScale));
     if (Ship <> GetPlayer) or (GetPlayer = CursorObject) then
     begin
       Count := Ship.MovementPath.NodeCount;
@@ -1974,6 +2157,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.UpdatePathEndImage(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if PlayerPathTimer <> nil then
@@ -1987,8 +2171,14 @@ begin
   TgaiGI(UserData).SetPositionModeW(True);
   TgaiGI(UserData).SetOrigin(HalfPoint(TgaiGI(UserData).GetContentSize));
   TgaiGI(UserData).SetSize(TgaiGI(UserData).GetContentSize);
+  if TgaiGI(UserData).Parent is TSpaceMarkerGI then
+  begin
+    TgaiGI(UserData).SetPositionModeW(False);
+    TgaiGI(UserData).Parent.UpdateAutoGeometry;
+  end;
   TgaiGI(UserData).RestartPlayback;
 end;
+
 procedure TfStarMap.ClearPathOverlay(PlayerPath: Boolean);
 var
   NextControl, Control: TObjectGI;
@@ -2024,6 +2214,7 @@ begin
     MinimapPathKind := smpNone;
   end;
 end;
+
 procedure TfStarMap.ShowAsteroidPath(Asteroid: TAsteroid);
 var
   Count: Integer;
@@ -2076,6 +2267,7 @@ begin
   FreeEC(Cursor);
   MinimapPathKind := smpAsteroid;
 end;
+
 procedure TfStarMap.ClearAsteroidPath;
 var
   NextControl, Control: TObjectGI;
@@ -2102,11 +2294,13 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.ClearPartnerButtons;
 begin
   PartnerPanel.Parent.SetActive(False);
   SecondaryPartnerPanel.FreeOwnedChildren;
 end;
+
 procedure TfStarMap.RebuildPartnerButtons;
 var
   StarIndex, ShipIndex, PlacedCount, PartnerCount: Integer;
@@ -2159,17 +2353,13 @@ begin
             else if Ship is TPirate then
             begin
               Portrait := Portrait + 'P';
-              if (Ship.OwnerId = Byte(oiPirate)) and (TPirate(Ship).PirateType <> 0) then
-                Portrait :=
-                    OwnerInfo[Integer(RaceToOwner(Ship.PilotRace)) and $7F].InternalName
-                        + Portrait
-                        + 'C'
+              if (Ship.OwnerId = oiPirate) and (TPirate(Ship).PirateType <> 0) then
+                Portrait := OwnerInfo[RaceToOwner(Ship.PilotRace)].InternalName + Portrait + 'C'
               else
-                Portrait :=
-                    OwnerInfo[Integer(RaceToOwner(Ship.PilotRace)) and $7F].InternalName + Portrait;
+                Portrait := OwnerInfo[RaceToOwner(Ship.PilotRace)].InternalName + Portrait;
             end
             else
-              Portrait := OwnerInfo[Integer(RaceToOwner(Ship.PilotRace)) and $7F].InternalName;
+              Portrait := OwnerInfo[RaceToOwner(Ship.PilotRace)].InternalName;
             SetImageNormalPath('GI,Bm.PanelSpace2.' + GiResourceSuffix + Portrait + 'N');
             SetImageNormalActivePath('GI,Bm.PanelSpace2.' + GiResourceSuffix + Portrait + 'A');
             SetImageDownPath('GI,Bm.PanelSpace2.' + GiResourceSuffix + Portrait + 'D');
@@ -2234,6 +2424,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.PartnerClicked(Sender: TObjectGI);
 var
   Ship: TShip;
@@ -2268,6 +2459,7 @@ begin
   AddMapAnimation(PointToPointF(GetMapCenter), 'Bm.SI.' + GiResourceSuffix + 'Ring', 200);
   AddMapAnimation(PointToPointF(GetMapCenter), 'Bm.SI.' + GiResourceSuffix + 'Ring', 400);
 end;
+
 procedure TfStarMap.PartnerRightButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Ship: TShip;
@@ -2285,14 +2477,15 @@ begin
           TalkShip := Ship;
           TalkScripted := False;
           ScriptDialogIndex := -1;
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.CheckIntegrityChecksum(23);
           RunTalkDialogs;
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.PrimeIntegrityChecksum(24);
           BreakUiMessage;
         end;
     end;
   end;
 end;
+
 procedure TfStarMap.PartnerMouseEnter(Sender: TObjectGI);
 var
   Obj, Instance: TObject;
@@ -2307,10 +2500,12 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.PartnerMouseLeave(Sender: TObjectGI);
 begin
   ShowObjectInfo(nil);
 end;
+
 procedure TfStarMap.AddMapAnimation(Position: TPointF; ImagePath: WideString; DelayMs: Integer);
 var
   Animation: TgaiGI;
@@ -2330,6 +2525,7 @@ begin
   Animation.CycleCompleteCallback := MapAnimationFinished;
   Animation.RestartPlayback;
 end;
+
 procedure TfStarMap.ClearMapAnimations;
 var
   NextControl, Control: TObjectGI;
@@ -2346,11 +2542,13 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.MapAnimationFinished(Sender: TObjectGI);
 begin
   Sender.SetActive(False);
   Sender.Free;
 end;
+
 function TfStarMap.FindObjectAtCursor: TObject;
 var
   Index, Count: Integer;
@@ -2534,6 +2732,7 @@ begin
   end;
   Result := nil;
 end;
+
 procedure TfStarMap.QueueInterfaceImages;
 var
   Loads: TList;
@@ -2548,6 +2747,7 @@ begin
       Loads.Free;
   end;
 end;
+
 procedure TfStarMap.ShowLargeHelp(const Text: WideString);
 begin
   LargeHelpText := Text;
@@ -2561,6 +2761,7 @@ begin
   LargeHelpProgress := 0;
   AnimateLargeHelp(nil, 0);
 end;
+
 procedure TfStarMap.HideLargeHelp;
 begin
   if LargeHelpTimer <> nil then
@@ -2571,6 +2772,7 @@ begin
   LargeHelpBuffer.Invalidate;
   LargeHelpBuffer.SetActive(False);
 end;
+
 procedure TfStarMap.AnimateLargeHelp(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Intensity: Single;
@@ -2614,6 +2816,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.RedrawMap;
 begin
   UpdateRectsEnabled := True;
@@ -2622,11 +2825,18 @@ begin
   UpdateRectsEnabled := False;
   InvalidateTransientControl;
 end;
+
 procedure TfStarMap.DrawFrame;
 var
   RectNode: TRectGR;
   Stage: Integer;
+  SavedTransform: TGameGraphicsTransform;
+  BackgroundClip: TRect;
+  Scale: Single;
 begin
+  UpdateSpaceZoom;
+  if (TouchItem <> nil) and not TouchItemSelectionValid then
+    ClearTouchItem;
   Stage := 0;
   try
     if (MinimapFrameCounter mod 16) = 0 then
@@ -2659,7 +2869,23 @@ begin
     RectNode := UpdateRects.FirstRect;
     while RectNode <> nil do
     begin
-      StarField.DrawBackground(RectNode.Bounds);
+      Scale := StarField.GetDisplayScale;
+      BackgroundClip :=
+          Classes.Rect(
+              Floor(RectNode.Bounds.Left / Scale),
+              Floor(RectNode.Bounds.Top / Scale),
+              Ceil(RectNode.Bounds.Right / Scale),
+              Ceil(RectNode.Bounds.Bottom / Scale)
+          );
+      SavedTransform := GameGraphicsTransform;
+      GameGraphicsTransform := GameGraphicsIdentityTransform;
+      GameGraphicsTransform.ScaleX := Scale;
+      GameGraphicsTransform.ScaleY := Scale;
+      try
+        StarField.DrawBackground(BackgroundClip);
+      finally
+        GameGraphicsTransform := SavedTransform;
+      end;
       RectNode := RectNode.Next;
     end;
     Stage := 9;
@@ -2668,9 +2894,9 @@ begin
     Stage := 10;
     DrawQueuedControlRects;
     Stage := 11;
-    if not ShipScreen.FlagD4
-        and ((TalkScreen = nil) or (TalkScreen.Flag128 = 0))
-        and ((GoodsShopScreen = nil) or not GoodsShopScreen.FlagEC) then
+    if not ShipScreen.ReopenRequested
+        and (TalkScreen.ModalTransition = tmtNone)
+        and not GoodsShopScreen.ReopenRequested then
     begin
       if not BeginFramePresentation then
       begin
@@ -2696,10 +2922,12 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('TfStarMap.Draw2, label = ' + IntToStr(Stage));
+      E.Message := 'TfStarMap.Draw2, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      raise;
     end;
   end;
 end;
+
 procedure TfStarMap.RunTalkDialogs;
 var
   Trading: Integer;
@@ -2730,18 +2958,18 @@ begin
     if Trading = 0 then
     begin
       RunTalk(Self);
-      if TalkScreen.Flag128 = 2 then
+      if TalkScreen.ModalTransition = tmtTrade then
         Trading := 1;
     end
     else
     begin
       RunGoodsShop(Self);
-      TalkScreen.Flag12C := True;
-      if not GoodsShopScreen.FlagEC then
+      TalkScreen.ReturnedFromTrade := True;
+      if not GoodsShopScreen.ReopenRequested then
         Trading := 0;
     end;
     MainPanel.RefreshMoneyAndCargo;
-    if (TalkScreen.Flag128 = 0) and not GoodsShopScreen.FlagEC then
+    if (TalkScreen.ModalTransition = tmtNone) and not GoodsShopScreen.ReopenRequested then
       MainPanel.RebuildMessageButtons(False)
     else if Trading = 0 then
       MainPanel.RebuildMessageButtons(False)
@@ -2756,7 +2984,7 @@ begin
     SetCursorActive(False);
     Present;
     SetCursorActive(True);
-    if (TalkScreen.Flag128 = 0) and not GoodsShopScreen.FlagEC then
+    if (TalkScreen.ModalTransition = tmtNone) and not GoodsShopScreen.ReopenRequested then
       Break;
     SetCursorActive(False);
     CaptureScreenBackground(Trading <> 0, 1);
@@ -2777,19 +3005,20 @@ begin
   end;
   RestorePendingSceneObjects;
   ResumeMode := smrNormal;
-  if GameEndReason = 4 then
+  if GameEndReason = gerTerronConversion then
   begin
     RequestedScreenId := screenGameEnd;
     ReleaseAllTextureSurfaces;
     RequestClose(1);
   end;
 end;
+
 procedure TfStarMap.GalaxyClicked(Sender: TObjectGI);
 begin
   if Galaxy.SpecialSimulationMode = 0 then
   begin
     MainPanel.NavigationLocked := True;
-    if not ShipScreen.FlagD4 then
+    if not ShipScreen.ReopenRequested then
     begin
       HideLargeHelp;
       GetByName('PM_WinMsg').SetActive(False);
@@ -2804,14 +3033,15 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.ShipClicked(Sender: TObjectGI);
 begin
   if Galaxy.SpecialSimulationMode = 0 then
   begin
     MainPanel.NavigationLocked := True;
-    if not ShipScreen.FlagD4 then
+    if not ShipScreen.ReopenRequested then
     begin
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(13131);
       HideLargeHelp;
       ShowObjectInfo(nil);
       ClearPathOverlay(True);
@@ -2825,15 +3055,18 @@ begin
         PlayerHoldShip := GetPlayer;
       ShipScreen.PlayTransitionSounds := True;
       ShipReturnScreenId := FormToId(Self);
+      Galaxy.ClearIntegrityStatus;
       RequestedScreenId := screenShip;
       RequestClose(1);
     end;
   end;
 end;
+
 procedure TfStarMap.StartOrderMode;
 var
   Index: Integer;
 begin
+  Galaxy.ClearIntegrityStatus;
   ScrollLeftHeld := False;
   ScrollRightHeld := False;
   ScrollUpHeld := False;
@@ -2850,7 +3083,7 @@ begin
   UpdateRectsEnabled := True;
   MapControls.Invalidate;
   UpdateRectsEnabled := False;
-  GetPlayer.BuildOrderMovementPath(999999);
+  GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
   CenterShipButton.DownCallback := CenterShipClicked;
   CenterShipButton.MouseEnterCallback := CenterShipMouseEnter;
   CenterShipButton.MouseLeaveCallback := CenterShipMouseLeave;
@@ -2882,7 +3115,7 @@ begin
   RefreshWeaponButtons;
   MainPanel.RebuildMessageButtons(False);
   Mode := smmOrders;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(25);
   BuildShipPathOverlay(GetPlayer, False, '');
   RebuildPartnerButtons;
   MainPanel.SetDateRange(Galaxy.CurrentTurn, Galaxy.CurrentTurn);
@@ -2918,9 +3151,9 @@ begin
     UpdateSpacePanelPosition;
   end;
   AnimateSpacePanelOnResume := False;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(311);
   UpdateTerronTransformation;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(310);
   TalkButton.SetDisabled(not GetPlayer.IsEquipmentUsable(GetPlayer.GetRadar));
   ScannerButton.SetDisabled(
       (not GetPlayer.IsEquipmentUsable(GetPlayer.GetRadar)
@@ -2934,20 +3167,22 @@ begin
   end;
   (GetByName('PM_EndTurn') as TGraphButtonGI).SetHovered(False);
   PostMouseMoveMessage;
-  if GameEndReason = 4 then
+  if GameEndReason = gerTerronConversion then
   begin
     RequestedScreenId := screenGameEnd;
     ReleaseAllTextureSurfaces;
     RequestClose(1);
   end;
-  aCalc.WaitForTurnCalculationUI;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(105);
+  Galaxy.PrimeIntegrityChecksum(106);
 end;
+
 procedure TfStarMap.StopOrderMode;
 var
   Index: Integer;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  ClearTouchItem;
+  Galaxy.CheckIntegrityChecksum(26);
   if DeferredEndTurnTimer <> nil then
   begin
     CancelCallbackTimer(DeferredEndTurnTimer);
@@ -2990,6 +3225,7 @@ begin
     SpaceEffectsTimer := nil;
   end;
 end;
+
 procedure TfStarMap.HideOrderInterface;
 begin
   ClearAsteroidPath;
@@ -3006,6 +3242,7 @@ begin
   StandardInfoPanel.SetActive(False);
   MainPanel.Hide;
 end;
+
 procedure TfStarMap.ConfigureMiddleButtonAction;
 begin
   if ActionDoubleClick then
@@ -3015,10 +3252,10 @@ begin
   end;
   MapControls.LeftButtonDoubleClickCallback := MapLeftButtonDown;
 end;
+
 procedure TfStarMap.ScrollMap(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
-  Point, OldPoint: TPoint;
-  X, Y: SmallInt;
+  Point, OldPoint, MousePoint: TPoint;
 begin
   OldPoint := GetMapCenter;
   Point := OldPoint;
@@ -3030,32 +3267,24 @@ begin
     Dec(Point.Y, ScrollStep);
   if ScrollDownHeld then
     Inc(Point.Y, ScrollStep);
-  X := GetCursorPoint.X;
-  Y := GetCursorPoint.Y;
-  if GetForegroundWindow = MainWindowHandle then
+  if GameWindowFocused then
   begin
-
-    if (X >= -30) and (X <= Integer(GameScreenWidth) + 30) then
-
+    if GetScrollMousePoint(MousePoint) then
     begin
-
-      if X < ScrollSense then
+      if MousePoint.X < ScrollSense then
         Dec(Point.X, ScrollStep);
-      if X > Integer(GameScreenWidth) - ScrollSense - 1 then
+      if MousePoint.X > GameScreenWidth - ScrollSense - 1 then
         Inc(Point.X, ScrollStep);
-    end;
-    if (Y >= -30) and (Y <= Integer(GameScreenHeight) + 30) then
-    begin
-      if Y < ScrollSense then
+      if MousePoint.Y < ScrollSense then
         Dec(Point.Y, ScrollStep);
-      if Y > Integer(GameScreenHeight) - ScrollSense - 1 then
+      if MousePoint.Y > GameScreenHeight - ScrollSense - 1 then
         Inc(Point.Y, ScrollStep);
-
     end;
     if (OldPoint.X <> Point.X) or (OldPoint.Y <> Point.Y) then
       SetMapCenterManually(Point);
   end;
 end;
+
 procedure TfStarMap.AdvanceSpaceEffects(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if TrailingFilmEffects <> nil then
@@ -3070,6 +3299,7 @@ begin
   SpaceProcess.Space.AdvanceTimers;
   SpaceProcess.Space.AdvanceObjects;
 end;
+
 function TfStarMap.IsMapPointBlocked(Sender: TObjectGI; Point: TPoint): Boolean;
 begin
   Result := True;
@@ -3115,6 +3345,7 @@ begin
     Exit;
   Result := False;
 end;
+
 procedure TfStarMap.MapLeftButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   MapControl: TPanelGI;
@@ -3133,12 +3364,37 @@ var
 begin
   if MainPanel.NavigationLocked then
     Exit;
-  if ShipScreen.FlagD4 then
+  if ShipScreen.ReopenRequested then
     Exit;
   HideLargeHelp;
   if IsMapPointBlocked(Sender, Point) then
+  begin
+    if not ItemInfoWindow.ContainsPoint(Point) and not StandardInfoPanel.ContainsPoint(Point) then
+      ClearTouchItem;
     Exit;
+  end;
   CursorObject := FindObjectAtCursor;
+  if GamePointerInputIsTouch
+      and not GamePointerInputIsTouchHover
+      and TouchItemInspectionEnabled
+      and (CursorObject is TItem) then
+  begin
+    if TouchDragKind <> tdNone then
+      Exit;
+    if (TouchItem <> CursorObject) or not TouchItemSelectionValid then
+    begin
+      ClearTouchItem;
+      TouchItem := TItem(CursorObject);
+      TouchItemId := TouchItem.Id;
+      TouchItemStar := PlayerStar;
+      TouchItemTurn := Galaxy.CurrentTurn;
+      TouchItemWasPickupTarget := GetPlayer.HasPickupTarget(TouchItem);
+      ShowObjectInfo(TouchItem);
+      Exit;
+    end;
+  end;
+  // Consume before the native action or a modal transition, never on hover.
+  ClearTouchItem;
   ScanUnresolved := ScannerSelectionActive;
   TalkUnresolved := TalkSelectionActive;
   OutOfRange := False;
@@ -3185,12 +3441,12 @@ begin
         if CustomSelectionItem.ScriptItem <> nil then
           ActionResult :=
               TScriptItem(CustomSelectionItem.ScriptItem)
-                  .RunActionCode($35, GetPlayer, CursorObject, nil, ActionResult);
+                  .RunActionCode(satOnCustomTargetting, GetPlayer, CursorObject, nil, ActionResult);
         if CustomSelectionItem is TEquipmentWithActCode then
           ActionResult :=
               RunItemConfigActionCode(
                   CustomSelectionItem,
-                  $35,
+                  satOnCustomTargetting,
                   GetPlayer,
                   CursorObject,
                   nil,
@@ -3204,7 +3460,14 @@ begin
           if not Info.DeleteQueued and (Info.TypeName = CustomSelectionInfoName) then
           begin
             ActionResult :=
-                RunCustomShipInfoActionCode(Info, $35, GetPlayer, CursorObject, nil, ActionResult);
+                RunCustomShipInfoActionCode(
+                    Info,
+                    satOnCustomTargetting,
+                    GetPlayer,
+                    CursorObject,
+                    nil,
+                    ActionResult
+                );
             Break;
           end;
         end;
@@ -3223,7 +3486,7 @@ begin
       and (CursorObject is TStar)
       and (TerronShip <> nil)
       and (GetPlayer.CurrentStar = TerronShip.CurrentStar)
-      and (Galaxy.TerronToStarTurn >= $40000000)) then
+      and (Galaxy.TerronToStarTurn >= TerronTransformationFlag)) then
   begin
     if ((ScannerSelectionActive or TalkSelectionActive) and not (CursorObject is TShip))
         or ((CursorObject is TShip)
@@ -3287,9 +3550,9 @@ begin
   begin
     ClearPathOverlay(True);
     PendingPlayerFollowTarget := nil;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(27);
     GetPlayer.OrderMove(Destination, False);
-    GetPlayer.BuildOrderMovementPath(999999);
+    GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
     if (GetPlayer.MovementPath <> nil) and (GetPlayer.MovementPath.ActiveHead <> nil) then
     begin
       Node := GetPlayer.MovementPath.ActiveHead;
@@ -3311,7 +3574,7 @@ begin
         if FollowingNode <> nil then
         begin
           GetPlayer.OrderMove(FollowingNode.Position, False);
-          GetPlayer.BuildOrderMovementPath(999999);
+          GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
         end;
       end;
     end
@@ -3324,18 +3587,18 @@ begin
         GetPlayer.GetHull.InterceptorTarget := nil;
         RebuildTargetMarkers;
       end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(28);
   end
   else if CursorObject is TPlanet then
   begin
     Location := CursorObject as TPlanet;
     ClearPathOverlay(True);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(33);
     PendingPlayerFollowTarget := nil;
     if not (((GetPlayer.Order = soLand) and (GetPlayer.OrderTarget = Location))
-        or ((CursorObject as TPlanet).OwnerId = Byte(oiDominator))
+        or ((CursorObject as TPlanet).OwnerId = oiDominator)
         or ((GetPlayer.CurrentStar.Status.CustomFaction <> '')
-            and ((CursorObject as TPlanet).OwnerId <> Byte(oiUninhabited)))) then
+            and ((CursorObject as TPlanet).OwnerId <> oiUninhabited))) then
     begin
       GetPlayer.OrderLanding(Location, False);
       GetPlayer.OrderDestination := SubtractPointsF(Destination, TPlanet(Location).GetPosition);
@@ -3344,29 +3607,29 @@ begin
     else
     begin
       GetPlayer.OrderMove(Destination, False);
-      GetPlayer.BuildOrderMovementPath(999999);
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(34);
     BuildShipPathOverlay(GetPlayer, False, '');
   end
   else if CursorObject is THole then
   begin
     Hole := CursorObject as THole;
     ClearPathOverlay(True);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(35);
     PendingPlayerFollowTarget := nil;
     if not ((GetPlayer.Order = soJumpHole) and (GetPlayer.OrderTarget = Hole)) then
     begin
       GetPlayer.OrderJumpHole(Hole, False);
       GetPlayer.OrderDestination := Destination;
-      GetPlayer.BuildOrderMovementPath(999999);
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
     end
     else
     begin
       GetPlayer.OrderMove(Destination, False);
-      GetPlayer.BuildOrderMovementPath(999999);
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(36);
     BuildShipPathOverlay(GetPlayer, False, '');
   end
   else if (CursorObject is TRuins)
@@ -3376,16 +3639,16 @@ begin
   begin
     Ship := CursorObject as TShip;
     ClearPathOverlay(True);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(37);
     PendingPlayerFollowTarget := nil;
     if HadWeapons and (GetPlayer <> CursorObject) then
     begin
       Mode := 0;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(41);
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if PointDistance(GetPlayer.Position, (CursorObject as TShip).Position)
               <= GetPlayer.GetWeaponActionRange(Weapon) then
           begin
@@ -3399,7 +3662,7 @@ begin
             OutOfRange := True;
           end;
         end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(42);
       if Mode = 1 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotSet'))
       else if Mode = 2 then
@@ -3416,7 +3679,7 @@ begin
       end
       else if PointDistance(GetPlayer.Position, (CursorObject as TShip).Position) > 1000 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.InterceptorsOutRange'));
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(42);
       RebuildTargetMarkers;
     end
     else if not (((GetPlayer.Order = soLand) and (GetPlayer.OrderTarget = Ship))
@@ -3430,9 +3693,9 @@ begin
     else
     begin
       GetPlayer.OrderMove(Destination, False);
-      GetPlayer.BuildOrderMovementPath(999999);
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(38);
     BuildShipPathOverlay(GetPlayer, False, '');
   end
   else if CursorObject is TShip then
@@ -3505,11 +3768,11 @@ begin
         ScriptDialogIndex := -1;
         TalkShip := CursorObject as TShip;
         TalkScripted := False;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(39);
         RunTalkDialogs;
         ClearPathOverlay(True);
-        GetPlayer.BuildOrderMovementPath(999999);
-        aCalc.WaitForTurnCalculationUI;
+        GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
+        Galaxy.PrimeIntegrityChecksum(40);
         BuildShipPathOverlay(GetPlayer, False, '');
       end
       else if PointDistance(GetPlayer.Position, (CursorObject as TShip).Position)
@@ -3529,17 +3792,17 @@ begin
       end
       else if PointDistance(GetPlayer.Position, (CursorObject as TShip).Position) > 1000 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.InterceptorsOutRange'));
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(42);
       RebuildTargetMarkers;
     end
     else if HadWeapons and (GetPlayer <> CursorObject) then
     begin
       Mode := 0;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(41);
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if PointDistance(GetPlayer.Position, (CursorObject as TShip).Position)
               <= GetPlayer.GetWeaponActionRange(Weapon) then
           begin
@@ -3553,31 +3816,31 @@ begin
             OutOfRange := True;
           end;
         end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(42);
       if Mode = 1 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotSet'))
       else if Mode = 2 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotOutRange'));
       RebuildTargetMarkers;
     end
-    else if ((GetAsyncKeyState(VK_CONTROL) and $8000) = $8000) and (GetPlayer <> CursorObject) then
+    else if ((GameKeyState(VK_CONTROL) and $8000) = $8000) and (GetPlayer <> CursorObject) then
     begin
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(43);
       GetPlayer.OrderNone(False);
       if GetPlayer.CanSelectShipTarget(CursorObject as TShip) then
         PendingPlayerFollowTarget := CursorObject as TShip;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(44);
       BuildShipPathOverlay(GetPlayer, False, '');
       ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveAuto'));
     end
     else if GetPlayer = Ship then
     begin
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(45);
       PendingPlayerFollowTarget := nil;
       GetPlayer.OrderNone(False);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(46);
     end
     else
     begin
@@ -3586,7 +3849,7 @@ begin
         Mode := 1
       else if (GetPlayer.Order = soFollowShip) and (GetPlayer.OrderTarget = Ship) then
       begin
-        if Byte(GetPlayer.OrderStateData) = 1 then
+        if TFollowMode(Byte(GetPlayer.OrderStateData)) = fmMinWeaponRange then
           Mode := 3
         else
           Mode := 2;
@@ -3628,7 +3891,7 @@ begin
           if Mode > 3 then
             Mode := 1;
         end;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(47);
         if Mode = 1 then
           if not GetPlayer.CanSelectShipTarget(CursorObject as TShip) then
             Mode := 2;
@@ -3641,16 +3904,16 @@ begin
         else if Mode = 2 then
         begin
           PendingPlayerFollowTarget := nil;
-          GetPlayer.OrderFollowShip(Ship, 0, False);
+          GetPlayer.OrderFollowShip(Ship, fmFollowNear, False);
           ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveNear'));
         end
         else if Mode = 3 then
         begin
           PendingPlayerFollowTarget := nil;
-          GetPlayer.OrderFollowShip(Ship, 1, False);
+          GetPlayer.OrderFollowShip(Ship, fmMinWeaponRange, False);
           ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveShot'));
         end;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(48);
         if AnimatePath then
           BuildShipPathOverlay(GetPlayer, True, InitialImage)
         else
@@ -3667,18 +3930,18 @@ begin
         TalkShip := TerronShip;
         TalkScripted := False;
         ScriptDialogIndex := -1;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(49);
         RunTalkDialogs;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(50);
       end;
     end
     else
     begin
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(51);
       GetPlayer.OrderMove(Destination, False);
-      GetPlayer.BuildOrderMovementPath(999999);
-      aCalc.WaitForTurnCalculationUI;
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
+      Galaxy.PrimeIntegrityChecksum(52);
       BuildShipPathOverlay(GetPlayer, False, '');
     end;
   end
@@ -3687,11 +3950,11 @@ begin
     if HadWeapons then
     begin
       Mode := 0;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(53);
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if PointDistance(GetPlayer.Position, (CursorObject as TItem).Position)
               <= GetPlayer.GetWeaponActionRange(Weapon) then
           begin
@@ -3705,7 +3968,7 @@ begin
             OutOfRange := True;
           end;
         end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(54);
       if Mode = 1 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotSet'))
       else if Mode = 2 then
@@ -3715,12 +3978,12 @@ begin
     else if CanCargoHookHandleItem(TItem(CursorObject), GetPlayer) then
       if not GetPlayer.IsRecentlyDroppedItem(TItem(CursorObject)) then
       begin
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(55);
         if GetPlayer.HasPickupTarget(TItem(CursorObject)) then
           GetPlayer.RemovePickupTarget(TItem(CursorObject))
         else
           GetPlayer.AddPickupTarget(TItem(CursorObject), False);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(56);
         RebuildTargetMarkers;
       end;
   end
@@ -3729,11 +3992,11 @@ begin
     if HadWeapons then
     begin
       Mode := 0;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(57);
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if PointDistance(GetPlayer.Position, (CursorObject as TAsteroid).Position)
               <= GetPlayer.GetWeaponActionRange(Weapon) then
           begin
@@ -3747,7 +4010,7 @@ begin
             OutOfRange := True;
           end;
         end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(58);
       if Mode = 1 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotSet'))
       else if Mode = 2 then
@@ -3760,11 +4023,11 @@ begin
     if HadWeapons then
     begin
       Mode := 0;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(59);
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if PointDistance(GetPlayer.Position, (CursorObject as TMissile).Position)
               <= GetPlayer.GetWeaponActionRange(Weapon) then
           begin
@@ -3778,7 +4041,7 @@ begin
             OutOfRange := True;
           end;
         end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(60);
       if Mode = 1 then
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotSet'))
       else if Mode = 2 then
@@ -3806,9 +4069,10 @@ begin
   RefreshWeaponButtons;
   UpdateActionCursor(False);
 end;
+
 procedure TfStarMap.MapMiddleButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
-  CameraVector: TPointF;
+  Vector: TPointF;
   Scale: Single;
   Planet: TPlanet;
   Ship: TShip;
@@ -3817,7 +4081,7 @@ var
   FollowMode: Integer;
 begin
   if not MainPanel.NavigationLocked
-      and not ShipScreen.FlagD4
+      and not ShipScreen.ReopenRequested
       and not IsMapPointBlocked(Sender, Point) then
   begin
     Destination := PointToPointF(MapControls.ToLocalPoint(Point));
@@ -3827,12 +4091,12 @@ begin
     begin
       Hole := CursorObject as THole;
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(61);
       PendingPlayerFollowTarget := nil;
       GetPlayer.OrderJumpHole(Hole, False);
       GetPlayer.OrderDestination := Destination;
-      GetPlayer.BuildOrderMovementPath(999999);
-      aCalc.WaitForTurnCalculationUI;
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
+      Galaxy.PrimeIntegrityChecksum(62);
     end
     else if (CursorObject <> nil)
         and (((CursorObject is TRuins) and (CursorObject as TRuins).CanDock(GetPlayer))
@@ -3840,11 +4104,11 @@ begin
     begin
       Ship := CursorObject as TShip;
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(63);
       PendingPlayerFollowTarget := nil;
       GetPlayer.OrderLanding(Ship, False);
       GetPlayer.OrderDestination := SubtractPointsF(Destination, Ship.Position);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(64);
     end
     else if (CursorObject <> nil)
         and (CursorObject is TShip)
@@ -3858,7 +4122,7 @@ begin
         FollowMode := 1
       else if (GetPlayer.Order = soFollowShip) and (GetPlayer.OrderTarget = Ship) then
       begin
-        if Byte(GetPlayer.OrderStateData) = 1 then
+        if TFollowMode(Byte(GetPlayer.OrderStateData)) = fmMinWeaponRange then
           FollowMode := 3
         else
           FollowMode := 2;
@@ -3882,7 +4146,7 @@ begin
         if FollowMode < 1 then
           FollowMode := 3;
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(65);
       if FollowMode = 1 then
         if not GetPlayer.CanSelectShipTarget(CursorObject as TShip) then
           FollowMode := 2;
@@ -3895,16 +4159,16 @@ begin
       else if FollowMode = 2 then
       begin
         PendingPlayerFollowTarget := nil;
-        GetPlayer.OrderFollowShip(Ship, 0, False);
+        GetPlayer.OrderFollowShip(Ship, fmFollowNear, False);
         ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveNear'));
       end
       else if FollowMode = 3 then
       begin
         PendingPlayerFollowTarget := nil;
-        GetPlayer.OrderFollowShip(Ship, 1, False);
+        GetPlayer.OrderFollowShip(Ship, fmMinWeaponRange, False);
         ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveShot'));
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(66);
     end
     else if (CursorObject <> nil)
         and (CursorObject is TPlanet)
@@ -3912,11 +4176,11 @@ begin
     begin
       Planet := CursorObject as TPlanet;
       ClearPathOverlay(True);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(67);
       PendingPlayerFollowTarget := nil;
-      if ((CursorObject as TPlanet).OwnerId <> Byte(oiDominator))
+      if ((CursorObject as TPlanet).OwnerId <> oiDominator)
           and ((GetPlayer.CurrentStar.Status.CustomFaction = '')
-              or ((CursorObject as TPlanet).OwnerId = Byte(oiUninhabited))) then
+              or ((CursorObject as TPlanet).OwnerId = oiUninhabited)) then
       begin
         GetPlayer.OrderLanding(Planet, False);
         GetPlayer.OrderDestination := SubtractPointsF(Destination, Planet.GetPosition);
@@ -3924,23 +4188,21 @@ begin
       else
       begin
         GetPlayer.OrderMove(Destination, False);
-        GetPlayer.BuildOrderMovementPath(999999);
+        GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(68);
     end
     else if (CursorObject <> nil) and (CursorObject is TItem) then
     begin
-      CameraVector.X := GetPlayer.Position.X - TItem(CursorObject).Position.X;
-      CameraVector.Y := GetPlayer.Position.Y - TItem(CursorObject).Position.Y;
+      Vector.X := GetPlayer.Position.X - TItem(CursorObject).Position.X;
+      Vector.Y := GetPlayer.Position.Y - TItem(CursorObject).Position.Y;
       Scale :=
-          GetPlayer.GetCargoHookRange
-              / 4
-              * (1 / Sqrt(CameraVector.X * CameraVector.X + CameraVector.Y * CameraVector.Y));
-      CameraVector.X := Round(TItem(CursorObject).Position.X + Scale * CameraVector.X);
-      CameraVector.Y := Round(TItem(CursorObject).Position.Y + Scale * CameraVector.Y);
-      aCalc.WaitForTurnCalculationUI;
+          GetPlayer.GetCargoHookRange / 4 * (1 / Sqrt(Vector.X * Vector.X + Vector.Y * Vector.Y));
+      Vector.X := Round(TItem(CursorObject).Position.X + Scale * Vector.X);
+      Vector.Y := Round(TItem(CursorObject).Position.Y + Scale * Vector.Y);
+      Galaxy.CheckIntegrityChecksum(69);
       PendingPlayerFollowTarget := nil;
-      GetPlayer.OrderMove(CameraVector, False);
+      GetPlayer.OrderMove(Vector, False);
       if CanCargoHookHandleItem(TItem(CursorObject), GetPlayer)
           and not GetPlayer.IsRecentlyDroppedItem(TItem(CursorObject)) then
       begin
@@ -3949,13 +4211,13 @@ begin
         GetPlayer.AddPickupTarget(TItem(CursorObject), True);
         RebuildTargetMarkers;
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(70);
     end;
     if Mode = smmOrders then
     begin
-      aCalc.WaitForTurnCalculationUI;
-      GetPlayer.BuildOrderMovementPath(999999);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(71);
+      GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
+      Galaxy.PrimeIntegrityChecksum(72);
       BuildShipPathOverlay(GetPlayer, False, '');
       if DeferredEndTurnTimer <> nil then
       begin
@@ -3966,12 +4228,13 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.MapRightButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Index, FollowMode: Integer;
   Ship: TShip;
 begin
-  if not MainPanel.NavigationLocked and not ShipScreen.FlagD4 then
+  if not MainPanel.NavigationLocked and not ShipScreen.ReopenRequested then
   begin
     HideLargeHelp;
     ScannerSelectionActive := False;
@@ -4061,11 +4324,11 @@ begin
               TalkShip := Ship;
               TalkScripted := False;
               ScriptDialogIndex := -1;
-              aCalc.WaitForTurnCalculationUI;
+              Galaxy.CheckIntegrityChecksum(73);
               RunTalkDialogs;
               ClearPathOverlay(True);
-              GetPlayer.BuildOrderMovementPath(999999);
-              aCalc.WaitForTurnCalculationUI;
+              GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
+              Galaxy.PrimeIntegrityChecksum(74);
               BuildShipPathOverlay(GetPlayer, False, '');
               BreakUiMessage;
             end;
@@ -4081,7 +4344,8 @@ begin
             FollowMode := 1
           else if (GetPlayer.Order = soFollowShip) and (GetPlayer.OrderTarget = Ship) then
           begin
-            if (Byte(GetPlayer.OrderStateData) = 1) and GetPlayer.CanSelectShipTarget(Ship) then
+            if (TFollowMode(Byte(GetPlayer.OrderStateData)) = fmMinWeaponRange)
+                and GetPlayer.CanSelectShipTarget(Ship) then
               FollowMode := 3
             else
               FollowMode := 2;
@@ -4107,7 +4371,7 @@ begin
           end;
           if not GetPlayer.CanSelectShipTarget(Ship) and (FollowMode = 3) then
             FollowMode := 1;
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.CheckIntegrityChecksum(75);
           if FollowMode = 1 then
             if not GetPlayer.CanSelectShipTarget(CursorObject as TShip) then
               FollowMode := 2;
@@ -4120,22 +4384,22 @@ begin
           else if FollowMode = 2 then
           begin
             PendingPlayerFollowTarget := nil;
-            GetPlayer.OrderFollowShip(Ship, 0, False);
+            GetPlayer.OrderFollowShip(Ship, fmFollowNear, False);
             ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveNear'));
           end
           else if FollowMode = 3 then
           begin
             PendingPlayerFollowTarget := nil;
-            GetPlayer.OrderFollowShip(Ship, 1, False);
+            GetPlayer.OrderFollowShip(Ship, fmMinWeaponRange, False);
             ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveShot'));
           end;
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.PrimeIntegrityChecksum(76);
           BuildShipPathOverlay(GetPlayer, False, '');
         end;
       end;
     end
     else if ((CursorObject is TPlanet)
-            and ((CursorObject as TPlanet).OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+            and ((CursorObject as TPlanet).OwnerId in [oiMaloc..oiGaal, oiPirate])
             and ((CursorObject as TPlanet).CurrentStar.Status.CustomFaction = '')
             and (PointDistance(GetPlayer.Position, (CursorObject as TPlanet).GetPosition)
                 <= GetPlayer.GetRadarRange))
@@ -4146,7 +4410,7 @@ begin
                 <= GetPlayer.GetRadarRange)) then
     begin
       AddOrUpdatePlayerBubble(
-          7,
+          pmUserNote,
           Galaxy.CurrentTurn,
           GoodsShopScreen.BuildPriceText(CursorObject),
           GetPriceSnapshotKey(CursorObject)
@@ -4159,18 +4423,30 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.MapMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
-  if not MainPanel.NavigationLocked and not ShipScreen.FlagD4 then
+  if TouchItem <> nil then
+  begin
+    if TouchItemSelectionValid then
+      Exit;
+    ClearTouchItem;
+  end;
+  if GamePointerInputIsTouch
+      and not GamePointerInputIsTouchHover
+      and TouchItemInspectionEnabled
+      and (FindObjectAtCursor is TItem) then
+    Exit;
+  if not MainPanel.NavigationLocked and not ShipScreen.ReopenRequested then
   begin
     RefreshActionRanges;
-    if PtInRect(ScrollInteriorRect, Point) then
+    if not GamePointerAllowsEdgeScroll or PtInRect(ScrollInteriorRect, Point) then
       UpdateActionCursor(False);
     if not Sender.IsOccludedAtPoint(Point) then
     begin
       if (KeyState and MK_RBUTTON) = MK_RBUTTON then
         ShowObjectInfo(FindObjectAtCursor)
-      else if not PtInRect(ScrollInteriorRect, Point) then
+      else if GamePointerAllowsEdgeScroll and not PtInRect(ScrollInteriorRect, Point) then
       begin
         if not IsCursorImageSelected('Scroll') then
           SetCursorByName('Scroll');
@@ -4189,6 +4465,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.OrderKeyDown(Sender: TObjectGI; Key: Cardinal);
 var
   Index: Integer;
@@ -4197,7 +4474,7 @@ var
   Binding: TScriptShip;
 begin
   if not MainPanel.NavigationLocked
-      and not ShipScreen.FlagD4
+      and not ShipScreen.ReopenRequested
       and not IsVirtualKeyDown(VK_CONTROL)
       and not IsVirtualKeyDown(VK_SHIFT)
       and not IsVirtualKeyDown(VK_MENU) then
@@ -4210,14 +4487,14 @@ begin
     else if (Key >= Ord('1')) and (Key < Ord('6')) then
     begin
       Index := Key - Ord('1');
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(77);
       TalkSelectionActive := False;
       ScannerSelectionActive := False;
       InterceptorSelectionActive := False;
       CustomSelectionActive := False;
-      Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+      Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
       if not GetPlayer.IsEquipmentUsable(Weapon)
-          or ((Byte(Weapon.GetWeaponInfo.ShotType) in [Ord(wstTorpedo)..Ord(wstRocket)])
+          or ((Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket])
               and (Weapon.Ammo <= 0)) then
         SelectedWeapons[Index] := False
       else
@@ -4225,7 +4502,7 @@ begin
         Weapon.Target := nil;
         SelectedWeapons[Index] := not SelectedWeapons[Index];
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(78);
       RebuildTargetMarkers;
       RefreshActionRanges;
       RefreshWeaponButtons;
@@ -4247,9 +4524,9 @@ begin
     begin
       if (GetPlayer <> nil) and (GetPlayer.GetHull.CapitalShip > 0) then
       begin
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(401);
         GetPlayer.EnterRuinsMode(0);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(402);
       end;
     end
     else if Key = Ord('N') then
@@ -4267,18 +4544,18 @@ begin
     end
     else if Key = VK_SUBTRACT then
     begin
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(79);
       for Index := 0 to 4 do
       begin
         SelectedWeapons[Index] := False;
-        Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+        Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
         if Weapon <> nil then
         begin
           Weapon.Target := nil;
           ShowLargeHelp(LookupLocalizedTextByKey('Help.ShotCancel'));
         end;
       end;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(80);
       RebuildTargetMarkers;
       RefreshActionRanges;
       RefreshWeaponButtons;
@@ -4316,10 +4593,10 @@ begin
         SoundManager.PlaySound('Sound.ForsageOn');
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ForsageOn'));
         ClearPathOverlay(True);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(81);
         GetPlayer.AfterburnerActive := True;
         GetPlayer.RefreshDerivedStats(True);
-        GetPlayer.BuildOrderMovementPath(999999);
+        GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
         if GetPlayer.ScriptShipBindings <> nil then
         begin
           Index := GetPlayer.ScriptShipBindings.Count - 1;
@@ -4336,7 +4613,7 @@ begin
             end;
           end;
         end;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(82);
         BuildShipPathOverlay(GetPlayer, False, '');
       end
       else if GetPlayer.AfterburnerActive then
@@ -4344,10 +4621,10 @@ begin
         SoundManager.PlaySound('Sound.ForsageOff');
         ShowLargeHelp(LookupLocalizedTextByKey('Help.ForsageOff'));
         ClearPathOverlay(True);
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.CheckIntegrityChecksum(83);
         GetPlayer.AfterburnerActive := False;
         GetPlayer.RefreshDerivedStats(True);
-        GetPlayer.BuildOrderMovementPath(999999);
+        GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
         if GetPlayer.ScriptShipBindings <> nil then
         begin
           Index := GetPlayer.ScriptShipBindings.Count - 1;
@@ -4364,25 +4641,30 @@ begin
             end;
           end;
         end;
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(84);
         BuildShipPathOverlay(GetPlayer, False, '');
       end;
     end;
   end;
 end;
+
 procedure TfStarMap.OrderKeyUp(Sender: TObjectGI; Key: Cardinal);
 begin
   // The native body retains these guard reads despite having no guarded action.
+  if not MainPanel.NavigationLocked and not ShipScreen.ReopenRequested then
+  begin
+  end;
 end;
+
 procedure TfStarMap.SelectAllUsableWeapons;
 var
   Index: Integer;
   Weapon: TWeapon;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(85);
   for Index := 0 to 4 do
   begin
-    Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+    Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
     if not GetPlayer.IsEquipmentUsable(Weapon)
         or ((Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket]) and (Weapon.Ammo <= 0)) then
       SelectedWeapons[Index] := False
@@ -4392,8 +4674,9 @@ begin
       SelectedWeapons[Index] := True;
     end;
   end;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(86);
 end;
+
 procedure TfStarMap.SelectUntargetedWeapons;
 var
   Index: Integer;
@@ -4401,7 +4684,7 @@ var
 begin
   for Index := 0 to 4 do
   begin
-    Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+    Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
     if not GetPlayer.IsEquipmentUsable(Weapon)
         or ((Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket]) and (Weapon.Ammo <= 0)) then
       SelectedWeapons[Index] := False
@@ -4412,6 +4695,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.ShowObjectInfo(Obj: TObject);
 const
   WearableItemTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
@@ -4422,7 +4706,7 @@ var
   IconInset: Cardinal;
   NameWidth, DetailWidth, StatusCount: Integer;
   Distance: Single;
-  OwnerId: Byte;
+  OwnerId: TOwnerId;
   ImagePath, Text, ColorTag: WideString;
   Child: TObjectGI;
   DamageName, DamageValue: TLabelGI;
@@ -4431,13 +4715,17 @@ var
   BarWidth, CapWidth, MinimumWidth: Integer;
   CustomInfo: TCustomSystemInfo;
   Images: WideString;
+  TouchBounds: TRect;
+  TouchPoint: TPoint;
 begin
   if (Obj is TStar)
       and (TerronShip <> nil)
       and (TerronShip.CurrentStar = Obj)
-      and (Galaxy.TerronToStarTurn >= $40000000) then
+      and (Galaxy.TerronToStarTurn >= TerronTransformationFlag) then
     Obj := TerronShip;
-  if (TerronShip <> nil) and (Obj = TerronShip) and (Galaxy.TerronToStarTurn >= $40000000) then
+  if (TerronShip <> nil)
+      and (Obj = TerronShip)
+      and (Galaxy.TerronToStarTurn >= TerronTransformationFlag) then
     HitObjectPosition :=
         Classes.Point(
             Round(TerronShip.CurrentStar.Graphic.Position.X) - GetMapCenter.X,
@@ -4544,6 +4832,7 @@ begin
         if (Obj as TShip).Graphic is TShip2SE then
         begin
           GetByName('InfoStdImage').SetActive(False);
+
           with GetByName('InfoStdGB') as TGraphBufGI do
           begin
             ImagePath := (Obj as TShip).GetShipPortraitImagePath;
@@ -4584,6 +4873,7 @@ begin
                 ExtractDelimitedPartW(((Obj as TShip).Graphic as TRuinsSE).StaticImagePath, 1, ','),
                 GraphBuf
             );
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -4604,6 +4894,7 @@ begin
         end;
         (GetByName('InfoStdName') as TLabelGI)
             .SetText(WrapTextInColor((Obj as TShip).GetFullName(' '), InfoNameColorTag));
+
         if Obj is TShip then
           if (Obj as TShip).PartnerShip = GetPlayer then
             (GetByName('InfoStdName') as TLabelGI)
@@ -4612,7 +4903,8 @@ begin
                         + #13#10
                         + WrapTextInColor(
                             LookupLocalizedTextByKey('FormInfo.Partner'),
-                            '<color=255,240,100>'));
+                            TextHighlightColorTag));
+
         (GetByName('InfoStdText') as TLabelGI).SetText(LocalizedText('FormInfo.ObjOutOfRange'));
         ShipScreen.LayoutItemInfo(
             StandardInfoPanel as TWindowGI,
@@ -4635,6 +4927,7 @@ begin
               GraphBuf,
               TAsteroid(Obj).Id
           );
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -4697,6 +4990,7 @@ begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
           LoadGaiFrameToGraphBuf(THoleSE(THole(Obj).Graphic).ImagePath, GraphBuf, 32);
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -4733,7 +5027,7 @@ begin
       end
       else if Obj is TPlanet then
       begin
-        if ((Obj as TPlanet).OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+        if ((Obj as TPlanet).OwnerId in [oiMaloc..oiGaal, oiPirate])
             and not (Obj as TPlanet).IsMainPiratePlanet
             and (TPlanet(Obj).CurrentStar.Status.CustomFaction = '') then
         begin
@@ -4743,7 +5037,7 @@ begin
           StandardInfoPanel.SetActive(False);
           (GetByName('InfoPlanetName') as TLabelGI)
               .SetText(WrapTextInColor((Obj as TPlanet).Name, InfoNameColorTag));
-          if (TPlanet(Obj).OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+          if (TPlanet(Obj).OwnerId in [oiMaloc..oiGaal, oiPirate])
               and (TPlanet(Obj).CurrentStar.Status.CustomFaction = '') then
           begin
             with GetByName('InfoPlanetEmRace') as TImageGI do
@@ -4760,6 +5054,7 @@ begin
           begin
             SourceHasPerPixelAlpha := True;
             TPlanetSE((Obj as TPlanet).Graphic).RenderToBuffer(Self, GraphBuf, False);
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -4784,7 +5079,7 @@ begin
           (GetByName('InfoPlanetPop') as TLabelGI)
               .SetText(IntToStr(Round((Obj as TPlanet).Population / 1000)));
           (GetByName('InfoPlanetEco') as TLabelGI)
-              .SetText(PlanetEconomyInfo[Ord((Obj as TPlanet).Economy)].DisplayName);
+              .SetText(PlanetEconomyInfo[(Obj as TPlanet).Economy].DisplayName);
           (GetByName('InfoPlanetGov') as TLabelGI).SetText((Obj as TPlanet).GetGovernmentName);
           (GetByName('InfoPlanetRel') as TLabelGI)
               .SetText((Obj as TPlanet).GetRelationLevelTextToShip(GetPlayer));
@@ -4820,6 +5115,7 @@ begin
             SetActive(True);
             SourceHasPerPixelAlpha := True;
             TPlanetSE((Obj as TPlanet).Graphic).RenderToBuffer(Self, GraphBuf, False);
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -4860,6 +5156,7 @@ begin
       PlanetInfoPanel.SetActive(False);
       StarInfoWindow.SetActive(False);
       StandardInfoPanel.SetActive(False);
+
       if (Galaxy <> nil) and not Galaxy.Destroying and (GetPlayer <> nil) then
       begin
         ItemObject := Obj as TItem;
@@ -4896,7 +5193,7 @@ begin
         (GetByName('InfoItemName') as TLabelGI)
             .SetText(WrapTextInColor(TItem(Obj).GetDisplayName, InfoNameColorTag));
         (GetByName('InfoItemText') as TLabelGI)
-            .SetText(TItem(Obj).GetInfoText('<color=255,240,100>', nil));
+            .SetText(TItem(Obj).GetInfoText(TextHighlightColorTag, nil));
       end;
       (GetByName('InfoItemSize') as TLabelGI).SetText(IntToStr(TItem(Obj).Weight));
       (GetByName('InfoItemPrice') as TLabelGI).SetText(IntToStr(TItem(Obj).Cost));
@@ -5019,6 +5316,7 @@ begin
       begin
         (GetByName('InfoShipName') as TLabelGI)
             .SetText(WrapTextInColor((Obj as TShip).GetFullName(' '), InfoNameColorTag));
+
         if Obj is TShip then
           if (Obj as TShip).PartnerShip = GetPlayer then
             (GetByName('InfoShipName') as TLabelGI)
@@ -5027,10 +5325,10 @@ begin
                         + #13#10
                         + WrapTextInColor(
                             LookupLocalizedTextByKey('FormInfo.Partner'),
-                            '<color=255,240,100>'));
+                            TextHighlightColorTag));
         if (Obj is TKling)
             and ((Obj as TKling).ActiveProgramAppliedTurn > 0)
-            and ((Obj as TKling).ActiveProgramId in [6..11]) then
+            and ((Obj as TKling).ActiveProgramId in [prgShipwreck..prgDisconnection]) then
           (GetByName('InfoShipName') as TLabelGI)
               .SetText(
                   (GetByName('InfoShipName') as TLabelGI).GetText
@@ -5041,7 +5339,7 @@ begin
                                   + ProgramNames[(Obj as TKling).ActiveProgramId]
                                   + '.AddToShipInfo'
                           ),
-                          '<color=255,0,0>'));
+                          RedColorTag));
       end
       else
         (GetByName('InfoShipName') as TLabelGI)
@@ -5095,7 +5393,7 @@ begin
         begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
-          if (Obj = TerronShip) and (Galaxy.TerronToStarTurn >= $40000000) then
+          if (Obj = TerronShip) and (Galaxy.TerronToStarTurn >= TerronTransformationFlag) then
             LoadGiByPathIntoGraphBuf(
                 ExtractDelimitedPartW(
                     TStarSE(TerronShip.CurrentStar.Graphic).StaticImagePath,
@@ -5109,6 +5407,7 @@ begin
                 ExtractDelimitedPartW(((Obj as TShip).Graphic as TRuinsSE).StaticImagePath, 1, ','),
                 GraphBuf
             );
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -5144,7 +5443,7 @@ begin
       (GetByName('InfoShipSpeed') as TLabelGI).SetText(IntToStr((Obj as TShip).CalculateSpeed));
       (GetByName('InfoShipDamage') as TLabelGI).SetText(WrapTextInColor('???', ''));
       if (Obj as TShip).GetHull.HullPoints <= (Obj as TShip).GetHull.Weight / 2 then
-        ColorTag := '<color=255,166,0>'
+        ColorTag := OrangeColorTag
       else
         ColorTag := '';
       if GetPlayer.CanResolveObjectWithScanner(Obj)
@@ -5165,7 +5464,7 @@ begin
       end
       else
         (GetByName('InfoShipSize') as TLabelGI).SetText(WrapTextInColor('???', ColorTag));
-      Text := IntToStr(Integer((Obj as TShip).GetDefensePercent) and $7F) + '%';
+      Text := IntToStr((Obj as TShip).GetDefensePercent) + '%';
       if GetPlayer.CanResolveObjectWithScanner(Obj)
           or (GetPlayer = Obj)
           or ((Obj as TShip).PartnerShip = GetPlayer)
@@ -5180,13 +5479,13 @@ begin
           .SetText((Obj as TShip).GetRelationLevelTextToShip(GetPlayer));
       if (GetPlayer <> Obj)
           and not (Obj is TRuins)
-          and (GetPlayer.CountActiveArtefacts(Ord(t_ArtefactAnalyzer)) > 0)
+          and (GetPlayer.CountActiveArtefacts(t_ArtefactAnalyzer) > 0)
           and GetPlayer.CanResolveObjectWithScanner(Obj) then
       begin
         (GetByName('ISWin') as TLabelGI).SetActive(True);
         (GetByName('InfoShipWin') as TLabelGI).SetActive(True);
         (GetByName('InfoShipWin') as TLabelGI)
-            .SetText(IntToStr(Integer(GetPlayer.GetWinChancePercent(Obj as TShip)) and $7F) + '%');
+            .SetText(IntToStr(GetPlayer.GetWinChancePercent(Obj as TShip)) + '%');
       end
       else
       begin
@@ -5323,7 +5622,26 @@ begin
       with GetByName('InfoStarImage') as TGraphBufGI do
       begin
         SourceHasPerPixelAlpha := True;
-        LoadStarThumbnail(Obj, GraphBuf, ClientSize);
+        LoadGiByPathIntoGraphBuf(
+            ExtractDelimitedPartW(TStarSE((Obj as TStar).Graphic).StaticImagePath, 1, ','),
+            GraphBuf
+        );
+
+        if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
+        begin
+          if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
+            GraphBuf.RescaleRgba(
+                ClientSize.X,
+                Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
+                5
+            )
+          else
+            GraphBuf.RescaleRgba(
+                Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
+                ClientSize.Y,
+                5
+            );
+        end;
         SetImageKindX(ikxCenter);
         SetImageKindY(ikyCenter);
       end;
@@ -5452,10 +5770,77 @@ begin
               )
           );
           SetSize(Classes.Point(RowHeight - 2 - IconInset, RowHeight - 2 - IconInset));
-          if (TObject(Objects[I]) is TPlanet) or (TObject(Objects[I]) is TRuins) then
-            LoadStarThumbnail(TObject(Objects[I]), GraphBuf, ClientSize)
+          if TObject(Objects[I]) is TPlanet then
+          begin
+            TPlanetSE(TPlanet(Objects[I]).Graphic).RenderToBuffer(Self, GraphBuf, True);
+            if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
+            begin
+              if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
+                GraphBuf.RescaleRgba(
+                    ClientSize.X,
+                    Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
+                    5
+                )
+              else
+                GraphBuf.RescaleRgba(
+                    Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
+                    ClientSize.Y,
+                    5
+                );
+            end;
+          end
+          else if TObject(Objects[I]) is TRuins then
+          begin
+            if TShip(Objects[I]).Graphic is TRuinsSE then
+              LoadGiByPathIntoGraphBuf(
+                  ExtractDelimitedPartW(
+                      (TShip(Objects[I]).Graphic as TRuinsSE).StaticImagePath,
+                      1,
+                      ','
+                  ),
+                  GraphBuf
+              )
+            else
+              LoadGiByPathIntoGraphBuf(
+                  ExtractDelimitedPartW(
+                      (TShip(Objects[I]).Graphic as TShip2SE).AlternateImagePath,
+                      1,
+                      ','
+                  ),
+                  GraphBuf
+              );
+            if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
+            begin
+              if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
+                GraphBuf.RescaleRgba(
+                    ClientSize.X,
+                    Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
+                    5
+                )
+              else
+                GraphBuf.RescaleRgba(
+                    Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
+                    ClientSize.Y,
+                    5
+                );
+            end;
+          end
           else if TCustomSystemInfo(Objects[I]).Icon <> '' then
-            LoadStarThumbnail(TObject(Objects[I]), GraphBuf, ClientSize);
+          begin
+            LoadGiByPathIntoGraphBuf(TCustomSystemInfo(Objects[I]).Icon, GraphBuf);
+            if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
+              GraphBuf.RescaleRgba(
+                  ClientSize.X,
+                  Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
+                  5
+              )
+            else
+              GraphBuf.RescaleRgba(
+                  Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
+                  ClientSize.Y,
+                  5
+              );
+          end;
           SetImageKindX(ikxCenter);
           SetImageKindY(ikyCenter);
         end;
@@ -5464,7 +5849,7 @@ begin
         else if TObject(Objects[I]) is TRuins then
           OwnerId := TShip(Objects[I]).OwnerId
         else
-          OwnerId := Byte(oiUninhabited);
+          OwnerId := oiUninhabited;
         if TObject(Objects[I]) is TRuins then
         begin
           with TLabelGI.Create(Panel) do
@@ -5509,7 +5894,7 @@ begin
               with TGraphBufGI.Create(Panel, False) do
               begin
                 SourceHasPerPixelAlpha := True;
-                LoadBitmapPathAsRgba(ExtractDelimitedPartW(Images, J, ',') + '?RGBA');
+                LoadBitmapPathAsRgba(ExtractDelimitedPartW(Images, J, ',') + RgbaImagePathSuffix);
                 SetPosition(Classes.Point(RowX, RowHeight * I + 1));
                 SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
                 if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
@@ -5549,7 +5934,7 @@ begin
               DetailWidth := Max(DetailWidth, ClientSize.X + GiScalePixels(35));
             end;
         end
-        else if OwnerId <> Byte(oiUninhabited) then
+        else if OwnerId <> oiUninhabited then
           if not (TObject(Objects[I]) is TPlanet)
               or not (TObject(Objects[I]) as TPlanet).IsMainPiratePlanet then
             with TGraphBufGI.Create(Panel, False) do
@@ -5562,7 +5947,7 @@ begin
                           ),
                           1,
                           ',')
-                      + '?RGBA'
+                      + RgbaImagePathSuffix
               );
               SetPosition(Classes.Point(NameWidth + 5 + RowHeight + 5 + 1, RowHeight * I + 1));
               SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
@@ -5585,8 +5970,7 @@ begin
               SetImageKindY(ikyCenter);
             end;
         if (TObject(Objects[I]) is TPlanet)
-            and ((TObject(Objects[I]) as TPlanet).OwnerId
-                in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+            and ((TObject(Objects[I]) as TPlanet).OwnerId in [oiMaloc..oiGaal, oiPirate])
             and not (TObject(Objects[I]) as TPlanet).IsMainPiratePlanet
             and ((TObject(Objects[I]) as TPlanet).CurrentStar.Status.CustomFaction = '') then
         begin
@@ -5637,7 +6021,7 @@ begin
           end;
         end
         else if TObject(Objects[I]) is TPlanet then
-          if (TObject(Objects[I]) as TPlanet).OwnerId = Byte(oiUninhabited) then
+          if (TObject(Objects[I]) as TPlanet).OwnerId = oiUninhabited then
             if (TObject(Objects[I]) as TPlanet).GetUnexploredSurfaceTileCount = 0 then
             begin
               with TLabelGI.Create(Panel) do
@@ -5733,6 +6117,7 @@ begin
             GraphBuf,
             TAsteroid(Obj).Id
         );
+
         if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
         begin
           if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -5771,6 +6156,7 @@ begin
       PlanetInfoPanel.SetActive(False);
       StarInfoWindow.SetActive(False);
       StandardInfoPanel.SetActive(False);
+      RestoreMobileTooltipBody(InfoWindow);
       InfoTextLabel.SetText(GetPlayer.GetObjectInfoText(Obj));
       InfoWindow.SetSize(
           Classes.Point(
@@ -5810,8 +6196,39 @@ begin
     ActivePanel := StandardInfoPanel
   else
     Exit;
+  if GameMobileUiEnabled then
+  begin
+    if TouchItem <> nil then
+    begin
+      TouchPoint := MapControls.ToAbsolutePoint(TruncatePointF(TouchItem.Position));
+      TouchBounds :=
+          Classes.Rect(TouchPoint.X - 19, TouchPoint.Y - 19, TouchPoint.X + 19, TouchPoint.Y + 19);
+      if (TouchItem.GraphObject is TContainerSE)
+          and (TContainerSE(TouchItem.GraphObject).Animation <> nil) then
+        with TContainerSE(TouchItem.GraphObject).Animation do
+        begin
+          TouchBounds.TopLeft := LogicalToScreenPoint(HitTestBounds.TopLeft);
+          TouchBounds.BottomRight := LogicalToScreenPoint(HitTestBounds.BottomRight);
+        end;
+      FitMobileTooltip(ActivePanel, MainPanel.ContentBounds, TouchPoint, @TouchBounds);
+    end
+    else
+      FitMobileTooltip(ActivePanel, MainPanel.ContentBounds, GetCursorPoint);
+    ActivePanel.MouseBlocking := TouchItem <> nil;
+    Exit;
+  end;
   if DynamicTipsPos then
   begin
+    HitObjectPosition :=
+        Classes.Point(
+            Round(HitObjectPosition.X * MapControls.ChildWorldScale),
+            Round(HitObjectPosition.Y * MapControls.ChildWorldScale)
+        );
+    HitObjectSize :=
+        Classes.Point(
+            Round(HitObjectSize.X * MapControls.ChildWorldScale),
+            Round(HitObjectSize.Y * MapControls.ChildWorldScale)
+        );
     Inc(HitObjectPosition.X, Cardinal(GameScreenWidth) div 2);
     Inc(HitObjectPosition.Y, Cardinal(GameScreenHeight) div 2);
     I := Cardinal(GameScreenWidth) div 3;
@@ -5858,11 +6275,14 @@ begin
         Classes.Point(10 - Cardinal(GameScreenWidth) div 2, 10 - Cardinal(GameScreenHeight) div 2)
     );
 end;
+
 procedure TfStarMap.MapScrollChanged;
 begin
+  ClearTouchItem;
   RefreshActionRanges;
   SpaceProcess.Space.DrawMinimap;
 end;
+
 function TfStarMap.GetPriceSnapshotKey(Obj: TObject): WideString;
 begin
   if Obj is TPlanet then
@@ -5875,6 +6295,7 @@ begin
     Result := '';
   Result := 'GOODS' + Result + Galaxy.FormatTurnDate(-1);
 end;
+
 procedure TfStarMap.SaveVisiblePriceSnapshots;
 var
   Index: Integer;
@@ -5886,11 +6307,11 @@ begin
   for Index := 0 to GetPlayer.CurrentStar.Planets.Count - 1 do
   begin
     Planet := TPlanet(GetPlayer.CurrentStar.Planets[Index]);
-    if Planet.OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)] then
+    if Planet.OwnerId in [oiMaloc..oiGaal, oiPirate] then
       if PointDistance(GetPlayer.Position, Planet.GetPosition) <= GetPlayer.GetRadarRange then
       begin
         AddOrUpdatePlayerBubble(
-            7,
+            pmUserNote,
             Galaxy.CurrentTurn,
             GoodsShopScreen.BuildPriceText(Planet),
             GetPriceSnapshotKey(Planet)
@@ -5906,7 +6327,7 @@ begin
         if PointDistance(GetPlayer.Position, Ship.Position) <= GetPlayer.GetRadarRange then
         begin
           AddOrUpdatePlayerBubble(
-              7,
+              pmUserNote,
               Galaxy.CurrentTurn,
               GoodsShopScreen.BuildPriceText(Ship),
               GetPriceSnapshotKey(Ship)
@@ -5920,6 +6341,7 @@ begin
     MainPanel.RebuildMessageButtons(False);
   end;
 end;
+
 procedure TfStarMap.CenterOnShip(Ship: TShip);
 begin
   SetMapCenterManually(TruncatePointF(Ship.Position));
@@ -5927,6 +6349,7 @@ begin
   AddMapAnimation(Ship.Position, 'Bm.SI.' + GiResourceSuffix + 'Ring', 200);
   AddMapAnimation(Ship.Position, 'Bm.SI.' + GiResourceSuffix + 'Ring', 400);
 end;
+
 procedure TfStarMap.CenterOnDominator(Selection: Integer);
 var
   Index: Integer;
@@ -5961,10 +6384,12 @@ begin
     if FarthestShip <> nil then
       CenterOnShip(FarthestShip);
 end;
+
 procedure TfStarMap.CenterShipClicked(Sender: TObjectGI);
 begin
   CenterOnShip(GetPlayer);
 end;
+
 procedure TfStarMap.CenterShipMouseEnter(Sender: TObjectGI);
 begin
   // The native guard tests job 5 as well as the declared preparation job 3.
@@ -5975,10 +6400,12 @@ begin
   if GetPlayer <> nil then
     ShowObjectInfo(GetPlayer);
 end;
+
 procedure TfStarMap.CenterShipMouseLeave(Sender: TObjectGI);
 begin
   ShowObjectInfo(nil);
 end;
+
 procedure TfStarMap.AllWeaponsClicked(Sender: TObjectGI);
 begin
   if Mode = smmOrders then
@@ -5994,6 +6421,7 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.ScannerClicked(Sender: TObjectGI);
 var
   Index: Integer;
@@ -6016,6 +6444,7 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.TalkClicked(Sender: TObjectGI);
 var
   Index: Integer;
@@ -6038,6 +6467,7 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.SelectInterceptorTarget;
 var
   Index: Integer;
@@ -6059,6 +6489,7 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.BeginCustomSelection;
 var
   Index: Integer;
@@ -6077,6 +6508,7 @@ begin
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.ToggleWeaponPanelClicked(Sender: TObjectGI);
 begin
   if Mode = smmOrders then
@@ -6088,6 +6520,7 @@ begin
       AnimateWeaponPanel(-1);
   end;
 end;
+
 procedure TfStarMap.WeaponButtonDown(Sender: TObjectGI);
 var
   Index: Integer;
@@ -6097,6 +6530,7 @@ begin
   Image := WeaponImages[Index];
   Image.SetPosition(Classes.Point(Image.LocalPosition.X, 0));
 end;
+
 procedure TfStarMap.WeaponButtonUp(Sender: TObjectGI);
 var
   Index: Integer;
@@ -6106,8 +6540,8 @@ begin
   begin
     DisplayedObject := nil;
     Index := ExtractDigitsToIntW(Sender.ControlName);
-    aCalc.WaitForTurnCalculationUI;
-    Weapon := GetPlayer.FindEquippedItemInSlot(Ord(t_Weapon1), Index) as TWeapon;
+    Galaxy.CheckIntegrityChecksum(87);
+    Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
     TalkSelectionActive := False;
     ScannerSelectionActive := False;
     InterceptorSelectionActive := False;
@@ -6125,13 +6559,14 @@ begin
       else
         SelectedWeapons[Index] := not SelectedWeapons[Index];
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(88);
     RebuildTargetMarkers;
     RefreshActionRanges;
     RefreshWeaponButtons;
     UpdateActionCursor(False);
   end;
 end;
+
 procedure TfStarMap.RefreshWeaponButtons;
 var
   Slot: Integer;
@@ -6141,7 +6576,7 @@ var
 begin
   for Slot := 0 to 4 do
   begin
-    Weapon := GetPlayer.FindEquippedItemInSlot($32, Slot) as TWeapon;
+    Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Slot) as TWeapon;
     Button := WeaponButtons[Slot];
     Button.SetDisabled(
         (GetPlayer.GetSlotCount(sskWeapon) <= Slot) or not GetPlayer.IsEquipmentUsable(Weapon)
@@ -6214,10 +6649,11 @@ begin
       WeaponButtons[Slot].HelpText :=
           Weapon.GetDisplayName
               + ' ('
-              + WrapTextInColor(IntToStr(Slot + 1), '<color=255,240,100>')
+              + WrapTextInColor(IntToStr(Slot + 1), TextHighlightColorTag)
               + ')';
   end;
 end;
+
 procedure TfStarMap.RefreshActionRanges;
 var
   Point: TPoint;
@@ -6299,7 +6735,7 @@ begin
     for Slot := 0 to 4 do
       if SelectedWeapons[Slot] then
       begin
-        Weapon := GetPlayer.FindEquippedItemInSlot($32, Slot) as TWeapon;
+        Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Slot) as TWeapon;
         if GetPlayer.GetWeaponActionRange(Weapon) < MinRange then
           MinRange := GetPlayer.GetWeaponActionRange(Weapon);
         if GetPlayer.GetWeaponActionRange(Weapon) > MaxRange then
@@ -6344,6 +6780,8 @@ begin
       RadarColor := MainColor;
     end;
   end;
+  MainRadius := Round(MainRadius * MapControls.ChildWorldScale);
+  InnerRadius := Round(InnerRadius * MapControls.ChildWorldScale);
   MainCircle := ActionColorCircle;
   if MainVisible then
     MainCircle.UpdateAbsolutePosition;
@@ -6373,8 +6811,8 @@ begin
     for Slot := 0 to 4 do
       if SelectedWeapons[Slot] then
       begin
-        Weapon := GetPlayer.FindEquippedItemInSlot($32, Slot) as TWeapon;
-        if not (Byte(Weapon.GetWeaponInfo.ShotType) in [Ord(wstTorpedo)..Ord(wstRocket)]) then
+        Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Slot) as TWeapon;
+        if not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket]) then
         begin
           RangeValue := GetPlayer.GetWeaponActionRange(Weapon);
           if DirectRange > RangeValue then
@@ -6384,6 +6822,7 @@ begin
           DirectRange := RangeMaximum;
         end;
       end;
+  DirectRange := Round(DirectRange * MapControls.ChildWorldScale);
   ExtraIndex := -1;
   if (DirectRange <> 0)
       and (DirectRange <> MainRadius)
@@ -6438,6 +6877,7 @@ begin
   if RadarChanged then
     SpaceProcess.Space.DrawMinimap;
 end;
+
 procedure TfStarMap.HideActionRanges;
 begin
   with ActionColorCircle do
@@ -6453,6 +6893,7 @@ begin
   with ActionCircle do
     SetActive(False);
 end;
+
 procedure TfStarMap.RebuildTargetMarkers;
 const
   TargetDamageFlags = [dkScanBonus..dkDroidBlock];
@@ -6464,7 +6905,7 @@ var
   Image: TImageGI;
   Item: TItem;
   Target: TShip;
-  BadgePoint: TPointF;
+  BadgePoint, TargetPoint: TPointF;
 begin
   ClearTargetMarkers;
   for I := 1 to GetPlayer.WeaponCount do
@@ -6484,10 +6925,11 @@ begin
           Point := (Weapon.Target as TMissile).Position
         else if Weapon.Target is TShip then
           Point := (Weapon.Target as TShip).Position;
-        Point := AddPointsF(Point, MakePointF(-40, -40));
+        TargetPoint := Point;
+        Point := AddPointsF(Point, MakePointF(-40 * SpaceMarkerScale, -40 * SpaceMarkerScale));
         for J := 1 to I - 1 do
           if GetPlayer.Weapons[J].Target = Weapon.Target then
-            Point.X := Point.X + 32;
+            Point.X := Point.X + 32 * SpaceMarkerScale;
         Image := TImageGI.Create(MapControls);
         Image.SetImagePath('GI,' + Weapon.GetBitmapResourceName + 's');
         Image.SetSize(Image.GetContentSize);
@@ -6498,6 +6940,7 @@ begin
         Image.UserValue := 100;
         Image.UserIndex := I;
         Image.MouseBlocking := True;
+        ScaleSpaceMarker(Image, Round(Point.X - TargetPoint.X), Round(Point.Y - TargetPoint.Y));
         if Weapon.Target is TShip then
           if GetPlayer.CanResolveObjectWithScanner(Weapon.Target)
               and ((Weapon.GetDamageFlags * TargetDamageFlags) <> NoDamageFlags) then
@@ -6506,14 +6949,19 @@ begin
             Image.SetImagePath('GI,Bm.Items.WeaponTarget');
             Image.SetSize(Image.GetContentSize);
             Image.SetOrigin(HalfPoint(Image.ClientSize));
-            BadgePoint.X := Point.X - 10;
-            BadgePoint.Y := Point.Y + 10;
+            BadgePoint.X := Point.X - 10 * SpaceMarkerScale;
+            BadgePoint.Y := Point.Y + 10 * SpaceMarkerScale;
             Image.SetPosition(TruncatePointF(BadgePoint));
             Image.SetDepthByName('Hit');
             Image.SetPositionModeW(True);
             Image.UserValue := 100;
             Image.UserIndex := I;
             Image.MouseBlocking := True;
+            ScaleSpaceMarker(
+                Image,
+                Round(BadgePoint.X - TargetPoint.X),
+                Round(BadgePoint.Y - TargetPoint.Y)
+            );
           end;
       end;
   end;
@@ -6525,10 +6973,10 @@ begin
     if Target <> nil then
     begin
       Point := Target.Position;
-      Point := AddPointsF(Point, MakePointF(-40, -40));
+      Point := AddPointsF(Point, MakePointF(-40 * SpaceMarkerScale, -40 * SpaceMarkerScale));
       for J := 1 to GetPlayer.WeaponCount do
         if GetPlayer.Weapons[J].Target = Target then
-          Point.X := Point.X + 32;
+          Point.X := Point.X + 32 * SpaceMarkerScale;
       Image := TImageGI.Create(MapControls);
       Image.SetImagePath('GI,Bm.Items.2Interceptors_s');
       Image.SetSize(Image.GetContentSize);
@@ -6539,6 +6987,11 @@ begin
       Image.UserValue := 100;
       Image.UserIndex := 0;
       Image.MouseBlocking := True;
+      ScaleSpaceMarker(
+          Image,
+          Round(Point.X - Target.Position.X),
+          Round(Point.Y - Target.Position.Y)
+      );
     end;
   end;
   if GetPlayer.PickupTargets <> nil then
@@ -6549,14 +7002,20 @@ begin
       Image.SetImagePath('GAI,Bm.PI.ItemTakeAnim');
       Image.SetSize(Image.GetContentSize);
       Image.SetOrigin(HalfPoint(Image.ClientSize));
-      Image.SetPosition(TruncatePointF(AddPointsF(Item.Position, MakePointF(-20, 20))));
+      Image.SetPosition(
+          TruncatePointF(
+              AddPointsF(Item.Position, MakePointF(-20 * SpaceMarkerScale, 20 * SpaceMarkerScale))
+          )
+      );
       Image.SetDepthByName('Weapon');
       Image.SetPositionModeW(True);
       Image.UserValue := 100;
       Image.MouseBlocking := True;
       Image.RestartPlayback;
+      ScaleSpaceMarker(Image, Round(-20 * SpaceMarkerScale), Round(20 * SpaceMarkerScale));
     end;
 end;
+
 procedure TfStarMap.ClearTargetMarkers;
 var
   NextControl, Control: TObjectGI;
@@ -6573,6 +7032,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.UpdateActionCursor(CanTake: Boolean);
 var
   Point: TPointF;
@@ -6629,7 +7089,7 @@ begin
     if Obj is TShip then
     begin
       Point := (Obj as TShip).Position;
-      if (PointDistanceSquared(Point, GetPlayer.Position) <= 1000000)
+      if (PointDistanceSquared(Point, GetPlayer.Position) <= InterceptorTargetRangeSquared)
           and ((Obj as TShip).InterceptorPassesRemaining = 0) then
       begin
         if not IsCursorImageSelected('InterceptorsFull') then
@@ -6678,10 +7138,17 @@ begin
         if CustomSelectionItem.ScriptItem <> nil then
           ActionResult :=
               TScriptItem(CustomSelectionItem.ScriptItem)
-                  .RunActionCode($36, GetPlayer, Obj, nil, ActionResult);
+                  .RunActionCode(satOnCustomTargettingCheck, GetPlayer, Obj, nil, ActionResult);
         if CustomSelectionItem is TEquipmentWithActCode then
           ActionResult :=
-              RunItemConfigActionCode(CustomSelectionItem, $36, GetPlayer, Obj, nil, ActionResult);
+              RunItemConfigActionCode(
+                  CustomSelectionItem,
+                  satOnCustomTargettingCheck,
+                  GetPlayer,
+                  Obj,
+                  nil,
+                  ActionResult
+              );
       end
       else
       begin
@@ -6691,7 +7158,14 @@ begin
           if not Info.DeleteQueued and (Info.TypeName = CustomSelectionInfoName) then
           begin
             ActionResult :=
-                RunCustomShipInfoActionCode(Info, $36, GetPlayer, Obj, nil, ActionResult);
+                RunCustomShipInfoActionCode(
+                    Info,
+                    satOnCustomTargettingCheck,
+                    GetPlayer,
+                    Obj,
+                    nil,
+                    ActionResult
+                );
             Break;
           end;
         end;
@@ -6714,7 +7188,7 @@ begin
       for Index := 0 to 4 do
         if SelectedWeapons[Index] then
         begin
-          Weapon := GetPlayer.FindEquippedItemInSlot($32, Index) as TWeapon;
+          Weapon := GetPlayer.FindEquippedItemInSlot(WeaponCategoryItemType, Index) as TWeapon;
           if GetPlayer.GetWeaponActionRange(Weapon) > Range then
             Range := GetPlayer.GetWeaponActionRange(Weapon);
         end;
@@ -6756,6 +7230,7 @@ begin
       SetCursorByName('Main');
   end;
 end;
+
 procedure TfStarMap.UpdateWeaponPanelPosition;
 var
   Progress: Single;
@@ -6775,6 +7250,7 @@ begin
   ShowSpacePanelButton.SetActive(not StarMapWeaponPanelOpen);
   HideSpacePanelButton.SetActive(StarMapWeaponPanelOpen);
 end;
+
 procedure TfStarMap.AnimateWeaponPanel(Target: Integer);
 begin
   WeaponPanelTarget := Target;
@@ -6786,6 +7262,7 @@ begin
   WeaponPanelTimer := ScheduleCallbackTimer(30, 30, AdvanceWeaponPanel);
   UpdateWeaponPanelPosition;
 end;
+
 procedure TfStarMap.AdvanceWeaponPanel(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if WeaponPanelTarget <= 0.0 then
@@ -6816,6 +7293,7 @@ begin
   end;
   UpdateWeaponPanelPosition;
 end;
+
 procedure TfStarMap.UpdateSpacePanelPosition;
 var
   Progress: Single;
@@ -6833,6 +7311,7 @@ begin
       )
   );
 end;
+
 procedure TfStarMap.AnimateSpacePanel(Target: Integer);
 begin
   SpacePanelTarget := Target;
@@ -6844,6 +7323,7 @@ begin
   SpacePanelTimer := ScheduleCallbackTimer(30, 30, AdvanceSpacePanel);
   UpdateSpacePanelPosition;
 end;
+
 procedure TfStarMap.AdvanceSpacePanel(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if SpacePanelTarget <= 0.0 then
@@ -6874,6 +7354,83 @@ begin
   end;
   UpdateSpacePanelPosition;
 end;
+
+function TfStarMap.CanPanGesture(Point: TPoint): Boolean;
+begin
+  Result :=
+      (ChildLoop = nil)
+          and (MapControls <> nil)
+          and (MainPanel <> nil)
+          and MapControls.Active
+          and MapControls.DragScrollingEnabled
+          and not MapControls.Dragging
+          and not MainPanel.NavigationLocked
+          and ((ShipScreen = nil) or not ShipScreen.ReopenRequested)
+          and MapControls.ContainsPoint(Point)
+          and not MapControls.IsOccludedAtPoint(Point);
+end;
+
+procedure TfStarMap.ProcessPanGesture(DX, DY: Double; Point: TPoint);
+begin
+  // Never fall back to the space wheel action: it changes ship orders. A
+  // gesture over the HUD, a modal dialog or a locked map must remain harmless.
+  if not CanPanGesture(Point) then
+    Exit;
+  ClearTouchItem;
+  MapControls.SetScrollOffset(
+      AccumulatePanGesture(
+          DX / MapControls.ChildWorldScale,
+          DY / MapControls.ChildWorldScale,
+          MapControls.ScrollOffset
+      )
+  );
+  FilmCameraFollow := False;
+  if Assigned(MapControls.ScrollChangedCallback) then
+    MapControls.ScrollChangedCallback(MapControls);
+end;
+
+procedure TfStarMap.ProcessPinchGesture(Factor: Double; Point: TPoint);
+var
+  OldScale, NewScale: Double;
+  Center, Offset: TPoint;
+begin
+  if not SpacePinchZoom
+      or not HardwareRenderingEnabled
+      or not CanPanGesture(Point)
+      or IsNan(Factor)
+      or IsInfinite(Factor)
+      or (Factor <= 0) then
+    Exit;
+  OldScale := MapControls.ChildWorldScale;
+  NewScale := EnsureRange(OldScale * Factor, MinSpaceZoomPercent / 100, MaxSpaceZoomPercent / 100);
+  if Abs(NewScale - OldScale) < 0.000001 then
+    Exit;
+  ClearTouchItem;
+  Center := MapControls.AbsolutePosition;
+  Offset := MapControls.ScrollOffset;
+  // Keep the world point between the fingers stationary while changing scale.
+  Offset :=
+      AccumulatePanGesture(
+          (Point.X - Center.X) * (1 / OldScale - 1 / NewScale),
+          (Point.Y - Center.Y) * (1 / OldScale - 1 / NewScale),
+          Offset
+      );
+  ApplySpaceZoom(NewScale);
+  SetMapCenterManually(Offset);
+  SpaceZoomPercent := Round(NewScale * 100);
+  AppliedSpaceZoomPercent := SpaceZoomPercent;
+  UserSettingsConfig.SetOrAddParam('SpaceZoomPercent', IntToStr(SpaceZoomPercent));
+  PinchZoomSavePending := True;
+end;
+
+procedure TfStarMap.EndPinchGesture;
+begin
+  if not PinchZoomSavePending then
+    Exit;
+  PinchZoomSavePending := False;
+  UserSettingsConfig.SaveTextFile(PWideChar(GetGameUserDirectory + 'CFG.TXT'), True, False);
+end;
+
 procedure TfStarMap.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 var
   FollowMode: Integer;
@@ -6888,7 +7445,7 @@ begin
       Ship := PendingPlayerFollowTarget;
       FollowMode := 1;
     end
-    else if Byte(GetPlayer.OrderStateData) = 1 then
+    else if TFollowMode(Byte(GetPlayer.OrderStateData)) = fmMinWeaponRange then
     begin
       Ship := GetPlayer.OrderTarget as TShip;
       FollowMode := 3;
@@ -6910,7 +7467,7 @@ begin
       if FollowMode < 1 then
         FollowMode := 3;
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(89);
     if FollowMode = 1 then
       if not GetPlayer.CanSelectShipTarget(Ship) then
         FollowMode := 2;
@@ -6923,19 +7480,20 @@ begin
     else if FollowMode = 2 then
     begin
       PendingPlayerFollowTarget := nil;
-      GetPlayer.OrderFollowShip(Ship, 0, False);
+      GetPlayer.OrderFollowShip(Ship, fmFollowNear, False);
       ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveNear'));
     end
     else if FollowMode = 3 then
     begin
       PendingPlayerFollowTarget := nil;
-      GetPlayer.OrderFollowShip(Ship, 1, False);
+      GetPlayer.OrderFollowShip(Ship, fmMinWeaponRange, False);
       ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveShot'));
     end;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(90);
     BuildShipPathOverlay(GetPlayer, False, '');
   end;
 end;
+
 function GetTurnFilmFrameInterval(Activity: Integer): Integer;
 begin
   if Activity = 0 then
@@ -6951,6 +7509,7 @@ begin
   else if FilmSpeed = 3 then
     Result := Round(Result / 2);
 end;
+
 procedure TfStarMap.StartTurnFilm;
 begin
   DisplayedFilmObject := nil;
@@ -7026,6 +7585,7 @@ begin
   if CenterShipButton.IsHovered then
     CenterFilmShipMouseEnter(nil);
 end;
+
 procedure TfStarMap.StopTurnFilm(StopTurnProcessing: Boolean);
 begin
   DisplayedFilmObject := nil;
@@ -7048,6 +7608,7 @@ begin
   MainPanel.ClearMessageButtons;
   MainPanel.Hide;
 end;
+
 procedure TfStarMap.RestartTurnFilm;
 begin
   DisplayedFilmObject := nil;
@@ -7096,14 +7657,11 @@ begin
   if CenterShipButton.IsHovered then
     CenterFilmShipMouseEnter(nil);
 end;
-function TfStarMap.CompleteHostedTurnFilm: Boolean;
-begin
-  Result := False;
-end;
+
 procedure TfStarMap.ProcessTurnFilm;
 var
   WaitResult: Cardinal;
-  Events: array[0..1] of Windows.THandle;
+  Events: array[0..1] of TGameEventHandle;
   EventList: Pointer;
   Index: Integer;
   Request: PScriptABRequest;
@@ -7146,8 +7704,8 @@ begin
           if NextFilmCommand.Kind = efcBeginTrailingEffects then
             Break;
           if not ((NextFilmCommand.Kind = efcAttachObject)
-              and ((Galaxy.TerronToStarTurn and $40000000) <> 0)
-              and (PEFilmObjectCommand(NextFilmCommand).Obj.GraphKey = 'Ruins.Terron')) then
+              and ((Galaxy.TerronToStarTurn and TerronTransformationFlag) <> 0)
+              and (NextFilmCommand.Obj.GraphKey = 'Ruins.Terron')) then
           begin
             if NextFilmCommand.StepIndex > FilmStepIndex then
               Break;
@@ -7173,7 +7731,7 @@ begin
       begin
         Stage := 10;
         StopTurnFilm(True);
-        GameEndReason := 0;
+        GameEndReason := gerDefault;
         RequestedScreenId := screenGameEnd;
         ReleaseAllTextureSurfaces;
         RequestClose(1);
@@ -7181,8 +7739,6 @@ begin
     end
     else if NextFilmCommand = nil then
     begin
-      if CompleteHostedTurnFilm then
-        Exit;
       Stage := 11;
       if (GetPlayer = nil) and (SecondaryFilm.Turn >= Galaxy.CurrentTurn) then
         TrailingEffectSteps := 200
@@ -7190,7 +7746,6 @@ begin
           and GetPlayer.InHyperspace
           and not GetPlayer.Graphic.IsAttachedToSpace then
       begin
-
         Stage := 12;
         StopTurnFilm(True);
         if GetPlayer.Order = soJumpHole then
@@ -7246,7 +7801,7 @@ begin
         StopTurnFilm(True);
         if not IsTurnCalculationRunningUI and (TurnCalculationPhase = tcpPlayerStarFinished) then
           QueueGalaxyTurnCalculation;
-        if GetPlayer.CurrentPlanet.OwnerId = Byte(oiUninhabited) then
+        if GetPlayer.CurrentPlanet.OwnerId = oiUninhabited then
         begin
           if GetPlayer.GetEngine <> nil then
             GetPlayer.ApplyItemDegradation(
@@ -7317,13 +7872,14 @@ begin
             Events[0] := TurnCalculationThread.IdleEvent;
             Events[1] := TalkRequestEvent;
             EventList := @Events;
-            WaitResult := WaitForMultipleObjects(Length(Events), EventList, False, INFINITE);
+            WaitResult := WaitGameEvents(Length(Events), EventList, False, INFINITE);
           end
           else
             WaitResult := WAIT_OBJECT_0;
+          TurnCalculationThread.CheckFailure;
           Stage := 23;
           if WaitResult = WAIT_FAILED then
-            raise Exception.Create('Error GetLastError()=' + IntToStr(Int64(GetLastError)))
+            raise Exception.Create('Failed waiting for script UI event')
           else if WaitResult = WAIT_OBJECT_0 then
           begin
             Stage := 24;
@@ -7363,14 +7919,15 @@ begin
           Events[0] := TurnCalculationThread.IdleEvent;
           Events[1] := TalkRequestEvent;
           EventList := @Events;
-          WaitResult := WaitForMultipleObjects(Length(Events), EventList, False, INFINITE);
+          WaitResult := WaitGameEvents(Length(Events), EventList, False, INFINITE);
+          TurnCalculationThread.CheckFailure;
           if (TurnCalculationThread.IdleEvent = 0) or (WaitResult = WAIT_OBJECT_0) then
           begin
             AnimateSpacePanelOnResume := True;
             StartOrderMode;
           end
           else if WaitResult = WAIT_FAILED then
-            raise Exception.Create('Error GetLastError()=' + IntToStr(Int64(GetLastError)))
+            raise Exception.Create('Failed waiting for script UI event')
           else if WaitResult = WAIT_OBJECT_0 + 1 then
           begin
             Stage := 29;
@@ -7385,10 +7942,12 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in TfStarMap.FilmStep, label = ' + IntToStr(Stage));
+      E.Message := 'Error in TfStarMap.FilmStep, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      raise;
     end;
   end;
 end;
+
 procedure TfStarMap.AdvanceFilmFrame(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   ProcessTurnFilm;
@@ -7421,6 +7980,7 @@ begin
         );
   end;
 end;
+
 procedure TfStarMap.UpdateTurnCalculation(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if BreakRequested and (GetPlayer <> nil) and not GetPlayer.IsOnPlanet then
@@ -7443,17 +8003,20 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.BreakTurnClicked(Sender: TObjectGI);
 begin
   ShowLargeHelp(LookupLocalizedTextByKey('Help.MoveBreak'));
   BreakRequested := True;
   (GetByName('PM_Break') as TGraphButtonGI).SetDisabled(True);
 end;
+
 procedure TfStarMap.UpdateFilmCamera;
 var
   BestPriority, BestIndex: Integer;
   Center: TPoint;
   HalfSize: TPoint;
+  // FPC TRect has a Vector member, visible inside the with block below.
   CameraVector, TopLeft, BottomRight: TPointF;
   Distance, Speed: Single;
   ViewRect: TRect;
@@ -7462,8 +8025,8 @@ begin
     Exit;
   if (FilmStepIndex = 0) and not SecondaryFilm.ForceCameraMovement then
   begin
-    HalfSize.X := GameScreenWidth shr 2;
-    HalfSize.Y := GameScreenHeight shr 2;
+    HalfSize.X := Round((GameScreenWidth shr 2) / MapControls.ChildWorldScale);
+    HalfSize.Y := Round((GameScreenHeight shr 2) / MapControls.ChildWorldScale);
     FilmCameraMoving :=
         (FilmCameraPosition.X - HalfSize.X > SecondaryFilm.CameraAnchor.X)
             or (FilmCameraPosition.X + HalfSize.X <= SecondaryFilm.CameraAnchor.X)
@@ -7497,8 +8060,10 @@ begin
         FilmCameraTargetUntilStep :=
             PEFilmCameraEventArray(SecondaryFilm.CameraEvents)[BestIndex].StepIndex
                 + FilmCameraLookAheadSteps;
-        HalfSize.X := (GameScreenWidth shr 1) - GiScalePixels(100);
-        HalfSize.Y := (GameScreenHeight shr 1) - GiScalePixels(100);
+        HalfSize.X :=
+            Round(((GameScreenWidth shr 1) - GiScalePixels(100)) / MapControls.ChildWorldScale);
+        HalfSize.Y :=
+            Round(((GameScreenHeight shr 1) - GiScalePixels(100)) / MapControls.ChildWorldScale);
         ViewRect.Left := Round(FilmCameraPosition.X - HalfSize.X);
         ViewRect.Top := Round(FilmCameraPosition.Y - HalfSize.Y);
         ViewRect.Right := Round(FilmCameraPosition.X + HalfSize.X);
@@ -7542,8 +8107,10 @@ begin
       if (SpaceProcess.RadarCenter.X <> SecondaryFilm.CameraAnchor.X)
           or (SpaceProcess.RadarCenter.Y <> SecondaryFilm.CameraAnchor.Y) then
       begin
-        CameraVector.X := (GameScreenWidth shr 1) - GiScalePixels(150);
-        CameraVector.Y := (GameScreenHeight shr 1) - GiScalePixels(150);
+        CameraVector.X :=
+            ((GameScreenWidth shr 1) - GiScalePixels(150)) / MapControls.ChildWorldScale;
+        CameraVector.Y :=
+            ((GameScreenHeight shr 1) - GiScalePixels(150)) / MapControls.ChildWorldScale;
         TopLeft := SubtractPointsF(SpaceProcess.RadarCenter, CameraVector);
         BottomRight := AddPointsF(SpaceProcess.RadarCenter, CameraVector);
         if SegmentIntersectsRectEdges(
@@ -7601,11 +8168,13 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.CenterFilmShipClicked(Sender: TObjectGI);
 begin
   FilmCameraFollow := True;
   FilmCameraMoving := True;
 end;
+
 procedure TfStarMap.CenterFilmShipMouseEnter(Sender: TObjectGI);
 begin
   if IsTurnCalculationRunning
@@ -7615,10 +8184,12 @@ begin
   if GetPlayer <> nil then
     ShowFilmObjectInfo(GetPlayer.Graphic, GetPlayer.Id);
 end;
+
 procedure TfStarMap.CenterFilmShipMouseLeave(Sender: TObjectGI);
 begin
   ShowFilmObjectInfo(nil, 0);
 end;
+
 procedure TfStarMap.FilmMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Obj: TObjectSE;
@@ -7626,7 +8197,7 @@ var
 begin
   if Sender.IsOccludedAtPoint(Point) or ((KeyState and MK_RBUTTON) = MK_RBUTTON) then
     Exit;
-  if not PtInRect(ScrollInteriorRect, Point) then
+  if GamePointerAllowsEdgeScroll and not PtInRect(ScrollInteriorRect, Point) then
     ShowFilmObjectInfo(nil, 0)
   else
   begin
@@ -7637,6 +8208,7 @@ begin
     end;
   end;
 end;
+
 function TfStarMap.FindFilmObjectAtCursor(out ObjectId: Cardinal): TObjectSE;
 var
   Point: TPoint;
@@ -7769,9 +8341,12 @@ begin
   Result := nil;
   ObjectId := 0;
 end;
+
 procedure TfStarMap.ShowFilmObjectInfo(Obj: TObjectSE; ObjectId: Cardinal);
+
 const
   WearableItemTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
+
 var
   I, J, RowHeight, RowX: Integer;
   IconInset: Cardinal;
@@ -7785,7 +8360,7 @@ var
   Panel: TPanelGI;
   Objects, Records: TList;
   Distance: Single;
-  OwnerId: Byte;
+  OwnerId: TOwnerId;
   Snapshot: TEObjInfo;
   FilmObject: TEFilmObj;
   ImagePath, ColorTag: WideString;
@@ -7806,7 +8381,7 @@ begin
   if (Obj is TStarSE)
       and (TerronShip <> nil)
       and (TerronShip.CurrentStar.Id = ObjectId)
-      and (Galaxy.TerronToStarTurn >= $40000000) then
+      and (Galaxy.TerronToStarTurn >= TerronTransformationFlag) then
   begin
     ShowObjectInfo(TerronShip);
     Exit;
@@ -7945,6 +8520,7 @@ begin
                 ExtractDelimitedPartW((Obj as TRuinsSE).StaticImagePath, 1, ','),
                 GraphBuf
             );
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -7977,13 +8553,13 @@ begin
       else if Obj is TPlanetSE then
       begin
         IsCivilized :=
-            (Planet^.OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+            (Planet^.OwnerId in [oiMaloc..oiGaal, oiPirate])
                 and ((MainPiratePlanet = nil) or (Planet^.Id <> MainPiratePlanet.Id));
         if IsCivilized then
         begin
-          if Planet^.OwnerId = Byte(oiPirate) then
+          if Planet^.OwnerId = oiPirate then
             IsCivilized :=
-                Planet^.Faction = OwnerInfo[Ord(oiPirate)].InternalName + RaceToSys(Planet^.RaceId)
+                Planet^.Faction = OwnerInfo[oiPirate].InternalName + RaceToSys(Planet^.RaceId)
           else
             IsCivilized := Planet^.Faction = OwnerInfo[Planet^.OwnerId].InternalName;
         end;
@@ -7997,7 +8573,7 @@ begin
           StandardInfoPanel.SetActive(False);
           (GetByName('InfoPlanetName') as TLabelGI)
               .SetText(WrapTextInColor(Planet^.Name, InfoNameColorTag));
-          if Planet^.OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)] then
+          if Planet^.OwnerId in [oiMaloc..oiGaal, oiPirate] then
           begin
             with GetByName('InfoPlanetEmRace') as TImageGI do
             begin
@@ -8013,6 +8589,7 @@ begin
           begin
             SourceHasPerPixelAlpha := True;
             (Obj as TPlanetSE).RenderToBuffer(Self, GraphBuf, False);
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8034,15 +8611,15 @@ begin
                 .SetText(OwnerInfo[Planet^.OwnerId].DisplayName)
           else
             (GetByName('InfoPlanetOwner') as TLabelGI)
-                .SetText(OwnerInfo[Ord(TOwnerId(RaceToOwner(Planet^.RaceId)))].DisplayName);
+                .SetText(OwnerInfo[RaceToOwner(Planet^.RaceId)].DisplayName);
           (GetByName('InfoPlanetPop') as TLabelGI)
               .SetText(IntToStr(Round(Planet^.Population / 1000)));
           (GetByName('InfoPlanetEco') as TLabelGI)
-              .SetText(PlanetEconomyInfo[Ord(Planet^.Economy)].DisplayName);
+              .SetText(PlanetEconomyInfo[Planet^.Economy].DisplayName);
           (GetByName('InfoPlanetGov') as TLabelGI)
-              .SetText(PlanetGovernmentMarket[Ord(Planet^.Government)].DisplayName);
+              .SetText(PlanetGovernmentMarket[Planet^.Government].DisplayName);
           (GetByName('InfoPlanetRel') as TLabelGI)
-              .SetText(RelationInfo[Ord(Planet^.Relation)].DisplayName);
+              .SetText(RelationInfo[Planet^.Relation].DisplayName);
           ShipScreen.LayoutObjectInfo(
               PlanetInfoPanel as TWindowGI,
               GetByName('InfoPlanetName') as TLabelGI,
@@ -8075,6 +8652,7 @@ begin
             SetActive(True);
             SourceHasPerPixelAlpha := True;
             (Obj as TPlanetSE).RenderToBuffer(Self, GraphBuf, False);
+
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8094,7 +8672,7 @@ begin
           end;
           (GetByName('InfoStdName') as TLabelGI)
               .SetText(WrapTextInColor(Planet^.Name, InfoNameColorTag));
-          if Planet^.OwnerId = Byte(oiUninhabited) then
+          if Planet^.OwnerId = oiUninhabited then
           begin
             Text := LocalizedText('Planet.NotCivil.Info.TextAboutPlanet');
             if Planet^.UnexploredWater > 0 then
@@ -8102,7 +8680,7 @@ begin
                   Text,
                   '<Water>',
                   IntToStr(Planet^.UnexploredWater),
-                  '<color=255,240,100>'
+                  TextHighlightColorTag
               )
             else
               ReplaceTextToken(Text, '<Water>', '-', '');
@@ -8111,7 +8689,7 @@ begin
                   Text,
                   '<Land>',
                   IntToStr(Planet^.UnexploredLand),
-                  '<color=255,240,100>'
+                  TextHighlightColorTag
               )
             else
               ReplaceTextToken(Text, '<Land>', '-', '');
@@ -8120,29 +8698,29 @@ begin
                   Text,
                   '<Hill>',
                   IntToStr(Planet^.UnexploredHills),
-                  '<color=255,240,100>'
+                  TextHighlightColorTag
               )
             else
               ReplaceTextToken(Text, '<Hill>', '-', '');
             if GetPlayer <> nil then
-              if GetPlayer.CountActiveArtefacts(Ord(t_ArtefactAnalyzer)) > 0 then
+              if GetPlayer.CountActiveArtefacts(t_ArtefactAnalyzer) > 0 then
                 Text := Text + #13#10 + Planet^.TreasureHint;
           end
           else if (MainPiratePlanet <> nil) and (Planet^.Id = MainPiratePlanet.Id) then
           begin
-            if Planet^.OwnerId = Byte(oiPirate) then
+            if Planet^.OwnerId = oiPirate then
               Text := LocalizedText('Planet.MainPiratePlanet.Info.TextAboutPlanet')
             else
               Text := LocalizedText('Planet.MainPiratePlanet.Info.TextAboutPlanetAlt');
           end
           else
           begin
-            IsCivilized := Planet^.OwnerId = Byte(oiDominator);
+            IsCivilized := Planet^.OwnerId = oiDominator;
             if IsCivilized then
               IsCivilized :=
-                  (Planet^.Faction = DominatorSeriesNames[0])
-                      or (Planet^.Faction = DominatorSeriesNames[2])
-                      or (Planet^.Faction = DominatorSeriesNames[1]);
+                  (Planet^.Faction = DominatorSeriesNames[dsBlazer])
+                      or (Planet^.Faction = DominatorSeriesNames[dsTerron])
+                      or (Planet^.Faction = DominatorSeriesNames[dsKeller]);
             if IsCivilized then
               Text := LocalizedText('Planet.Kling.Info.TextAboutPlanet')
             else
@@ -8150,8 +8728,8 @@ begin
             ReplaceTextToken(
                 Text,
                 '<Race>',
-                OwnerInfo[Ord(TOwnerId(RaceToOwner(Planet^.RaceId)))].DisplayName,
-                '<color=255,240,100>'
+                OwnerInfo[RaceToOwner(Planet^.RaceId)].DisplayName,
+                TextHighlightColorTag
             );
           end;
           (GetByName('InfoStdText') as TLabelGI).SetText(Text);
@@ -8173,6 +8751,7 @@ begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
           LoadGaiFrameToGraphBuf((Obj as TAsteroidSE).ImagePath, GraphBuf, ObjectId);
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8232,6 +8811,7 @@ begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
           LoadGaiFrameToGraphBuf((Obj as THoleSE).ImagePath, GraphBuf, 32);
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8448,6 +9028,7 @@ begin
               ExtractDelimitedPartW((Obj as TRuinsSE).StaticImagePath, 1, ','),
               GraphBuf
           );
+
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8466,7 +9047,7 @@ begin
           SetPosition(SubtractPoints(ShipScreen.ItemImageCenter, GetVisualCenter));
         end;
       end;
-      if (Obj is TRuinsSE) and (Ship^.OwnerId <> Byte(oiDominator)) then
+      if (Obj is TRuinsSE) and (Ship^.OwnerId <> oiDominator) then
       begin
         (GetByName('ISType') as TLabelGI).SetActive(False);
         (GetByName('InfoShipType') as TLabelGI).SetActive(False);
@@ -8479,7 +9060,7 @@ begin
       end;
       (GetByName('InfoShipSpeed') as TLabelGI).SetText(IntToStr(Ship^.Speed));
       if Ship^.HullPoints <= Ship^.HullCapacity / 2 then
-        ColorTag := '<color=255,166,0>'
+        ColorTag := OrangeColorTag
       else
         ColorTag := '';
       if Ship^.ScannerResolved then
@@ -8496,7 +9077,7 @@ begin
         (GetByName('InfoShipSize') as TLabelGI).SetText(WrapTextInColor('???', ColorTag));
       (GetByName('InfoShipDef') as TLabelGI).SetText(Ship^.DefenseText);
       (GetByName('InfoShipDamage') as TLabelGI).SetText(Ship^.DamageText);
-      (GetByName('InfoShipRel') as TLabelGI).SetText(RelationInfo[Ord(Ship^.Relation)].DisplayName);
+      (GetByName('InfoShipRel') as TLabelGI).SetText(RelationInfo[Ship^.Relation].DisplayName);
       if Ship^.WinChance >= 0 then
       begin
         (GetByName('ISWin') as TLabelGI).SetActive(True);
@@ -8631,6 +9212,7 @@ begin
             ExtractDelimitedPartW((Obj as TStarSE).StaticImagePath, 1, ','),
             GraphBuf
         );
+
         if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
         begin
           if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -8864,7 +9446,7 @@ begin
           SetImageKindY(ikyCenter);
         end;
         if Objects[I] = nil then
-          OwnerId := Byte(oiUninhabited)
+          OwnerId := oiUninhabited
         else if TObject(Objects[I]) is TPlanetSE then
           OwnerId := PEPlanetInfo(Records[I])^.OwnerId
         else
@@ -8895,7 +9477,7 @@ begin
               with TGraphBufGI.Create(Panel, False) do
               begin
                 SourceHasPerPixelAlpha := True;
-                LoadBitmapPathAsRgba(ExtractDelimitedPartW(Images, J, ',') + '?RGBA');
+                LoadBitmapPathAsRgba(ExtractDelimitedPartW(Images, J, ',') + RgbaImagePathSuffix);
                 SetPosition(Classes.Point(RowX, RowHeight * I + 1));
                 SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
                 if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
@@ -8953,7 +9535,7 @@ begin
             DetailWidth := Max(DetailWidth, ClientSize.X + GiScalePixels(35));
           end;
         end
-        else if OwnerId <> Byte(oiUninhabited) then
+        else if OwnerId <> oiUninhabited then
           if (TObject(Objects[I]) is TPlanetSE)
               and ((MainPiratePlanet = nil)
                   or (PEPlanetInfo(Records[I])^.Id <> MainPiratePlanet.Id)) then
@@ -8965,7 +9547,7 @@ begin
                           GetFactionEmblemPath(PEPlanetInfo(Records[I])^.Faction),
                           1,
                           ',')
-                      + '?RGBA'
+                      + RgbaImagePathSuffix
               );
               SetPosition(Classes.Point(NameWidth + 5 + RowHeight + 5 + 1, RowHeight * I + 1));
               SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
@@ -8989,17 +9571,15 @@ begin
             end;
         IsCivilized :=
             (TObject(Objects[I]) is TPlanetSE)
-                and (PEPlanetInfo(Records[I])^.OwnerId
-                    in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+                and (PEPlanetInfo(Records[I])^.OwnerId in [oiMaloc..oiGaal, oiPirate])
                 and ((MainPiratePlanet = nil)
                     or (PEPlanetInfo(Records[I])^.Id <> MainPiratePlanet.Id));
         if IsCivilized then
         begin
-          if PEPlanetInfo(Records[I])^.OwnerId = Byte(oiPirate) then
+          if PEPlanetInfo(Records[I])^.OwnerId = oiPirate then
             IsCivilized :=
                 PEPlanetInfo(Records[I])^.Faction
-                    = OwnerInfo[Ord(oiPirate)].InternalName
-                        + RaceToSys(PEPlanetInfo(Records[I])^.RaceId)
+                    = OwnerInfo[oiPirate].InternalName + RaceToSys(PEPlanetInfo(Records[I])^.RaceId)
           else
             IsCivilized :=
                 PEPlanetInfo(Records[I])^.Faction
@@ -9058,7 +9638,7 @@ begin
           end;
         end
         else if (TObject(Objects[I]) is TPlanetSE)
-            and (PEPlanetInfo(Records[I])^.OwnerId = Byte(oiUninhabited))
+            and (PEPlanetInfo(Records[I])^.OwnerId = oiUninhabited)
             and (PEPlanetInfo(Records[I])^.UnexploredWater = 0)
             and (PEPlanetInfo(Records[I])^.UnexploredLand = 0)
             and (PEPlanetInfo(Records[I])^.UnexploredHills = 0) then
@@ -9117,6 +9697,7 @@ begin
         SetActive(True);
         SourceHasPerPixelAlpha := True;
         LoadGaiFrameToGraphBuf((Obj as TAsteroidSE).ImagePath, GraphBuf, ObjectId);
+
         if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
         begin
           if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -9201,8 +9782,24 @@ begin
     ActivePanel := StandardInfoPanel
   else
     Exit;
+  if GameMobileUiEnabled then
+  begin
+    FitMobileTooltip(ActivePanel, MainPanel.ContentBounds, GetCursorPoint);
+    ActivePanel.MouseBlocking := False;
+    Exit;
+  end;
   if DynamicTipsPos then
   begin
+    HitObjectPosition :=
+        Classes.Point(
+            Round(HitObjectPosition.X * MapControls.ChildWorldScale),
+            Round(HitObjectPosition.Y * MapControls.ChildWorldScale)
+        );
+    HitObjectSize :=
+        Classes.Point(
+            Round(HitObjectSize.X * MapControls.ChildWorldScale),
+            Round(HitObjectSize.Y * MapControls.ChildWorldScale)
+        );
     Inc(HitObjectPosition.X, Cardinal(GameScreenWidth) div 2);
     Inc(HitObjectPosition.Y, Cardinal(GameScreenHeight) div 2);
     I := Cardinal(GameScreenWidth) div 3;
@@ -9249,6 +9846,7 @@ begin
         Classes.Point(10 - Cardinal(GameScreenWidth) div 2, 10 - Cardinal(GameScreenHeight) div 2)
     );
 end;
+
 procedure TfStarMap.PrepareTalkDisplay;
 begin
   FilmCameraMoving := True;
@@ -9264,19 +9862,25 @@ begin
   CaptureScreenBackground(True, 0);
   SetCursorActive(True);
 end;
+
 procedure TfStarMap.WaitForTurnOrTalk;
 var
   WaitResult: Cardinal;
-  Events: array[0..1] of Windows.THandle;
+  Events: array[0..1] of TGameEventHandle;
   EventList: Pointer;
 begin
   MainPanel.Hide;
   ResumeMode := smrNormal;
-  SetEvent(TalkCompletedEvent);
+  // Native dormant checks precede the actual wait setup.
+  if TurnCalculationThread.IdleEvent = 0 then
+    if TurnCalculationThread.IdleEvent = 0 then
+      ;
+  SetGameEvent(TalkCompletedEvent);
   Events[0] := TurnCalculationThread.IdleEvent;
   Events[1] := TalkRequestEvent;
   EventList := @Events;
-  WaitResult := WaitForMultipleObjects(Length(Events), EventList, False, INFINITE);
+  WaitResult := WaitGameEvents(Length(Events), EventList, False, INFINITE);
+  TurnCalculationThread.CheckFailure;
   if (TurnCalculationThread.IdleEvent = 0) or (WaitResult = WAIT_OBJECT_0) then
   begin
     if PlayerStarDayPrepared then
@@ -9296,19 +9900,20 @@ begin
     end;
   end
   else if WaitResult = WAIT_FAILED then
-    raise Exception.Create('Error GetLastError()=' + IntToStr(Int64(GetLastError)))
+    raise Exception.Create('Failed waiting for script UI event')
   else if WaitResult = WAIT_OBJECT_0 + 1 then
   begin
     RunTalkDialogs;
     WaitForTurnOrTalk;
   end;
 end;
+
 procedure TfStarMap.UpdateTerronTransformation;
 var
   Obj: TObjectSE;
 begin
   if ((Galaxy.TerronToStarTurn and $20000000) = 0)
-      and ((Galaxy.TerronToStarTurn and $40000000) <> 0)
+      and ((Galaxy.TerronToStarTurn and TerronTransformationFlag) <> 0)
       and ((Galaxy.TerronToStarTurn and $0FFFFFFF) <= Galaxy.CurrentTurn)
       and (GetPlayer <> nil)
       and (GetPlayer.CurrentStar = TerronShip.CurrentStar) then
@@ -9347,7 +9952,7 @@ begin
         begin
           if not Assigned(TStarSE(Obj).Animation.CycleCompleteCallback) then
           begin
-            Galaxy.TerronToStarTurn := $40000000;
+            Galaxy.TerronToStarTurn := TerronTransformationFlag;
             TStarSE(Obj).Animation.CycleCompleteCallback := TerronTransformationStarted;
             Obj := SpaceProcess.Space.FirstObject;
             while Obj <> nil do
@@ -9383,6 +9988,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.TerronTransformationStarted(Sender: TObjectGI);
 var
   Image: TgaiGI;
@@ -9395,6 +10001,7 @@ begin
   Image.CycleCompleteCallback := TerronTransformationFinished;
   Image.FrameAdvancedCallback := TerronTransformationFrame;
 end;
+
 procedure TfStarMap.TerronTransformationFrame(Sender: TObjectGI);
 var
   Alpha: Byte;
@@ -9435,6 +10042,7 @@ begin
     end;
   end;
 end;
+
 procedure TfStarMap.TerronTransformationFinished(Sender: TObjectGI);
 var
   Animation: TgaiGI;
@@ -9448,23 +10056,25 @@ begin
   Animation.CycleCompleteCallback := nil;
   Galaxy.TerronToStarTurn := Galaxy.TerronToStarTurn or $20000000;
 end;
+
 procedure TfStarMap.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
   if MainPanel.NavigationLocked then
     Exit;
-  if ShipScreen.FlagD4 then
+  if ShipScreen.ReopenRequested then
     Exit;
   if ExitScreenLoop then
     Exit;
-  if WaitForSingleObject(ScriptUiRequestEvent, 0) = WAIT_OBJECT_0 then
+  if WaitGameEvent(ScriptUiRequestEvent, 0) = WAIT_OBJECT_0 then
     Exit;
   if not (TurnCalculationPhase
       in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
     WaitForTurnCalculation;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(10007);
   ExecuteGameplayUiCode(Block, Key);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(20007);
 end;
+
 procedure TfStarMap.SelectMusic;
 begin
   if GetPlayer = nil then
@@ -9488,47 +10098,5 @@ begin
   else
     MusicManager.RequestFadeOut;
 end;
-procedure LinkRecoveredTypes;
-begin
-  TAsteroid.ClassName;
-  TAsteroidSE.ClassName;
-  TCircleGI.ClassName;
-  TContainerSE.ClassName;
-  TCustomSystemInfo.ClassName;
-  TEObjInfo.ClassName;
-  TEquipment.ClassName;
-  TEquipmentWithActCode.ClassName;
-  TGoods.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  THole.ClassName;
-  THoleSE.ClassName;
-  THull.ClassName;
-  TImageGI.ClassName;
-  TItem.ClassName;
-  TKling.ClassName;
-  TLabelGI.ClassName;
-  TMissile.ClassName;
-  TMissileSE.ClassName;
-  TMultiImageGI.ClassName;
-  TPanelGI.ClassName;
-  TPirate.ClassName;
-  TPlanet.ClassName;
-  TPlanetSE.ClassName;
-  TRanger.ClassName;
-  TRuins.ClassName;
-  TRuinsSE.ClassName;
-  TShip.ClassName;
-  TShip2SE.ClassName;
-  TSpaceCircleGI.ClassName;
-  TSpaceImgGI.ClassName;
-  TStar.ClassName;
-  TStarFieldGI.ClassName;
-  TStarFieldImgGI.ClassName;
-  TStarSE.ClassName;
-  TTranclucator.ClassName;
-  TWeapon.ClassName;
-  TWindowGI.ClassName;
-  TgaiGI.ClassName;
-end;
+
 end.

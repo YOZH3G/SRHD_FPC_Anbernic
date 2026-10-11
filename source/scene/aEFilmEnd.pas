@@ -1,18 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit aEFilmEnd;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   SE_Space,
   aEFilm;
+
 type
+
   TEFilmEnd = class;
+
   PointerToTEFilmEndEntry = ^TEFilmEndEntry;
+
   PEFilmEndEntry = PointerToTEFilmEndEntry;
+
   TEFilmEndEntry = packed record
     Prev: PEFilmEndEntry;
     Next: PEFilmEndEntry;
@@ -20,6 +24,7 @@ type
     RelatedObject1: TObjectSE;
     RelatedObject2: TObjectSE;
   end;
+
   TEFilmEnd = class(TObjectEx)
     FirstEntry: PEFilmEndEntry;
     LastEntry: PEFilmEndEntry;
@@ -33,10 +38,10 @@ type
     procedure ReleaseObjectReferences(Obj: TObjectSE);
     procedure RemoveLinkedWeaponEffects;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Mem,
   GR_Main,
@@ -141,11 +146,11 @@ begin
         while Command <> nil do
         begin
           if (Command.Kind = efcReleaseObject)
-              and (PEFilmObjectCommand(Command).Obj <> nil)
-              and (PEFilmObjectCommand(Command).Obj.SceneObject = Weapon.TargetObject) then
+              and (Command.Obj <> nil)
+              and (Command.Obj.SceneObject = Weapon.TargetObject) then
           begin
-            RetainSpaceObject(Entry.RelatedObject1, PEFilmObjectCommand(Command).Obj.SceneObject);
-            ReleaseSpaceObject(PEFilmObjectCommand(Command).Obj.SceneObject);
+            RetainSpaceObject(Entry.RelatedObject1, Command.Obj.SceneObject);
+            ReleaseSpaceObject(Command.Obj.SceneObject);
             Break;
           end;
           Command := Command.Next;
@@ -159,8 +164,8 @@ begin
       while Command <> nil do
       begin
         if (Command.Kind = efcReleaseObject)
-            and (PEFilmObjectCommand(Command).Obj <> nil)
-            and (PEFilmObjectCommand(Command).Obj.SceneObject = Obj.SceneObject) then
+            and (Command.Obj <> nil)
+            and (Command.Obj.SceneObject = Obj.SceneObject) then
         begin
           Entry := AppendEntry;
           RetainSpaceObject(Entry.SceneObject, Obj.SceneObject);
@@ -259,10 +264,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGAIEffectSE.ClassName;
-  THoleSE.ClassName;
-  TWeaponSE.ClassName;
-end;
 end.

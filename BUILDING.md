@@ -1,29 +1,19 @@
 # Building
 
-## macOS
+## Requirements
 
-The macOS ARM64 build requires Python 3, FPC 3.2.2 for bootstrapping, GNU Make,
-Xcode command-line tools, CMake, pkg-config, SDL2, SDL2_mixer, libjpeg, and libpng.
+Desktop builds use the host architecture on Linux and macOS: x86_64 or AArch64.
+The x86_64 game and runtime require an x86-64-v2 CPU (SSE4.2 and POPCNT).
+Requires Python 3.10+, FPC 3.2.2, GNU Make, CMake 3.20+, pkg-config, Clang 14+, and development
+libraries for SDL2 2.26+ (or SDL2-compat), libogg, libvorbis, libjpeg, and libpng.
 
-The build creates the pinned FPC 3.3.1 LLVM compiler in `.local/fpc/` on first
-use and rebuilds it when its source changes. `FPC_BOOTSTRAP` selects the installed
-bootstrap compiler. The same generated compiler serves macOS and Android, with
-a runtime compiled for each target. Pascal compiles through LLVM IR and Clang;
-C code also uses Clang.
+- Linux: binutils and `ld.lld` in addition to Clang.
+- macOS: Xcode command-line tools and Homebrew.
 
-The macOS and Android builds use an RTL compiled with `CLASSESINLINE`; the pinned FPC also marks
-the list error routine `noreturn`, allowing safe list accesses to optimize better.
-macOS link-time optimization is a separate opt-in. Pass `--lto` to both scripts:
+AVI playback needs Xvid: `libxvidcore.so.4` on Linux, `xvidcore` on macOS.
+`FPC_BOOTSTRAP` overrides the installed compiler used to bootstrap the pinned FPC.
 
-```sh
-./tools/build.py --release --lto
-./tools/run.py --release --lto
-```
-
-Normal builds keep their existing output paths. LTO builds use `.local/release-lto/`
-or `.local/debug-lto/`, with separate RTL and game-unit caches. Switching between
-them does not rebuild the compiler or overwrite the other configuration.
-LTO takes longer to link. Android currently builds without LTO.
+## Build and run
 
 ```sh
 git submodule update --init --recursive
@@ -31,189 +21,114 @@ git submodule update --init --recursive
 ./tools/run.py --game-dir=/path/to/game
 ```
 
-Place the game assets in `game/` using this layout:
+The scripts detect the host OS; `--target=linux` or `--target=macos` selects it
+explicitly. Resources default to `game/` when `--game-dir` is omitted.
 
-```text
-game/
-  INSTALL.TXT
-  INSTALL_ENGLISH.TXT
-  INSTALL_RUSSIAN.TXT
-  CFG.TXT
-  CFG/        # configuration data and language subfolders
-  DATA/*.pkg  # original game packages
-```
+The scripts set FPC's `-jN` to use up to six parallel LLVM assembly jobs, capped
+by the detected logical CPU count. This limit does not adapt to available RAM.
 
-Optional mods go in `game/Mods/` and are selected through the original mod manager.
+- `--release`: `-O4` instead of the default `-O2`.
+- `--lto`: enable LLVM link-time optimization.
+- `--rebuild`: rebuild all game units and native code (build script only).
 
-`game/` is ignored by Git. With assets there, run `./tools/run.py` without arguments.
-Generated output stays in `.local/`.
-Use `--release` with both scripts for an optimized build.
+Use matching `--target`, `--release` and `--lto` options for build and run.
+Configurations are `debug` and `release`, with a `-lto` suffix when
+enabled; compiler and runtime caches live in `.local/fpc/<cpu>-<system>/`.
 
-Builds reuse unchanged Pascal units. On macOS, the native libraries also build
-incrementally. Use `./tools/build.py --rebuild` (with `--release` if needed) to
-force a full game rebuild. Changes to the compiler or Pascal flags automatically
-rebuild the units.
+| Platform | Output |
+| --- | --- |
+| Linux | `.local/linux-<cpu>/<profile>/bin/`: `Rangers` and `libokgf.so` |
+| macOS | `.local/<profile>/Space Rangers HD.app` |
 
-Both macOS configurations keep matching `.dSYM` bundles beside `Rangers` and the
-native libraries. Keep these with the corresponding binaries: crash backtraces
-use them to print source paths and line numbers, including in release builds.
-The macOS runtime uses `/usr/bin/atos` when FPC cannot resolve an address itself.
+Linux CPU names are `x86_64` and `aarch64`. Keep the Linux executable and OKGF
+library together; SDL and codecs remain system dependencies.
 
-Saves/settings default to `~/Library/Application Support/SpaceRangersHD/`.
-Game options include `--user-dir=/path/to/profile`, `--language=english`,
-`--renderer=sdl`, and `--transitions=original`.
+## Browser
 
-To open a save in the galaxy observer:
+Browser builds require Python, FPC, GNU Make, CMake, host Clang and Emscripten.
+SDL2 and the codec dependencies are downloaded during the build. The browser
+must support WebAssembly threads and exception handling.
 
 ```sh
-./tools/run.py --observer-save=/path/to/save.sav --user-dir=/path/to/observer-profile
+./tools/build.py --target=wasm --release
+./tools/run.py --target=wasm --release --game-dir=/path/to/game
 ```
+
+Open `http://127.0.0.1:8788/` and select **Start game**. The server streams the
+original game assets and supplies the isolation headers needed for shared memory.
+Saves are stored in this browser. Use `--port` to select a different server port.
+The browser files are in `.local/wasm/release/bin/`; `--lto` is also supported.
 
 ## Android
 
-`./tools/build.py --target android` produces `.local/android/Rangers.apk`.
-Build from macOS ARM64 with the bootstrap tools above, JDK 21, CMake, Ninja,
-and the Android SDK/NDK. Set these dependency paths:
-
-- `ANDROID_HOME`: SDK with platform/build-tools 35 or newer.
-- `ANDROID_NDK_HOME`: NDK installation.
-- `ANDROID_PREFIX`: Android ARM64 libraries/headers for SDL2, SDL2_mixer, libjpeg,
-  and libpng; SDL2_mixer and image libraries are linked statically.
-- `SDL_SOURCE`: matching SDL2 source tree, supplying its Android Java classes.
-
-Android Pascal and C code use the NDK's LLVM tools. The compiler submodule includes
-[Android LLVM support](vendor/fpc/PORT.md).
-
-`JAVA_HOME` selects the JDK. The APK contains code; the launcher imports game
-resources from a ZIP of the `game/` layout above:
+Requires Python 3.10+ with current patch updates, FPC 3.2.2, GNU Make, CMake,
+Ninja, host Clang, JDK 17+, Android SDK platform 35, build-tools 35+ and NDK r28+.
+Build on macOS or x86_64 Linux for ARM64 devices running Android 8.0+.
+Set `ANDROID_HOME`, `ANDROID_NDK_HOME` or `JAVA_HOME` to override tool locations.
 
 ```sh
-ditto -c -k --keepParent game .local/game.zip
+./tools/build.py --target=android
 ```
 
-After applying mods or settings that need a restart, tap Play in the launcher.
-`--release` enables optimized native code. Keep `.local/android/debug.keystore`
-for subsequent updates signed with the same local key.
+The APK is `.local/android-arm64/debug/Rangers.apk`; `--release` and `--lto`
+select other profiles. Install it, copy your game folder to the device, and select
+**Select game folder** in the launcher. Keep `build/android-signing/` to sign
+updates with the same key.
 
-## Linux handheld builds
+Release symbols are kept in `build/android-symbols/<build-id>/` for crash diagnostics.
+Android builds currently omit Xvid, so AVI cinematics do not play.
 
-`tools/build_linux.py` builds an ARMHF or AArch64 Linux executable and native
-libraries. It needs a Linux sysroot, matching cross-binutils/Clang wrappers,
-SDL2 2.26.2, SDL2_mixer 2.8.1, JPEG, PNG, zlib, and a bootstrapped vendored FPC
-source tree with its target RTL already built. Use a sysroot compatible with
-the device firmware; host Debian libraries are not suitable for the handheld.
-ARMHF uses the native FPC backend with ARMv7/VFPv3 hard-float and `-O2`.
-AArch64 uses LLVM 17 IR through Clang 19. The vendored ARMHF LLVM backend cannot
-compile its Linux RTL in this revision.
+The package ID and default version are defined in `tools/targets.py`; local rebuilds
+do not bump the version. `ANDROID_VERSION_CODE` and `ANDROID_VERSION_NAME` override
+the APK version; `ANDROID_BUILD_TOOLS_VERSION` selects an installed SDK build-tools
+version instead of the newest one.
 
-In the prepared cloud workspace, build with:
+## iOS (experimental)
+
+Requires macOS, full Xcode, Python 3.10+ with current patch updates, FPC 3.2.2,
+GNU Make, CMake and Ninja. Targets iOS 15+; SDL2 and codecs are downloaded during
+the build. Select Xcode with `xcode-select` or `DEVELOPER_DIR` and install an iOS
+simulator runtime in Xcode's Components settings.
 
 ```sh
-source /workspace/.cloud-setup/env.sh
-python3 tools/build_linux.py --arch armhf \
-  --sysroot /workspace/.cloud-setup/anbernic/armhf/root \
-  --toolchain /workspace/.cloud-setup/anbernic/armhf/bin \
-  --fpc-source .local/anbernic/fpc-arm/source
-python3 tools/build_linux.py --arch aarch64 \
-  --sysroot /workspace/.cloud-setup/anbernic/arm64/root \
-  --toolchain /workspace/.cloud-setup/anbernic/arm64/bin \
-  --fpc-source .local/anbernic/fpc-aarch64/source
+./tools/build.py --target=ios-simulator
+./tools/run.py --target=ios-simulator --simulator="iPhone 15" --game-dir=/path/to/game
 ```
 
-Use `--rebuild` after changing compiler flags or rebuilding FPC to invalidate
-compiled Pascal units. Outputs are `.local/anbernic/armhf/` and
-`.local/anbernic/arm64/`; these contain `Rangers`, `lib/`, and build logs.
-The build tool does not download a sysroot or bootstrap FPC.
-
-Experimental packages target muOS, KNULLI, ArkOS, AmberELEC and ROCKNIX;
-see [the model list and installation instructions](platform/linux/ANBERNIC.md).
-They require glibc 2.29 or newer, PortMaster and original game resources.
-Packages include the firmware launcher and keyboard/mouse mappings from
-`platform/linux/`. The launcher selects ARMHF or AArch64 by userland bitness.
-`--fullscreen` fits the logical canvas to the physical display; profiles can be
-placed beside the port with `--user-dir`.
-
-`--on-screen-keyboard` enables the built-in RU/EN keyboard when clicking an
-edit field or pressing F6 with an edit field focused. PortMaster launchers enable
-it by default: L2 opens it, Y changes language, R2 changes case, B deletes,
-Start/R1 confirms, and Select cancels. `--no-on-screen-keyboard` disables it.
-`tools/tests/linux_keyboard_capture.c` drives the actual SDL UI through a test-only
-preload library. Resource-backed checks on both architectures cover mixed RU/EN
-input, insertion at the start and middle, field length limits, commit and cancel.
-
-`tools/tests/linux_smoke.c` checks the native libraries, an SDL software frame,
-dummy audio, and MP3/OGG decoders. `tools/tests/ray_sphere.pas` checks ray/sphere
-intersection, including aliased input/output. Both passed through QEMU for
-both architectures. The packaged executables also reached the expected
-missing-assets error through QEMU. Actual handheld video, audio, controls,
-performance, and full gameplay require testing with game resources on hardware.
-
-For H700 models (RG35XX H/SP/2024, RG28XX and RG40XX H/V), package with:
+The simulator uses the host CPU; pass `--simulator-arch=x86_64` or `arm64` to both
+commands to override it. Select a device by name or UDID with `--simulator`;
+otherwise the single booted device is used. `xcrun simctl list devices available`
+lists installed devices. Use `--game-dir` for the initial asset import; omit it
+on later runs to reuse them. Reinstalling preserves assets and saves.
 
 ```sh
-python3 tools/package_h700.py --sdk-root /workspace/.cloud-setup/anbernic \
-  --output .local/anbernic/h700-dist
+./tools/build.py --target=ios
 ```
 
-Use a new output directory when packaging again. This produces a muOS bundle
-with both architectures and an AArch64 KNULLI bundle. The H700 launcher selects
-the executable using the userland word size, with PortMaster's architecture as
-a fallback. H700 packages use **firmware SDL2 >= 2.0.18**, preserving the Mali
-display backend and screen rotation patches. They omit bundled SDL2 and ALSA;
-the other native dependencies are included. The `check-platform` executable
-prints the system SDL version and available drivers without initializing video.
-KNULLI installs to `/userdata/roms/ports`; muOS installs to
-`/mnt/mmc/ROMS/Ports` or `/mnt/sdcard/ROMS/Ports`. These are candidate packages
-for the listed models, with hardware compatibility still to be verified.
+Apps are in `.local/<target>-<cpu>/debug/SpaceRangersHD.app`; `--release` and `--lto`
+select other profiles. Device builds use ARM64 and require signing with an Apple
+identity and provisioning profile before installation. Copy game files to
+`Documents/Game` through Files or Finder file sharing. Saves and logs are in
+`Library/Application Support/SpaceRangersHD` within the app sandbox.
 
-To package all listed Anbernic Linux families for muOS, KNULLI, ArkOS,
-AmberELEC and ROCKNIX:
+## Anbernic Linux cross builds
+
+Initialize submodules and bootstrap ARMHF/AArch64 compilers and RTL from the
+pinned `vendor/fpc` revision. A matching Linux sysroot and Clang/binutils wrappers
+are required; `--fpc-source` points at the bootstrapped source/build tree.
 
 ```sh
-python3 tools/package_anbernic.py --sdk-root /workspace/.cloud-setup/anbernic \
-  --output .local/anbernic/releases
+python tools/build_linux.py --arch aarch64 \
+  --sysroot /path/to/arm64/root --toolchain /path/to/arm64/bin \
+  --fpc-source /path/to/fpc-aarch64/source --rebuild
+python tools/build_linux.py --arch armhf \
+  --sysroot /path/to/armhf/root --toolchain /path/to/armhf/bin \
+  --fpc-source /path/to/fpc-arm/source --rebuild
+python tools/package_anbernic.py --sdk-root /path/to/sdk --output /path/to/packages
 ```
 
-Use a new output directory for each packaging run. Rockchip packages reuse
-the portable AArch64 executable; their firmware SDL handles the platform's
-display backend. See [installation and model mapping](platform/linux/ANBERNIC.md)
-for requirements and firmware-specific installation directories.
-
-Resource-backed QEMU checks exposed two Linux/ARMHF issues: Windows asset
-filename case must be resolved on Linux, and zlib's length arguments must use
-the platform C `unsigned long` (`ctypes.culong`). Both are fixed. The
-`tools/tests/zlib_roundtrip.pas` regression check passed for both targets.
-Both builds rendered the main menu, new-game settings and introduction with
-supplied 2.1.2500 resources. Proprietary resources are kept outside the checkout
-and must never be added to release or source archives.
-Both final binaries also completed new-game generation, created a character,
-entered the station and hangar, took off, and rendered the space screen for
-20 seconds before exiting with code 0. The complete QEMU scenarios took
-248.2 seconds (ARMHF) and 211.4 seconds (AArch64); the earlier 150-second limit
-was insufficient. ARMHF additionally needed zero-extended narrow C arguments
-for OKGF's AAPCS calls. `tools/tests/okgf_narrow_args.pas` checks lighting alpha
-boundaries, stride and guard bytes on both targets.
-An access violation from an earlier AArch64 run has not reproduced in the
-successful runs; its cause remains unresolved. Physical hardware and extended
-campaign play remain untested.
-
-## Formatting
-
-Install [pasfmt](https://github.com/integrated-application-development/pasfmt),
-clang-format, Ruff, cmakelang (`cmake-format`), and libxml2 (`xmllint`).
-Run `./tools/format.py` to format Pascal, C, Java, Python, CMake, and XML source;
-`./tools/format.py --check` checks the same files.
-
-## Source comments
-
-In Pascal game source, place comments beside changed statements, declarations, or routines:
-
-```pascal
-// CHANGE: ENHANCEMENT - Add search bookmark navigation.
-// CHANGE: BUGFIX - Avoid floating-point underflow near path endpoints.
-// CHANGE: PERFORMANCE - Reuse rendered thumbnails within a turn.
-```
-
-Use `PORTABILITY`, `LIMITATION`, or `CLEANUP` for those kinds of game-source changes.
-Keep comments short and explain the reason. Use the same category at related
-sites so a text search finds them together.
+Outputs are `.local/anbernic/arm64/Rangers` and `armhf/Rangers`. SDL2 ≥ 2.26 is
+provided by firmware; OKGF, Ogg/Vorbis and codecs are bundled. The port uses
+upstream's direct Pascal SDL adapters, without the old gamenative/SDL_mixer
+bridge. Launchers select SDL acceleration with automatic software fallback.
+See [Anbernic installation](platform/linux/ANBERNIC.md).

@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_StarFieldImg;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   GI_MessageLoop,
   EC_BlockPar,
-  EC_Struct,
-  Types;
+  EC_Struct;
+
 type
+
   TStarFieldImgGI = class;
+
   PointerToTStarFieldImageGI = ^TStarFieldImageGI;
+
   TStarFieldImageGI = record
     TemplateIndex: Integer;
     FrameIndex: Integer;
@@ -27,13 +30,14 @@ type
     ImageOffset: TPoint;
     PixelPosition: TPoint;
   end;
+
   PStarFieldImageGI = PointerToTStarFieldImageGI;
+
   TStarFieldImgGI = class(TObjectGI)
     Stars: PStarFieldImageGI;
     StarCount: Integer;
     Capacity: Integer;
     ReservedDirty: Boolean;
-    Gap12D: array[0..2] of Byte;
     FocusPoint: TPointF;
     ViewPosition: TPointF;
     TargetHeading: Single;
@@ -63,7 +67,9 @@ type
     procedure SetViewPosition(Position: TPointF);
     procedure ApplyStarConfig(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   EC_Mem,
   EC_CacheGAI,
@@ -71,7 +77,6 @@ uses
   GR_Main,
   GR_gi,
   GR_DX,
-  Windows,
   Direct3D9,
   aMyFunction,
   Math;
@@ -131,7 +136,7 @@ begin
     StarCount := Source.StarCount;
     Capacity := StarCount;
     Stars := ReAllocREC(Stars, SizeOf(TStarFieldImageGI) * Capacity);
-    CopyMemory(Stars, Source.Stars, SizeOf(TStarFieldImageGI) * StarCount);
+    System.Move(Pointer(Source.Stars)^, Pointer(Stars)^, SizeOf(TStarFieldImageGI) * StarCount);
   end;
 end;
 
@@ -435,7 +440,7 @@ begin
               Origin.X + Bounds.Left,
               Origin.Y + Bounds.Top,
               255,
-              $FFFFFF,
+              RgbWhite,
               @ClipRect,
               False,
               False

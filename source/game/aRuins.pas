@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit aRuins;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   aConst,
   EC_BlockPar,
   EC_Buf,
@@ -16,9 +16,13 @@ uses
   aMyFunction,
   aPlanet,
   aShip;
+
 type
+
   TRuins = class;
-  TStationHullTypes = set of 0..15;
+
+  TStationHullTypes = set of THullType;
+
   TStationHullGeneration = packed record
     MinSize: Integer;
     MaxSize: Integer;
@@ -26,19 +30,22 @@ type
     MinLevel: Integer;
     MaxLevel: Integer;
   end;
+
   TStationLevelRange = packed record
     Minimum: Integer;
     Maximum: Integer;
   end;
+
   TStationWeaponGeneration = packed record
     BasicLevel: Integer;
     IntermediateLevel: Integer;
     AdvancedLevel: Integer;
     MinimumRange: Integer;
   end;
+
   TRuins = class(TShip)
     EquipmentShop: TObjectList;
-    ShopGoods: array[0..7] of TGoodsTradePriceEntry;
+    ShopGoods: array[TGoodsIndex] of TGoodsTradePriceEntry;
     RelocationAge: Integer;
     FlyToStar: TStar;
     FlyDate: Integer;
@@ -58,10 +65,10 @@ type
     procedure AssignWeaponTargetsInStar; override;
     function GetName: WideString; override;
     function GetFullName(const Separator: WideString): WideString; override;
-    function GetGreetingShipCategory: Byte; override;
+    function GetGreetingShipCategory: TGreetingShipCategory; override;
     function GetHomeStar: TStar; override;
     function GetDominantCareer: TRangerCareer; override;
-    function GetStrengthScaledPirateStatus: Byte; override;
+    function GetStrengthScaledPirateStatus: TPercent; override;
     function GetDesiredCargoFreeSpace: Integer; override;
     procedure RefuelAtLocation; override;
     function AdjustItemEvaluation(
@@ -87,7 +94,7 @@ type
     function RecomputeFearState: Boolean; override;
     function AcceptsRansomDemandFrom(Ship: TShip): Boolean; override;
     function TrustsAttackRequester(Ship: TShip): Boolean; override;
-    function EvaluateAllyRelationAndStrength(Ship: TShip): Boolean; override;
+    function AcceptsAppealFrom(Ship: TShip): Boolean; override;
     function AcceptPickupItem(Item: TItem): Boolean; override;
     procedure ProcessCombatDialogue; override;
     procedure ReactToExtortionDemand(Ranger: Pointer); override;
@@ -131,7 +138,7 @@ type
     procedure ReloadWeapons;
     procedure RefreshShopInventory;
     function CalculateEquipmentShopTargetCount: Integer;
-    function CountEquipmentShopItems(ItemType: Byte): Integer;
+    function CountEquipmentShopItems(ItemType: TItemType): Integer;
     function FindMostExpensiveShopItem(MinCost: Integer; MaxCost: Integer): TItem;
     function RemoveSimilarShopItem(Item: TEquipment): Boolean;
     function SelectEquipmentOfferSpecialMicroModule(Item: TEquipment; Planet: TPlanet): Integer;
@@ -145,14 +152,18 @@ type
     function TryRepositionInStar: Boolean;
     function TryRelocateToPirateStar: Boolean;
     procedure ApplyInventoryMicroModulesToShopItems;
-    procedure ForceGoodsForSale(constref GoodsMask: TItemTypeMask);
+    procedure ForceGoodsForSale(GoodsMask: TItemTypeMask);
     procedure GenerateCombatSkills;
     procedure RandomizePosition;
     function SelectTeleportArrivalPoint(Star: TStar): TPointF;
     function GeneratePlanetHullOffer(Ship: TObject; Planet: TPlanet): THull;
     function GenerateHullOffer(Ship: TObject; Planet: TPlanet): THull;
     function GenerateWeaponOffer(Ship: TObject; Planet: TPlanet): TWeapon;
-    function GenerateEquipmentOffer(Ship: TObject; Planet: TPlanet; ItemType: Byte): TEquipment;
+    function GenerateEquipmentOffer(
+        Ship: TObject;
+        Planet: TPlanet;
+        ItemType: TItemType
+    ): TEquipment;
     function GenerateEquipmentOfferBatch(
         Ship: TShip;
         UnusedForceGeneratedOffers: Boolean
@@ -169,10 +180,20 @@ type
         InvertRarity: Boolean
     ): Integer;
   end;
+
 const
-  StationPilotRaces: array[6..12] of array[0..1] of Byte =
-      ((3, 4), (2, 1), (0, 1), (3, 4), (2, 2), (4, 4), (3, 3));
-  StationHullGeneration: array[6..12] of TStationHullGeneration = (
+
+  StationPilotRaces: array[rstRangerCenter..rstDominion] of array[0..1] of TOwnerId = (
+      (oiFeyan, oiGaal),
+      (oiHuman, oiPeleng),
+      (oiMaloc, oiPeleng),
+      (oiFeyan, oiGaal),
+      (oiHuman, oiHuman),
+      (oiGaal, oiGaal),
+      (oiFeyan, oiFeyan)
+  );
+
+  StationHullGeneration: array[rstRangerCenter..rstDominion] of TStationHullGeneration = (
       (MinSize: 900; MaxSize: 1600; TechSizeBonus: 1500; MinLevel: 2; MaxLevel: 6),
       (MinSize: 900; MaxSize: 1000; TechSizeBonus: 1500; MinLevel: 2; MaxLevel: 5),
       (MinSize: 1200; MaxSize: 1500; TechSizeBonus: 1700; MinLevel: 2; MaxLevel: 7),
@@ -181,7 +202,8 @@ const
       (MinSize: 800; MaxSize: 1000; TechSizeBonus: 1200; MinLevel: 2; MaxLevel: 5),
       (MinSize: 900; MaxSize: 1000; TechSizeBonus: 1500; MinLevel: 2; MaxLevel: 5)
   );
-  StationDefenseLevels: array[6..12] of TStationLevelRange = (
+
+  StationDefenseLevels: array[rstRangerCenter..rstDominion] of TStationLevelRange = (
       (Minimum: 2; Maximum: 6),
       (Minimum: 2; Maximum: 5),
       (Minimum: 2; Maximum: 7),
@@ -190,7 +212,8 @@ const
       (Minimum: 2; Maximum: 4),
       (Minimum: 2; Maximum: 5)
   );
-  StationRepairLevels: array[6..12] of TStationLevelRange = (
+
+  StationRepairLevels: array[rstRangerCenter..rstDominion] of TStationLevelRange = (
       (Minimum: 2; Maximum: 5),
       (Minimum: 1; Maximum: 4),
       (Minimum: 2; Maximum: 5),
@@ -199,7 +222,8 @@ const
       (Minimum: 2; Maximum: 3),
       (Minimum: 1; Maximum: 4)
   );
-  StationWeaponGeneration: array[6..12] of TStationWeaponGeneration = (
+
+  StationWeaponGeneration: array[rstRangerCenter..rstDominion] of TStationWeaponGeneration = (
       (BasicLevel: 4; IntermediateLevel: 2; AdvancedLevel: 2; MinimumRange: 450),
       (BasicLevel: 4; IntermediateLevel: 2; AdvancedLevel: 2; MinimumRange: 400),
       (BasicLevel: 4; IntermediateLevel: 4; AdvancedLevel: 4; MinimumRange: 470),
@@ -208,18 +232,23 @@ const
       (BasicLevel: 4; IntermediateLevel: 2; AdvancedLevel: 2; MinimumRange: 350),
       (BasicLevel: 4; IntermediateLevel: 2; AdvancedLevel: 2; MinimumRange: 400)
   );
-  StationWeaponTypes: array[6..12] of array[0..2] of Byte = (
-      (52, 56, 59),
-      (52, 55, 60),
-      (52, 58, 56),
-      (52, 54, 61),
-      (51, 57, 55),
-      (50, 54, 55),
-      (52, 55, 60)
+
+  StationWeaponTypes: array[rstRangerCenter..rstDominion] of array[0..2] of TItemType = (
+      (t_Flux, t_FlowBlaster, t_AtomicVision),
+      (t_Flux, t_WavePhaser, t_Disintegrator),
+      (t_Flux, t_Multiresonator, t_FlowBlaster),
+      (t_Flux, t_Treton, t_Turbogravitron),
+      (t_FragmentationCannon, t_ElectronicCutter, t_WavePhaser),
+      (t_IndustrialLaser, t_Treton, t_WavePhaser),
+      (t_Flux, t_WavePhaser, t_Disintegrator)
   );
-  StationSkillBonusWeights: array[22..27] of Integer = (100, 100, 80, 0, 0, 0);
-  StationOfferHullLevelBonus: array[6..12] of Integer = (0, 0, 1, 0, 0, 0, 0);
-  StationOfferHullTypes: array[6..12] of TStationHullTypes = (
+
+  StationSkillBonusWeights: array[bonSkill1..bonSkill6] of Integer = (100, 100, 80, 0, 0, 0);
+
+  StationOfferHullLevelBonus: array[rstRangerCenter..rstDominion] of Integer =
+      (0, 0, 1, 0, 0, 0, 0);
+
+  StationOfferHullTypes: array[rstRangerCenter..rstDominion] of TStationHullTypes = (
       [htRanger],
       [htPirate, htTransport],
       [htRanger, htWarrior],
@@ -228,7 +257,8 @@ const
       [htTransport..htDiplomat],
       [htPirate]
   );
-  StationOfferRareHullTypes: array[6..12] of TStationHullTypes = (
+
+  StationOfferRareHullTypes: array[rstRangerCenter..rstDominion] of TStationHullTypes = (
       [htRanger],
       [htPirate],
       [htWarrior],
@@ -237,19 +267,24 @@ const
       [htTransport..htDiplomat],
       [htPirate]
   );
-  StationOfferWeaponLevelBonus: array[6..13] of Integer = (1, 1, 2, 1, 1, 1, 2, 1);
-  StationOfferEquipmentLevelBonus: array[6..13] of array[43..49] of Integer = (
-      (1, 0, 1, 0, 0, 0, 0),
-      (0, 0, 0, 0, 0, 1, 0),
-      (0, 0, 0, 0, 0, 0, 0),
-      (0, 0, 0, 1, 0, 1, 0),
-      (0, 0, 0, 0, 0, 1, 0),
-      (0, 0, 0, 0, 0, 1, 0),
-      (0, 0, 0, 0, 0, 1, 0),
-      (0, 0, 0, 0, 0, 0, 0)
-  );
-procedure LinkRecoveredTypes;
+
+  StationOfferWeaponLevelBonus: array[TStationType] of Integer = (1, 1, 2, 1, 1, 1, 2, 1);
+
+  StationOfferEquipmentLevelBonus:
+          array[TStationType] of array[t_FuelTanks..t_DefGenerator] of Integer =
+      (
+          (1, 0, 1, 0, 0, 0, 0),
+          (0, 0, 0, 0, 0, 1, 0),
+          (0, 0, 0, 0, 0, 0, 0),
+          (0, 0, 0, 1, 0, 1, 0),
+          (0, 0, 0, 0, 0, 1, 0),
+          (0, 0, 0, 0, 0, 1, 0),
+          (0, 0, 0, 0, 0, 1, 0),
+          (0, 0, 0, 0, 0, 0, 0)
+      );
+
 implementation
+
 uses
   Classes,
   aWarrior,
@@ -258,7 +293,6 @@ uses
   aPirate,
   aRanger,
   Math,
-  Windows,
   GR_Main,
   aGalaxyEvent,
   SysUtils,
@@ -307,7 +341,7 @@ begin
   if not Galaxy.Destroying and (GetPlayer <> nil) and (GetPlayer.RuinsProxy <> Self) then
   begin
     Event := AddGalaxyEvent('RuinsDestroyed');
-    Event.AddData(TypeId);
+    Event.AddData(Ord(TypeId));
     Event.AddData(Id);
     Event.AddData(CurrentStar.Id);
     Event.AddTextData(Name);
@@ -330,10 +364,9 @@ var
   Good: Byte;
   Weapon: TWeapon;
   Hook: TCargoHook;
-  EquipmentOwner: Byte;
-  procedure SelectStationName(
-      Config: TBlockParEC
-  ); // @addr $714148 @ida "void __usercall $name(TBlockParEC *Config@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x714525,0x714554"
+  EquipmentOwner: TOwnerId;
+
+  procedure SelectStationName(Config: TBlockParEC);
   var
     Index, I, J, K, LastName: Integer;
     Used: Boolean;
@@ -372,9 +405,8 @@ var
         Name := Name + ' ' + '-' + IntToStr(NextRandomIntRange(10, 99, RandomState)) + '-';
     end;
   end;
-  function RandomStationEquipmentSize(
-      BaseSize: Integer
-  ): Integer; // @addr $714398 @ida "int __usercall $name@<eax>(int BaseSize@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x71484D,0x71486B,0x7148C7,0x714922,0x7149F8,0x714AE5,0x714B7A,0x714C29"
+
+  function RandomStationEquipmentSize(BaseSize: Integer): Integer;
   begin
     Result :=
         NextRandomIntRange(
@@ -385,15 +417,16 @@ var
   end;
 begin
   if StationType = rstCustomStation then
-    TypeId := Byte(rstRangerCenter)
+    TypeId := rstRangerCenter
   else
-    TStationType(TypeId) := StationType;
+    TypeId := StationType;
   TypeNameOverrideKey := TypeNameOverride;
   CurrentStar := Star;
   CurrentStar.Ships.Add(Self);
   HomePlanet := nil;
   CurrentPlanet := nil;
-  if (Galaxy.CurrentTurn < 300) and (GetPlayer.CurrentStar.Constellation = Star.Constellation) then
+  if (Galaxy.CurrentTurn < GalaxyWarmupTurns)
+      and (GetPlayer.CurrentStar.Constellation = Star.Constellation) then
     PilotRace := StationPilotRaces[TypeId, 0]
   else if NextRandomUnitFloat(RandomState) < 0.5 then
     PilotRace := StationPilotRaces[TypeId, 0]
@@ -408,14 +441,8 @@ begin
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
     Ranger := TRanger(Galaxy.Rangers[I]);
-    RangerRelations.Add(
-        Pointer(
-            OwnerRelations[
-                Integer(RaceToOwner(PilotRace)) and $7F,
-                Integer(RaceToOwner(Ranger.PilotRace)) and $7F
-            ]
-        )
-    );
+    RangerRelations
+        .Add(Pointer(OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ranger.PilotRace)]));
   end;
   GenerateCombatSkills;
   RefreshCurrentStanding;
@@ -431,7 +458,7 @@ begin
   ChameleonActive := False;
   GraphDominator := Galaxy.GraphDominatorSurfacesEnabled;
   RefreshShopInventory;
-  for Good := 0 to 7 do
+  for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
   begin
     ShopGoods[Good].Count :=
         Round(GoodsMarket[Good].BaseStock * StationGoodsFactors[TypeId, Good].StockFactor);
@@ -440,7 +467,7 @@ begin
     ShopGoods[Good].BaseSalePrice := Round(ShopGoods[Good].PriceState * 0.98 - 1);
   end;
   if CurrentStar.ControlFaction = sfPirates then
-    EquipmentOwner := 7
+    EquipmentOwner := oiPirate
   else
     EquipmentOwner := OwnerId;
   CreateAndEquipHull(
@@ -534,7 +561,7 @@ begin
             EquipmentOwner
         );
   Weapon.Range := Max(Weapon.Range, StationWeaponGeneration[TypeId].MinimumRange);
-  if TypeId = Byte(rstDominion) then
+  if TypeId = rstDominion then
   begin
     CurrentStar.Dominion := Self;
     Hook :=
@@ -549,7 +576,7 @@ begin
     Inc(GetHull.Weight, Abs(GetCargoFreeSpace));
   RefreshDerivedStats(True);
   NodeReserve := 0;
-  TStationType(TypeId) := StationType;
+  TypeId := StationType;
 end;
 
 procedure TRuins.SaveToBuffer(Buffer: TBufEC);
@@ -567,7 +594,7 @@ begin
     Buffer.AddAnsiChar(AnsiChar(Item.ItemType));
     Item.SaveToBuffer(Buffer);
   end;
-  for Good := 0 to 7 do
+  for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
   begin
     Buffer.AddIntegerValue(ShopGoods[Good].Count);
     Buffer.AddSingle(ShopGoods[Good].PriceState);
@@ -597,7 +624,7 @@ begin
   if LoadedSaveVersion < 102 then
     Buffer.GetByte;
   Count := Buffer.GetWord;
-  if (Count < 0) or (Count > 10000) then
+  if (Count < 0) or (Count > MaxSavedListCount) then
     raise EAbort.Create('Err');
   for I := 0 to Count - 1 do
   begin
@@ -605,7 +632,7 @@ begin
     EquipmentShop.Add(Item);
     Item.LoadFromBuffer(Buffer, Galaxy);
   end;
-  for Good := 0 to 7 do
+  for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
   begin
     ShopGoods[Good].Count := Buffer.GetInt32;
     ShopGoods[Good].PriceState := Buffer.GetSingle;
@@ -645,22 +672,22 @@ begin
   Text := IntToStr(ShopGoods[GoodsTextOrder[0]].Count);
   for I := 1 to 7 do
     Text := Text + ',' + IntToStr(ShopGoods[GoodsTextOrder[Byte(I)]].Count);
-  Block.AddParam('ShopGoods', Text);
+  Block.AddParam(DecodeTextW('SihrolpaGloiordesa'), Text); // 'ShopGoods'
   Text := IntToStr(ShopGoods[GoodsTextOrder[0]].PurchasePrice);
   for I := 1 to 7 do
     Text := Text + ',' + IntToStr(ShopGoods[GoodsTextOrder[Byte(I)]].PurchasePrice);
-  Block.AddParam('ShopGoodsSale', Text);
+  Block.AddParam(DecodeTextW('SihrolpaGloiordesaSrakloe'), Text); // 'ShopGoodsSale'
   Text := IntToStr(ShopGoods[GoodsTextOrder[0]].BaseSalePrice);
   for I := 1 to 7 do
     Text := Text + ',' + IntToStr(ShopGoods[GoodsTextOrder[Byte(I)]].BaseSalePrice);
-  Block.AddParam('ShopGoodsBuy', Text);
-  ShopBlock := Block.AddBlockByPath('EqShop');
+  Block.AddParam(DecodeTextW('SihrolpaGloiordesaBruhy'), Text); // 'ShopGoodsBuy'
+  ShopBlock := Block.AddBlockByPath(DecodeTextW('EdqeSahloEp')); // 'EqShop'
   if (EquipmentShop <> nil) and (EquipmentShop.Count > 0) then
   begin
     for I := 0 to EquipmentShop.Count - 1 do
     begin
       Item := TItem(EquipmentShop[I]);
-      Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
       Item.SaveToBlock(ShopBlock.AddBlockByPath(Text));
     end;
   end
@@ -671,21 +698,21 @@ begin
       Item := Slot.Item;
       if Item <> nil then
       begin
-        Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+        Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
         Item.SaveToBlock(ShopBlock.AddBlockByPath(Text));
       end;
     end;
-  ShopBlock.AddParam('AddItem', '');
-  with Block.AddBlockByPath('Storage') do
+  ShopBlock.AddParam(DecodeTextW('AodEdrIstaelma'), ''); // 'AddItem'
+  with Block.AddBlockByPath(DecodeTextW('Sataokrgalgae')) do // 'Storage'
   begin
     for I := 0 to GetPlayer.StorageEntries.Count - 1 do
       if PStorageEntry(GetPlayer.StorageEntries[I]).LocationOwner = Self then
       begin
         Item := PStorageEntry(GetPlayer.StorageEntries[I]).Item;
-        Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+        Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
         Item.SaveToBlock(AddBlockByPath(Text));
       end;
-    AddParam('AddItem', '');
+    AddParam(DecodeTextW('AodEdrIstaelma'), ''); // 'AddItem'
   end;
 end;
 
@@ -700,24 +727,24 @@ var
   ShopBlock: TBlockParEC;
 begin
   inherited LoadFromBlock(Block);
-  Text := Block.GetParam('ShopGoods');
+  Text := Block.GetParam(DecodeTextW('SihrolpaGloiordes')); // 'ShopGoods'
   for I := 0 to 7 do
     ShopGoods[GoodsTextOrder[Byte(I)]].Count := StrToInt(ExtractDelimitedPartW(Text, I, ','));
-  Text := Block.GetParam('ShopGoodsSale');
+  Text := Block.GetParam(DecodeTextW('SihrolpaGloiordesaSrakloe')); // 'ShopGoodsSale'
   for I := 0 to 7 do
     ShopGoods[GoodsTextOrder[Byte(I)]].PurchasePrice :=
         StrToInt(ExtractDelimitedPartW(Text, I, ','));
-  Text := Block.GetParam('ShopGoodsBuy');
+  Text := Block.GetParam(DecodeTextW('SihrolpaGloiordesaBruhy')); // 'ShopGoodsBuy'
   for I := 0 to 7 do
     ShopGoods[GoodsTextOrder[Byte(I)]].BaseSalePrice :=
         StrToInt(ExtractDelimitedPartW(Text, I, ','));
-  ShopBlock := Block.GetBlockByPath('EqShop');
+  ShopBlock := Block.GetBlockByPath(DecodeTextW('EdqeSahloEp')); // 'EqShop'
   if (EquipmentShop <> nil) and (EquipmentShop.Count > 0) then
   begin
     for I := 0 to EquipmentShop.Count - 1 do
     begin
       Item := TItem(EquipmentShop[I]);
-      Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
       Item.LoadFromBlock(ShopBlock.GetBlockByPath(Text));
     end;
   end
@@ -728,16 +755,16 @@ begin
       Item := Slot.Item;
       if Item <> nil then
       begin
-        Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+        Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
         Item.LoadFromBlock(ShopBlock.GetBlockByPath(Text));
       end;
     end;
-  Text := ShopBlock.GetParam('AddItem');
+  Text := ShopBlock.GetParam(DecodeTextW('AodEdrIstaelma')); // 'AddItem'
   for I := 0 to CountDelimitedPartsW(Text, ',') - 1 do
   begin
     Name := ExtractDelimitedPartW(Text, I, ',');
     for Kind := 0 to 75 do
-      if ItemTypeNames[Kind] = Name then
+      if ItemTypeNames[TItemType(Kind)] = Name then
       begin
         if Kind in [42..68] then
         begin
@@ -757,21 +784,21 @@ begin
         Break;
       end;
   end;
-  with Block.GetBlockByPath('Storage') do
+  with Block.GetBlockByPath(DecodeTextW('Sataokrgalgae')) do // 'Storage'
   begin
     for I := 0 to GetPlayer.StorageEntries.Count - 1 do
       if PStorageEntry(GetPlayer.StorageEntries[I]).LocationOwner = Self then
       begin
         Item := PStorageEntry(GetPlayer.StorageEntries[I]).Item;
-        Text := 'ItemId' + IntToStr(Int64(Cardinal(Item.Id)));
+        Text := DecodeTextW('ImtreamrIodo') + IntToStr(Int64(Cardinal(Item.Id))); // 'ItemId'
         Item.LoadFromBlock(GetBlockByPath(Text));
       end;
-    Text := GetParam('AddItem');
+    Text := GetParam(DecodeTextW('AodEdrIstaelma')); // 'AddItem'
     for I := 0 to CountDelimitedPartsW(Text, ',') - 1 do
     begin
       Name := ExtractDelimitedPartW(Text, I, ',');
       for Kind := 0 to 75 do
-        if ItemTypeNames[Kind] = Name then
+        if ItemTypeNames[TItemType(Kind)] = Name then
         begin
           if (Kind in [0..7]) or (Kind in [42..68]) or (Kind in [10..41]) or (Kind in [69..73]) then
           begin
@@ -844,7 +871,8 @@ var
   Imbalance, LocalBalance: Single;
   // Four native frame bytes precede compiler temporaries; no access identifies their type.
   UnresolvedFrameBytes: array[0..3] of Byte;
-  function FindDominionHomeStar: TStar; // @addr $716038 @ida "TStar *__usercall $name@<eax>(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x716508,0x716783"
+
+  function FindDominionHomeStar: TStar;
   var
     I: Integer;
     Star: TStar;
@@ -892,7 +920,7 @@ begin
       Stage := 4;
       QueueItemsWithinPickupRange;
       Stage := 5;
-      if TypeId = Byte(rstPirateBase) then
+      if TypeId = rstPirateBase then
       begin
         Stage := 6;
         if Galaxy.HasUnresolvedDominatorSeries([dsBlazer, dsKeller, dsTerron])
@@ -916,7 +944,7 @@ begin
               )
           );
       end
-      else if TypeId = Byte(rstDominion) then
+      else if TypeId = rstDominion then
       begin
         Stage := 7;
         AutoApplyMicroModules;
@@ -946,9 +974,9 @@ begin
           end;
           Imbalance :=
               Abs(
-                      CurrentStar.GetCachedFactionStrength(Ord(sfCoalition))
-                          - CurrentStar.GetCachedFactionStrength(Ord(sfDominators)) * 2.5)
-                  / Max(0.001, CurrentStar.GetCachedFactionStrength(Ord(sfPirates)));
+                      CurrentStar.GetCachedFactionStrength(sfCoalition)
+                          - CurrentStar.GetCachedFactionStrength(sfDominators) * 2.5)
+                  / Max(0.001, CurrentStar.GetCachedFactionStrength(sfPirates));
           LocalBalance := EvaluateLocalForceBalance(Position);
           if ((LocalBalance < -150) or (Imbalance > 30))
               and (FlyDate < Galaxy.CurrentTurn + 25)
@@ -1042,7 +1070,7 @@ begin
             + WrapTextInColor(Name, ColorTag);
 end;
 
-function TRuins.GetGreetingShipCategory: Byte;
+function TRuins.GetGreetingShipCategory: TGreetingShipCategory;
 begin
   Result := gscTransport; // Native default category, also used for transports.
 end;
@@ -1057,7 +1085,7 @@ begin
   Result := nil;
 end;
 
-function TRuins.GetStrengthScaledPirateStatus: Byte;
+function TRuins.GetStrengthScaledPirateStatus: TPercent;
 begin
   Result := 0;
 end;
@@ -1139,11 +1167,11 @@ end;
 
 procedure TRuins.RefreshShopInventory;
 type
-  TQuotas = array[42..50] of Integer;
+  TQuotas = array[t_Hull..WeaponCategoryItemType] of Integer;
 var
   I, Attempts, Added: Integer;
   Item: TEquipment;
-  Kind: Byte;
+  Kind: TItemType;
   Planet: TPlanet;
 begin
   if ShopUpdateMode in [sumDisabled, sumGoodsOnly] then
@@ -1155,7 +1183,7 @@ begin
       TPlanet(
           CurrentStar.Planets[NextRandomIntRange(0, CurrentStar.Planets.Count - 1, RandomState)]
       );
-  if Planet.OwnerId = Byte(oiUninhabited) then
+  if Planet.OwnerId = oiUninhabited then
     Planet := nil;
   if EquipmentShop.Count >= CalculateEquipmentShopTargetCount then
     if Planet <> nil then
@@ -1181,10 +1209,12 @@ begin
     repeat
       Inc(Attempts);
       Kind :=
-          SeededRandomIntRange(
-              42,
-              50,
-              (Seed * Cardinal(Galaxy.CurrentTurn)) * 175 + Cardinal(Attempts)
+          TItemType(
+              SeededRandomIntRange(
+                  Ord(t_Hull),
+                  Ord(WeaponCategoryItemType),
+                  (Seed * Cardinal(Galaxy.CurrentTurn)) * 175 + Cardinal(Attempts)
+              )
           );
     until (Attempts > 20)
         or (CountEquipmentShopItems(Kind) < TQuotas(StationEquipmentOfferQuotas[TypeId])[Kind]);
@@ -1199,19 +1229,19 @@ end;
 
 function TRuins.CalculateEquipmentShopTargetCount: Integer;
 type
-  TQuotas = array[42..50] of Integer;
+  TQuotas = array[t_Hull..WeaponCategoryItemType] of Integer;
 var
   Count: Integer;
-  Kind: Byte;
+  Kind: TItemType;
 begin
   Count := 0;
-  for Kind := 42 to 50 do
+  for Kind := t_Hull to WeaponCategoryItemType do
     Inc(Count, TQuotas(StationEquipmentOfferQuotas[TypeId])[Kind]);
   Result := Round(Count + NextRandomIntRange(-2, 2, RandomState));
   Result := Max(10, Min(Result, 18));
 end;
 
-function TRuins.CountEquipmentShopItems(ItemType: Byte): Integer;
+function TRuins.CountEquipmentShopItems(ItemType: TItemType): Integer;
 var
   I, Count: Integer;
   Item: TItem;
@@ -1220,9 +1250,10 @@ begin
   for I := 0 to EquipmentShop.Count - 1 do
   begin
     Item := TItem(EquipmentShop[I]);
-    // The t_Weapon1 shop bucket counts every weapon subtype.
-    if (Byte(Item.ItemType) = ItemType)
-        or ((Item.ItemType in [t_Weapon1..t_CustomWeapon]) and (ItemType = Byte(t_Weapon1))) then
+    // The WeaponCategoryItemType shop bucket counts every weapon subtype.
+    if (Item.ItemType = ItemType)
+        or ((Item.ItemType in [t_IndustrialLaser..t_CustomWeapon])
+            and (ItemType = WeaponCategoryItemType)) then
       Inc(Count);
   end;
   Result := Count;
@@ -1287,7 +1318,7 @@ begin
           if (Existing as TDefGenerator).TechLevel = (Item as TDefGenerator).TechLevel then
             Result := True;
       else
-        if Existing.ItemType in [t_Weapon1..t_CustomWeapon] then
+        if Existing.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
           if (Existing as TWeapon).TechLevel = (Item as TWeapon).TechLevel then
             Result := True;
       end;
@@ -1315,7 +1346,7 @@ begin
   Result := -1;
   if NextRandomIntRange(1, 100, RandomState) > Galaxy.GetMicroModuleOfferRollThresholdPercent then
     Exit;
-  Ceiling := Round(Planet.InventionLevels[7] * 100 / 8);
+  Ceiling := Round(Planet.InventionLevels[piMainTech] * 100 / 8);
   Minimum := 0;
   Maximum := 0;
   Count := 0;
@@ -1331,7 +1362,7 @@ begin
             and (Pos('<' + TypeNameOverrideKey + '>', Template.OfferStationNames) <= 0) then
           Break;
       end
-      else if not (TypeId in TShipTypeMask(Template.OfferStationTypes)) then
+      else if not (TypeId in Template.OfferStationTypes) then
         Break;
       if not IsBonusCompatibleWithEquipment(I, Item) then
         Break;
@@ -1376,7 +1407,7 @@ begin
   Result := -1;
   if NextRandomIntRange(1, 100, RandomState) > Galaxy.GetMicroModuleOfferRollThresholdPercent then
     Exit;
-  Ceiling := Round(Planet.InventionLevels[7] * 100 / 8);
+  Ceiling := Round(Planet.InventionLevels[piMainTech] * 100 / 8);
   Minimum := 0;
   Maximum := 0;
   Count := 0;
@@ -1392,7 +1423,7 @@ begin
             and (Pos('<' + TypeNameOverrideKey + '>', Template.OfferStationNames) <= 0) then
           Break;
       end
-      else if not (TypeId in TShipTypeMask(Template.OfferStationTypes)) then
+      else if not (TypeId in Template.OfferStationTypes) then
         Break;
       if not IsBonusCompatibleWithHull(I, Hull) then
         Break;
@@ -1437,7 +1468,7 @@ begin
   Result := -1;
   if NextRandomIntRange(1, 100, RandomState) > Galaxy.GetMicroModuleOfferRollThresholdPercent then
     Exit;
-  Ceiling := Round(Planet.InventionLevels[7] * 100 / 8);
+  Ceiling := Round(Planet.InventionLevels[piMainTech] * 100 / 8);
   Minimum := 0;
   Maximum := 0;
   Count := 0;
@@ -1453,7 +1484,7 @@ begin
             and (Pos('<' + TypeNameOverrideKey + '>', Template.OfferStationNames) <= 0) then
           Break;
       end
-      else if not (TypeId in TShipTypeMask(Template.OfferStationTypes)) then
+      else if not (TypeId in Template.OfferStationTypes) then
         Break;
       if not IsBonusCompatibleWithWeapon(I, Weapon) then
         Break;
@@ -1530,7 +1561,7 @@ begin
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
       Ship := TShip(CurrentStar.Ships[I]);
-      if ((Ship.OwnerId = Byte(oiDominator)) or (Ship.RelationToShip(Self) < 10))
+      if ((Ship.OwnerId = oiDominator) or (Ship.RelationToShip(Self) < RelationBadMin))
           and Ship.InNormalSpace
           and (not HasIndependentScriptFaction
               or not Ship.HasIndependentScriptFaction
@@ -1578,7 +1609,7 @@ begin
     begin
       Asteroid := TAsteroid(CurrentStar.Asteroids[I]);
       DistanceSquared := PointDistanceSquared(Position, Asteroid.Position);
-      if DistanceSquared <= 1000000 then
+      if DistanceSquared <= AsteroidTargetRangeSquared then
         for J := 1 to WeaponCount do
         begin
           Weapon := Weapons[J];
@@ -1648,7 +1679,7 @@ begin
             and (TStar(Ship.OrderTarget).Status.CustomFaction = '')
             and (Ship.EstimateOrderTravelTurns >= 2)
             and (Ship is TNormalShip)
-            and (Ship.OwnerId <> Byte(oiPirate))
+            and (Ship.OwnerId <> oiPirate)
             and (Ship.TypeId in [stRanger..stTransport])
             and (Ship.ScriptShip = nil)
             and (Ship.AbsoluteScriptOrder <= 0) then
@@ -1681,7 +1712,7 @@ begin
     Exit;
   if Ship.HasScriptControl then
     Exit;
-  if Ship.CountActiveArtefacts(Ord(t_ArtGiperJump)) > 0 then
+  if Ship.CountActiveArtefacts(t_ArtGiperJump) > 0 then
     Exit;
   if not (Ship is TNormalShip) then
     Exit;
@@ -1700,7 +1731,7 @@ begin
   begin
     if Galaxy.CurrentTurn
         < 200 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor
-            + 300 then
+            + GalaxyWarmupTurns then
       Exit;
     if NextRandomIntRange(0, 100, RandomState)
             * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor
@@ -1741,14 +1772,14 @@ begin
         and (Ship.Order in [soNone, soMove]) then
       Inc(Pirates);
   end;
-  Text := '<color=255,240,100>' + GetFullName(' ') + '</color>' + #13#10;
+  Text := TextHighlightColorTag + GetFullName(' ') + EndColorTag + #13#10;
   if Abducted = 0 then
     Text := Text + LookupTalkText('Talk.PirateClan.RuinTalkAfterAbduct.Failure')
   else if Pirates = 0 then
     Text := Text + LookupTalkText('Talk.PirateClan.RuinTalkAfterAbduct.SuccessNoPirate')
   else
     Text := Text + LookupTalkText('Talk.PirateClan.RuinTalkAfterAbduct.Success');
-  AddOrUpdatePlayerBubble(1, Galaxy.CurrentTurn, Text, '').Targets[0].ShipId := Id;
+  AddOrUpdatePlayerBubble(pmRadio, Galaxy.CurrentTurn, Text, '').Targets[0].ShipId := Id;
 end;
 
 function TRuins.EvaluateLocalForceBalance(Point: TPointF): Single;
@@ -1811,7 +1842,7 @@ begin
         Result := Result + Item.Cost;
     end;
   end;
-  Result := Result / Max(10, Galaxy.ComputeScaledMiniMoney(2));
+  Result := Result / Max(10, Galaxy.ComputeScaledMiniMoney(oiHuman));
   Result := Result * RemapClamped(RelocationAge, 30, 90, 0.3, 1);
   if CurrentStar.Battle <> 0 then
     Result := Result + EvaluateLocalForceBalance(Point);
@@ -1819,7 +1850,7 @@ end;
 
 function TRuins.TryRepositionInStar: Boolean;
 const
-  StationTypes = [6..13];
+  StationTypes = [rstRangerCenter..rstCustomStation];
 var
   SavedPoint, BestPoint: TPointF;
   InitialScore, BestScore, Score, Radius: Single;
@@ -1922,7 +1953,7 @@ end;
 function TRuins.AcceptPickupItem(Item: TItem): Boolean;
 begin
   Result := False;
-  if TypeId = Byte(rstDominion) then
+  if TypeId = rstDominion then
   begin
     if not (Item.ItemType
         in [
@@ -1933,7 +1964,7 @@ begin
       Exit;
   end
   else if not ((Item.ItemType in [t_Food..t_Narcotics, t_Hull..t_CustomWeapon])
-      and (Item.OwnerId <> Byte(oiDominator))) then
+      and (Item.OwnerId <> oiDominator)) then
     Exit;
   Result := True;
 end;
@@ -1995,10 +2026,7 @@ begin
   Index := Galaxy.Rangers.IndexOf(TObject(Ranger) as TRanger);
   Relation := Byte(RangerRelations[Index]);
   if (Amount > 0) and (TShip(Ranger).GetEffectiveSkillLevel(psCharisma) > 0) then
-    Inc(
-        Amount,
-        Round((Integer(TShip(Ranger).GetEffectiveSkillLevel(psCharisma)) and $7F) * Amount * 0.2)
-    );
+    Inc(Amount, Round((TShip(Ranger).GetEffectiveSkillLevel(psCharisma)) * Amount * 0.2));
   NewRelation := Relation + Amount;
   if NewRelation < 0 then
     Relation := 0
@@ -2007,8 +2035,16 @@ begin
   else
     Relation := NewRelation;
   RangerRelations[Index] := Pointer(Relation);
-  if (Relation < 10) and ((EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar)) then
+  if (Relation < RelationBadMin)
+      and ((EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar)) then
     EnemyShip := TShip(Ranger);
+  if GetPlayer = Ranger then
+  begin
+    if RandomIntRange(0, 100) = 0 then
+      SysUtils.Sleep(1);
+    if (Byte(RangerRelations[Index]) <> Relation) and not GR_Main.CCInterface.GetTamperDetected then
+      GR_Main.CCInterface.SetTamperDetected(True);
+  end;
 end;
 
 procedure TRuins.ReactToAttack(Attacker: TShip);
@@ -2021,8 +2057,7 @@ begin
   if CurrentStanding = ssCustom then
     Exit;
   Independent :=
-      not (CurrentStanding
-              in TStationStandingMask(FactionStandingMasks[Ord(CurrentStar.ControlFaction)]))
+      not (CurrentStanding in FactionStandingMasks[CurrentStar.ControlFaction])
           or (CurrentStar.Status.CustomFaction <> '');
   if Attacker.TypeId = stRanger then
   begin
@@ -2035,7 +2070,7 @@ begin
       for I := 0 to CurrentStar.Planets.Count - 1 do
       begin
         Planet := TPlanet(CurrentStar.Planets[I]);
-        if Planet.OwnerId <> Byte(oiUninhabited) then
+        if Planet.OwnerId <> oiUninhabited then
           Planet.ChangeRelationToRanger(Attacker, -10);
       end;
   end;
@@ -2050,7 +2085,7 @@ begin
       for I := 0 to CurrentStar.Planets.Count - 1 do
       begin
         Planet := TPlanet(CurrentStar.Planets[I]);
-        if Planet.OwnerId <> Byte(oiUninhabited) then
+        if Planet.OwnerId <> oiUninhabited then
           Planet.ChangeRelationToRanger(Attacker.PartnerShip, -5);
       end;
   end;
@@ -2067,7 +2102,7 @@ begin
       for I := 0 to CurrentStar.Planets.Count - 1 do
       begin
         Planet := TPlanet(CurrentStar.Planets[I]);
-        if Planet.OwnerId <> Byte(oiUninhabited) then
+        if Planet.OwnerId <> oiUninhabited then
           Planet.ChangeRelationToRanger(TTranclucator(Attacker).OwnerShip, -10);
       end;
   end;
@@ -2096,7 +2131,7 @@ begin
   Result := True;
 end;
 
-function TRuins.EvaluateAllyRelationAndStrength(Ship: TShip): Boolean;
+function TRuins.AcceptsAppealFrom(Ship: TShip): Boolean;
 begin
   Result := False;
 end;
@@ -2165,11 +2200,11 @@ begin
   Response := 'Not supporting';
 end;
 
-procedure TRuins.ForceGoodsForSale(constref GoodsMask: TItemTypeMask);
+procedure TRuins.ForceGoodsForSale(GoodsMask: TItemTypeMask);
 var
   Good: Byte;
 begin
-  for Good := 0 to 7 do
+  for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
     if Good in GoodsMask then
     begin
       ShopGoods[Good].PriceState :=
@@ -2190,9 +2225,9 @@ var
   Level, Accuracy, Maneuverability: Integer;
 begin
   Level := Round(RemapClamped(Galaxy.TechLevel, 3, 8, 0, 4));
-  if Galaxy.GetFactionControlPercent(Ord(sfDominators)) < 40 then
+  if Galaxy.GetFactionControlPercent(sfDominators) < 40 then
     Dec(Level, 2);
-  if Galaxy.GetFactionControlPercent(Ord(sfDominators)) > 80 then
+  if Galaxy.GetFactionControlPercent(sfDominators) > 80 then
     Inc(Level);
   if Galaxy.WarDeltaWin[1] > -3 then
     Inc(Level);
@@ -2202,8 +2237,8 @@ begin
   Maneuverability := NextRandomIntRange(Level - 1, Level + 1, RandomState);
   Accuracy := Min(5, Max(0, Accuracy));
   Maneuverability := Min(5, Max(0, Maneuverability));
-  BaseSkills[0] := Accuracy;
-  BaseSkills[1] := Maneuverability;
+  BaseSkills[psAccuracy] := Accuracy;
+  BaseSkills[psManeuverability] := Maneuverability;
 end;
 
 procedure TRuins.RandomizePosition;
@@ -2220,9 +2255,8 @@ var
   Planet: TPlanet;
   LastPlanet: Integer;
   Polar: TPolarPoint;
-  function IsStationArrivalPointClear(
-      Point: TPointF
-  ): Boolean; // @addr $71A274 @ida "bool __usercall $name@<al>(TPointF *Point@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x71A3D6"
+
+  function IsStationArrivalPointClear(Point: TPointF): Boolean;
   var
     I: Integer;
     Ship: TShip;
@@ -2272,7 +2306,7 @@ begin
   case BonusKind of
     bonHull: Result := Value * 300;
     bonRadar: Result := ShortInt(GetRadar = nil);
-    bonScan: Result := Value * 20 * (Integer(CountWeaponsByDamageFlags(ScannerFlags)) and $7F);
+    bonScan: Result := Value * 20 * CountWeaponsByDamageFlags(ScannerFlags);
     bonDroid: Result := Value * 20 / Max(0.1, GetHull.GetFragilityFactor(NoFlags));
     bonDef: Result := Value * 8 * 100 / Max(5, 100 - Value) * 45 / Max(5, 45 - Value);
     bonWEnergy: Result := Value * 10;
@@ -2285,61 +2319,38 @@ begin
         Result :=
             Min(
                     6
-                        - (Integer(
-                                GetEffectiveSkillLevel(
-                                    TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                                ))
-                            and $7F),
+                        - GetEffectiveSkillLevel(
+                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
                     Value)
-                * StationSkillBonusWeights[Ord(BonusKind)];
+                * StationSkillBonusWeights[BonusKind];
       if (Value > 0)
-          and (Value
-                  + (Integer(
-                          GetEffectiveSkillLevel(
-                              TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                          ))
-                      and $7F)
+          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
               > 6) then
         Result :=
             Result
-                + (StationSkillBonusWeights[Ord(BonusKind)] * 0.05)
+                + (StationSkillBonusWeights[BonusKind] * 0.05)
                     * (Value
-                        + (Integer(
-                                GetEffectiveSkillLevel(
-                                    TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                                ))
-                            and $7F)
+                        + GetEffectiveSkillLevel(
+                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
                         - 6);
       if Value < 0 then
         Result :=
             Min(
-                    Integer(
-                            GetEffectiveSkillLevel(
-                                TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                            ))
-                        and $7F,
+                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
                     -Value)
-                * -StationSkillBonusWeights[Ord(BonusKind)];
+                * -StationSkillBonusWeights[BonusKind];
       if (Value < 0)
-          and (Value
-                  + (Integer(
-                          GetEffectiveSkillLevel(
-                              TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                          ))
-                      and $7F)
+          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
               < 0) then
         Result :=
             Result
-                + (StationSkillBonusWeights[Ord(BonusKind)] * 0.03)
+                + (StationSkillBonusWeights[BonusKind] * 0.03)
                     * (Value
-                        + (Integer(
-                                GetEffectiveSkillLevel(
-                                    TPilotSkill(EquipmentBonusSkills[Ord(BonusKind) - 22])
-                                ))
-                            and $7F));
+                        + GetEffectiveSkillLevel(
+                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
     end;
   end;
-  if TypeId = Byte(rstDominion) then
+  if TypeId = rstDominion then
     case BonusKind of
       bonHook: Result := (Min(Value, HullBaseSize * EquipmentSizeFactors[5]) + Value * 0.1) * 1.0;
       bonHookRadius: Result := Value * 1.5;
@@ -2366,11 +2377,7 @@ begin
     ScannerFactor :=
         RemapClamped(
             GetScannerPower
-                - (Integer(
-                        DefenseDamageFactorToPercent(
-                            GetGeneratedDefenseDamageFactor(Galaxy.TechLevel)
-                        ))
-                    and $7F)
+                - DefenseDamageFactorToPercent(GetGeneratedDefenseDamageFactor(Galaxy.TechLevel))
                 + 1,
             -5,
             10,
@@ -2383,7 +2390,7 @@ begin
   if dkDrain in Flags then
     Result := Result * 1.5;
   if dkShock in Flags then
-    Result := Result * (1.05 + (Integer(CountWeaponsByDamageFlags(ShockFlags)) and $7F) * 0.05);
+    Result := Result * (1.05 + CountWeaponsByDamageFlags(ShockFlags) * 0.05);
   if dkAcid in Flags then
     Result := Result * 1.05;
   StatusFactor := 1;
@@ -2402,32 +2409,32 @@ begin
     if dkAcid in Flags then
     begin
       ShotTotal := 1;
-      for I := 1 to Integer(CountEquippedWeapons) and $7F do
+      for I := 1 to CountEquippedWeapons do
         Inc(ShotTotal, Weapons[I].GetShotCount);
       Result := Result + ShotTotal * 2;
     end;
   end;
-  case Byte(Weapon.GetWeaponInfo.ShotType) of
-    Ord(wstRocket): Result := Result * 1.1 * Weapon.GetShotCount * (1 + StatusFactor);
-    Ord(wstMissile):
+  case Weapon.GetWeaponInfo.ShotType of
+    wstRocket: Result := Result * 1.1 * Weapon.GetShotCount * (1 + StatusFactor);
+    wstMissile:
       Result :=
           Result
               * (1.1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.5 * 0.01 + StatusFactor)
               * Weapon.GetShotCount;
-    Ord(wstTorpedo):
+    wstTorpedo:
       Result :=
           Result * (1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.5 * 0.01 + StatusFactor);
-    Ord(wstChain): Result := Result * (1.1 + (Weapon.GetShotCount - 1) * 0.2) * (1 + StatusFactor);
-    Ord(wstSplash):
+    wstChain: Result := Result * (1.1 + (Weapon.GetShotCount - 1) * 0.2) * (1 + StatusFactor);
+    wstSplash:
       Result :=
           Result * (1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 1.0 * 0.01 + StatusFactor);
-    Ord(wstAreaDamage): Result := Result * (1 + Weapon.Range * 1.3 * 0.01 + StatusFactor);
+    wstAreaDamage: Result := Result * (1 + Weapon.Range * 1.3 * 0.01 + StatusFactor);
   else
     Result := Result * (1 + StatusFactor);
   end;
   Result := Result * Weapon.GetAttackCount;
   HasOtherWeapon := False;
-  for I := 1 to Integer(CountEquippedWeapons) and $7F do
+  for I := 1 to CountEquippedWeapons do
     if not (Weapons[I].GetWeaponInfo.ShotType in [wstAreaDamage..wstRocket]) then
       HasOtherWeapon := True;
   if not HasOtherWeapon and (Weapon.GetWeaponInfo.ShotType in [wstAreaDamage..wstRocket]) then
@@ -2436,13 +2443,13 @@ end;
 
 procedure TRuins.RefreshCurrentStanding;
 var
-  StandingMode: Integer;
+  StandingMode: TScriptStandingOverrideMode;
 begin
   StandingMode := GetScriptStandingOverrideMode;
   if StandingMode = ssmCustomFaction then
     CurrentStanding := ssCustom
   else if StandingMode <> ssmFixed then
-    if TypeId <> Byte(rstCustomStation) then
+    if TypeId <> rstCustomStation then
       CurrentStanding := StationDefaultStandings[TypeId];
 end;
 
@@ -2478,12 +2485,13 @@ function TRuins.GenerateHullOffer(Ship: TObject; Planet: TPlanet): THull;
 var
   Buyer: TShip;
   Count, MinLevel, MaxLevel, MinSize, MaxSize, Size: Integer;
-  HullType, Owner: Byte;
+  HullType: THullType;
+  Owner: TOwnerId;
   Series, ModuleIndex: Integer;
   Flagship: Boolean;
 begin
   Result := nil;
-  if TypeId = Byte(rstCustomStation) then
+  if TypeId = rstCustomStation then
   begin
     Result := GeneratePlanetHullOffer(Ship, Planet);
     Exit;
@@ -2512,7 +2520,7 @@ begin
         or (Buyer.GetHull.HullType = htSpecial)
         or (Buyer.GetHull.HullType = HullType) then
     begin
-      MaxLevel := Planet.InventionLevels[EquipmentInventionIndices[Ord(t_Hull)]];
+      MaxLevel := Planet.InventionLevels[EquipmentInventionIndices[t_Hull]];
       MinLevel := Max(1, MaxLevel div 2 - 1);
       MaxLevel := Min(8, MaxLevel + StationOfferHullLevelBonus[TypeId]);
       case Galaxy.GetHullGrowthMod of
@@ -2523,7 +2531,7 @@ begin
             Size := Size div 2;
           MinSize := Size div 2;
           if HullType in [htTransport, htLiner] then
-            MaxSize := Size + (40 + 10 * Ord(TypeId = Byte(rstBusinessCenter))) * Galaxy.TechLevel
+            MaxSize := Size + (40 + 10 * Ord(TypeId = rstBusinessCenter)) * Galaxy.TechLevel
           else
             case HullType of
               htDiplomat: MaxSize := Size + 10 * Galaxy.TechLevel;
@@ -2533,9 +2541,7 @@ begin
           MinSize :=
               Max(
                   MinSize,
-                  Round(
-                      HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = Byte(rstBusinessCenter))]
-                  )
+                  Round(HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = rstBusinessCenter)])
               );
           MaxSize :=
               Galaxy.ScaleIntByTechLevel(Round(HullBaseSize * EquipmentSizeFactors[4]), MaxSize);
@@ -2546,7 +2552,7 @@ begin
           if Flagship then
             Size := Size div 2;
           MinSize :=
-              Round(HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = Byte(rstBusinessCenter))]);
+              Round(HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = rstBusinessCenter)]);
           MaxSize :=
               Min(
                   Size,
@@ -2560,7 +2566,7 @@ begin
             Size := Size div 2;
           MinSize := Size div 2;
           if HullType in [htTransport, htLiner] then
-            MaxSize := Size + 300 + 100 * Ord(TypeId = Byte(rstBusinessCenter))
+            MaxSize := Size + 300 + 100 * Ord(TypeId = rstBusinessCenter)
           else
             case HullType of
               htDiplomat: MaxSize := Size + 50;
@@ -2570,9 +2576,7 @@ begin
           MinSize :=
               Max(
                   MinSize,
-                  Round(
-                      HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = Byte(rstBusinessCenter))]
-                  )
+                  Round(HullBaseSize * EquipmentSizeFactors[5 - Ord(TypeId = rstBusinessCenter)])
               );
           MaxSize :=
               Min(
@@ -2606,7 +2610,7 @@ begin
               NextRandomIntRange(MinSize * 2, MaxSize * 2, RandomState),
               NextRandomIntRange(MinLevel, MaxLevel, RandomState),
               Owner,
-              10,
+              htFlagship,
               Series,
               Result.PirateBuilt
           )
@@ -2636,34 +2640,33 @@ var
   Attempts, MinLevel, MaxLevel, MinSize, MaxSize: Integer;
   Availability: TWeaponAvailabilityMask;
   Info: PWeaponInfo;
-  Owner, I: Byte;
+  Owner, CandidateOwner: TOwnerId;
   ModuleIndex: Integer;
 begin
   Result := nil;
   if (Ship <> nil) and (Ship is TShip) then
   begin
     Buyer := TShip(Ship);
-    Availability := [Ord(waFree)];
-    if (Buyer.TypeId = stKling) and (OwnerId in TOwnerMask(PlanetOwnerMasks.Dominators)) then
-      Availability := Availability + [Ord(waNotSoldAndNodeRepair)];
+    Availability := [waFree];
+    if (Buyer.TypeId = stKling) and (OwnerId in PlanetOwnerMasks.Dominators) then
+      Availability := Availability + [waNotSoldAndNodeRepair];
     if (Buyer.TypeId in [stRanger, stPirate])
-        and (CurrentStanding in TStationStandingMask(FactionStandingMasks[Ord(sfPirates)]))
+        and (CurrentStanding in FactionStandingMasks[sfPirates])
         and ((CurrentStar.ControlFaction = sfPirates)
-            or not (CurrentStanding
-                in TStationStandingMask(FactionStandingMasks[Ord(sfCoalition)]))) then
-      Availability := Availability + [Ord(waPirateOnly)];
+            or not (CurrentStanding in FactionStandingMasks[sfCoalition])) then
+      Availability := Availability + [waPirateOnly];
     if (Buyer.TypeId in [stRanger..stWarrior])
-        and (CurrentStanding in TStationStandingMask(FactionStandingMasks[Ord(sfCoalition)]))
+        and (CurrentStanding in FactionStandingMasks[sfCoalition])
         and ((CurrentStar.ControlFaction = sfCoalition)
-            or not (CurrentStanding
-                in TStationStandingMask(FactionStandingMasks[Ord(sfPirates)]))) then
-      Availability := Availability + [Ord(waCoalitionOnly), Ord(waMalocOnly)..Ord(waGaalOnly)];
+            or not (CurrentStanding in FactionStandingMasks[sfPirates])) then
+      Availability := Availability + [waCoalitionOnly, waMalocOnly..waGaalOnly];
     // The native counter guard has no back edge: only one offer is generated.
     Attempts := 0;
     if Attempts <= 100 then
     begin
       Inc(Attempts);
-      Info := Galaxy.SelectWeaponInfo(RandomState, Availability, Planet.InventionLevels[7], 1);
+      Info :=
+          Galaxy.SelectWeaponInfo(RandomState, Availability, Planet.InventionLevels[piMainTech], 1);
       AdvanceRandomSeed(RandomState);
       if not (Buyer.TypeId in [stRanger, stPirate])
           and (Info.ShotType in [wstTorpedo..wstRocket]) then
@@ -2679,19 +2682,20 @@ begin
         MaxSize := MaxSize * 2;
       end;
       MinLevel := 1;
-      MaxLevel := Min(Planet.InventionLevels[7], Planet.InventionLevels[Info.InventionIndex]);
+      MaxLevel :=
+          Min(Planet.InventionLevels[piMainTech], Planet.InventionLevels[Info.InventionIndex]);
       MinLevel := Max(MinLevel, MaxLevel div 2 - 1);
       MaxLevel := Min(8, MaxLevel + StationOfferWeaponLevelBonus[TypeId]);
       Owner := PickRandomEquipmentOwner(RandomState);
       if (CurrentStar.ControlFaction = sfPirates)
-          and (CurrentStanding in TStationStandingMask(FactionStandingMasks[Ord(sfPirates)]))
+          and (CurrentStanding in FactionStandingMasks[sfPirates])
           and ((NextRandomIntRange(1, 100, RandomState) < 70)
               or (Galaxy.CoalitionDefeatedTurn <> 0)) then
-        Owner := 7;
-      for I := 0 to 7 do
-        if OwnerWeaponAvailability[I] = Info.Availability then
+        Owner := oiPirate;
+      for CandidateOwner := oiMaloc to oiPirate do
+        if OwnerWeaponAvailability[CandidateOwner] = Info.Availability then
         begin
-          Owner := I;
+          Owner := CandidateOwner;
           Break;
         end;
       Result :=
@@ -2716,19 +2720,23 @@ begin
   end;
 end;
 
-function TRuins.GenerateEquipmentOffer(Ship: TObject; Planet: TPlanet; ItemType: Byte): TEquipment;
+function TRuins.GenerateEquipmentOffer(
+    Ship: TObject;
+    Planet: TPlanet;
+    ItemType: TItemType
+): TEquipment;
 var
   Buyer: TShip;
   Attempts, Priority, ModuleIndex, MinLevel, MaxLevel, MinSize, MaxSize, SpecialModule: Integer;
-  Owner: Byte;
+  Owner: TOwnerId;
 begin
   Result := nil;
   if (Ship = nil) or not (Ship is TShip) then
     Exit;
   Buyer := TShip(Ship);
-  if ItemType in [Ord(t_FuelTanks)..Ord(t_DefGenerator)] then
+  if ItemType in [t_FuelTanks..t_DefGenerator] then
   begin
-    if not (ItemType in [Ord(t_FuelTanks), Ord(t_Engine)])
+    if not (ItemType in [t_FuelTanks, t_Engine])
         and (Buyer.GetSlotCountForItemType(ItemType) = 0)
         and (GetPlayer <> Buyer) then
       Exit;
@@ -2745,13 +2753,13 @@ begin
     end;
     Owner := PickRandomEquipmentOwner(RandomState);
     if (CurrentStar.ControlFaction = sfPirates)
-        and (CurrentStanding in TStationStandingMask(FactionStandingMasks[Ord(sfPirates)]))
+        and (CurrentStanding in FactionStandingMasks[sfPirates])
         and ((NextRandomIntRange(1, 100, RandomState) < 70)
             or (Galaxy.CoalitionDefeatedTurn <> 0)) then
-      Owner := 7;
+      Owner := oiPirate;
     Result :=
         CreateGeneratedEquipment(
-            TItemType(ItemType),
+            ItemType,
             NextRandomIntRange(MinSize, MaxSize, RandomState),
             NextRandomIntRange(MinLevel, MaxLevel, RandomState),
             Owner
@@ -2763,31 +2771,31 @@ begin
         ApplySpecialMicroModule(SpecialModule, Result);
     end;
   end
-  else if ItemType in [Ord(t_Weapon1)..Ord(t_CustomWeapon)] then
+  else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
     Result := GenerateWeaponOffer(Ship, Planet)
-  else if ItemType = Byte(t_Hull) then
+  else if ItemType = t_Hull then
     Result := GenerateHullOffer(Ship, Planet);
   if Result = nil then
     Exit;
   case TypeId of
-    Ord(rstBusinessCenter):
+    rstBusinessCenter:
     begin
-      Result.Cost := Min(Int64(100000000), Round(Result.Cost * 1.2));
+      Result.Cost := Min(Int64(MaxMonetaryValue), Round(Result.Cost * 1.2));
       Result.ConditionPercent := NextRandomIntRange(70, 100, RandomState);
     end;
-    Ord(rstMedicalBase): Result.ConditionPercent := NextRandomIntRange(1, 100, RandomState);
-    Ord(rstPirateBase): Result.ConditionPercent := NextRandomIntRange(0, 60, RandomState);
-    Ord(rstMilitaryBase): Result.ConditionPercent := NextRandomIntRange(60, 100, RandomState);
-    Ord(rstDominion): Result.ConditionPercent := NextRandomIntRange(0, 60, RandomState);
+    rstMedicalBase: Result.ConditionPercent := NextRandomIntRange(1, 100, RandomState);
+    rstPirateBase: Result.ConditionPercent := NextRandomIntRange(0, 60, RandomState);
+    rstMilitaryBase: Result.ConditionPercent := NextRandomIntRange(60, 100, RandomState);
+    rstDominion: Result.ConditionPercent := NextRandomIntRange(0, 60, RandomState);
   end;
   if Result.CanImprove then
-    if TypeId = Byte(rstScienceBase) then
+    if TypeId = rstScienceBase then
       case NextRandomIntRange(0, 100, RandomState) of
         0..70: Result.Improve(ikMinor);
         71..90: Result.Improve(ikMedium);
         91..100: Result.Improve(ikMajor);
       end
-    else if TypeId = Byte(rstRangerCenter) then
+    else if TypeId = rstRangerCenter then
       case NextRandomIntRange(0, 100, RandomState) of
         0..10: Result.Improve(ikMinor);
         11..20: Result.Improve(ikMedium);
@@ -2800,7 +2808,7 @@ begin
         21..23: Result.Improve(ikMajor);
       end;
   Attempts := 0;
-  if (TypeId = Byte(rstDominion)) and (NextRandomIntRange(0, 100, RandomState) > 50) then
+  if (TypeId = rstDominion) and (NextRandomIntRange(0, 100, RandomState) > 50) then
     repeat
       Priority := Round(RemapClamped(Galaxy.TechLevel, 3, 7, 70, 0));
       ModuleIndex :=
@@ -2824,24 +2832,24 @@ function TRuins.GenerateEquipmentOfferBatch(
     UnusedForceGeneratedOffers: Boolean
 ): TObjectList;
 type
-  TQuotasByItemType = array[42..50] of Integer;
+  TQuotasByItemType = array[t_Hull..WeaponCategoryItemType] of Integer;
 var
   Item: TEquipment;
   I, J: Integer;
-  Kind: Byte;
+  Kind: TItemType;
   Planet: TPlanet;
 begin
   Result := TObjectList.Create;
   for J := 1 to StationEquipmentOfferQuotas[TypeId].Hulls do
   begin
     Planet := TPlanet(CurrentStar.SelectRandomInhabitedPlanet);
-    Item := GenerateEquipmentOffer(Ship, Planet, Ord(t_Hull));
+    Item := GenerateEquipmentOffer(Ship, Planet, t_Hull);
     if Item <> nil then
       Result.Add(Item);
   end;
   for I := 1 to CountItemTypesInMask([Ord(t_FuelTanks)..Ord(t_DefGenerator)]) do
   begin
-    Kind := GetItemTypeFromMask([Ord(t_FuelTanks)..Ord(t_DefGenerator)], I);
+    Kind := TItemType(GetItemTypeFromMask([Ord(t_FuelTanks)..Ord(t_DefGenerator)], I));
     for J := 1 to TQuotasByItemType(StationEquipmentOfferQuotas[TypeId])[Kind] do
     begin
       Planet := TPlanet(CurrentStar.SelectRandomInhabitedPlanet);
@@ -2853,7 +2861,7 @@ begin
   for I := 1 to StationEquipmentOfferQuotas[TypeId].Weapons do
   begin
     Planet := TPlanet(CurrentStar.SelectRandomInhabitedPlanet);
-    Item := GenerateEquipmentOffer(Ship, Planet, Ord(t_Weapon1));
+    Item := GenerateEquipmentOffer(Ship, Planet, WeaponCategoryItemType);
     if Item <> nil then
       Result.Add(Item);
   end;
@@ -2864,12 +2872,12 @@ var
   Good: Byte;
   TargetPrice, PriceStep: Single;
   TargetCount, CountStep: Integer;
-  Race: Byte;
+  Race: TOwnerId;
 begin
   if ShopUpdateMode in [sumDisabled, sumEquipmentOnly] then
     Exit;
   Race := PilotRace;
-  for Good := 0 to 7 do
+  for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
   begin
     TargetCount :=
         Round(
@@ -2947,9 +2955,9 @@ begin
   Result := 0;
   EquipmentFactor := 1;
   // Keep the native byte load followed by signed extension under DCC32 O-.
-  if TypeId = Byte(rstMilitaryBase) then
-    EquipmentFactor := RemapClamped(ShortInt(GetPlayer.Rank * 1), 0, 7, 0.9, 0.2);
-  if TypeId = Byte(rstPirateBase) then
+  if TypeId = rstMilitaryBase then
+    EquipmentFactor := RemapClamped(Ord(GetPlayer.Rank), 0, 7, 0.9, 0.2);
+  if TypeId = rstPirateBase then
     EquipmentFactor := 0.84;
   for I := 0 to Ship.Inventory.Count - 1 do
   begin
@@ -2966,9 +2974,9 @@ begin
   if CanRepairArtefactsAtLocation then
   begin
     ArtefactFactor := 1;
-    if TypeId = Byte(rstScienceBase) then
+    if TypeId = rstScienceBase then
       ArtefactFactor := 0.84;
-    if TypeId = Byte(rstPirateBase) then
+    if TypeId = rstPirateBase then
       ArtefactFactor := 0.84;
     for I := 0 to Ship.Artefacts.Count - 1 do
     begin
@@ -3033,11 +3041,11 @@ begin
     if (Star.Battle = 0)
         and (Star.ControlFaction <> sfDominators)
         and (Star.Status.CustomFaction = '')
-        and (Star.ShipTypeCounts[Ord(rstPirateBase)] <> 0) then
+        and (Star.ShipTypeCounts[rstPirateBase] <> 0) then
       for J := 0 to Star.Ships.Count - 1 do
       begin
         Ship := TShip(Star.Ships[J]);
-        if (Ship.TypeId = Byte(rstPirateBase))
+        if (Ship.TypeId = rstPirateBase)
             and (Ship.TypeNameOverrideKey = '')
             and (Ship.NodeReserve > 0) then
         begin
@@ -3117,25 +3125,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCargoHook.ClassName;
-  TDefGenerator.ClassName;
-  TEngine.ClassName;
-  TFuelTanks.ClassName;
-  THull.ClassName;
-  TMicroModule.ClassName;
-  TNormalShip.ClassName;
-  TPirate.ClassName;
-  TRadar.ClassName;
-  TRanger.ClassName;
-  TRepairRobot.ClassName;
-  TRuins.ClassName;
-  TScaner.ClassName;
-  TShip.ClassName;
-  TStar.ClassName;
-  TTranclucator.ClassName;
-  TWarrior.ClassName;
-  TWeapon.ClassName;
-end;
 end.

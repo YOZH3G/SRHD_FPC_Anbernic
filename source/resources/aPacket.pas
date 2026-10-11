@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit aPacket;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 function InitializePackageCollection: Boolean;
+
 function LoadConfiguredPackages: Boolean;
+
 procedure FinalizePackageCollection;
+
 implementation
+
 uses
-  Math,
   Classes,
   SyncObjs,
   EC_HsFile,

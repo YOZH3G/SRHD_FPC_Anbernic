@@ -1,22 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit ab_Item;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   aItem,
   ab_Object,
   ab_Zone,
   SE_Space;
+
 type
+
   TabItem = class;
+
   TabItem = class(TabObject)
     Item: TItem;
     BonusKind: Integer;
     HiddenBonus: Boolean;
-    GapB9: array[0..2] of Byte;
     Visual: TObjectSE;
     SpawnZone: PabZone;
     procedure UpdateState; override;
@@ -29,16 +30,22 @@ type
     procedure AttachVisual;
     procedure DetachVisual;
   end;
+
 procedure ab_Item_Update;
+
 procedure ab_Item_Drop(Origin: TabObject; Item: TItem; MinDistance: Integer; MaxDistance: Integer);
+
 function ab_Item_FindNearestBonus(Origin: PabZone): TabItem;
+
 function ab_Item_FindBonusRoute(Origin: PabZone; var Zone: PabZone): TabItem;
+
 function ab_Item_FindRepairRoute(Origin: PabZone; var Zone: PabZone): TabItem;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  Types,
+  GameInput,
   Classes,
   SysUtils,
   EC_Struct,
@@ -440,10 +447,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabItem.ClassName;
-  TabShip.ClassName;
-  TabShipAI.ClassName;
-end;
 end.

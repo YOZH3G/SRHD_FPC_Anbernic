@@ -1,17 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit SE_GAIEffect;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_GAI,
   SE_Space,
   Types;
+
 type
+
   TGAIEffectSE = class;
+
   TGAIEffectSE = class(TObjectSE)
     SoundPath: WideString;
     ImagePosition: TPoint;
@@ -29,7 +31,9 @@ type
     procedure SetImagePosition(Value: TPoint);
     procedure SetDurationScale(Value: Single);
   end;
+
 implementation
+
 uses
   GR_Main,
   Globals,

@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit SE_Meteorite;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TMeteoriteSE = class;
+
   TMeteoriteSE = class(TObjectSE)
     ImagePath: WideString;
     TimerInterval: Integer;
@@ -32,7 +34,9 @@ type
     procedure RestartOutsideView;
     procedure AdvanceMotion(Timer: PSpaceTimerSE; UserData: Integer);
   end;
+
 implementation
+
 uses
   Globals,
   Math,

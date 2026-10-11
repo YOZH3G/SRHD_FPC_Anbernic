@@ -1,29 +1,35 @@
-{$EXCESSPRECISION OFF}
 unit aVector;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
-  EC_Struct,
-  Types;
+  EC_Struct;
+
 type
+
   TPolygon2D = class;
+
   PointerToTPolygonEdge = ^TPolygonEdge;
+
   TRectF = record
     Left: Single;
     Top: Single;
     Right: Single;
     Bottom: Single;
   end;
+
   TPolygonEdge = record
     First: TPointF;
     Last: TPointF;
     Gap10: array[0..11] of Byte;
   end;
+
   PPolygonEdge = PointerToTPolygonEdge;
+
   TPolygon2D = class(TObject)
     Next: TPolygon2D;
     Previous: TPolygon2D;
@@ -33,11 +39,9 @@ type
     Extent: TPointF;
     CachedArea: Single;
     AreaValid: Boolean;
-    Gap25: array[0..2] of Byte;
     Bounds: TRectF;
     Gap38: array[0..0] of Byte;
     Flag39: Boolean;
-    Gap3A: array[0..1] of Byte;
     constructor Create;
     constructor CreateTriangle(A: TPointF; B: TPointF; C: TPointF);
     destructor Destroy; override;
@@ -69,13 +73,21 @@ type
     function ChainSelfIntersects: Boolean;
     function IntersectsChain(Polygon: TPolygon2D): Boolean;
   end;
+
 function PerpendicularVector(Point: TPointF): TPointF;
+
 function DotProductF(Left: TPointF; Right: TPointF): Single;
+
 function VectorLengthF(Point: TPointF): Single;
+
 function IsRightOfDirectedLine(Point: TPointF; Origin: TPointF; Direction: TPointF): Boolean;
+
 function IsLeftOfDirectedLine(Point: TPointF; Origin: TPointF; Direction: TPointF): Boolean;
+
 function MakeVectorF(X: Single; Y: Single): TPointF;
+
 function VectorBetweenPoints(First: TPointF; Last: TPointF): TPointF;
+
 procedure GetLineEquation(
     First: TPointF;
     Last: TPointF;
@@ -83,7 +95,9 @@ procedure GetLineEquation(
     var B: Single;
     var C: Single
 );
+
 function IntersectLinesF(First1: TPointF; Last1: TPointF; First2: TPointF; Last2: TPointF): TPointF;
+
 function IntersectSegmentWithLine(
     First: TPointF;
     Last: TPointF;
@@ -92,6 +106,7 @@ function IntersectSegmentWithLine(
     C: Single;
     var Intersection: TPointF
 ): Boolean;
+
 function IntersectSegmentWithDirectedLine(
     First: TPointF;
     Last: TPointF;
@@ -99,6 +114,7 @@ function IntersectSegmentWithDirectedLine(
     LineLast: TPointF;
     var Intersection: TPointF
 ): Boolean;
+
 function IntersectSegmentsF(
     First1: TPointF;
     Last1: TPointF;
@@ -106,22 +122,31 @@ function IntersectSegmentsF(
     Last2: TPointF;
     var Intersection: TPointF
 ): Boolean;
+
 function MakeRectF(Left: Single; Top: Single; Right: Single; Bottom: Single): TRectF;
+
 function RectFromPointsF(First: TPointF; Last: TPointF): TRectF;
+
 function PointsNearlyEqualF(First: TPointF; Last: TPointF): Boolean;
+
 function SegmentsNearlyEqualF(
     First1: TPointF;
     Last1: TPointF;
     First2: TPointF;
     Last2: TPointF
 ): Boolean;
+
 function ScalarsNearlyEqualF(First: Single; Last: Single): Boolean;
+
 function PointDistanceF(First: TPointF; Last: TPointF): Single;
+
 function PointSegmentDistanceF(First: TPointF; Last: TPointF; Point: TPointF): Single;
+
 function ClassifyPointToSegment(First: TPointF; Last: TPointF; Point: TPointF): Integer;
+
 implementation
+
 uses
-  Math,
   SysUtils;
 
 function PerpendicularVector(Point: TPointF): TPointF;
@@ -888,35 +913,34 @@ var
   A, B, C, Height, Square: Single;
 begin
   if AreaValid then
-    Result := CachedArea
-  else
   begin
-    Result := 0;
-    CachedArea := 0;
-    if Points.Count >= 3 then
+    Result := CachedArea;
+    Exit;
+  end;
+  Result := 0;
+  CachedArea := 0;
+  if Points.Count >= 3 then
+  begin
+    TriangleFirst := Points[0];
+    for Index := 1 to Points.Count - 2 do
     begin
-      // Preserve DCC32's receiver-before-index argument order; + 0 emits no arithmetic.
-      TriangleFirst := TList(PAnsiChar(Points) + 0)[0];
-      for Index := 1 to Points.Count - 2 do
-      begin
-        Middle := TList(PAnsiChar(Points) + 0)[Index];
-        Last := Points[Index + 1];
-        A := PointDistanceF(TriangleFirst^, Middle^);
-        B := PointDistanceF(TriangleFirst^, Last^);
-        C := PointDistanceF(Middle^, Last^);
-        if A = 0 then
-          A := 1;
-        Square := A * A + B * B - C * C;
-        if Square < 0 then
-          Square := 0.01;
-        Square := B * B - Sqr(Square) / (4 * A * A);
-        if Square < 0 then
-          Square := 0.01;
-        Height := Sqrt(Square);
-        CachedArea := 0.5 * Height * A + CachedArea;
-      end;
-      AreaValid := True;
+      Middle := Points[Index];
+      Last := Points[Index + 1];
+      A := PointDistanceF(TriangleFirst^, Middle^);
+      B := PointDistanceF(TriangleFirst^, Last^);
+      C := PointDistanceF(Middle^, Last^);
+      if A = 0 then
+        A := 1;
+      Square := A * A + B * B - C * C;
+      if Square < 0 then
+        Square := 0.01;
+      Square := B * B - Sqr(Square) / (4 * A * A);
+      if Square < 0 then
+        Square := 0.01;
+      Height := Sqrt(Square);
+      CachedArea := 0.5 * Height * A + CachedArea;
     end;
+    AreaValid := True;
   end;
 end;
 

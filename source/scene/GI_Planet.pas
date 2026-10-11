@@ -1,10 +1,10 @@
-{$EXCESSPRECISION OFF}
 unit GI_Planet;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+{$POINTERMATH ON}
+
 interface
+
 uses
   Types,
   Classes,
@@ -18,8 +18,11 @@ uses
   GR_GraphBufPal,
   EC_BlockPar,
   GR_GraphBuf;
+
 type
+
   TPlanetGI = class;
+
   TPlanetGI = class(TObjectGI)
     TemplateCache: TCPlanetTemplControlEC;
     SurfaceImageCache: TCPalBitmapControlEC;
@@ -38,7 +41,6 @@ type
     AtmosphereColor: Cardinal;
     AtmosphereDirty: Boolean;
     AtmospherePaletteDirty: Boolean;
-    Gap15E: array[0..1] of Byte;
     MapWidthMask: Integer;
     SurfaceMapOffset: Integer;
     Cloud1MapOffset: Integer;
@@ -48,7 +50,6 @@ type
     SourceLightBuffer: Pointer;
     RotatedLightBuffer: Pointer;
     LightAngle: Byte;
-    Gap18D: array[0..2] of Byte;
     MapWidth: Integer;
     MapHeight: Integer;
     TextureCache: TTextureGR;
@@ -90,9 +91,10 @@ type
     procedure SetLightAngle(Value: Byte);
     procedure RenderSurfaceToBuffer(Buffer: TGraphBufGR);
   end;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Cache,
   EC_Mem,
@@ -582,10 +584,10 @@ end;
 
 procedure TPlanetGI.RebuildAtmosphereImage;
 var
-  ImagePixels, MaskPixels, DestPixels: Pointer;
-  Width: Integer;
-  MulTable: Pointer;
-  ImageSkip, MaskSkip, DestSkip, Height, Column: Integer;
+  ImagePixels, MaskPixels, DestPixels: PByte;
+  Width, Row, Column: Integer;
+  MulTable: PByte;
+  ImageSkip, MaskSkip, DestSkip, Height: Integer;
   Image, Mask: TCBitmapEC;
   RotatedMask: TGraphBufGR;
   Rotation: TCRotateBufEC;
@@ -639,21 +641,18 @@ begin
     MaskSkip := RotatedMask.PitchBytes - Width;
     DestSkip := AtmosphereBuffer.PitchBytes - Width;
     MulTable := Ex_OKGF_MulTable256x256;
-    // Portable form of the recovered byte multiplication loop.
-    while Height > 0 do
+    for Row := 1 to Height do
     begin
-      for Column := 0 to Width - 1 do
+      for Column := 1 to Width do
       begin
-        PByte(DestPixels)^ :=
-            PByte(MulTable)[Integer(PByte(MaskPixels)^) * 256 + PByte(ImagePixels)^];
-        Inc(PByte(ImagePixels));
-        Inc(PByte(MaskPixels));
-        Inc(PByte(DestPixels));
+        DestPixels^ := MulTable[(Integer(MaskPixels^) shl 8) + ImagePixels^];
+        Inc(ImagePixels);
+        Inc(MaskPixels);
+        Inc(DestPixels);
       end;
-      Inc(PByte(ImagePixels), ImageSkip);
-      Inc(PByte(MaskPixels), MaskSkip);
-      Inc(PByte(DestPixels), DestSkip);
-      Dec(Height);
+      Inc(ImagePixels, ImageSkip);
+      Inc(MaskPixels, MaskSkip);
+      Inc(DestPixels, DestSkip);
     end;
   finally
     if Image <> nil then
@@ -857,7 +856,7 @@ begin
           HitTestBounds.Left,
           HitTestBounds.Top,
           255,
-          $FFFFFF,
+          RgbWhite,
           @ClipRect,
           False,
           False
@@ -894,7 +893,7 @@ begin
             HitTestBounds.Left,
             HitTestBounds.Top,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False
@@ -934,7 +933,7 @@ begin
             HitTestBounds.Left,
             HitTestBounds.Top,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False
@@ -974,7 +973,7 @@ begin
             HitTestBounds.Left,
             HitTestBounds.Top,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False
@@ -1022,7 +1021,7 @@ begin
             HitTestBounds.Left,
             HitTestBounds.Top,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False

@@ -1,19 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit GI_SpaceCircle;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   GI_MessageLoop,
   EC_Struct,
-  EC_BlockPar,
-  Types;
+  EC_BlockPar;
+
 type
+
   TSpaceCircleGI = class;
+
   PointerToTSpaceCircleSavedLineGI = ^TSpaceCircleSavedLineGI;
+
   PointerToTSpaceCircleSegmentGI = ^TSpaceCircleSegmentGI;
+
   TSpaceCircleSegmentGI = record
     First: TPointF;
     Last: TPointF;
@@ -21,12 +25,16 @@ type
     PixelFirst: TPoint;
     PixelLast: TPoint;
   end;
+
   PSpaceCircleSegmentGI = PointerToTSpaceCircleSegmentGI;
+
   TSpaceCircleSavedLineGI = record
     First: TPoint;
     Last: TPoint;
   end;
+
   PSpaceCircleSavedLineGI = PointerToTSpaceCircleSavedLineGI;
+
   TSpaceCircleGI = class(TObjectGI)
     SegmentCount: Integer;
     Segments: PSpaceCircleSegmentGI;
@@ -36,10 +44,8 @@ type
     Radius: Integer;
     Color: Cardinal;
     GeometryDirty: Boolean;
-    Gap141: array[0..2] of Byte;
     DrawnSegmentCount: Integer;
     DeactivateAfterFrame: Boolean;
-    Gap149: array[0..2] of Byte;
     AnimationTimer: PCallbackTimerGI;
     SavedPixels: Pointer;
     procedure SetActive(Enabled: Boolean); override;
@@ -64,15 +70,17 @@ type
     procedure RotateSegments(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure LoadSpaceCircleProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   GR_Main,
   GR_GraphBuf,
   GR_DX,
   GlobalsV,
-  Classes;
+  Classes,
+  aMyFunction;
 
 constructor TSpaceCircleGI.Create(Owner: TObjectGI);
 begin
@@ -150,13 +158,13 @@ begin
   if Radius > 0 then
   begin
     Spacing := 20;
-    Circumference := Radius * (2 * 3.1415926);
+    Circumference := Radius * (2 * GamePi);
     Count := Round(Circumference / Spacing);
     if Count < 10 then
       Count := 10;
     Segments := AllocEC(Count * SizeOf(TSpaceCircleSegmentGI));
     Angle := 0;
-    Step := (2 * 3.1415926) / Count;
+    Step := (2 * GamePi) / Count;
     Point := MakePointF(Sin(Angle) * Radius, Cos(Angle) * (-Radius));
     Segment := Segments;
     for I := 0 to Count - 1 do
@@ -213,7 +221,7 @@ var
 begin
   if Radius > 0 then
   begin
-    Angle := -2 / (Radius * (2 * 3.1415926)) * 3.1415926 * 2;
+    Angle := -2 / (Radius * (2 * GamePi)) * GamePi * 2;
     Sine := Sin(Angle);
     Cosine := Cos(Angle);
     Segment := Segments;
@@ -448,6 +456,10 @@ end;
 
 procedure TSpaceCircleGI.CommitFrameDraw;
 begin
+  // Native code retains this empty renderer test before deferred deactivation.
+  if not HardwareRenderingEnabled then
+  begin
+  end;
   if DeactivateAfterFrame then
   begin
     inherited SetActive(False);

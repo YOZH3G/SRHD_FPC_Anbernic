@@ -1,21 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit SE_Container;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_AlphaImage,
   GI_GAI,
   GI_MessageLoop,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TContainerSE = class;
+
   TContainerSE = class(TObjectSE)
     ImagePath: WideString;
     MinimapImagePath: WideString;
@@ -32,10 +34,10 @@ type
     procedure LoadTemplate(Block: TBlockParEC); override;
     procedure QueueImageLoad(PendingLoads: TList; Owner: TObjectGI); override;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   Globals,
   GR_Main,
@@ -160,9 +162,4 @@ begin
   MapImage.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TContainerSE.ClassName;
-  TProcessSE.ClassName;
-end;
 end.

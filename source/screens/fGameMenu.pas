@@ -1,16 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit fGameMenu;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameWindow,
   EC_BlockPar,
   GI_MessageLoop,
   Types;
+
 type
+
   TfGameMenu = class;
+
   TfGameMenu = class(TMessageLoopGI)
     procedure OnOpen; override;
     procedure OnClose; override;
@@ -27,11 +30,10 @@ type
     procedure BackgroundMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  aCalc,
-  Math,
   EC_Cache,
   GI_MessageBox,
   GR_DX,
@@ -39,8 +41,7 @@ uses
   aScript,
   aGalaxyStruct,
   Classes,
-  Windows,
-  ShellAPI,
+  GameInput,
   GR_Main,
   GR_Music,
   Globals,
@@ -74,6 +75,10 @@ begin
           )
       );
   end;
+  FitMobileControl(
+      GetByName('Resume').Parent,
+      Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
+  );
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').LeftButtonUpCallback := BackgroundMouseUp;
   with GetByName('Resume') as TGraphButtonGI do
@@ -96,8 +101,6 @@ end;
 
 procedure TfGameMenu.OnOpen;
 begin
-  (GetByName('Save') as TGraphButtonGI).SetDisabled(False);
-  (GetByName('Load') as TGraphButtonGI).SetDisabled(False);
   if AuxRenderBuffer.GetPixels = nil then
     CaptureScreenBackground(True, 0);
   (GetByName('BGBuf') as TGraphBufGI).BindExternalGraphBuf(AuxRenderBuffer);
@@ -150,16 +153,8 @@ end;
 
 procedure TfGameMenu.HelpClicked(Sender: TObjectGI);
 begin
-  ShowWindow(MainWindowHandle, SW_MINIMIZE);
-  // Native $602EEC and $602F20 are the empty and 'open' PAnsiChar literals.
-  ShellExecuteA(
-      0,
-      'open',
-      PAnsiChar(AnsiString(LocalizedText('FormGameMenu.HelpFile'))),
-      '',
-      '',
-      SW_SHOWNORMAL
-  );
+  MinimizeGameWindow;
+  OpenGameURL(LocalizedText('FormGameMenu.HelpFile'));
 end;
 
 procedure TfGameMenu.ExitClicked(Sender: TObjectGI);
@@ -231,9 +226,9 @@ procedure TfGameMenu.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
   if not ExitScreenLoop then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10013);
     ExecuteGameplayUiCode(Block, Key);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20013);
   end;
 end;
 
@@ -249,13 +244,12 @@ begin
       MusicManager.RequestFadeOut
     else
     begin
-      if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+      if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       begin
         if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
           MusicManager.PlayCategory(
               'Nation.'
-                  + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                      .InternalName
+                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                   + 'Pirate'
           )
         else
@@ -272,16 +266,13 @@ begin
       MusicManager.RequestFadeOut
     else
     begin
-      if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+      if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
         MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
-                + 'Pirate'
+            'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
         )
       else
         MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
+            'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
         );
     end;
   end
@@ -305,10 +296,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-end;
 end.

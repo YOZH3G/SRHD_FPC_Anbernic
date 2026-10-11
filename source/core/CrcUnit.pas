@@ -1,13 +1,15 @@
-{$EXCESSPRECISION OFF}
 unit CrcUnit;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 type
+
   TCrc32Table = array[0..255] of Cardinal;
+
 const
+
   Crc32Table: TCrc32Table = (
       $00000000,
       $77073096,
@@ -266,21 +268,28 @@ const
       $5A05DF1B,
       $2D02EF8D
   );
+
 function ComputeCrc32(BufferPtr: Pointer; ByteCount: Integer): Cardinal;
+
 function InitCrc32: Cardinal;
+
 function UpdateCrc32(State: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
+
 function FinishCrc32(State: Cardinal): Cardinal;
+
 function InvertCrc32(State: Cardinal): Cardinal;
+
 function UpdateCrc32Bytes(State: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
+
 function ExtendCrc32(Crc: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
+
 procedure WriteCrc32Correction(CurrentCrc: Cardinal; TargetCrc: Cardinal; Dest: Pointer);
+
 implementation
-uses
-  Math;
 
 function ComputeCrc32(BufferPtr: Pointer; ByteCount: Integer): Cardinal;
 begin
-  Result := not UpdateCrc32($FFFFFFFF, BufferPtr, ByteCount)
+  Result := not UpdateCrc32($FFFFFFFF, BufferPtr, ByteCount);
 end;
 
 function InitCrc32: Cardinal;
@@ -290,16 +299,18 @@ end;
 
 function UpdateCrc32(State: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
 var
-  I: Integer;
-  P: PByte;
+  Cursor: PByte;
+  i: Integer;
 begin
-  P := BufferPtr;
-  Result := State;
-  for I := 0 to ByteCount - 1 do
+  // Same CRC recurrence as the x86 code. Its PUSHA/POPA register corruption is
+  // an ABI defect, not part of the checksum; Pascal preserves the host registers.
+  Cursor := BufferPtr;
+  for i := 1 to ByteCount do
   begin
-    Result := (Result shr 8) xor Crc32Table[(Result xor P^) and $FF];
-    Inc(P)
-  end
+    State := (State shr 8) xor Crc32Table[Byte(State xor Cursor^)];
+    Inc(Cursor);
+  end;
+  Result := State;
 end;
 
 function FinishCrc32(State: Cardinal): Cardinal;
@@ -309,21 +320,12 @@ end;
 
 function InvertCrc32(State: Cardinal): Cardinal;
 begin
-  Result := not State
+  Result := not State;
 end;
 
 function UpdateCrc32Bytes(State: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
-var
-  I: Integer;
-  P: PByte;
 begin
-  P := BufferPtr;
-  Result := State;
-  for I := 0 to ByteCount - 1 do
-  begin
-    Result := (Result shr 8) xor Crc32Table[(Result xor P^) and $FF];
-    Inc(P)
-  end
+  Result := UpdateCrc32(State, BufferPtr, ByteCount);
 end;
 
 function ExtendCrc32(Crc: Cardinal; BufferPtr: Pointer; ByteCount: Integer): Cardinal;
@@ -338,9 +340,10 @@ var
   State: Cardinal;
   B3, B2, B1, B0: Cardinal;
   Cursor: PAnsiChar;
+
   function ReverseCrc32Byte(
       var State: Cardinal
-  ): Cardinal; // @addr $798DFC @ida "unsigned int __usercall $name@<eax>(unsigned int *State@<eax>, void *ParentFrame@<^0>);" @note "Nested in WriteCrc32Correction; unused static link is caller-popped."
+  ): Cardinal; { Nested in WriteCrc32Correction; unused static link is caller-popped. }
   var
     i: Integer;
     Difference, Original: Cardinal;
@@ -358,6 +361,7 @@ var
       end;
     end;
   end;
+
 begin
   CurrentCrc := InvertCrc32(CurrentCrc);
   TargetCrc := InvertCrc32(TargetCrc);

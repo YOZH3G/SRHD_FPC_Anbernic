@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit SE_Asteroid;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -13,8 +12,11 @@ uses
   GI_Image,
   GI_MessageLoop,
   SE_Space;
+
 type
+
   TAsteroidSE = class;
+
   TAsteroidSE = class(TObjectSE)
     ImagePath: WideString;
     MapImagePath: WideString;
@@ -32,10 +34,10 @@ type
     function GetSequenceFrameIndex: Integer;
     procedure SetSequenceFrameIndex(FrameIndex: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   Globals,
   GR_Main,
@@ -162,8 +164,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TProcessSE.ClassName;
-end;
 end.

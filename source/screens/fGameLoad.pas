@@ -1,31 +1,32 @@
-{$EXCESSPRECISION OFF}
 unit fGameLoad;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Thread,
   GI_MessageLoop,
   fPanelLoad;
+
 type
+
   TThreadGameLoad = class;
+
   TfGameLoad = class;
+
   TThreadGameLoad = class(TThreadEC)
     Succeeded: Boolean;
-    Gap2D: array[0..2] of Byte;
     procedure Execute; override;
   end;
+
   TfGameLoad = class(TMessageLoopGI)
     LoadThread: TThreadGameLoad;
     ProgressTimer: PCallbackTimerGI;
     AssetPreloadStarted: Boolean;
-    GapD9: array[0..2] of Byte;
     TargetProgress: Single;
     DisplayedProgress: Single;
     LoadingComplete: Boolean;
-    GapE5: array[0..2] of Byte;
     LoadPanel: TfPanelLoad;
     procedure OnOpen; override;
     procedure OnClose; override;
@@ -36,14 +37,15 @@ type
     function IsLoading: Boolean;
     procedure UpdateLoadingProgress(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
+
 implementation
+
 uses
-  aCalc,
   GI_MessageBox,
   aGalaxyStruct,
   SysUtils,
   Classes,
-  Windows,
+  Types,
   Math,
   GR_Main,
   GR_Music,
@@ -73,7 +75,6 @@ end;
 
 destructor TfGameLoad.Destroy;
 begin
-  FreeAndNil(LoadThread);
   if LoadPanel <> nil then
   begin
     LoadPanel.Free;
@@ -100,7 +101,6 @@ end;
 
 procedure TfGameLoad.OnOpen;
 begin
-
   LoadPanel.OnOpen;
   LoadPanel.Show;
   if MusicManager.CategoryOverride = '' then
@@ -116,10 +116,7 @@ begin
     Galaxy.Free;
   Galaxy := nil;
   AssetPreloadStarted := False;
-  // Reuse the worker. FPC's main-thread WaitFor/CheckSynchronize added about
-  // 100 ms to each load when this screen destroyed its already idle worker.
-  if LoadThread = nil then
-    LoadThread := TThreadGameLoad.Create;
+  LoadThread := TThreadGameLoad.Create;
   LoadThread.SetPriority(2);
   LoadThread.Start;
   ProgressTimer := ScheduleCallbackTimer(20, 20, UpdateLoadingProgress);
@@ -133,7 +130,8 @@ begin
   LoadPanel.OnClose;
   if LoadThread <> nil then
   begin
-    LoadThread.WaitForIdle(INFINITE);
+    LoadThread.Free;
+    LoadThread := nil;
   end;
   if ProgressTimer <> nil then
   begin
@@ -146,13 +144,12 @@ begin
       MusicManager.PlayCategory('Base')
     else if GetPlayer.IsOnPlanet then
     begin
-      if GetPlayer.CurrentPlanet.OwnerId = 7 then
+      if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       begin
         if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
           MusicManager.PlayCategory(
               'Nation.'
-                  + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                      .InternalName
+                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                   + 'Pirate'
           )
         else
@@ -164,7 +161,7 @@ begin
     end
     else if GetPlayer.IsDockedToShip then
     begin
-      if GetPlayer.DockedTo.TypeId in [6..13] then
+      if GetPlayer.DockedTo.TypeId in [rstRangerCenter..rstCustomStation] then
       begin
         Category := GetPlayer.DockedTo.TypeNameOverrideKey;
         if (Category <> '') and (MainDataConfig.GetBlock('Music').CountBlocks(Category) > 0) then
@@ -175,11 +172,10 @@ begin
       else
       begin
         // Retain the native CurrentPlanet lookup in this non-station docking branch.
-        if GetPlayer.CurrentPlanet.OwnerId = 7 then
+        if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
           MusicManager.PlayCategory(
               'Nation.'
-                  + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                      .InternalName
+                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                   + 'Pirate'
           )
         else
@@ -205,12 +201,10 @@ begin
       else
         MusicManager.RequestFadeOut;
     end;
-    // The host music controller advances in the event loop; queueing/fading
-    // does not require blocking the screen transition for the native 100 ms.
+    SysUtils.Sleep(100);
     MusicManager.RequestFadeOut;
   end;
-  if Galaxy <> nil then
-    aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksumAndSetStatus(555);
 end;
 
 function TfGameLoad.IsLoading: Boolean;
@@ -240,15 +234,12 @@ begin
         if ShowMessageBoxGI(
                 GetInnermostScreenLoop,
                 LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.QueryReloadMods'),
-                35,
-                0,
-                0,
-                0)
-            = 1 then
+                mbgOK or mbgCancel or mbgError)
+            = mbgResultOK then
         begin
           Block := TBlockParEC.Create;
           Block.AddParam('CurrentMod', LoadedSaveModSet);
-          Block.SaveTextFile('Mods\ModCFG.txt', True, False);
+          Block.SaveTextFile(ModSelectionConfigPath, True, False);
           Block.Free;
           RequestedScreenId := screenNone;
           PostLoadScreenId := screenGameLoad;
@@ -260,13 +251,8 @@ begin
       else
         ShowMessageBoxGI(
             Self,
-            LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.LoadError')
-                + #13#10
-                + LastSaveLoadError,
-            33,
-            0,
-            0,
-            0
+            LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.LoadError'),
+            mbgOK or mbgError
         );
       RequestedScreenId := screenMainMenu;
       ApplyEditableSaveOnLoad := False;
@@ -275,7 +261,6 @@ begin
     end;
     if not AssetPreloadStarted then
     begin
-
       Loads := TList.Create;
       StarMapScreen.ResumeMode := smrOrders;
       if ScreenUsesCompositeLoadAssets(RequestedScreenId) then
@@ -306,17 +291,13 @@ begin
     DisplayedProgress := Min(0.005 + DisplayedProgress, TargetProgress);
     LoadPanel.SetProgress(DisplayedProgress);
   end;
-  // The progress animation must not delay a fully loaded save.
-  if LoadingComplete then
-  begin
-    DisplayedProgress := 1;
-    LoadPanel.SetProgress(1);
+  if LoadingComplete and (DisplayedProgress >= 0.999) then
     RequestClose(1);
-  end;
 end;
 
 procedure TfGameLoad.SelectMusic;
 begin
+
 end;
 
 end.

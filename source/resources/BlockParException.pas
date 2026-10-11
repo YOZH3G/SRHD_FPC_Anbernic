@@ -1,23 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit BlockParException;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   SysUtils;
+
 type
+
   EBlockPar = class;
+
   EBlockPar = class(Exception)
     Reportable: Boolean;
-    GapD: array[0..2] of Byte;
     constructor Create(Message: AnsiString; AReportable: Boolean);
     function IsReportable: Boolean;
   end;
+
 implementation
-uses
-  Math;
 
 constructor EBlockPar.Create(Message: AnsiString; AReportable: Boolean);
 begin

@@ -1,24 +1,36 @@
-{$EXCESSPRECISION OFF}
 unit GI_MessageBox;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop;
+
 const
+
   mbgOK = $01;
+
   mbgCancel = $02;
+
   mbgUnused04 = $04;
+
   mbgWarning = $08;
+
   mbgQuestion = $10;
+
   mbgError = $20;
+
   mbgLeftAlign = $40;
+
   mbgResultOK = 1;
+
   mbgResultCancel = 2;
+
 type
+
   TMessageBoxGI = class;
+
   TMessageBoxGI = class(TMessageLoopGI)
     MessageText: WideString;
     Options: Cardinal;
@@ -31,6 +43,7 @@ type
     procedure CancelClick(Sender: TObjectGI);
     procedure DialogKeyDown(Sender: TObjectGI; VirtualKey: Cardinal);
   end;
+
 function ShowMessageBoxGI(
     Parent: TMessageLoopGI;
     const Text: WideString;
@@ -39,10 +52,12 @@ function ShowMessageBoxGI(
     OffsetX: Integer = 0;
     OffsetY: Integer = 0
 ): Cardinal;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
+  aMyFunction,
   Classes,
   EC_Str,
   GI_GraphButton,
@@ -52,8 +67,10 @@ uses
   GI_Window,
   Globals,
   GR_Main,
+  Math,
   Types,
-  Windows;
+  GameInput,
+  GameWindow;
 
 procedure TMessageBoxGI.OnOpen;
 var
@@ -63,7 +80,7 @@ var
   Icon, Light: TImageGI;
   TextSize, WindowSize, CandidateSize: TPoint;
   BottomMargin: Integer;
-  VerticalFactor, TargetRatio, ActualRatio: Single;
+  VerticalFactor, TargetRatio, ActualRatio, Scale: Single;
   Attempts, IconTop: Integer;
   Borders: TRect;
 begin
@@ -103,9 +120,9 @@ begin
   TextLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
   TextLabel.SetText(
       ReplaceAllWideString(
-          ReplaceAllWideString(MessageText, '<color=255,240,100>', '<color=0,50,200>'),
-          '<color=0,255,0>',
-          '<color=255,255,0>'
+          ReplaceAllWideString(MessageText, TextHighlightColorTag, DialogHighlightColorTag),
+          GreenColorTag,
+          YellowColorTag
       )
   );
   Attempts := 100;
@@ -245,6 +262,24 @@ begin
   end;
   Light.SetPosition(Classes.Point(WindowSize.X div 2 - Light.ClientSize.X div 2, 0));
   TextSize := TextLabel.MeasureContentSize(nil);
+  if GameMobileUiEnabled and HardwareRenderingEnabled then
+  begin
+    FitMobileControl(
+        ContentPanel,
+        Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
+    );
+    // Redraw and background restoration use screen coordinates, while the
+    // fitted dialog and its children retain their original logical bounds.
+    Scale := ContentPanel.GetDisplayScale;
+    with ContentPanel.HitTestBounds do
+      ViewportRect :=
+          Classes.Rect(
+              Floor(Left * Scale),
+              Floor(Top * Scale),
+              Ceil(Right * Scale),
+              Ceil(Bottom * Scale)
+          );
+  end;
 end;
 
 procedure TMessageBoxGI.AcceptClick(Sender: TObjectGI);
@@ -291,7 +326,7 @@ var
   Dialog: TMessageBoxGI;
   CursorState: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@CursorState);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -313,7 +348,7 @@ begin
   end;
   Parent.RestoreCursorState(@CursorState);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
   if Result = 254 then
     BreakUiMessage;
 end;

@@ -1,9 +1,7 @@
-{$EXCESSPRECISION OFF}
 unit GI_OnScreenKeyboard;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
 uses
   GI_MessageLoop, GI_Edit, GI_Label, Types;
@@ -40,8 +38,8 @@ type
   end;
 implementation
 uses
-  Classes, Math, SysUtils, Windows, Messages, GlobalsV, GI_Main, GR_Main, EC_Struct,
-  GR_GraphBuf, GR_DX;
+  Classes, Math, SysUtils, GameInput, GlobalsV, GI_Main, GR_Main, EC_Struct,
+  GR_Rect, GR_GraphBuf, GR_DX;
 var
   LastRussian: Boolean = True;
   LastUppercase: Boolean = False;

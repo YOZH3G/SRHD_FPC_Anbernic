@@ -1,22 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit SE_Missile;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_MessageLoop,
   GI_RotateImage5,
   SE_Space;
+
 type
+
   TMissileSE = class;
+
   TMissileSE = class(TObjectSE)
     Angle: Byte;
-    Gap4D: array[0..2] of Byte;
     ImageScale: Single;
     Image: TRotateImage5GI;
     AnimationTimer: PSpaceTimerSE;
@@ -33,13 +35,13 @@ type
     destructor Destroy; override;
     procedure AdvanceAnimationTimer(Timer: PSpaceTimerSE; UserData: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
+  GI_Main,
   aMyFunction,
   SysUtils,
-  Types,
   EC_Str,
   Globals,
   GR_Main,
@@ -140,14 +142,8 @@ begin
 end;
 
 procedure TMissileSE.AdvanceAnimationTimer(Timer: PSpaceTimerSE; UserData: Integer);
-var
-  Bounds: PRect;
 begin
-  Bounds := @Image.HitTestBounds;
-  if (Cardinal(GameScreenWidth) * -0.1 <= Bounds.Right)
-      and (Cardinal(GameScreenWidth) * 1.1 >= Bounds.Left)
-      and (Cardinal(GameScreenHeight) * -0.1 <= Bounds.Bottom)
-      and (Cardinal(GameScreenHeight) * 1.1 >= Bounds.Top) then
+  if ControlIntersectsViewport(Image, 0.1) then
   begin
     Image.SetFrameIndex(Image.FrameIndex + 1);
     if Integer(Image.GetFrameCount) <= Integer(Image.FrameIndex) then
@@ -192,8 +188,4 @@ procedure TMissileSE.QueueImageLoad(PendingLoads: TList; Owner: TObjectGI);
 begin
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TProcessSE.ClassName;
-end;
 end.

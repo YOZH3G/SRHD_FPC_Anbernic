@@ -1,16 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ThreadCalc;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameEvents,
   EC_Thread;
+
 type
+
   TThreadCalc = class;
+
   {$Z4}
   TTurnCalculationJob = (tcjGalaxy = 1, tcjPlayerStar = 2, tcjPreparePlayerStar = 3);
+
   {$Z4}
   TTurnCalculationPhase = (
       tcpIdle = 0,
@@ -22,25 +26,36 @@ type
       tcpPlayerStarPrepared = 6,
       tcpNotStarted = 4294967295
   );
+
   TThreadCalc = class(TThreadEC)
     Job: TTurnCalculationJob;
     procedure Execute; override;
   end;
+
 var
+
   AdaptiveBeginCalcNextTurn: Single = 0.5;
+
   LastGalaxyTurnDuration: Integer;
+
 procedure StartGalaxyTurnCalculation;
+
 procedure StartPlayerStarTurnCalculation;
+
 procedure StartPlayerStarPreparation;
+
 function IsTurnCalculationRunning: Boolean;
+
 procedure WaitForTurnCalculation;
+
 procedure ProcessPlayerStarTurn;
+
 implementation
+
 uses
-  GI_MessageLoop,
   aCalc,
-  Windows,
-  MMSystem,
+  Types,
+  GameSystem,
   SysUtils,
   Math,
   Globals,
@@ -48,22 +63,27 @@ uses
   GR_Main,
   aGalaxy,
   aPlayer,
-  aShip;
+  aShip,
+  aGalaxyStruct;
+
 procedure StartGalaxyTurnCalculation;
 begin
   TurnCalculationThread.Job := tcjGalaxy;
   TurnCalculationThread.Start;
 end;
+
 procedure StartPlayerStarTurnCalculation;
 begin
   TurnCalculationThread.Job := tcjPlayerStar;
   TurnCalculationThread.Start;
 end;
+
 procedure StartPlayerStarPreparation;
 begin
   TurnCalculationThread.Job := tcjPreparePlayerStar;
   TurnCalculationThread.Start;
 end;
+
 function IsTurnCalculationRunning: Boolean;
 begin
   if TurnCalculationThread = nil then
@@ -71,11 +91,17 @@ begin
   else
     Result := TurnCalculationThread.IsRunning;
 end;
+
 procedure WaitForTurnCalculation;
 begin
-  if (TurnCalculationThread <> nil) and TurnCalculationThread.IsRunning then
+  // Screen close handlers can wait before the top-level shutdown runs. Once
+  // the UI loop is exiting, release any conversation the worker is waiting on.
+  if ExitScreenLoop then
+    TurnCalculationThread.RequestStop;
+  if TurnCalculationThread.IsRunning then
     TurnCalculationThread.WaitForIdle(INFINITE);
 end;
+
 procedure ProcessPlayerStarTurn;
 var
   RecordFilm: Boolean;
@@ -103,38 +129,39 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
-      RequestedScreenId := screenNone;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RequestClose(1);
-      ExitScreenLoop := True;
-      raise Exception.Create('Error in procedure ThCa label = ' + IntToStr(Stage));
+      E.Message := 'Player-star turn failed, stage = ' + IntToStr(Stage) + ': ' + E.Message;
+      raise;
     end;
   end;
 end;
+
 procedure TThreadCalc.Execute;
 var
-  ControlWord: Word;
-
   StartTick, EndTick: Cardinal;
-
   FrameMs: Integer;
+  FailureContext: string;
 begin
-
-  // ARM64 threads use the same nontrapping round-to-nearest policy.
-  SetExceptionMask(
-      [exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]
-  );
-  SetRoundMode(rmNearest);
-  if Job = tcjGalaxy then
-  begin
-    TurnCalculationPhase := tcpGalaxyRunning;
-    if Galaxy.StasisModEnabled <> 1 then
-      try
+  try
+    if IsStopRequested then
+      Exit;
+    // $133F and $FCFF selects nearest rounding, single x87 precision and masked exceptions.
+    // Fixed-precision CPUs retain their native precision through FPC.
+    ClearExceptions(False);
+    SetExceptionMask(
+        [exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]
+    );
+    SetRoundMode(rmNearest);
+    SetPrecisionMode(pmSingle);
+    if Job = tcjGalaxy then
+    begin
+      TurnCalculationPhase := tcpGalaxyRunning;
+      if Galaxy.StasisModEnabled <> 1 then
+      begin
         if (GetPlayer <> nil) and GetPlayer.InNormalSpace then
         begin
-          StartTick := timeGetTime;
+          StartTick := GameTickCount;
           Galaxy.NextDay;
-          EndTick := timeGetTime;
+          EndTick := GameTickCount;
           LastGalaxyTurnDuration := EndTick - StartTick;
           if FilmSpeed = 0 then
             FrameMs := 16
@@ -147,74 +174,50 @@ begin
                   0.9,
                   (AdaptiveBeginCalcNextTurn
                           + 1
-                          - Math.Min(1, (LastGalaxyTurnDuration + 100) / (200 * FrameMs)))
+                          - Math.Min(
+                              1,
+                              (LastGalaxyTurnDuration + 100)
+                                  / (BaseMovementStepsPerTurn * FrameMs)))
                       / 2
               );
         end
         else
           Galaxy.NextDay;
         Galaxy.TransferShipsInTransit;
-      except
-        on E: Exception do
-        begin
-          AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-          LogExceptionBackTrace;
-          AppendLogLineThreadSafe('ThreadCalc exception 1');
-          if Galaxy.CurrentTurn < 300 then
-            AppendLogLineThreadSafe(
-                'Galaxy create exception, seed = ' + IntToStr(Integer(Galaxy.GenerationSeed))
-            );
-          SetEvent(IdleEvent);
-          raise;
-        end;
       end;
-    TurnCalculationPhase := tcpGalaxyFinished;
-  end
-  else if Job = tcjPlayerStar then
-  begin
-    TurnCalculationPhase := tcpPlayerStarRunning;
-    try
+      TurnCalculationPhase := tcpGalaxyFinished;
+    end
+    else if Job = tcjPlayerStar then
+    begin
+      TurnCalculationPhase := tcpPlayerStarRunning;
       ProcessPlayerStarTurn;
-    except
-      on E: Exception do
-      begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        LogExceptionBackTrace;
-        AppendLogLineThreadSafe('ThreadCalc exception 2');
-        if Galaxy.CurrentTurn < 300 then
-          AppendLogLineThreadSafe(
-              'Galaxy create exception, seed = ' + IntToStr(Integer(Galaxy.GenerationSeed))
-          );
-        SetEvent(IdleEvent);
-        raise;
-      end;
-    end;
-    TurnCalculationPhase := tcpPlayerStarFinished;
-  end
-  else
-  begin
-    TurnCalculationPhase := tcpPlayerStarPreparationRunning;
-    PlayerStarDayPrepared := True;
-    try
+      TurnCalculationPhase := tcpPlayerStarFinished;
+    end
+    else
+    begin
+      TurnCalculationPhase := tcpPlayerStarPreparationRunning;
+      PlayerStarDayPrepared := True;
       PrimaryFilm.Clear;
       if Galaxy.StasisModEnabled <> 1 then
         PlayerStar.PrepareNextDay;
-    except
-      on E: Exception do
-      begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        LogExceptionBackTrace;
-        AppendLogLineThreadSafe('ThreadCalc exception 3');
-        if Galaxy.CurrentTurn < 300 then
-          AppendLogLineThreadSafe(
-              'Galaxy create exception, seed = ' + IntToStr(Integer(Galaxy.GenerationSeed))
-          );
-        SetEvent(IdleEvent);
-        raise;
-      end;
+      TurnCalculationPhase := tcpPlayerStarPrepared;
     end;
-    TurnCalculationPhase := tcpPlayerStarPrepared;
+  except
+    on E: Exception do
+    begin
+      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+      FailureContext := 'Turn calculation failed, job = ' + IntToStr(Ord(Job));
+      if Galaxy <> nil then
+        FailureContext :=
+            FailureContext
+                + ', seed = '
+                + IntToStr(Integer(Galaxy.GenerationSeed))
+                + ', turn = '
+                + IntToStr(Galaxy.CurrentTurn);
+      E.Message := FailureContext + ': ' + E.Message;
+      raise;
+    end;
   end;
-
 end;
+
 end.

@@ -1,24 +1,25 @@
-{$EXCESSPRECISION OFF}
 unit fSelectFace;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  aGalaxyStruct,
   GI_MessageLoop,
   Types;
+
 type
+
   TfSelectFace = class;
+
   TfSelectFace = class(TMessageLoopGI)
-    PlayerRace: Byte;
-    GapD1: array[0..2] of Byte;
+    PlayerRace: TOwnerId;
     CaptainPortraitIndex: Integer;
-    LastPortraitByRace: array[0..4] of Integer;
+    LastPortraitByRace: array[oiMaloc..oiGaal] of Integer;
     PlayerName: WideString;
     PlayerNameEdited: Boolean;
-    GapF1: array[0..2] of Byte;
-    NationalityCosts: array[0..4] of Integer;
+    NationalityCosts: array[oiMaloc..oiGaal] of Integer;
     AvailableMoney: Integer;
     AcceptedCost: Integer;
     procedure OnOpen; override;
@@ -39,14 +40,15 @@ type
     function ValidatePlayerName(Name: WideString): Boolean;
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
+
 function RunSelectFaceDialog(Parent: TMessageLoopGI): Boolean;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GI_MessageBox,
   Classes,
-  Windows,
+  GameInput,
   GR_Main,
   GR_Music,
   Globals,
@@ -67,11 +69,11 @@ procedure TfSelectFace.InitializeLayout;
 var
   I: Integer;
   Face: WideString;
-  Race: Byte;
+  Race: TOwnerId;
   Control: TObjectGI;
 begin
   inherited;
-  for Race := 0 to 4 do
+  for Race := oiMaloc to oiGaal do
   begin
     I := -1;
     repeat
@@ -80,8 +82,7 @@ begin
       if I < 10 then
         Face := '0' + Face;
     until GameDataConfig
-            .GetBlockByPath(
-                'StyleFace' + OwnerInfo[Integer(RaceToOwner(Race)) and $7F].InternalName)
+            .GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName)
             .CountParams(Face)
         <= 0;
     LastPortraitByRace[Race] := I - 1;
@@ -157,7 +158,7 @@ begin
       SetImagePath(
           'GI,Bm.Captain.'
               + GiResourceSuffix
-              + OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName
+              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
               + IntToStr(CaptainPortraitIndex)
               + 'i'
       );
@@ -175,7 +176,7 @@ begin
       SetImagePath(
           'Bm.Captain.'
               + GiResourceSuffix
-              + OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName
+              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
               + IntToStr(CaptainPortraitIndex)
               + 'a'
       );
@@ -205,12 +206,13 @@ end;
 
 procedure TfSelectFace.SelectRace(Sender: TObjectGI);
 begin
-  PlayerRace := Sender.UserValue;
-  (GetByName('RaceMaloc') as TGraphButtonGI).SetDown(PlayerRace = 0);
-  (GetByName('RacePeleng') as TGraphButtonGI).SetDown(PlayerRace = 1);
-  (GetByName('RacePeople') as TGraphButtonGI).SetDown(PlayerRace = 2);
-  (GetByName('RaceFei') as TGraphButtonGI).SetDown(PlayerRace = 3);
-  (GetByName('RaceGaal') as TGraphButtonGI).SetDown(PlayerRace = 4);
+  PlayerRace := TOwnerId(Sender.UserValue);
+  (GetByName('RaceMaloc') as TGraphButtonGI).SetDown(PlayerRace = oiMaloc);
+  (GetByName('RacePeleng') as TGraphButtonGI).SetDown(PlayerRace = oiPeleng);
+  (GetByName('RacePeople') as TGraphButtonGI).SetDown(PlayerRace = oiHuman);
+  (GetByName('RaceFei') as TGraphButtonGI).SetDown(PlayerRace = oiFeyan);
+  (GetByName('RaceGaal') as TGraphButtonGI).SetDown(PlayerRace = oiGaal);
+
 end;
 
 procedure TfSelectFace.RaceClicked(Sender: TObjectGI);
@@ -231,11 +233,11 @@ var
 begin
   Cost := 0;
   case PlayerRace of
-    0: Cost := NationalityCosts[0];
-    1: Cost := NationalityCosts[1];
-    2: Cost := NationalityCosts[2];
-    3: Cost := NationalityCosts[3];
-    4: Cost := NationalityCosts[4];
+    oiMaloc: Cost := NationalityCosts[oiMaloc];
+    oiPeleng: Cost := NationalityCosts[oiPeleng];
+    oiHuman: Cost := NationalityCosts[oiHuman];
+    oiFeyan: Cost := NationalityCosts[oiFeyan];
+    oiGaal: Cost := NationalityCosts[oiGaal];
   end;
   if Cost <= AvailableMoney then
   begin
@@ -243,7 +245,7 @@ begin
     Text :=
         FormatText1(
             LanguageDataConfig.GetParamByPathOrMarker('FormRuins.PB.ChangeNationality.Confirm'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Money>',
             IntToStr(Cost)
         );
@@ -256,7 +258,7 @@ begin
     Text :=
         FormatText1(
             LanguageDataConfig.GetParamByPathOrMarker('FormRuins.PB.ChangeNationality.NoMoney'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Money>',
             IntToStr(Cost)
         );
@@ -348,7 +350,7 @@ var
   State: TCursorStateGI;
 begin
   Result := False;
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -361,18 +363,9 @@ begin
   Parent.InvalidateViewport;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
   Parent.Present;
   PostMouseMoveMessage;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TEditGI.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

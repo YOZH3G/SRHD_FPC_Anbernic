@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon03Lezka;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTLezkaParticle = ^TLezkaParticle;
+
   PLezkaParticle = PointerToTLezkaParticle;
+
   TLezkaParticle = record
     Prev: PLezkaParticle;
     Next: PLezkaParticle;
@@ -23,20 +26,25 @@ type
     AlphaStep: Integer;
     Velocity: TPointF;
     State: Byte;
-    Gap21: array[0..2] of Byte;
   end;
+
   TLezkaPalette = array[0..8] of Single;
+
 var
+
   LezkaPrimaryPalettes: array of TLezkaPalette;
+
   LezkaSecondaryPalettes: array of TLezkaPalette;
+
 type
+
   TPSWeapon03Lezka = class;
+
   TPSWeapon03Lezka = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PLezkaParticle;
     LastParticle: PLezkaParticle;
     ProjectionBounds: TRect;
-    Gap14C: array[0..3] of Byte;
     LengthScale: Double;
     OriginalLength: Double;
     PaletteIndex: Integer;
@@ -55,10 +63,12 @@ type
     function AddParticle: PLezkaParticle;
     procedure ClearParticles;
   end;
+
 procedure LoadLezkaPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Math,
@@ -69,8 +79,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $8778FC
-// @unit-finalization $68AE38
 
 constructor TPSWeapon03Lezka.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -230,20 +238,20 @@ begin
     begin
       Phase := Y / Distance;
       Particle := AddParticle;
-      Particle.Position := MakePointF(PresentationRandom(HalfWidth * 2) - HalfWidth, Y);
-      case PresentationRandom(3) of
+      Particle.Position := MakePointF(Random(HalfWidth * 2) - HalfWidth, Y);
+      case Random(3) of
         0: Particle.Color := SampleGradientColor(LezkaPrimaryPalettes[PaletteIndex], Phase * 8.0);
         1: Particle.Color := SampleGradientColor(LezkaSecondaryPalettes[PaletteIndex], Phase * 8.0);
         2: Particle.Color := SampleGradientColor(LezkaPrimaryPalettes[PaletteIndex], Phase * 8.0);
       end;
-      Particle.MaximumAlpha := PresentationRandom(250);
+      Particle.MaximumAlpha := Random(250);
       if Y < 64 then
         Particle.Alpha := Trunc(Particle.MaximumAlpha * Y) shr 6
       else
         Particle.Alpha := Particle.MaximumAlpha;
-      Particle.AlphaStep := PresentationRandom(10) + 10;
+      Particle.AlphaStep := Random(10) + 10;
       Particle.Velocity := MakePointF(0, 3);
-      Particle.State := 1 + PresentationRandom(2);
+      Particle.State := 1 + Random(2);
       // Retained native accumulator, although it does not feed a particle field.
       if UnusedAlpha + 4 < 255 then
         Inc(UnusedAlpha, 4)
@@ -272,7 +280,7 @@ begin
           if Distance + 16.0 < Current.Position.Y then
           begin
             Current.Position.Y := Current.Position.Y - Distance;
-            Current.Position.X := PresentationRandom(HalfWidth * 2) - HalfWidth;
+            Current.Position.X := Random(HalfWidth * 2) - HalfWidth;
             Current.Velocity := MakePointF(0, 3);
           end;
           if Current.MaximumAlpha > 254 - Current.AlphaStep then
@@ -293,7 +301,7 @@ begin
           if Distance + 16.0 < Current.Position.Y then
           begin
             Current.Position.Y := Current.Position.Y - Distance;
-            Current.Position.X := PresentationRandom(HalfWidth * 2) - HalfWidth;
+            Current.Position.X := Random(HalfWidth * 2) - HalfWidth;
             Current.Velocity := MakePointF(0, 3);
           end;
           if Current.MaximumAlpha < Current.AlphaStep then

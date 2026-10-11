@@ -1,47 +1,72 @@
-{$EXCESSPRECISION OFF}
 unit EC_Struct;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types;
+
 type
+
   TObjectEx = class;
+
   PointerToTPointF = ^TPointF;
-  TPointF = Types.TPointF;
+
+  TPointF = record
+    X: Single;
+    Y: Single;
+  end;
+
   PPointF = PointerToTPointF;
+
   TVector3D = record
     X: Double;
     Y: Double;
     Z: Double;
   end;
+
   TObjectEx = class(TObject)
     constructor Create;
     destructor Destroy; override;
   end;
+
 var
+
   StartupCleanupObject: TObject;
+
+function SquaredDistanceToPoint(const Point: TPoint; X: Integer; Y: Integer): Integer; inline;
+
 function MakePointF(X: Single; Y: Single): TPointF;
+
 function MakeVector3D(X: Double; Y: Double; Z: Double): TVector3D;
+
 function TruncatePointF(Point: TPointF): TPoint;
+
 function RoundPointF(Point: TPointF): TPoint;
+
 function PointToPointF(Point: TPoint): TPointF;
+
 function HalfPoint(Point: TPoint): TPoint;
+
 function AddPoints(Left: TPoint; Right: TPoint): TPoint;
+
 function SubtractPoints(Left: TPoint; Right: TPoint): TPoint;
+
 function HalfPointF(Point: TPointF): TPointF;
+
 function AddPointsF(Left: TPointF; Right: TPointF): TPointF;
+
 function SubtractPointsF(Left: TPointF; Right: TPointF): TPointF;
-function IntersectRects(
-    out Intersection: TRect;
-    constref First: TRect;
-    constref Second: TRect
-): Boolean;
+
+function IntersectRects(out Intersection: TRect; const First: TRect; const Second: TRect): Boolean;
+
 implementation
-uses
-  Math;
+
+function SquaredDistanceToPoint(const Point: TPoint; X, Y: Integer): Integer; inline;
+begin
+  Result := Sqr(Point.X - X) + Sqr(Point.Y - Y);
+end;
 
 function MakePointF(X, Y: Single): TPointF;
 begin
@@ -110,17 +135,33 @@ begin
   Result.Y := Left.Y - Right.Y;
 end;
 
-function IntersectRects(out Intersection: TRect; constref First, Second: TRect): Boolean;
-var
-  R: TRect;
+function IntersectRects(out Intersection: TRect; const First, Second: TRect): Boolean;
 begin
-  R.Left := Max(First.Left, Second.Left);
-  R.Top := Max(First.Top, Second.Top);
-  R.Right := Min(First.Right, Second.Right);
-  R.Bottom := Min(First.Bottom, Second.Bottom);
-  Result := (R.Left < R.Right) and (R.Top < R.Bottom);
-  if Result then
-    Intersection := R;
+  // Preserve the assembly's four overlap tests, even for inverted rectangles.
+  // In particular, failure must leave Intersection untouched when it aliases an input.
+  Result :=
+      (Second.Left < First.Right)
+          and (Second.Right > First.Left)
+          and (Second.Top < First.Bottom)
+          and (Second.Bottom > First.Top);
+  if not Result then
+    Exit;
+  if First.Left > Second.Left then
+    Intersection.Left := First.Left
+  else
+    Intersection.Left := Second.Left;
+  if First.Right < Second.Right then
+    Intersection.Right := First.Right
+  else
+    Intersection.Right := Second.Right;
+  if First.Top > Second.Top then
+    Intersection.Top := First.Top
+  else
+    Intersection.Top := Second.Top;
+  if First.Bottom < Second.Bottom then
+    Intersection.Bottom := First.Bottom
+  else
+    Intersection.Bottom := Second.Bottom;
 end;
 
 constructor TObjectEx.Create;

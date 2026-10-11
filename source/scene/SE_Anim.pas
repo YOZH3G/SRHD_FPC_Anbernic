@@ -1,25 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit SE_Anim;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
   GI_MessageLoop,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TAnimSE = class;
+
   TAnimSE = class(TObjectSE)
     ImagePath: WideString;
     ImageOrigin: TPoint;
     LoopAnimation: Boolean;
-    Gap59: array[0..2] of Byte;
     Animation: TgaiGI;
     FinishedCallback: TNotifyEvent;
     procedure AttachToSpace(ASpace: TSpaceSE); override;
@@ -32,9 +33,10 @@ type
     destructor Destroy; override;
     procedure AnimationCycleComplete(Sender: TObjectGI);
   end;
+
 implementation
+
 uses
-  Math,
   GI_Main;
 
 destructor TAnimSE.Destroy;

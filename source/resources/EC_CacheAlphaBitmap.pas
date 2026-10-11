@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheAlphaBitmap;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types,
   Classes,
@@ -13,14 +12,19 @@ uses
   GR_DX,
   GR_GraphBuf,
   Direct3D9;
+
 type
+
   TCAlphaBitmapControlEC = class;
+
   TCAlphaBitmapEC = class;
+
   TCAlphaBitmapControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCAlphaBitmapEC = class(TCacheDataEC)
     TransBuf16: Pointer;
     TransAlphaBuf16: Pointer;
@@ -34,15 +38,15 @@ type
     procedure DecodeToGraphBuf(Buffer: TGraphBufGR);
     function GetTexture: IDirect3DTexture9;
   end;
+
 function AcquireOrCreateAlphaBitmap(Control: TCacheControlEC): TCAlphaBitmapEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Mem,
-  GR_Main,
-  Windows;
+  GR_Main;
 
 procedure TCAlphaBitmapControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
@@ -228,8 +232,4 @@ begin
   Result := Texture;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCAlphaBitmapEC.ClassName;
-end;
 end.

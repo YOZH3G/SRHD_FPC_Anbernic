@@ -1,18 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit ValueListClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct;
+
 type
+
   TValuesList = class;
+
   TValuesList = class(TObjectEx)
     AcceptListed: Boolean;
-    Gap5: array[0..2] of Byte;
     Values: array of Integer;
     Count: Integer;
     function NormalizeSemicolonText(Text: WideString): WideString;
@@ -24,9 +25,10 @@ type
     function AcceptsValue(Value: Integer): Boolean;
     function AcceptsMultiple(Value: Integer): Boolean;
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str;
 
 function TValuesList.NormalizeSemicolonText(Text: WideString): WideString;

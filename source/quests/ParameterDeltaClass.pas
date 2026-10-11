@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ParameterDeltaClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -12,10 +11,14 @@ uses
   EventClass,
   TextFieldClass,
   ValueListClass;
+
 type
+
   TParameterDelta = class;
+
   {$Z4}
   TParameterVisibilityChange = (pvcUnchanged = 0, pvcShow = 1, pvcHide = 2);
+
   TParameterDelta = class(TObjectEx)
     ParameterIndex: Integer;
     ValueConstraint: TValuesList;
@@ -26,12 +29,10 @@ type
     ChangeByPercent: Boolean;
     SetValue: Boolean;
     UseExpression: Boolean;
-    Gap1F: array[0..0] of Byte;
     ExpressionText: TTextField;
     CriticalEvent: TEvent;
     VisibilityChange: TParameterVisibilityChange;
     LegacyFlag: Boolean;
-    Gap2D: array[0..2] of Byte;
     constructor Create;
     destructor Destroy; override;
     procedure Reset;
@@ -49,9 +50,10 @@ type
     procedure LoadValueConstraintsFromReader(Reader: TBufEC);
     procedure LoadChangeFromReader(Reader: TBufEC);
   end;
+
 implementation
+
 uses
-  Math,
   CalcParseClass,
   EC_Str,
   ParameterClass,
@@ -132,6 +134,7 @@ begin
     Result := True;
     Exit;
   end;
+
   Result := False;
   if VisibilityChange <> pvcUnchanged then
     Exit;

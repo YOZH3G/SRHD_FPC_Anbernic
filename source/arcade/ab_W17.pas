@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ab_W17;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW17 = class;
+
   TabW17 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
@@ -26,9 +28,10 @@ type
     procedure Launch(Owner: TabObject; Amount: Integer);
     procedure LaunchPartner(Other: TabW17; Owner: TabObject; Amount: Integer);
   end;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   ab_Ship,
   GlobalsV;

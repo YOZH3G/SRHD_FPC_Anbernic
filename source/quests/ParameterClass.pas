@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ParameterClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   CPDiapClass,
   EC_Buf,
@@ -13,8 +12,11 @@ uses
   ParViewStringClass,
   TextFieldClass,
   TextQuestInterface;
+
 type
+
   TParameter = class;
+
   TParameter = class(TObjectEx)
     MinValue: Integer;
     MaxValue: Integer;
@@ -28,7 +30,6 @@ type
     CriticalAtMinimum: Boolean;
     Enabled: Boolean;
     IsMoney: Boolean;
-    Gap25: array[0..2] of Byte;
     ValueText: TTextField;
     ViewStrings: array of TParViewString;
     ViewStringCount: Integer;
@@ -49,9 +50,10 @@ type
     procedure LoadLegacyV1FromReader(Reader: TBufEC);
     procedure LoadLegacyV0FromReader(Reader: TBufEC);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   ValueListClass,
   MessageText;

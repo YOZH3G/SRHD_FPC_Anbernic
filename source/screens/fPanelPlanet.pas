@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit fPanelPlanet;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_MessageLoop;
+
 type
+
   TfPanelPlanet = class;
+
   TfPanelPlanet = class(TObjectEx)
     Screen: TMessageLoopGI;
     constructor Create;
@@ -27,13 +29,14 @@ type
     procedure PlanetClicked(Sender: TObjectGI);
     procedure ProcessKeyDown(Key: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   Classes,
-  Windows,
+  Types,
+  GameInput,
   GR_Main,
   Globals,
   GI_GraphButton,
@@ -129,14 +132,14 @@ begin
   if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
       and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
-    if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
           Screen,
           ReplaceColoredToken(
               LocalizedColorText('FormShip.SellOrBuyInPiratePlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       )
@@ -147,7 +150,7 @@ begin
               LocalizedColorText('FormShip.SellOrBuyInPlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       );
@@ -175,14 +178,14 @@ begin
   if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
       and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
-    if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
           Screen,
           ReplaceColoredToken(
               LocalizedColorText('FormShip.SellOrBuyInPiratePlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       )
@@ -193,7 +196,7 @@ begin
               LocalizedColorText('FormShip.SellOrBuyInPlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       );
@@ -238,14 +241,14 @@ begin
   if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
       and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
-    if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
           Screen,
           ReplaceColoredToken(
               LocalizedColorText('FormShip.SellOrBuyInPiratePlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       )
@@ -256,7 +259,7 @@ begin
               LocalizedColorText('FormShip.SellOrBuyInPlanetAndBadRelations'),
               '<Planet>',
               GetPlayer.CurrentPlanet.Name,
-              '<color=255,240,100>'
+              TextHighlightColorTag
           ),
           mbgCancel or mbgWarning
       );
@@ -309,8 +312,4 @@ begin
     PlanetClicked(nil);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphButtonGI.ClassName;
-end;
 end.

@@ -1,25 +1,30 @@
-{$EXCESSPRECISION OFF}
 unit fFilmFile;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   aEFilm,
   EC_Buf,
   EC_Struct,
   SyncObjs;
+
 type
+
   TFilmFile = class;
+
   PointerToTFilmHistoryEntry = ^TFilmHistoryEntry;
+
   PFilmHistoryEntry = PointerToTFilmHistoryEntry;
+
   TFilmHistoryEntry = packed record
     Prev: PFilmHistoryEntry;
     Next: PFilmHistoryEntry;
     Turn: Integer;
     Buffer: TBufEC;
   end;
+
   TFilmFile = class(TObjectEx)
     FirstEntry: PFilmHistoryEntry;
     LastEntry: PFilmHistoryEntry;
@@ -37,9 +42,10 @@ type
     procedure SaveEntryToBuffer(Entry: PFilmHistoryEntry; Buffer: TBufEC);
     procedure LoadEntryFromBuffer(Buffer: TBufEC);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   Globals,
   GlobalsV,
@@ -147,40 +153,35 @@ var
   Turn: Integer;
   Buffer: TBufEC;
 begin
-  Buffer := nil;
   Lock.Enter;
-  try
-    while GetCount >= FilmHistoryLimit do
+  while GetCount >= FilmHistoryLimit do
+  begin
+    Oldest := FirstEntry;
+    Turn := Oldest.Turn;
+    Entry := Oldest.Next;
+    while Entry <> nil do
     begin
-      Oldest := FirstEntry;
-      Turn := Oldest.Turn;
-      Entry := Oldest.Next;
-      while Entry <> nil do
+      if Entry.Turn < Turn then
       begin
-        if Entry.Turn < Turn then
-        begin
-          Turn := Entry.Turn;
-          Oldest := Entry;
-        end;
-        Entry := Entry.Next;
+        Turn := Entry.Turn;
+        Oldest := Entry;
       end;
-      DeleteEntry(Oldest);
+      Entry := Entry.Next;
     end;
-    Buffer := TBufEC.Create;
-    Film.SaveToBuffer(Buffer);
-    Buffer.SetPosition(0);
-    if Buffer.DataSize < 1 then
-    begin
-      raise Exception.Create('Error in TFilmFile.FilmAdd');
-    end;
-    Entry := AppendEntry;
-    Entry.Turn := Film.Turn;
-    Entry.Buffer := Buffer;
-    Buffer := nil; // The history entry now owns the serialized film.
-  finally
-    Buffer.Free;
-    Lock.Leave;
+    DeleteEntry(Oldest);
   end;
+  Buffer := TBufEC.Create;
+  Film.SaveToBuffer(Buffer);
+  Buffer.SetPosition(0);
+  if Buffer.DataSize < 1 then
+  begin
+    Lock.Leave;
+    raise Exception.Create('Error in TFilmFile.FilmAdd');
+  end;
+  Entry := AppendEntry;
+  Entry.Turn := Film.Turn;
+  Entry.Buffer := Buffer;
+  Lock.Leave;
 end;
 
 procedure TFilmFile.DeleteEntry(Entry: PFilmHistoryEntry);

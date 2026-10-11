@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   Types;
+
 type
+
   TPSWeaponGI = class;
+
   TPSWeaponGI = class(TObjectGI)
     TargetPoint: TPoint;
     RemainingTicks: Integer;
@@ -21,9 +23,10 @@ type
     function IsFinished: Boolean;
     function SampleGradientColor(const ColorValues: array of Single; Phase: Single): Cardinal;
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main;
 
 constructor TPSWeaponGI.Create(Owner: TObjectGI);

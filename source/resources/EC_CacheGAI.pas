@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheGAI;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -13,22 +12,25 @@ uses
   GR_gi,
   Types,
   Direct3D9;
+
 type
+
   TCGaiControlEC = class;
+
   TCGaiEC = class;
+
   TCGaiControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
-  TCGaiEC = class(TCacheDataEC)
 
+  TCGaiEC = class(TCacheDataEC)
     RawGaiData: Pointer;
     Header: PGaiHeader;
     DecodedFrameGi: TgiGR;
     SequenceTableData: PGaiSequenceTableHeader;
     SkipPalettedColorCacheBuild: Boolean;
-    Gap31: array[0..2] of Byte;
     FrameSurfaceCache: TTextureGR;
     CachedFrameOrigins: array of TPoint;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
@@ -58,18 +60,28 @@ type
     function GetSequenceFrameDelay(SequenceIndex: Integer; FrameInSequence: Integer): Integer;
     procedure ApplyAB2BackgroundFixup(SourceBuffer: TBufEC; const ResourceKey: WideString);
   end;
+
 function AcquireCachedGai(Control: TCacheControlEC): TCGaiEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  SysUtils,
-  Math,
   EC_Mem,
   EC_Str,
   EC_Struct,
   GR_Main,
-  GR_GraphBuf,
-  Windows;
+  GR_GraphBuf;
+
+// Native directory indexing adds the two header dwords separately.
+function ReadGaiSequenceOffset(
+    const Table: PGaiSequenceTableHeader;
+    const Index: Integer
+): Cardinal; inline;
+begin
+  Result :=
+      ReadDWordEC(AddPointerOffset(Table, Index * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4));
+end;
+
 procedure TCGaiControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
   Control: TCGaiControlEC;
@@ -88,24 +100,29 @@ begin
     PendingLoads.Add(Control);
   end;
 end;
+
 function TCGaiControlEC.CreateData: TCacheDataEC;
 begin
   Result := TCGaiEC.Create;
 end;
+
 function AcquireCachedGai(Control: TCacheControlEC): TCGaiEC;
 begin
   Result := Control.AcquireDataFromConfig(TCGaiEC) as TCGaiEC;
 end;
+
 function TCGaiControlEC.AcquireData: TCacheDataEC;
 begin
   Result := AcquireCachedGai(Self);
 end;
+
 constructor TCGaiEC.Create;
 begin
   inherited Create;
   DecodedFrameGi := TgiGR.Create;
   FrameSurfaceCache := nil;
 end;
+
 destructor TCGaiEC.Destroy;
 begin
   if RawGaiData <> nil then
@@ -122,22 +139,27 @@ begin
   end;
   inherited Destroy;
 end;
+
 function TCGaiEC.GetFrameCount: Integer;
 begin
   Result := Header.FrameCount;
 end;
+
 function TCGaiEC.HasPlaybackFlags: Boolean;
 begin
   Result := Header.Flags <> 0;
 end;
+
 function TCGaiEC.GetBoundsRect: TRect;
 begin
   Result := Header.Bounds;
 end;
+
 function TCGaiEC.GetCanvasSize: TPoint;
 begin
   Result := SubtractPoints(Header.Bounds.BottomRight, Header.Bounds.TopLeft);
 end;
+
 function TCGaiEC.GetOrCreateFrameSurface(FrameIndex: Integer): IDirect3DTexture9;
 var
   Texture: IDirect3DTexture9;
@@ -180,10 +202,12 @@ begin
   end;
   Result := Texture;
 end;
+
 function TCGaiEC.GetFrameOrigin(FrameIndex: Integer): TPoint;
 begin
   Result := CachedFrameOrigins[FrameIndex];
 end;
+
 function TCGaiEC.LoadFrameGi(FrameIndex: Integer): TgiGR;
 var
   Offset: Integer;
@@ -207,7 +231,10 @@ begin
         ReadDWordEC(
             AddPointerOffset(
                 RawGaiData,
-                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + 4
+                Integer(
+                    @PGaiFrameEntry(FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
+                        .DataSize
+                )
             )
         )
     );
@@ -220,13 +247,17 @@ begin
         ReadDWordEC(
             AddPointerOffset(
                 RawGaiData,
-                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + 4
+                Integer(
+                    @PGaiFrameEntry(FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
+                        .DataSize
+                )
             )
         )
     );
   if not DecodedFrameGi.IsEmpty then
     Result := DecodedFrameGi;
 end;
+
 function TCGaiEC.IsFrameCompressed(FrameIndex: Integer): Boolean;
 var
   Offset: Integer;
@@ -240,30 +271,26 @@ begin
   else
     Result := ReadWordEC(AddPointerOffset(RawGaiData, Offset)) = $4C5A;
 end;
+
 function TCGaiEC.GetSequenceCount: Integer;
 begin
   if SequenceTableData = nil then
     Result := 0
   else
-    Result := ReadDWordEC(SequenceTableData);
+    Result := ReadDWordEC(@SequenceTableData.SequenceCount);
 end;
+
 function TCGaiEC.GetSequenceFrameCount(SequenceIndex: Integer): Integer;
-// The directory begins after the eight-byte header. Native $47CD96/$47CD99
-// add its two dwords separately; the pointer/read helpers below are real calls.
 begin
   Result :=
       ReadDWordEC(
           AddPointerOffset(
               SequenceTableData,
-              ReadDWordEC(
-                  AddPointerOffset(
-                      SequenceTableData,
-                      SequenceIndex * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4
-                  )
-              )
+              ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
           )
       );
 end;
+
 procedure TCGaiEC.FillSequenceFrameIndexTable(
     SequenceIndex: Integer;
     DestTable: Pointer;
@@ -274,15 +301,7 @@ var
   Index, Count: Integer;
 begin
   Source :=
-      AddPointerOffset(
-          SequenceTableData,
-          ReadDWordEC(
-              AddPointerOffset(
-                  SequenceTableData,
-                  SequenceIndex * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4
-              )
-          )
-      );
+      AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
   Count := ReadDWordEC(Source);
   Source := AddPointerOffset(Source, SizeOf(TGaiSequenceDataBlock));
   for Index := 0 to Count - 1 do
@@ -292,6 +311,7 @@ begin
     Source := AddPointerOffset(Source, SizeOf(TGaiSequenceFrameEntry));
   end;
 end;
+
 procedure TCGaiEC.FillSequenceFrameDelayTable(
     SequenceIndex: Integer;
     DestTable: Pointer;
@@ -302,15 +322,7 @@ var
   Index, Count: Integer;
 begin
   Source :=
-      AddPointerOffset(
-          SequenceTableData,
-          ReadDWordEC(
-              AddPointerOffset(
-                  SequenceTableData,
-                  SequenceIndex * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4
-              )
-          )
-      );
+      AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
   Count := ReadDWordEC(Source);
   Source := AddPointerOffset(Source, SizeOf(TGaiSequenceDataBlock) + SizeOf(Integer));
   for Index := 0 to Count - 1 do
@@ -320,36 +332,39 @@ begin
     Source := AddPointerOffset(Source, SizeOf(TGaiSequenceFrameEntry));
   end;
 end;
+
 function TCGaiEC.GetSequenceFrameIndex(SequenceIndex, FrameInSequence: Integer): Integer;
 begin
   Result :=
       ReadDWordEC(
           AddPointerOffset(
               SequenceTableData,
-              ReadDWordEC(
-                      AddPointerOffset(
-                          SequenceTableData,
-                          SequenceIndex * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4
-                      ))
-                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry) + 4)
+              ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
+                  + Integer(
+                      @PGaiSequenceFrameEntry(
+                              FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
+                                  + SizeOf(TGaiSequenceDataBlock))
+                          .SourceFrameIndex)
           )
       );
 end;
+
 function TCGaiEC.GetSequenceFrameDelay(SequenceIndex, FrameInSequence: Integer): Integer;
 begin
   Result :=
       ReadDWordEC(
           AddPointerOffset(
               SequenceTableData,
-              ReadDWordEC(
-                      AddPointerOffset(
-                          SequenceTableData,
-                          SequenceIndex * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4
-                      ))
-                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry) + 4 + 4)
+              ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
+                  + Integer(
+                      @PGaiSequenceFrameEntry(
+                              FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
+                                  + SizeOf(TGaiSequenceDataBlock))
+                          .FrameDelay)
           )
       );
 end;
+
 procedure TCGaiEC.LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString);
 var
   FrameIndex: Integer;
@@ -360,7 +375,7 @@ begin
   ApplyAB2BackgroundFixup(SourceBuffer, CacheKey);
   try
     RawGaiData := AllocEC(SourceBuffer.DataSize);
-    CopyMemory(RawGaiData, SourceBuffer.Data, SourceBuffer.DataSize);
+    System.Move(Pointer(SourceBuffer.Data)^, Pointer(RawGaiData)^, SourceBuffer.DataSize);
     ResidentBytes := SourceBuffer.DataSize;
   except
     RawGaiData := nil;
@@ -374,7 +389,6 @@ begin
   end;
   if Header.SequenceTableOffset <> 0 then
     SequenceTableData := AddPointerOffset(RawGaiData, Header.SequenceTableOffset);
-
   for FrameIndex := 0 to Header.FrameCount - 1 do
     if not IsFrameCompressed(FrameIndex) then
     begin
@@ -384,25 +398,30 @@ begin
     end;
   SetLength(CachedFrameOrigins, Header.FrameCount);
 end;
+
 procedure TCGaiEC.ApplyAB2BackgroundFixup(SourceBuffer: TBufEC; const ResourceKey: WideString);
 var
   Image: TgiGR;
   GraphBuf: TGraphBufGR;
   ByteCount, Offset: Integer;
   OldHeader: TGaiHeader;
-  procedure LogGaiRescaleStart; // @addr $47D1D0 @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0047D2AF"
+  LayoutSize: TPoint;
+
+  procedure LogGaiRescaleStart;
   begin
     AppendLogTextThreadSafe('Rescaling ' + ResourceKey + '... ');
   end;
-  procedure LogGaiRescaleDone; // @addr $47D26C @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0047D48B"
+
+  procedure LogGaiRescaleDone;
   begin
     AppendLogLineThreadSafe('ok');
   end;
+
 begin
   if FindTextOffsetW(ResourceKey, 'Bm.FormAB2.2bg') = 0 then
   begin
     LogGaiRescaleStart;
-    CopyMemory(@OldHeader, SourceBuffer.Data, SizeOf(TGaiHeader));
+    System.Move(Pointer(SourceBuffer.Data)^, Pointer(@OldHeader)^, SizeOf(TGaiHeader));
     if OldHeader.FrameCount <> 1 then
       Exit;
     Offset := ReadDWordEC(AddPointerOffset(SourceBuffer.Data, SizeOf(TGaiHeader)));
@@ -410,36 +429,31 @@ begin
     if (Offset = 0) or (ByteCount = 0) then
       Exit;
     Image := TgiGR.Create;
-    GraphBuf := nil;
-    try
-      if ReadWordEC(AddPointerOffset(SourceBuffer.Data, Offset)) = $4C5A then
-        Image.LoadCompressedGiBytes(AddPointerOffset(SourceBuffer.Data, Offset), ByteCount)
-      else
-        Image.LoadRawGiBytes(AddPointerOffset(SourceBuffer.Data, Offset), ByteCount);
-      if Image.IsEmpty then
-        Exit;
-      GraphBuf := TGraphBufGR.Create(False);
-      GraphBuf.AllocateRgbaTight(Image.GetContentSize.X, Image.GetContentSize.Y);
-      Image.DecodeToGraphBuf(GraphBuf, False);
-      Image.ClearData;
-      GraphBuf.RescaleRGBA_HW(GameScreenWidth, GameScreenHeight, True, 1, 1);
-      Image.CreateFromGraphBuf(GraphBuf, 1);
-      OldHeader.Bounds.Right := GameScreenWidth;
-      OldHeader.Bounds.Bottom := GameScreenHeight;
-      SourceBuffer.Clear;
-      SourceBuffer.AddBytes(@OldHeader, SizeOf(TGaiHeader));
-      SourceBuffer.AddDWord(SizeOf(TGaiHeader) + SizeOf(TGaiFrameEntry));
-      SourceBuffer.AddDWord(Image.DataSize);
-      SourceBuffer.AddBytes(Image.Data, Image.DataSize);
-    finally
-      GraphBuf.Free;
-      Image.Free;
-    end;
+    if ReadWordEC(AddPointerOffset(SourceBuffer.Data, Offset)) = $4C5A then
+      Image.LoadCompressedGiBytes(AddPointerOffset(SourceBuffer.Data, Offset), ByteCount)
+    else
+      Image.LoadRawGiBytes(AddPointerOffset(SourceBuffer.Data, Offset), ByteCount);
+    if Image.IsEmpty then
+      Exit;
+    GraphBuf := TGraphBufGR.Create(False);
+    GraphBuf.AllocateRgbaTight(Image.GetContentSize.X, Image.GetContentSize.Y);
+    Image.DecodeToGraphBuf(GraphBuf, False);
+    Image.ClearData;
+    LayoutSize := GetNormalGameLayoutSize;
+    GraphBuf.RescaleRgbaLinear(LayoutSize.X, LayoutSize.Y, True, 1, 1);
+    Image.CreateFromGraphBuf(GraphBuf, 1);
+    GraphBuf.Clear;
+    OldHeader.Bounds.Right := LayoutSize.X;
+    OldHeader.Bounds.Bottom := LayoutSize.Y;
+    SourceBuffer.Clear;
+    SourceBuffer.AddBytes(@OldHeader, SizeOf(TGaiHeader));
+    SourceBuffer.AddDWord(SizeOf(TGaiHeader) + SizeOf(TGaiFrameEntry));
+    SourceBuffer.AddDWord(Image.DataSize);
+    SourceBuffer.AddBytes(Image.Data, Image.DataSize);
+    Image.ClearData;
+    Image.Free;
     LogGaiRescaleDone;
   end;
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCGaiEC.ClassName;
-end;
+
 end.

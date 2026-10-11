@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit ab_Hit;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   GI_MessageLoop,
   ab_Object;
+
 type
+
   TabHit = class;
+
   TabHit = class(TabObject)
     Health: Integer;
     MaxHealth: Integer;
@@ -18,8 +20,7 @@ type
     EffectOriginSpread: Integer;
     TurnSpeedScale: Double;
     Effects: TList;
-    StateCC: Boolean;
-    GapCD: array[0..2] of Byte;
+    HealthBarVisible: Boolean;
     procedure ApplyDamage(Amount: Integer; Source: TabObject; Disrupt: Boolean); override;
     procedure UpdateState; override;
     procedure Advance; override;
@@ -31,19 +32,28 @@ type
     procedure KellerDeathComplete(Sender: TObjectGI);
     procedure HitEffectComplete(Sender: TObjectGI);
   end;
+
 var
+
   KellerFragments: array[0..3] of TabHit;
+
   KellerFragmentDistances: array[0..3] of Double;
+
   KellerFragmentValuesAC: array[0..3] of Double;
+
   KellerBreakupTicks: Integer;
+
   KellerSplitActive: Boolean;
+
   KellerFinishRequested: Boolean;
+
   KellerDeathPending: Boolean;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  aCalc,
   Types,
+  aGalaxyStruct,
   aKling,
   Math,
   SysUtils,
@@ -71,7 +81,7 @@ begin
   Health := 200;
   MaxHealth := 200;
   Effects := TList.Create;
-  StateCC := True;
+  HealthBarVisible := True;
 end;
 
 destructor TabHit.Destroy;
@@ -161,7 +171,7 @@ begin
       );
       Animation.SetSequenceFrame(Frame);
       Animation.CycleCompleteCallback := KellerBreakupComplete;
-      StateCC := False;
+      HealthBarVisible := False;
     end;
     if (Health > 0) or (KellerArcadeShip <> Self) then
     begin
@@ -297,11 +307,11 @@ begin
         KellerFragments[Index] := nil;
       end;
       DeletionPending := True;
-      aCalc.WaitForTurnCalculationUI;
-      Inc(GetPlayer.DominatorKillsByType[0]);
-      KellerShip.ScriptItemsAct(61, nil, nil, 0);
+      Galaxy.CheckIntegrityChecksum1(650);
+      Inc(GetPlayer.DominatorKillsByType[ktBoss]);
+      KellerShip.ScriptItemsAct(satOnDeath, nil, nil, 0);
       KellerShip.Free;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum1(651);
     end
     else
     begin
@@ -350,7 +360,7 @@ begin
       if KellerFragments[0] = nil then
       begin
         KellerSplitActive := False;
-        StateCC := True;
+        HealthBarVisible := True;
         Health := MaxHealth;
         (Self as TabShip).AttachVisual;
         if KellerDeathPending then
@@ -368,7 +378,7 @@ begin
           Ship.ZoneDamageEnabled := False;
           Ship.Collidable := False;
           Ship.Active := False;
-          Ship.StateCC := False;
+          Ship.HealthBarVisible := False;
           Ship.Velocity.X := 0;
           Ship.Velocity.Y := 0;
           Ship.MaxSpeed := 0;
@@ -454,7 +464,7 @@ begin
     Ship.ZoneDamageEnabled := False;
     Ship.Collidable := False;
     Ship.Active := False;
-    Ship.StateCC := False;
+    Ship.HealthBarVisible := False;
     Ship.MaxSpeed := 10; // Native overwrites the earlier value.
     KellerFragments[Index] := Ship;
     if Index = 0 then
@@ -510,11 +520,4 @@ begin
   Sender.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TRuinsSE.ClassName;
-  TabShip.ClassName;
-  TabShipAI.ClassName;
-  TabWall.ClassName;
-end;
 end.

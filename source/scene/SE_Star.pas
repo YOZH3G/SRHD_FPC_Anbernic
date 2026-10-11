@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit SE_Star;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
@@ -13,10 +13,12 @@ uses
   GI_Image,
   GI_GI,
   GI_MessageLoop,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TStarSE = class;
+
   TStarSE = class(TObjectSE)
     AnimationPath: WideString;
     StaticImagePath: WideString;
@@ -37,9 +39,10 @@ type
     function GetSequenceFrameIndex: Integer;
     procedure SetSequenceFrameIndex(FrameIndex: Integer);
   end;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   Globals,
   GR_Main,

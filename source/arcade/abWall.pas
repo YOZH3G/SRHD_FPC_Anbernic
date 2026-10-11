@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit abWall;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   GI_MessageLoop,
@@ -13,8 +12,11 @@ uses
   ab_StopLine,
   ab_WorldImage,
   ab_Zone;
+
 type
+
   TabWall = class;
+
   TabWall = class(TabHit)
     Zone: PabZone;
     WorldImage: PabWorldImage;
@@ -30,13 +32,19 @@ type
     procedure BindZone(Value: PabZone);
     procedure AttachVisual;
   end;
+
 var
+
   BarrierColor: Cardinal = $30FFAC00;
+
   BarrierHaloColors: array[0..1] of Cardinal = ($40FFDB00, $20FFAC00);
+
 function ab_Wall_FindZone(Zone: PabZone): TabWall;
+
 procedure ab_Wall_BuildBarrierImages;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   aMyFunction,
   Math,
@@ -211,9 +219,8 @@ var
   Line, ImageLine: PabStopLine;
   First, Last: PabStopPoint;
   Index: Integer;
-  function FindStopPoint(
-      Point: PabStopPoint
-  ): TabWall; // @addr $501C4C @ida "TabWall *__usercall $name@<eax>(TabStopPoint *Point@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x501ce2,0x501CF7"
+
+  function FindStopPoint(Point: PabStopPoint): TabWall;
   var
     Obj: TabObject;
   begin
@@ -229,6 +236,7 @@ var
     end;
     Result := nil;
   end;
+
 begin
   Line := FirstStopLine;
   while Line <> nil do
@@ -273,8 +281,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabWall.ClassName;
-end;
 end.

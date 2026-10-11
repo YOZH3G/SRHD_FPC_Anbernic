@@ -1,40 +1,46 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon06Phaser;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTPhaserParticle = ^TPhaserParticle;
+
   PPhaserParticle = PointerToTPhaserParticle;
+
   TPhaserParticle = record
     Next: PPhaserParticle;
     Prev: PPhaserParticle;
     Kind: Byte;
-    Gap9: array[0..2] of Byte;
     Position: TPointF;
     Incoming: Single;
     Displacement: Single;
     Reflected: Single;
     Color: Word;
     Alpha: Byte;
-    Gap23: array[0..0] of Byte;
     Phase: Single;
     PhaseStep: Single;
     PhaseCountdown: Byte;
-    Gap2D: array[0..2] of Byte;
   end;
+
   TPhaserPalette = array[0..8] of Single;
+
 var
+
   PhaserPalettes: array of TPhaserPalette;
+
 type
+
   TPSWeapon06Phaser = class;
+
   TPSWeapon06Phaser = class(TPSWeaponGI)
     Particles: PPhaserParticle;
     ParticleCount: Integer;
@@ -54,9 +60,13 @@ type
     function AddParticle: PPhaserParticle;
     procedure AdvanceWave;
   end;
+
 procedure LoadPhaserPalettes;
+
 implementation
+
 uses
+  GI_Main,
   GlobalsV,
   SysUtils,
   Math,
@@ -67,8 +77,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $87790C
-// @unit-finalization $68D0EC
 
 constructor TPSWeapon06Phaser.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -102,10 +110,7 @@ end;
 
 procedure TPSWeapon06Phaser.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon06Phaser.ClearParticles;

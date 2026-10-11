@@ -2,6 +2,8 @@ program OkgfNarrowArguments;
 {$MODE delphi}
 uses
   SysUtils, EC_OKGF;
+procedure OKGR_Light_BYTE(Pixels: Pointer; Pitch, Offset, Width, Height: Integer;
+    Alpha: TOkgfByteArgument); cdecl; external 'okgf' name 'OKGR_Light_BYTE';
 var
   Pixels: array[0..31] of Byte;
   Factors: array[0..4] of Byte = (0, 17, 128, 254, 255);

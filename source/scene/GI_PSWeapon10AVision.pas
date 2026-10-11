@@ -1,37 +1,46 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon10AVision;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTAVisionParticle = ^TAVisionParticle;
+
   PAVisionParticle = PointerToTAVisionParticle;
+
   TAVisionParticle = record
     Kind: Integer;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    GapF: array[0..0] of Byte;
     Velocity: TPointF;
     FadeInTicks: Byte;
     InitialFadeInTicks: Byte;
     FadeOutThreshold: Byte;
-    Gap1B: array[0..0] of Byte;
   end;
+
   TAVisionPalette = array[0..3] of Word;
+
   TGAISet = array[0..0] of WideString;
+
 var
+
   AVisionPalettes: array of TAVisionPalette;
+
   AVisionAnimationPaths: array of TGAISet;
+
 type
+
   TPSWeapon10AVision = class;
+
   TPSWeapon10AVision = class(TPSWeaponGI)
     Unknown130: Integer;
     Particles: PAVisionParticle;
@@ -51,10 +60,13 @@ type
     procedure GrowParticles;
     function AddParticle: PAVisionParticle;
   end;
+
 procedure LoadAVisionPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
+  GI_Main,
   GlobalsV,
   SysUtils,
   Math,
@@ -65,8 +77,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $87792C
-// @unit-finalization $691CE4
 
 constructor TPSWeapon10AVision.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -104,10 +114,7 @@ end;
 
 procedure TPSWeapon10AVision.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon10AVision.ClearParticles;
@@ -151,7 +158,7 @@ begin
       while Y < OriginalLength do
       begin
         Particle := AddParticle;
-        if PresentationRandom(2) = 0 then
+        if Random(2) = 0 then
           Particle.Position.X := -I
         else
           Particle.Position.X := I;

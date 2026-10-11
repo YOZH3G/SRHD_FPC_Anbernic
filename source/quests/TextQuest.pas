@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit TextQuest;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -15,8 +14,21 @@ uses
   PathClass,
   TextFieldClass,
   TextQuestInterface;
+
 type
+
   TTextQuest = class;
+
+  {$Z1}
+  TQuestRace = (qrMaloc = 0, qrPeleng = 1, qrHuman = 2, qrFeyan = 3, qrGaal = 4, qrUninhabited = 6);
+
+  TQuestRaceSet = set of TQuestRace;
+
+  {$Z1}
+  TQuestPlayerCareer = (qpcTrader = 0, qpcPirate = 1, qpcWarrior = 2);
+
+  TQuestPlayerCareerSet = set of TQuestPlayerCareer;
+
   TTextQuest = class(TObjectEx)
     Locations: TList;
     Paths: TList;
@@ -30,11 +42,10 @@ type
     EditorGridHeight: Integer;
     Difficulty: Integer;
     CompleteOnFinish: Boolean;
-    IssuerRaceMask: Byte;
-    TargetOwnerMask: Byte;
-    PlayerCareerMask: Byte;
-    PlayerRaceMask: Byte;
-    Gap35: array[0..2] of Byte;
+    IssuerRaces: TQuestRaceSet;
+    TargetRaces: TQuestRaceSet;
+    PlayerCareers: TQuestPlayerCareerSet;
+    PlayerRaces: TQuestRaceSet;
     SuccessRelationDelta: Integer;
     DefaultTraversalLimit: Integer;
     QuestDescriptionText: TTextField;
@@ -48,7 +59,6 @@ type
     RangerText: TTextField;
     PlayerInterface: TTextQuestInterface;
     TextShown: Boolean;
-    Gap69: array[0..2] of Byte;
     DisplayedEvent: TEvent;
     OutcomeEvent: TEvent;
     Outcome: TQuestOutcome;
@@ -70,7 +80,6 @@ type
     procedure BuildLegacySequences;
     procedure FreeLegacySequences;
     procedure InferLegacyVisitLimits;
-
     function ExpandText(Text: WideString; Colorize: Boolean): WideString;
     function CheckCriticalParameters: Boolean;
     procedure Start(Money: Integer; PreserveExternalParameters: Boolean);
@@ -80,13 +89,13 @@ type
     procedure ShowOutcome;
     procedure ShowParameters;
   end;
+
 implementation
 
 uses
-  Math,
+  GameWindow,
   CPDiapClass,
   CalcParseClass,
-  Dialogs,
   EC_Str,
   MessageText,
   SequenceClass;
@@ -116,6 +125,7 @@ begin
   Reset;
   Parameters.Add(TParameter.Create(1));
 end;
+
 destructor TTextQuest.Destroy;
 begin
   Reset;
@@ -182,9 +192,8 @@ begin
   Parameters := nil;
   inherited Destroy;
 end;
+
 procedure TTextQuest.Reset;
-type
-  TFlagBits = set of 0..7;
 var
   i: Integer;
 begin
@@ -193,10 +202,10 @@ begin
   MinorVersion := 0;
   ChangeLogText.ClearText;
   CompleteOnFinish := True;
-  TFlagBits(IssuerRaceMask) := [0..4];
-  TFlagBits(TargetOwnerMask) := [6];
-  TFlagBits(PlayerRaceMask) := [0..4];
-  TFlagBits(PlayerCareerMask) := [0..2];
+  IssuerRaces := [qrMaloc..qrGaal];
+  TargetRaces := [qrUninhabited];
+  PlayerRaces := [qrMaloc..qrGaal];
+  PlayerCareers := [qpcTrader..qpcWarrior];
   EditorScreenWidth := 0;
   EditorScreenHeight := 0;
   DefaultTraversalLimit := 0;
@@ -229,33 +238,38 @@ begin
   Outcome := qoNone;
   DisplayedEvent := nil;
 end;
+
 function TTextQuest.GetLocationCount: Integer;
 begin
   Result := Locations.Count;
 end;
+
 function TTextQuest.GetPathCount: Integer;
 begin
   Result := Paths.Count;
 end;
+
 function TTextQuest.GetLocation(Index: Integer): TLocation;
 begin
   Result := TLocation(Locations[Index - 1]);
 end;
+
 function TTextQuest.GetPath(Index: Integer): TPath;
 begin
   Result := TPath(Paths[Index - 1]);
 end;
+
 function TTextQuest.GetParameterCount: Integer;
 begin
   Result := Parameters.Count;
 end;
+
 function TTextQuest.GetParameter(Index: Integer): TParameter;
 begin
   Result := TParameter(Parameters[Index - 1]);
 end;
+
 procedure TTextQuest.LoadFromReader(Reader: TBufEC; HeaderOnly: Boolean);
-type
-  TFlagBits = set of 0..7;
 var
   i, ParameterCount, LocationCount, PathCount: Integer;
   TemporaryText: TTextField;
@@ -283,62 +297,62 @@ begin
   else if FormatVersion < 1111111125 then
     i := Reader.GetInt32;
   if FormatVersion >= 1111111119 then
-    Reader.ReadBytes(@IssuerRaceMask, 1)
+    Reader.ReadBytes(@IssuerRaces, 1)
   else
     case i of
-      -1: TFlagBits(IssuerRaceMask) := [6];
-      0: TFlagBits(IssuerRaceMask) := [0];
-      1: TFlagBits(IssuerRaceMask) := [1];
-      2: TFlagBits(IssuerRaceMask) := [2];
-      3: TFlagBits(IssuerRaceMask) := [3];
-      4: TFlagBits(IssuerRaceMask) := [4];
+      -1: IssuerRaces := [qrUninhabited];
+      0: IssuerRaces := [qrMaloc];
+      1: IssuerRaces := [qrPeleng];
+      2: IssuerRaces := [qrHuman];
+      3: IssuerRaces := [qrFeyan];
+      4: IssuerRaces := [qrGaal];
     else
-      TFlagBits(IssuerRaceMask) := [];
+      IssuerRaces := [];
     end;
   if FormatVersion >= 1111111112 then
     CompleteOnFinish := Reader.GetBoolean;
   if FormatVersion < 1111111125 then
     i := Reader.GetInt32;
   if FormatVersion >= 1111111119 then
-    Reader.ReadBytes(@TargetOwnerMask, 1)
+    Reader.ReadBytes(@TargetRaces, 1)
   else
     case i of
-      -1: TFlagBits(TargetOwnerMask) := [6];
-      0: TFlagBits(TargetOwnerMask) := [0];
-      1: TFlagBits(TargetOwnerMask) := [1];
-      2: TFlagBits(TargetOwnerMask) := [2];
-      3: TFlagBits(TargetOwnerMask) := [3];
-      4: TFlagBits(TargetOwnerMask) := [4];
+      -1: TargetRaces := [qrUninhabited];
+      0: TargetRaces := [qrMaloc];
+      1: TargetRaces := [qrPeleng];
+      2: TargetRaces := [qrHuman];
+      3: TargetRaces := [qrFeyan];
+      4: TargetRaces := [qrGaal];
     else
-      TFlagBits(TargetOwnerMask) := [];
+      TargetRaces := [];
     end;
   if FormatVersion < 1111111125 then
     i := Reader.GetInt32;
   if FormatVersion >= 1111111120 then
-    Reader.ReadBytes(@PlayerCareerMask, 1)
+    Reader.ReadBytes(@PlayerCareers, 1)
   else
     case i of
-      -1: TFlagBits(PlayerCareerMask) := [0..2];
-      0: TFlagBits(PlayerCareerMask) := [0];
-      1: TFlagBits(PlayerCareerMask) := [1];
-      2: TFlagBits(PlayerCareerMask) := [2];
+      -1: PlayerCareers := [qpcTrader..qpcWarrior];
+      0: PlayerCareers := [qpcTrader];
+      1: PlayerCareers := [qpcPirate];
+      2: PlayerCareers := [qpcWarrior];
     else
-      TFlagBits(PlayerCareerMask) := [];
+      PlayerCareers := [];
     end;
   if FormatVersion < 1111111125 then
     i := Reader.GetInt32;
   if FormatVersion >= 1111111120 then
-    Reader.ReadBytes(@PlayerRaceMask, 1)
+    Reader.ReadBytes(@PlayerRaces, 1)
   else
     case i of
-      -1: TFlagBits(PlayerRaceMask) := [0..4];
-      0: TFlagBits(PlayerRaceMask) := [0];
-      1: TFlagBits(PlayerRaceMask) := [1];
-      2: TFlagBits(PlayerRaceMask) := [2];
-      3: TFlagBits(PlayerRaceMask) := [3];
-      4: TFlagBits(PlayerRaceMask) := [4];
+      -1: PlayerRaces := [qrMaloc..qrGaal];
+      0: PlayerRaces := [qrMaloc];
+      1: PlayerRaces := [qrPeleng];
+      2: PlayerRaces := [qrHuman];
+      3: PlayerRaces := [qrFeyan];
+      4: PlayerRaces := [qrGaal];
     else
-      TFlagBits(PlayerRaceMask) := [];
+      PlayerRaces := [];
     end;
   SuccessRelationDelta := Reader.GetInt32;
   EditorScreenWidth := Reader.GetInt32;
@@ -505,6 +519,7 @@ begin
     end;
   end;
 end;
+
 procedure TTextQuest.ResetEventIndices;
 var
   i: Integer;
@@ -512,6 +527,7 @@ begin
   for i := 1 to GetLocationCount do
     GetLocation(i).NextEventIndex := 1;
 end;
+
 function TTextQuest.FindLocationIndex(LocationId: Integer): Integer;
 var
   i: Integer;
@@ -521,10 +537,11 @@ begin
     if GetLocation(i).Id = LocationId then
       Result := i;
   if Result = 0 then
-    Dialogs.ShowMessage(
+    ShowGameDialog(
         AnsiString('Cannot find Location with Location Number ' + IntToWideString(LocationId))
     );
 end;
+
 function TTextQuest.FindPathIndex(PathId: Integer): Integer;
 var
   i: Integer;
@@ -534,17 +551,19 @@ begin
     if GetPath(i).Id = PathId then
       Result := i;
   if Result = 0 then
-    Dialogs.ShowMessage('Cannot find Path by Path Number - error');
+    ShowGameDialog('Cannot find Path by Path Number - error');
 end;
+
 procedure TTextQuest.BuildLegacySequences;
 var
   Sequence: TSequence;
   i, IncomingCount, OutgoingCount: Integer;
   Location: TLocation;
   IncomingPath, OutgoingPath: TPath;
+
   procedure CountLegacySequenceConnections(
       Location:
-          TLocation; // @addr 0x4EA778 @ida "void __userpurge $name(TLocation *Location@<eax>, int *IncomingCount@<edx>, int *OutgoingCount@<ecx>, TPath **OutgoingPath@<^0>, TPath **IncomingPath@<^4>, void *ParentFrame@<^8>);" @stackpop 0x8 @calls "0x4EA8A1 0x4EA921 0x4EA997" @note "Returns zero counts for start, success, failure, or already grouped locations. Callee pops 8 bytes; caller pops ParentFrame."
+          TLocation; { Returns zero counts for start, success, failure, or already grouped locations. Callee pops 8 bytes; caller pops ParentFrame. }
       var IncomingCount, OutgoingCount: Integer;
       var IncomingPath, OutgoingPath: TPath
   );
@@ -581,9 +600,8 @@ var
         Exit;
     end;
   end;
-  procedure PrependLegacySequencePaths(
-      Path: TPath
-  ); // @addr 0x4EA854 @ida "void __usercall $name(TPath *Path@<eax>, void *ParentFrame@<^0>);"
+
+  procedure PrependLegacySequencePaths(Path: TPath);
   var
     IncomingCount, OutgoingCount: Integer;
     Location: TLocation;
@@ -605,9 +623,8 @@ var
         PrependLegacySequencePaths(IncomingPath);
     end;
   end;
-  procedure AppendLegacySequencePaths(
-      Path: TPath
-  ); // @addr 0x4EA8D4 @ida "void __usercall $name(TPath *Path@<eax>, void *ParentFrame@<^0>);"
+
+  procedure AppendLegacySequencePaths(Path: TPath);
   var
     IncomingCount, OutgoingCount: Integer;
     Location: TLocation;
@@ -629,6 +646,7 @@ var
         AppendLegacySequencePaths(OutgoingPath);
     end;
   end;
+
 begin
   for i := 1 to GetLocationCount do
   begin
@@ -652,6 +670,7 @@ begin
     end;
   end;
 end;
+
 procedure TTextQuest.FreeLegacySequences;
 var
   i: Integer;
@@ -664,6 +683,7 @@ begin
       Location.Sequence.Free;
   end;
 end;
+
 procedure TTextQuest.InferLegacyVisitLimits;
 var
   i, j, Limit: Integer;
@@ -706,6 +726,7 @@ begin
     end;
   end;
 end;
+
 function TTextQuest.ExpandText(Text: WideString; Colorize: Boolean): WideString;
 var
   i, Position, ContentStart, ContentLength, Depth, Count: Integer;
@@ -844,6 +865,7 @@ begin
   Calc.Free;
   Result := Text;
 end;
+
 function TTextQuest.CheckCriticalParameters: Boolean;
 var
   i, Selected: Integer;
@@ -888,6 +910,7 @@ begin
       OutcomeEvent.Music.Text := Event.Music.Text;
   end;
 end;
+
 procedure TTextQuest.Start(Money: Integer; PreserveExternalParameters: Boolean);
 var
   i, StartId: Integer;
@@ -907,7 +930,7 @@ begin
       end;
     if StartId < 0 then
     begin
-      Dialogs.ShowMessage('Cant find starting location');
+      ShowGameDialog('Cant find starting location');
       Exit;
     end;
     for i := 1 to GetParameterCount do
@@ -930,6 +953,7 @@ begin
     EnterLocation(StartId);
   end;
 end;
+
 procedure TTextQuest.EnterLocation(LocationId: Integer);
 var
   Location, Target: TLocation;
@@ -942,208 +966,210 @@ var
   MaxPriority, TotalPriority, RandomPriority: Double;
   Event: TEvent;
 begin
-  if PlayerInterface <> nil then
+  if PlayerInterface = nil then
+    Exit;
+  Location := GetLocation(FindLocationIndex(LocationId));
+  if TextShown and not Location.IsEmpty then
   begin
-    Location := GetLocation(FindLocationIndex(LocationId));
-    if TextShown and not Location.IsEmpty then
+    TextShown := False;
+    PlayerInterface.AddLocationContinueAction(LocationId);
+    Exit;
+  end;
+  Location.ApplyParameterChanges(Parameters);
+  if Location.Days > 0 then
+    PlayerInterface.AdvanceDays(Location.Days);
+  Inc(Location.VisitCount);
+  GroupCaption := '';
+  ShowParameters;
+  Critical := CheckCriticalParameters;
+  Event := Location.SelectEvent(Parameters);
+  if Event <> nil then
+    if not TextShown or not Location.IsEmpty then
     begin
-      TextShown := False;
-      // The folded +0 makes DCC32 evaluate the receiver before simple arguments.
-      TTextQuestInterface(Pointer(PtrUInt(PlayerInterface) + 0))
-          .AddLocationContinueAction(LocationId);
+      ShowEvent(Event);
+      if TrimWideString(Event.Text.Text) <> '' then
+        LastEventSource := 'Location ' + IntToWideString(Location.Id);
+    end;
+  if Critical then
+  begin
+    if TextShown then
+      PlayerInterface.AddContinueAction
+    else
+      ShowOutcome;
+    Exit;
+  end;
+  if Location.IsSuccess then
+  begin
+    PlayerInterface.AddSuccessAction;
+    Exit;
+  end;
+  if Location.IsDeath then
+  begin
+    PlayerInterface.AddDeathAction;
+    Exit;
+  end;
+  if Location.IsFailure then
+  begin
+    PlayerInterface.AddFailureAction;
+    Exit;
+  end;
+  Pending := TList.Create;
+  Group := TList.Create;
+  Chosen := TList.Create;
+  for i := 1 to GetPathCount do
+  begin
+    Path := GetPath(i);
+    if (Location.Id <> Path.FromLocationId)
+        or ((Path.TraversalLimit > 0) and (Path.TraversalCount >= Path.TraversalLimit)) then
+      Continue;
+    Eligible := False;
+    for j := 1 to GetLocationCount do
+    begin
+      Target := GetLocation(j);
+      if Target.Id = Path.ToLocationId then
+      begin
+        Eligible := (Target.VisitLimit = 0) or (Target.VisitLimit > Target.VisitCount);
+        Break;
+      end;
+    end;
+    if not Eligible then
+      Continue;
+    Path.CheckAvailable(Parameters);
+    if not Path.Available then
+    begin
+      if not Path.AlwaysShow then
+        Continue;
+      if TrimWideString(Path.Caption.Text) = '' then
+        Continue;
+    end;
+    Pending.Add(Path);
+  end;
+  while Pending.Count > 0 do
+  begin
+    Path := TPath(Pending[0]);
+    GroupCaption := ExpandText(TrimWideString(Path.Caption.Text), False);
+    Group.Add(Path);
+    Pending.Delete(0);
+    for i := Pending.Count - 1 downto 0 do
+    begin
+      Path := TPath(Pending[i]);
+      if GroupCaption = ExpandText(TrimWideString(Path.Caption.Text), False) then
+      begin
+        Pending.Delete(i);
+        if Path.Available or (Group.Count <= 0) then
+        begin
+          Group.Add(Path);
+          if Group.Count > 1 then
+          begin
+            Path := TPath(Group[0]);
+            if not Path.Available then
+              Group.Delete(0);
+          end;
+        end;
+      end;
+    end;
+    MaxPriority := 0;
+    for i := 0 to Group.Count - 1 do
+    begin
+      Path := TPath(Group[i]);
+      if MaxPriority < Path.Priority then
+        MaxPriority := Path.Priority;
+    end;
+    if Group.Count = 1 then
+    begin
+      if System.Random <= MaxPriority then
+        Chosen.Add(Group[0]);
     end
     else
     begin
-      Location.ApplyParameterChanges(Parameters);
-      if Location.Days > 0 then
-        PlayerInterface.AdvanceDays(Location.Days);
-      Inc(Location.VisitCount);
-      GroupCaption := '';
-      ShowParameters;
-      Critical := CheckCriticalParameters;
-      Event := Location.SelectEvent(Parameters);
-      if Event <> nil then
-        if not TextShown or not Location.IsEmpty then
-        begin
-          ShowEvent(Event);
-          if TrimWideString(Event.Text.Text) <> '' then
-            LastEventSource := 'Location ' + IntToWideString(Location.Id);
-        end;
-      if Critical then
+      for i := Group.Count - 1 downto 0 do
       begin
-        if TextShown then
-          PlayerInterface.AddContinueAction
-        else
-          ShowOutcome;
-      end
-      else if Location.IsSuccess then
-        PlayerInterface.AddSuccessAction
-      else if Location.IsDeath then
-        PlayerInterface.AddDeathAction
-      else if Location.IsFailure then
-        PlayerInterface.AddFailureAction
-      else
-      begin
-        Pending := TList.Create;
-        Group := TList.Create;
-        Chosen := TList.Create;
-        for i := 1 to GetPathCount do
-        begin
-          Path := GetPath(i);
-          if (Location.Id <> Path.FromLocationId)
-              or ((Path.TraversalLimit > 0) and (Path.TraversalCount >= Path.TraversalLimit)) then
-            Continue;
-          Eligible := False;
-          for j := 1 to GetLocationCount do
-          begin
-            Target := GetLocation(j);
-            if Target.Id = Path.ToLocationId then
-            begin
-              Eligible := (Target.VisitLimit = 0) or (Target.VisitLimit > Target.VisitCount);
-              Break;
-            end;
-          end;
-          if not Eligible then
-            Continue;
-          Path.CheckAvailable(Parameters);
-          if not Path.Available then
-          begin
-            if not Path.AlwaysShow then
-              Continue;
-            if TrimWideString(Path.Caption.Text) = '' then
-              Continue;
-          end;
-          Pending.Add(Path);
-        end;
-        while Pending.Count > 0 do
-        begin
-          Path := TPath(Pending[0]);
-          GroupCaption := ExpandText(TrimWideString(Path.Caption.Text), False);
-          Group.Add(Path);
-          Pending.Delete(0);
-          for i := Pending.Count - 1 downto 0 do
-          begin
-            Path := TPath(Pending[i]);
-            if GroupCaption = ExpandText(TrimWideString(Path.Caption.Text), False) then
-            begin
-              Pending.Delete(i);
-              if Path.Available or (Group.Count <= 0) then
-              begin
-                Group.Add(Path);
-                if Group.Count > 1 then
-                begin
-                  Path := TPath(Group[0]);
-                  if not Path.Available then
-                    Group.Delete(0);
-                end;
-              end;
-            end;
-          end;
-          MaxPriority := 0;
-          for i := 0 to Group.Count - 1 do
-          begin
-            Path := TPath(Group[i]);
-            if MaxPriority < Path.Priority then
-              MaxPriority := Path.Priority;
-          end;
-          if Group.Count = 1 then
-          begin
-            if System.Random <= MaxPriority then
-              Chosen.Add(Group[0]);
-          end
-          else
-          begin
-            for i := Group.Count - 1 downto 0 do
-            begin
-              Path := TPath(Group[i]);
-              if Path.Priority <= MaxPriority * 0.01 then
-                Group.Delete(i);
-            end;
-            TotalPriority := 0;
-            for i := 0 to Group.Count - 1 do
-            begin
-              Path := TPath(Group[i]);
-              TotalPriority := TotalPriority + Path.Priority;
-            end;
-            RandomPriority := System.Random * TotalPriority;
-            Selected := Group.Count - 1;
-            for i := 0 to Group.Count - 1 do
-            begin
-              Path := TPath(Group[i]);
-              if Path.Priority > RandomPriority then
-              begin
-                Selected := i;
-                Break;
-              end;
-              RandomPriority := RandomPriority - Path.Priority;
-            end;
-            Chosen.Add(Group[Selected]);
-          end;
-          Group.Clear;
-        end;
-        if Chosen.Count = 0 then
-        begin
-          Chosen.Free;
-          Group.Free;
-          Pending.Free;
-          Dialogs.ShowMessage(
-              AnsiString('No available answers from location ' + IntToWideString(Location.Id))
-          );
-          Exit;
-        end;
-        if Chosen.Count = 1 then
-        begin
-          Path := TPath(Chosen[0]);
-          if TrimWideString(Path.Caption.Text) = '' then
-          begin
-            Chosen.Free;
-            Group.Free;
-            Pending.Free;
-            FollowPath(Path.Id);
-            Exit;
-          end;
-        end;
-        for i := 1 to Chosen.Count * 2 do
-        begin
-          Selected := System.Random(Chosen.Count);
-          Path := TPath(Chosen[Selected]);
-          j := System.Random(Chosen.Count);
-          Chosen[Selected] := Chosen[j];
-          Chosen[j] := Path;
-        end;
-        for i := 2 to Chosen.Count do
-          for j := 0 to Chosen.Count - i do
-          begin
-            Path := TPath(Chosen[j]);
-            Other := TPath(Chosen[j + 1]);
-            if Other.DisplayOrder < Path.DisplayOrder then
-            begin
-              Chosen[j] := Other;
-              Chosen[j + 1] := Path;
-            end;
-          end;
-        for i := 0 to Chosen.Count - 1 do
-        begin
-          Path := TPath(Chosen[i]);
-          Caption := TrimWideString(Path.Caption.Text);
-          if Caption <> '' then
-          begin
-            Caption := ExpandText(Caption, True);
-            if Path.Available then
-              TTextQuestInterface(Pointer(PtrUInt(PlayerInterface) + 0))
-                  .AddPathAction(Caption, Path.Id)
-            else
-              TTextQuestInterface(Pointer(PtrUInt(PlayerInterface) + 0)).AddDisabledPath(Caption);
-          end;
-        end;
-        Chosen.Free;
-        Group.Free;
-        Pending.Free;
-        TextShown := False;
+        Path := TPath(Group[i]);
+        if Path.Priority <= MaxPriority * 0.01 then
+          Group.Delete(i);
       end;
+      TotalPriority := 0;
+      for i := 0 to Group.Count - 1 do
+      begin
+        Path := TPath(Group[i]);
+        TotalPriority := TotalPriority + Path.Priority;
+      end;
+      RandomPriority := System.Random * TotalPriority;
+      Selected := Group.Count - 1;
+      for i := 0 to Group.Count - 1 do
+      begin
+        Path := TPath(Group[i]);
+        if Path.Priority > RandomPriority then
+        begin
+          Selected := i;
+          Break;
+        end;
+        RandomPriority := RandomPriority - Path.Priority;
+      end;
+      Chosen.Add(Group[Selected]);
+    end;
+    Group.Clear;
+  end;
+  if Chosen.Count = 0 then
+  begin
+    Chosen.Free;
+    Group.Free;
+    Pending.Free;
+    ShowGameDialog(
+        AnsiString('No available answers from location ' + IntToWideString(Location.Id))
+    );
+    Exit;
+  end;
+  if Chosen.Count = 1 then
+  begin
+    Path := TPath(Chosen[0]);
+    if TrimWideString(Path.Caption.Text) = '' then
+    begin
+      Chosen.Free;
+      Group.Free;
+      Pending.Free;
+      FollowPath(Path.Id);
+      Exit;
     end;
   end;
+  for i := 1 to Chosen.Count * 2 do
+  begin
+    Selected := System.Random(Chosen.Count);
+    Path := TPath(Chosen[Selected]);
+    j := System.Random(Chosen.Count);
+    Chosen[Selected] := Chosen[j];
+    Chosen[j] := Path;
+  end;
+  for i := 2 to Chosen.Count do
+    for j := 0 to Chosen.Count - i do
+    begin
+      Path := TPath(Chosen[j]);
+      Other := TPath(Chosen[j + 1]);
+      if Other.DisplayOrder < Path.DisplayOrder then
+      begin
+        Chosen[j] := Other;
+        Chosen[j + 1] := Path;
+      end;
+    end;
+  for i := 0 to Chosen.Count - 1 do
+  begin
+    Path := TPath(Chosen[i]);
+    Caption := TrimWideString(Path.Caption.Text);
+    if Caption <> '' then
+    begin
+      Caption := ExpandText(Caption, True);
+      if Path.Available then
+        PlayerInterface.AddPathAction(Caption, Path.Id)
+      else
+        PlayerInterface.AddDisabledPath(Caption);
+    end;
+  end;
+  Chosen.Free;
+  Group.Free;
+  Pending.Free;
+  TextShown := False;
 end;
+
 procedure TTextQuest.FollowPath(PathId: Integer);
 var
   Path: TPath;
@@ -1179,6 +1205,7 @@ begin
     end;
   end;
 end;
+
 procedure TTextQuest.ShowEvent(Event: TEvent);
 var
   Text: WideString;
@@ -1201,6 +1228,7 @@ begin
       PlayerInterface.PlaySound(TrimWideString(Event.Sound.Text));
   end;
 end;
+
 procedure TTextQuest.ShowOutcome;
 begin
   if PlayerInterface <> nil then
@@ -1214,6 +1242,7 @@ begin
     end;
   end;
 end;
+
 procedure TTextQuest.ShowParameters;
 var
   ValueText, Text: WideString;
@@ -1235,4 +1264,5 @@ begin
     PlayerInterface.ShowParameters(Text);
   end;
 end;
+
 end.

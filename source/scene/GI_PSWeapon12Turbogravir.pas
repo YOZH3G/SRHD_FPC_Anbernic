@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon12Turbogravir;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTTurbogravirParticle = ^TTurbogravirParticle;
+
   PTurbogravirParticle = PointerToTTurbogravirParticle;
+
   TTurbogravirParticle = record
     Prev: PTurbogravirParticle;
     Next: PTurbogravirParticle;
@@ -24,17 +27,24 @@ type
     Velocity: TPoint;
     FloatVelocity: TPointF;
     State: Byte;
-    Gap2D: array[0..0] of Byte;
     Unknown2E: Word;
     Radius: Integer;
   end;
+
   TTurbogravirPalette = array[0..8] of Single;
+
 var
+
   TurbogravirPrimaryPalettes: array of TTurbogravirPalette;
+
   TurbogravirSecondaryPalettes: array of TTurbogravirPalette;
+
 type
+
   TPSBlueWhirlGI = class;
+
   TPSWeapon12Turbogravir = class;
+
   TPSWeapon12Turbogravir = class(TPSWeaponGI)
     OffsetTable: array[0..63] of Integer;
     AlphaTable: array[0..63] of Byte;
@@ -46,7 +56,6 @@ type
     FirstParticle: PTurbogravirParticle;
     LastParticle: PTurbogravirParticle;
     ProjectionBounds: TRect;
-    Gap29C: array[0..3] of Byte;
     LengthScale: Double;
     OriginalLength: Double;
     PaletteIndex: Integer;
@@ -65,11 +74,15 @@ type
     function AddParticle: PTurbogravirParticle;
     procedure ClearParticles;
   end;
+
   TPSBlueWhirlGI = class(TPSWeapon12Turbogravir)
     constructor Create(Owner: TObjectGI);
   end;
+
 procedure LoadTurbogravirPalettes;
+
 implementation
+
 uses
   GlobalsV,
   SysUtils,
@@ -81,8 +94,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $87793C
-// @unit-finalization $694EFC
 
 constructor TPSWeapon12Turbogravir.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin

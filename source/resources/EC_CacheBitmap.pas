@@ -1,34 +1,43 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheBitmap;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
   EC_Cache,
   GR_GraphBuf;
+
+const
+
+  RgbaImagePathSuffix = '?RGBA';
+
 type
+
   TCBitmapControlEC = class;
+
   TCBitmapEC = class;
+
   TCBitmapControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCBitmapEC = class(TCacheDataEC)
     Bitmap: TGraphBufGR;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreateBitmap(Control: TCacheControlEC): TCBitmapEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GR_Main;
 
 procedure TCBitmapControlEC.QueueLoadIfMissing(PendingLoads: TList);
@@ -94,8 +103,4 @@ begin
   ResidentBytes := Bitmap.PitchBytes * Bitmap.Height;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCBitmapEC.ClassName;
-end;
 end.

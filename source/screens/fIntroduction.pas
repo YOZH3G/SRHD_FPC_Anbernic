@@ -1,28 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit fIntroduction;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
 
 uses
   GI_MessageLoop;
 
 type
-  TfIntroduction = class;
-  TfIntroduction = class(TMessageLoopGI)
 
+  TfIntroduction = class;
+
+  TfIntroduction = class(TMessageLoopGI)
     GenerationProgressTimer: PCallbackTimerGI;
     TextScrollTimer: PCallbackTimerGI;
     BackgroundTimer: PCallbackTimerGI;
-    BackgroundScrollOffset: PtrInt;
+    BackgroundScrollOffset: Integer;
     TextPanelTop: Integer;
     TextPanelHeight: Integer;
     ProgressPulsePhase: Single;
     ContinueBlinkTimer: PCallbackTimerGI;
     procedure OnOpen; override;
-
     procedure OnClose; override;
     procedure SelectMusic; override;
     procedure InitializeLayout; override;
@@ -36,24 +34,31 @@ type
   end;
 
 var
+
   IntroductionPulseCounter: Integer = 0;
+
   NewGameGenerationStage: Integer;
+
   IntroductionBlinkColorA: Cardinal;
+
   IntroductionBlinkColorB: Cardinal;
+
   IntroductionPulseRed: Byte;
+
   IntroductionPulseGreen: Byte;
+
   IntroductionPulseBlue: Byte;
+
   DisplayedGenerationStage: Integer;
 
-procedure LinkRecoveredTypes;
 implementation
 
 uses
-  Math,
   aConst,
   aGalaxyStruct,
   Classes,
-  Windows,
+  Types,
+  GameInput,
   SysUtils,
   EC_Str,
   EC_Struct,
@@ -100,7 +105,6 @@ begin
       );
     for I := 1 to 8 do
     begin
-
       with FindByNameRecursive(AnsiString('ICW') + IntToStr(I)) do
         SetPosition(
             Classes.Point(
@@ -115,7 +119,6 @@ begin
                 LocalPosition.Y + ExtraScreenHeight
             )
         );
-
     end;
     with FindByNameRecursive('PanelText') do
     begin
@@ -126,26 +129,21 @@ begin
   end;
   IntroductionBlinkColorA := GetStyleColorGI('Introduction.BlinkColorA', 27, 68, 98);
   IntroductionBlinkColorB := GetStyleColorGI('Introduction.BlinkColorB', 93, 152, 166);
-
   AppendLogLineThreadSafe('ok');
 end;
+
 procedure TfIntroduction.OnOpen;
 var
   I: Integer;
   Text: WideString;
 begin
-
   DisplayedGenerationStage := 0;
-
   NewGameGenerationStage := 0;
-
   ProgressPulsePhase := 0;
   for I := 1 to 8 do
   begin
     (GetByName(AnsiString('MCW') + IntToStr(I)) as TLabelGI).SetTextColor(IntroductionBlinkColorA);
-
     GetByName(AnsiString('ICW') + IntToStr(I)).SetActive(False);
-
   end;
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
   with GetByName('PanelText') do
@@ -163,7 +161,7 @@ begin
     Text :=
         FormatText1(
             LocalizedText('FormIntroduction.Text'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Player>',
             GetPlayer.Name
         )
@@ -171,7 +169,7 @@ begin
     Text :=
         FormatText1(
             LocalizedText('FormIntroduction.Text'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Player>',
             NewGameGenerationThread.PlayerName
         );
@@ -241,11 +239,10 @@ begin
   IntroductionPulseBlue := 50;
   BackgroundScrollOffset := 0;
   ScrollBackground(nil, 0);
-
 end;
+
 procedure TfIntroduction.OnClose;
 begin
-
   if ContinueBlinkTimer <> nil then
   begin
     CancelCallbackTimer(ContinueBlinkTimer);
@@ -274,14 +271,12 @@ begin
   with GetByName('GBText') as TGraphBufGI do
     GraphBuf.Clear;
 end;
-procedure TfIntroduction.UpdateGenerationProgress(Timer: PCallbackTimerGI; UserData: PtrInt);
 
+procedure TfIntroduction.UpdateGenerationProgress(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Delta: Integer;
   Amount: Single;
-
 begin
-
   if IntroductionPulseCounter > 50 then
     Delta := -3
   else
@@ -347,6 +342,7 @@ begin
     ContinueBlinkTimer := ScheduleCallbackTimer(200, 200, BlinkContinueButton);
   end;
 end;
+
 procedure TfIntroduction.BlinkContinueButton(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Enter, Leave: WideString;
@@ -362,11 +358,11 @@ begin
     LeaveSound := Leave;
   end;
 end;
+
 procedure TfIntroduction.ScrollIntroductionText(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Limit: Single;
 begin
-
   with GetByName('GBText') as TGraphBufGI do
   begin
     SetPosition(AddPoints(LocalPosition, Classes.Point(0, -1)));
@@ -379,6 +375,7 @@ begin
       end;
   end;
 end;
+
 procedure TfIntroduction.ScrollBackground(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Offset: Integer;
@@ -392,6 +389,7 @@ begin
   with GetByName('ImageFon2') do
     SetPosition(Classes.Point(ClientSize.X - Offset, LocalPosition.Y));
 end;
+
 procedure TfIntroduction.ContinueMouseEnter(Sender: TObjectGI);
 begin
   if ContinueBlinkTimer <> nil then
@@ -400,6 +398,7 @@ begin
     ContinueBlinkTimer := nil;
   end;
 end;
+
 procedure TfIntroduction.ContinueClicked(Sender: TObjectGI);
 begin
   ReleaseAllTextureSurfaces;
@@ -407,12 +406,13 @@ begin
     RequestedScreenId := screenRuinsTalk
   else if GetPlayer.CurrentPlanet = nil then
     RaiseWideMessage('No player location')
-  else if GetPlayer.CurrentPlanet.OwnerId = Byte(oiUninhabited) then
+  else if GetPlayer.CurrentPlanet.OwnerId = oiUninhabited then
     RequestedScreenId := screenPlanetNO
   else
     RequestedScreenId := screenPlanet;
   RequestClose(1);
 end;
+
 procedure TfIntroduction.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
   if not IsVirtualKeyDown(VK_CONTROL)
@@ -422,14 +422,10 @@ begin
     if not (GetByName('Ok') as TGraphButtonGI).Disabled then
       ContinueClicked(nil);
 end;
+
 procedure TfIntroduction.SelectMusic;
 begin
   MusicManager.PlayCategory('Base');
 end;
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TLabelGI.ClassName;
-end;
+
 end.

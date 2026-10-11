@@ -1,47 +1,54 @@
-{$EXCESSPRECISION OFF}
 unit GI_RadialEffect;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTRadiationParticle = ^TRadiationParticle;
+
   PRadiationParticle = PointerToTRadiationParticle;
+
   TRadiationParticle = record
     Prev: PRadiationParticle;
     Next: PRadiationParticle;
     Position: TPoint;
     Color: Word;
     Alpha: array[0..11] of Byte;
-    Gap1E: array[0..1] of Byte;
     EdgeDistance: array[0..11] of Integer;
   end;
+
   TRadiationPalette = array[0..5] of Single;
+
 var
+
   AuraAnimationPaths: array of WideString;
+
   RadiationRadii: array of Integer;
+
   RadiationPalettes: array of TRadiationPalette;
+
 type
+
   TPSRadEffectGI = class;
+
   TPSRadEffectGI = class(TPSWeaponGI)
     FirstParticle: PRadiationParticle;
     LastParticle: PRadiationParticle;
     Color: Word;
-    Gap13A: array[0..1] of Byte;
     Radius: Integer;
     Alpha: Byte;
-    Gap141: array[0..2] of Byte;
     PaletteIndex: Integer;
     ProjectionBounds: TRect;
     LatticeOffset: TPointF;
     PositionInitialized: Boolean;
-    Gap161: array[0..2] of Byte;
     procedure UpdateHitTestBounds; override;
     procedure SetPosition(Position: TPoint); override;
     function GetLocalBounds: TRect; override;
@@ -56,9 +63,13 @@ type
     function AddParticle: PRadiationParticle;
     procedure ClearParticles;
   end;
+
 var
+
   RadiationEdgeStarts: array[0..23] of TPoint;
+
   RadiationEdgeEnds: array[0..23] of TPoint;
+
   RadiationHexagon: array[0..5] of TPointF = (
       (X: -0.866025404; Y: 0.5),
       (X: 0; Y: 1),
@@ -67,8 +78,11 @@ var
       (X: 0; Y: -1),
       (X: -0.866025404; Y: -0.5)
   );
+
 procedure LoadRadiationPalettes;
+
 implementation
+
 uses
   GlobalsV,
   SysUtils,
@@ -80,8 +94,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877974
-// @unit-finalization $69CD04
 
 constructor TPSRadEffectGI.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -291,15 +303,13 @@ end;
 procedure TPSRadEffectGI.Draw(ClipRect: TRect);
 var
   DistanceSquared, FadeRadius, CenterX, CenterY: Integer;
-  function RadiationRingColor(
-      Value: Integer
-  ): Cardinal; // @addr $69BF88 @ida "unsigned int __usercall $name@<eax>(int Value@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0069C3A2, 0x0069C198"
+
+  function RadiationRingColor(Value: Integer): Cardinal;
   begin
     Result := SampleGradientColor(RadiationPalettes[PaletteIndex], Sqr(Value / 255.0));
   end;
-  function RadiationRingAlpha(
-      Distance: Single
-  ): Integer; // @addr $69BFDC @ida "int __userpurge $name@<eax>(float Distance@<^0>, void *ParentFrame@<^4>);" @stackpop 4 @calls "0x0069C388, 0x0069C17E"
+
+  function RadiationRingAlpha(Distance: Single): Integer;
   begin
     if Distance > 0 then
       Result := Round(Math.Max(0, Alpha - Sqr(Distance) * 10.0))
@@ -308,10 +318,8 @@ var
     else
       Result := Round(Math.Max(0, (Distance + 10.0) * 3.0 + (Alpha - 100)));
   end;
-  procedure QueueRadiationOctants(
-      X,
-      Y: Integer
-  ); // @addr $69C148 @ida "void __usercall $name(int X@<eax>, int Y@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0069C65F"
+
+  procedure QueueRadiationOctants(X, Y: Integer);
   var
     PixelColor: Cardinal;
     PixelAlpha: Integer;
@@ -341,19 +349,16 @@ var
       end;
     end;
   end;
+
 var
   Edge: Integer;
-  procedure BlendRadiationOctants(
-      X,
-      Y: Integer
-  ); // @addr $69C338 @ida "void __usercall $name(int X@<eax>, int Y@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0069C7A9"
+
+  procedure BlendRadiationOctants(X, Y: Integer);
   var
     PixelColor: Cardinal;
     PixelAlpha: Integer;
-    procedure BlendRadiationPoint(
-        X,
-        Y: Integer
-    ); // @addr $69C2D0 @ida "void __usercall $name(int X@<eax>, int Y@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0069C3C6, 0x0069C3E3, 0x0069C40A, 0x0069C425, 0x0069C446, 0x0069C463, 0x0069C48A, 0x0069C4A5"
+
+    procedure BlendRadiationPoint(X, Y: Integer);
     begin
       if (ClipRect.Left <= X)
           and (ClipRect.Right > X)
@@ -361,6 +366,7 @@ var
           and (ClipRect.Bottom > Y) then
         ScreenRenderBuffer.BlendPixel16(X, Y, PixelColor, PixelAlpha);
     end;
+
   var
     Distance: Single;
   begin
@@ -389,6 +395,7 @@ var
       end;
     end;
   end;
+
 var
   Particle: PRadiationParticle;
   OuterRadius, InnerRadius, OuterSquared, InnerSquared, X, Y: Integer;

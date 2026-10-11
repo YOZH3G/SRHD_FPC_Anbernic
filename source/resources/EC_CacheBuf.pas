@@ -1,34 +1,38 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheBuf;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
   EC_Cache;
+
 type
+
   TCBufControlEC = class;
+
   TCBufEC = class;
+
   TCBufControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCBufEC = class(TCacheDataEC)
     Buffer: TBufEC;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreateBuffer(Control: TCacheControlEC): TCBufEC;
-procedure LinkRecoveredTypes;
+
 implementation
 
 uses
-  Math,
   GR_Main;
 
 procedure TCBufControlEC.QueueLoadIfMissing(PendingLoads: TList);
@@ -49,25 +53,28 @@ begin
     PendingLoads.Add(Control);
   end;
 end;
+
 function TCBufControlEC.CreateData: TCacheDataEC;
 begin
   Result := TCBufEC.Create;
 end;
+
 function AcquireOrCreateBuffer(Control: TCacheControlEC): TCBufEC;
-
 begin
-
   Result := Control.AcquireDataFromConfig(TCBufEC) as TCBufEC;
   Result.Buffer.SetPosition(0);
 end;
+
 function TCBufControlEC.AcquireData: TCacheDataEC;
 begin
   Result := AcquireOrCreateBuffer(Self);
 end;
+
 constructor TCBufEC.Create;
 begin
   inherited Create;
 end;
+
 destructor TCBufEC.Destroy;
 begin
   if Buffer <> nil then
@@ -77,13 +84,11 @@ begin
   end;
   inherited Destroy;
 end;
+
 procedure TCBufEC.LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString);
 begin
   Buffer := TBufEC.Create;
   Buffer.AddBytes(SourceBuffer.Data, SourceBuffer.DataSize);
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCBufEC.ClassName;
-end;
+
 end.

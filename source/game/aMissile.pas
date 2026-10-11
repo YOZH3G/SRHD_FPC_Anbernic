@@ -1,12 +1,10 @@
-{$EXCESSPRECISION OFF}
 unit aMissile;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  aConst,
   EC_Buf,
   EC_Struct,
   SE_Space,
@@ -14,17 +12,24 @@ uses
   aGalaxy,
   aGalaxyStruct,
   aItem,
-  aShip;
+  aShip,
+  aConst;
+
 type
+
   TCustomMissile = class;
+
   TMissile = class;
+
+  {$Z1}
+  TMissileTargetKind = (mtkNone = 0, mtkShip = 1, mtkItem = 2, mtkAsteroid = 3, mtkMissile = 4);
+
   TMissile = class(TObjectEx)
     Graphic: TObjectSE;
     Id: Cardinal;
     WeaponId: Integer;
-    ItemType: Byte;
+    ItemType: TItemType;
     TechLevel: Byte;
-    Gap12: array[0..1] of Byte;
     MinDamage: Integer;
     MaxDamage: Integer;
     MicroModuleIndex: Integer;
@@ -42,11 +47,9 @@ type
     SourceHeading: Single;
     FlightTicks: Integer;
     DestroyQueued: Boolean;
-    Gap59: array[0..2] of Byte;
     FilmObject: TEFilmObj;
-    SavedTargetKind: Byte;
-    SavedPreviousTargetKind: Byte;
-    Gap62: array[0..1] of Byte;
+    SavedTargetKind: TMissileTargetKind;
+    SavedPreviousTargetKind: TMissileTargetKind;
     LastTargetPosition: TPointF;
     LastTargetDistance: Single;
     OvershootTicks: Integer;
@@ -72,7 +75,7 @@ type
         MinDamage: Integer;
         MaxDamage: Integer;
         MaximumSpeed: Single;
-        ItemType: Byte;
+        ItemType: TItemType;
         ModuleIndex: Integer;
         SpecialIndex: Integer
     );
@@ -93,6 +96,7 @@ type
     procedure ClearReferencesTo(Obj: TObject);
     function GetShotVisual: Integer;
   end;
+
   TCustomMissile = class(TMissile)
     WeaponInfo: PWeaponInfo;
     procedure SaveToBuffer(Buffer: TBufEC); override;
@@ -120,8 +124,9 @@ type
         SpecialIndex: Integer
     );
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   SE_Process,
   Classes,
@@ -182,25 +187,24 @@ begin
   Self.OwnerShip := OwnerShip;
   Self.Target := Target;
   WeaponId := Weapon.Id;
-  ItemType := Byte(Weapon.ItemType);
+  ItemType := Weapon.ItemType;
   MinDamage := OwnerShip.GetWeaponMinDamage(Weapon);
   MicroModuleIndex := Weapon.MicroModuleIndex;
   SpecialModuleIndex := Weapon.SpecialModuleIndex;
   MaxDamage := OwnerShip.GetWeaponMaxDamage(Weapon);
-  SpeedBonus := Self.OwnerShip.GetTotalStatBonus(Ord(bonMissileSpeed));
+  SpeedBonus := Self.OwnerShip.GetTotalStatBonus(bonMissileSpeed);
   SpecialBonus := 0;
   if SpecialModuleIndex > 0 then
-    SpecialBonus := MicroModuleTemplates[SpecialModuleIndex - 1].StatBonuses[Ord(bonMissileSpeed)];
+    SpecialBonus := MicroModuleTemplates[SpecialModuleIndex - 1].StatBonuses[bonMissileSpeed];
   if MicroModuleIndex > 0 then
   begin
-    Inc(SpeedBonus, MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[Ord(bonMissileSpeed)]);
+    Inc(SpeedBonus, MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonMissileSpeed]);
     if SpecialBonus < 0 then
       Inc(
           SpecialBonus,
           Round(
               SpecialBonus
-                  * MicroModuleTemplates[MicroModuleIndex - 1]
-                      .StatBonuses[Ord(bonExtraAkrinPenalty)]
+                  * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinPenalty]
                   * 0.0001
           )
       )
@@ -209,7 +213,7 @@ begin
           SpecialBonus,
           Round(
               SpecialBonus
-                  * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[Ord(bonExtraAkrinEff)]
+                  * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinEff]
                   * 0.0001
           )
       );
@@ -260,7 +264,7 @@ procedure TMissile.InitializeUnownedShot(
     Direction: Single;
     MinDamage, MaxDamage: Integer;
     MaximumSpeed: Single;
-    ItemType: Byte;
+    ItemType: TItemType;
     ModuleIndex, SpecialIndex: Integer
 );
 begin
@@ -302,7 +306,7 @@ begin
       MinDamage,
       MaxDamage,
       MaximumSpeed,
-      Byte(WeaponInfo.ItemType),
+      WeaponInfo.ItemType,
       ModuleIndex,
       SpecialIndex
   );
@@ -335,58 +339,58 @@ begin
   else
     Buffer.AddDWord(OwnerShip.Id);
   if Target = nil then
-    Buffer.AddAnsiChar(AnsiChar(0))
+    Buffer.AddAnsiChar(AnsiChar(mtkNone))
   else if Target is TShip then
   begin
-    Buffer.AddAnsiChar(AnsiChar(1));
+    Buffer.AddAnsiChar(AnsiChar(mtkShip));
     Buffer.AddDWord((Target as TShip).Id);
   end
   else if Target is TItem then
   begin
-    Buffer.AddAnsiChar(AnsiChar(2));
+    Buffer.AddAnsiChar(AnsiChar(mtkItem));
     Buffer.AddDWord((Target as TItem).Id);
   end
   else if Target is TAsteroid then
   begin
-    Buffer.AddAnsiChar(AnsiChar(3));
+    Buffer.AddAnsiChar(AnsiChar(mtkAsteroid));
     Buffer.AddDWord((Target as TAsteroid).Id);
   end
   else if Target is TMissile then
   begin
-    Buffer.AddAnsiChar(AnsiChar(4));
+    Buffer.AddAnsiChar(AnsiChar(mtkMissile));
     Buffer.AddDWord((Target as TMissile).Id);
   end
   else
-    Buffer.AddAnsiChar(AnsiChar(0));
+    Buffer.AddAnsiChar(AnsiChar(mtkNone));
   Buffer.AddAnsiChar(AnsiChar(ShotIndex));
   Buffer.AddIntegerValue(FlightTicks);
   Buffer.AddSingle(SourceHeading);
   Buffer.AddSingle(Speed);
   Buffer.AddSingle(MaximumSpeed);
   if PreviousTarget = nil then
-    Buffer.AddAnsiChar(AnsiChar(0))
+    Buffer.AddAnsiChar(AnsiChar(mtkNone))
   else if PreviousTarget is TShip then
   begin
-    Buffer.AddAnsiChar(AnsiChar(1));
+    Buffer.AddAnsiChar(AnsiChar(mtkShip));
     Buffer.AddDWord((PreviousTarget as TShip).Id);
   end
   else if PreviousTarget is TItem then
   begin
-    Buffer.AddAnsiChar(AnsiChar(2));
+    Buffer.AddAnsiChar(AnsiChar(mtkItem));
     Buffer.AddDWord((PreviousTarget as TItem).Id);
   end
   else if PreviousTarget is TAsteroid then
   begin
-    Buffer.AddAnsiChar(AnsiChar(3));
+    Buffer.AddAnsiChar(AnsiChar(mtkAsteroid));
     Buffer.AddDWord((PreviousTarget as TAsteroid).Id);
   end
   else if PreviousTarget is TMissile then
   begin
-    Buffer.AddAnsiChar(AnsiChar(4));
+    Buffer.AddAnsiChar(AnsiChar(mtkMissile));
     Buffer.AddDWord((PreviousTarget as TMissile).Id);
   end
   else
-    Buffer.AddAnsiChar(AnsiChar(0));
+    Buffer.AddAnsiChar(AnsiChar(mtkNone));
   Buffer.AddSingle(LastTargetPosition.X);
   Buffer.AddSingle(LastTargetPosition.Y);
   Buffer.AddSingle(LastTargetDistance);
@@ -401,9 +405,10 @@ end;
 procedure TMissile.LoadFromBuffer(Buffer: TBufEC; World: TGalaxy);
 var
   ModuleNumber: Integer;
+
   function FindLegacyMissileMicroModuleIndex(
       ConfigNumber: Integer
-  ): Integer; // @addr $4F0A5C @ida "int __usercall $name@<eax>(int ConfigNumber@<eax>, void *ParentFrame@<^0>);" @note "Nested legacy lookup; caller pops the unused static link."
+  ): Integer; { Nested legacy lookup; caller pops the unused static link. }
   var
     I: Integer;
   begin
@@ -421,7 +426,7 @@ begin
     World.NextMissileId := Id + 1;
   if LoadedSaveVersion >= 159 then
     WeaponId := Buffer.GetUInt32;
-  ItemType := Byte(MigrateSavedItemType(Buffer.GetByte));
+  ItemType := MigrateSavedItemType(Buffer.GetByte);
   TechLevel := Buffer.GetByte;
   if LoadedSaveVersion >= 100 then
   begin
@@ -492,8 +497,8 @@ begin
   TurnDirection := Buffer.GetSingle;
   CurrentStar := TStar(Buffer.GetUInt32);
   OwnerShip := TShip(Buffer.GetUInt32);
-  SavedTargetKind := Buffer.GetByte;
-  if SavedTargetKind = 0 then
+  SavedTargetKind := TMissileTargetKind(Buffer.GetByte);
+  if SavedTargetKind = mtkNone then
     Target := nil
   else
     Target := TObject(Buffer.GetUInt32);
@@ -506,8 +511,8 @@ begin
   else
     MaximumSpeed :=
         RemapClamped(TechLevel, 1, 8, GetWeaponInfo.MissileMinSpeed, GetWeaponInfo.MissileMaxSpeed);
-  SavedPreviousTargetKind := Buffer.GetByte;
-  if SavedPreviousTargetKind = 0 then
+  SavedPreviousTargetKind := TMissileTargetKind(Buffer.GetByte);
+  if SavedPreviousTargetKind = mtkNone then
     PreviousTarget := nil
   else
     PreviousTarget := TObject(Buffer.GetUInt32);
@@ -526,21 +531,21 @@ procedure TMissile.ResolveLoadedReferences(World: TGalaxy);
 begin
   CurrentStar := TObject(World.IdToStar(Cardinal(CurrentStar))) as TStar;
   OwnerShip := TObject(World.IdToShip(Cardinal(OwnerShip), True)) as TShip;
-  if SavedTargetKind = 1 then
+  if SavedTargetKind = mtkShip then
     Target := TObject(World.IdToShip(Cardinal(Target), True)) as TShip
-  else if SavedTargetKind = 2 then
+  else if SavedTargetKind = mtkItem then
     Target := TObject(World.IdToItem(Cardinal(Target), True)) as TItem
-  else if SavedTargetKind = 3 then
+  else if SavedTargetKind = mtkAsteroid then
     Target := TObject(World.IdToAsteroid(Cardinal(Target))) as TAsteroid
-  else if SavedTargetKind = 4 then
+  else if SavedTargetKind = mtkMissile then
     Target := TObject(World.IdToMissile(Cardinal(Target))) as TMissile;
-  if SavedPreviousTargetKind = 1 then
+  if SavedPreviousTargetKind = mtkShip then
     PreviousTarget := TObject(World.IdToShip(Cardinal(PreviousTarget), True)) as TShip
-  else if SavedPreviousTargetKind = 2 then
+  else if SavedPreviousTargetKind = mtkItem then
     PreviousTarget := TObject(World.IdToItem(Cardinal(PreviousTarget), True)) as TItem
-  else if SavedPreviousTargetKind = 3 then
+  else if SavedPreviousTargetKind = mtkAsteroid then
     PreviousTarget := TObject(World.IdToAsteroid(Cardinal(PreviousTarget))) as TAsteroid
-  else if SavedPreviousTargetKind = 4 then
+  else if SavedPreviousTargetKind = mtkMissile then
     PreviousTarget := TObject(World.IdToMissile(Cardinal(PreviousTarget))) as TMissile;
 end;
 
@@ -575,7 +580,9 @@ begin
       if Self is TCustomMissile then
         Config := GameDataConfig.GetBlockByPath('SE.' + GetWeaponInfo.PrimarySE)
       else
-        Config := GameDataConfig.GetBlockByPath('SE.Weapon.' + IntToStr(ItemType - 50));
+        Config :=
+            GameDataConfig
+                .GetBlockByPath('SE.Weapon.' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser)));
       Palette := Config.FindBlock('Palettes');
       if Palette <> nil then
         Palette := Palette.FindBlock(IntToStr(GetShotVisual));
@@ -586,7 +593,11 @@ begin
       else if Self is TCustomMissile then
         PrimaryFilm.PlayObjectSound(StepIndex, FilmObject, 'Sound.shot' + GetWeaponInfo.ConfigName)
       else
-        PrimaryFilm.PlayObjectSound(StepIndex, FilmObject, 'Sound.shot' + IntToStr(ItemType - 50));
+        PrimaryFilm.PlayObjectSound(
+            StepIndex,
+            FilmObject,
+            'Sound.shot' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser))
+        );
     end;
   end;
   if FlightTicks = 0 then
@@ -655,13 +666,13 @@ begin
   try
     Result := nil;
     PreviousPosition := Position;
-    StepScale := 200 / CurrentStar.MovementStepCount;
+    StepScale := BaseMovementStepsPerTurn / CurrentStar.MovementStepCount;
     Inc(FlightTicks, Round(StepScale));
     TargetPosition := MakePointF(0, 0);
     HasTarget := False;
     DesiredSpeed := MaximumSpeed;
     Stage := 1;
-    if FlightTicks < 200 then
+    if FlightTicks < BaseMovementStepsPerTurn then
     begin
       Stage := 2;
       if OwnerShip <> nil then
@@ -682,17 +693,25 @@ begin
         if RecordFilm then
           PrimaryFilm.SetObjectAngle(StepIndex, FilmObject, HeadingDegreesToByte(Direction));
         Position.X :=
-            Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+            Position.X
+                + Sin(HeadingDegreesToRadians(Direction))
+                    * (Speed / BaseMovementStepsPerTurn * StepScale);
         Position.Y :=
-            Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+            Position.Y
+                - Cos(HeadingDegreesToRadians(Direction))
+                    * (Speed / BaseMovementStepsPerTurn * StepScale);
       end
       else
       begin
         Stage := 4;
         Position.X :=
-            Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+            Position.X
+                + Sin(HeadingDegreesToRadians(Direction))
+                    * (Speed / BaseMovementStepsPerTurn * StepScale);
         Position.Y :=
-            Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+            Position.Y
+                - Cos(HeadingDegreesToRadians(Direction))
+                    * (Speed / BaseMovementStepsPerTurn * StepScale);
       end;
     end
     else
@@ -785,9 +804,13 @@ begin
       else if Speed > DesiredSpeed then
         Speed := Speed - 10;
       Position.X :=
-          Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+          Position.X
+              + Sin(HeadingDegreesToRadians(Direction))
+                  * (Speed / BaseMovementStepsPerTurn * StepScale);
       Position.Y :=
-          Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / 200 * StepScale);
+          Position.Y
+              - Cos(HeadingDegreesToRadians(Direction))
+                  * (Speed / BaseMovementStepsPerTurn * StepScale);
     end;
     Stage := 16;
     if RecordFilm then
@@ -1044,7 +1067,7 @@ begin
         Result
             + FormatText1(
                 LocalizedText('Items.Weapon.Missile.TextFrom'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 OwnerShip.GetName)
             + #13#10;
@@ -1053,7 +1076,7 @@ begin
         Result
             + FormatText1(
                 LocalizedText('Items.Weapon.Missile.TextTarget'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 TAsteroid(Target).GetDisplayName)
             + #13#10
@@ -1062,7 +1085,7 @@ begin
         Result
             + FormatText1(
                 LocalizedText('Items.Weapon.Missile.TextTarget'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 TItem(Target).GetDisplayName)
             + #13#10
@@ -1071,7 +1094,7 @@ begin
         Result
             + FormatText1(
                 LocalizedText('Items.Weapon.Missile.TextTarget'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 TShip(Target).GetName)
             + #13#10
@@ -1080,7 +1103,7 @@ begin
         Result
             + FormatText1(
                 LocalizedText('Items.Weapon.Missile.TextTarget'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 TMissile(Target).GetDisplayName)
             + #13#10
@@ -1113,7 +1136,7 @@ begin
           Result
               + FormatText1(
                   LocalizedText('Items.Weapon.Missile.TextSpeed'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Speed>',
                   SpeedText)
               + ', ';
@@ -1121,7 +1144,7 @@ begin
           Result
               + FormatText1(
                   LocalizedText('Items.Weapon.Missile.TextDamage'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Damage>',
                   DamageText)
               + #13#10;
@@ -1136,7 +1159,7 @@ begin
     Roll := NextRandomIntRange(1, 100, Galaxy.RandomState)
   else
   begin
-    if (Attacker is TKling) and (Ord((Attacker as TKling).KlingType) = 0) then
+    if (Attacker is TKling) and ((Attacker as TKling).KlingType = ktBoss) then
     begin
       Result := True;
       Exit;
@@ -1170,7 +1193,7 @@ begin
   if SpecialModuleIndex <> 0 then
     Result := MicroModuleTemplates[SpecialModuleIndex - 1].MissileGraph;
   if Result = '' then
-    Result := IntToStr(ItemType - 50 + 1);
+    Result := IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser) + 1);
 end;
 
 function TCustomMissile.GetGraphSuffix: WideString;
@@ -1192,15 +1215,4 @@ begin
   Result := WeaponInfo;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TAsteroid.ClassName;
-  TCustomMissile.ClassName;
-  TItem.ClassName;
-  TKling.ClassName;
-  TMissile.ClassName;
-  TShip.ClassName;
-  TStar.ClassName;
-  TWeapon.ClassName;
-end;
 end.

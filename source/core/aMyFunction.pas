@@ -1,65 +1,157 @@
-{$EXCESSPRECISION OFF}
 unit aMyFunction;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
-  Classes,
-  Types;
+  Classes;
+
+const
+
+  GamePi = 3.1415926;
+
+  GameTwoPi = 6.2831852;
+
+  RandomFloatResolution = 1000;
+
+  TextHighlightColorTag = '<color=255,240,100>';
+
+  DialogHighlightColorTag = '<color=0,50,200>';
+
+  EquipmentBonusColorTag = '<color=255,167,84>';
+
+  DialogEquipmentBonusColorTag = '<color=240,100,30>';
+
+  DialogGreenColorTag = '<color=0,130,0>';
+
+  EndColorTag = '</color>';
+
+  RedColorTag = '<color=255,0,0>';
+
+  GreenColorTag = '<color=0,255,0>';
+
+  GrayColorTag = '<color=127,127,127>';
+
+  YellowColorTag = '<color=255,255,0>';
+
+  BlackColorTag = '<color=0,0,0>';
+
+  MagentaColorTag = '<color=255,0,255>';
+
+  CyanColorTag = '<color=0,255,255>';
+
+  OrangeColorTag = '<color=255,166,0>';
+
+  GoldColorTag = '<color=254,217,7>';
+
+  AzureColorTag = '<color=0,128,255>';
+
+  DarkGreenColorTag = '<color=45,105,45>';
+
+  BrightBlueColorTag = '<color=0,71,234>';
+
+  MicroModuleHighPriorityColorTag = '<color=17,139,255>';
+
+  DefaultInfoNameColorTag = '<color=57,239,255>';
+
+  DefaultInfoHullSeriesColorTag = '<color=82,166,255>';
+
 type
+
   TPolarPoint = record
     AngleDegrees: Double;
     Radius: Double;
   end;
+
   TPolarRadiansPoint = packed record
     AngleRadians: Double;
     Radius: Double;
   end;
+
 var
-  InfoNameColorTag: WideString = '<color=57,239,255>';
-  InfoHullSeriesColorTag: WideString = '<color=82,166,255>';
+
+  InfoNameColorTag: WideString = DefaultInfoNameColorTag;
+
+  InfoHullSeriesColorTag: WideString = DefaultInfoHullSeriesColorTag;
+
 type
+
   TObjectList = class;
+
   TObjectList = class(TList)
     destructor Destroy; override;
     procedure FreeItems;
   end;
+
 const
+
   PolarDegreesToRadians: Single = 0.01745329238474369049;
+
 function RandomIntRange(BoundA: Integer; BoundB: Integer): Integer;
+
 function SeededRandomIntRange(BoundA: Integer; BoundB: Integer; Seed: Cardinal): Integer;
+
 function RandomUnitFloat: Single;
+
 function SeededRandomUnitFloat(Seed: Cardinal): Single;
+
 function RandomFloatRange(BoundA: Double; BoundB: Double): Double;
+
 function SeededRandomFloatRange(Seed: Cardinal; BoundA: Double; BoundB: Double): Double;
+
 function StepRandomSeed(Seed: Cardinal): Cardinal;
+
 function AdvanceRandomSeed(var Seed: Cardinal): Cardinal;
+
 function NextRandomIntRange(BoundA: Integer; BoundB: Integer; var Seed: Cardinal): Integer;
+
 function NextRandomFloatRange(BoundA: Double; BoundB: Double; var Seed: Cardinal): Double;
+
 function NextRandomUnitFloat(var Seed: Cardinal): Double;
+
 function FractionalQuotient(Numerator: Integer; Denominator: Integer): Double;
+
 function RoundAndTruncateToFives(Value: Double): Integer;
+
 function RoundAndTruncateToTens(Value: Double): Integer;
+
 function RoundAndTruncateToHundreds(Value: Double): Integer;
+
 function PointFromRadiusAngle(Radius: Single; Angle: Single): TPointF;
+
 function OffsetPointByRadiusAngle(Origin: TPointF; Radius: Single; Angle: Single): TPointF;
+
 function RotateAndTranslatePoint(Point: TPointF; Translation: TPointF; Angle: Single): TPointF;
+
 function PolarToPoint(Polar: TPolarPoint): TPointF;
+
 function IntegerPointToPolar(Point: TPoint): TPolarRadiansPoint;
+
 function HeadingDegreesToByte(Angle: Double): Byte;
+
 function ByteToHeadingDegrees(Angle: Byte): Double;
+
 function RadiansToHeadingDegrees(Angle: Double): Double;
+
 function HeadingDegreesToRadians(Angle: Double): Double;
+
 function PointBearingDegrees(PointA: TPointF; PointB: TPointF): Double;
+
 function HeadingDifferenceDegrees(FromHeading: Double; ToHeading: Double): Double;
+
 function WrapHeadingDegrees(Angle: Single): Single;
+
 function WrapSignedHeadingDegrees(Angle: Single): Single;
+
 function HeadingWithinArc(ArcStart: Single; Heading: Single; ArcEnd: Single): Boolean;
+
 function PushPointOutsideCircleBand(Point: TPointF; Radius: Single; Margin: Single): TPointF;
+
 function RotatePointQuarterTurn(Center: TPointF; Point: TPointF): TPointF;
+
 function IntersectLines(
     A1: TPointF;
     A2: TPointF;
@@ -67,6 +159,7 @@ function IntersectLines(
     B2: TPointF;
     out Intersection: TPointF
 ): Boolean;
+
 function SegmentIntersectsRectEdges(
     StartPoint: TPointF;
     EndPoint: TPointF;
@@ -74,44 +167,54 @@ function SegmentIntersectsRectEdges(
     BottomRight: TPointF;
     out Intersection: TPointF
 ): Boolean;
+
 function SegmentIntersectsCircle(
     StartPoint: TPointF;
     EndPoint: TPointF;
     Center: TPointF;
     Radius: Single
 ): Boolean;
+
 function SegmentCrossesOriginCircle(
     StartPoint: TPointF;
     EndPoint: TPointF;
     Radius: Single
 ): Boolean;
+
 function RayIntersectsOriginCircle(
     StartPoint: TPointF;
     ThroughPoint: TPointF;
     out Intersection: TPointF;
     Radius: Single
 ): Boolean;
+
 function CalculateTangentArcOffset(
     StartPoint: TPointF;
     EndPoint: TPointF;
     Heading: Double;
     Angle: Double
 ): Double;
+
 procedure CircleTangentPoints(
     Point: TPointF;
     Radius: Single;
     out LeftPoint: TPointF;
     out RightPoint: TPointF
 );
+
 function PointBehindHeading(
     Origin: TPointF;
     Heading: Double;
     Distance: Double;
     Seed: Cardinal
 ): TPointF;
+
 function PointDistanceSquared(PointA: TPointF; PointB: TPointF): Single;
+
 function PointDistance(PointA: TPointF; PointB: TPointF): Double;
+
 function IntegerPointDistancePlusOne(PointA: TPoint; PointB: TPoint): Integer;
+
 function RemapClamped(
     Value: Double;
     InMin: Double;
@@ -119,25 +222,30 @@ function RemapClamped(
     OutMin: Double;
     OutMax: Double
 ): Double;
+
 function MakeFloatPoint(X: Integer; Y: Integer): TPointF;
+
 procedure ReplaceTextToken(
     var Text: WideString;
     Token: WideString;
     Replacement: WideString;
     ColorTag: WideString
 );
+
 function ReplaceColoredToken(
     Text: WideString;
     Token: WideString;
     Replacement: WideString;
     ColorTag: WideString
 ): WideString;
+
 function FormatText1(
     Text: WideString;
     ColorTag: WideString;
     Token: WideString;
     Replacement: WideString
 ): WideString;
+
 function FormatText2(
     Text: WideString;
     ColorTag: WideString;
@@ -146,6 +254,7 @@ function FormatText2(
     Token2: WideString;
     Replacement2: WideString
 ): WideString;
+
 function FormatText3(
     Text: WideString;
     ColorTag: WideString;
@@ -156,18 +265,21 @@ function FormatText3(
     Token3: WideString;
     Replacement3: WideString
 ): WideString;
+
 function WrapTextInColor(Text: WideString; ColorTag: WideString): WideString;
+
 function NormalizeTextHighlightColors(Text: WideString): WideString;
+
 function IncrementWrapped(var Value: Integer; Minimum: Integer; Maximum: Integer): Integer;
+
 function DecrementWrappedValue(Value: Integer; Minimum: Integer; Maximum: Integer): Integer;
+
 implementation
+
 uses
-  ObserverHooks,
   EC_Str,
   aGalaxy,
   Math;
-// @unit-initialization $877AA8
-// @unit-finalization $8741A0
 
 destructor TObjectList.Destroy;
 begin
@@ -193,9 +305,9 @@ end;
 function RandomIntRange(BoundA, BoundB: Integer): Integer;
 begin
   if BoundA <= BoundB then
-    Result := PresentationRandom(BoundB - BoundA + 1) + BoundA
+    Result := Random(BoundB - BoundA + 1) + BoundA
   else
-    Result := PresentationRandom(BoundA - BoundB + 1) + BoundB;
+    Result := Random(BoundA - BoundB + 1) + BoundB;
 end;
 
 function SeededRandomIntRange(BoundA, BoundB: Integer; Seed: Cardinal): Integer;
@@ -203,9 +315,9 @@ begin
   if (Galaxy <> nil) and Galaxy.IsChaoticRandomEnabled then
   begin
     if BoundA <= BoundB then
-      Result := PresentationRandom(BoundB - BoundA + 1) + BoundA
+      Result := Random(BoundB - BoundA + 1) + BoundA
     else
-      Result := PresentationRandom(BoundA - BoundB + 1) + BoundB;
+      Result := Random(BoundA - BoundB + 1) + BoundB;
   end
   else if BoundA < BoundB then
     Result := Seed mod Cardinal(BoundB - BoundA + 1) + BoundA
@@ -215,22 +327,31 @@ end;
 
 function RandomUnitFloat: Single;
 begin
-  Result := RandomIntRange(1, 1000) / 1000;
+  Result := RandomIntRange(1, RandomFloatResolution) / RandomFloatResolution;
 end;
 
 function SeededRandomUnitFloat(Seed: Cardinal): Single;
 begin
-  Result := SeededRandomIntRange(1, 1000, Seed) / 1000;
+  Result := SeededRandomIntRange(1, RandomFloatResolution, Seed) / RandomFloatResolution;
 end;
 
 function RandomFloatRange(BoundA, BoundB: Double): Double;
 begin
-  Result := RandomIntRange(Trunc(BoundA * 1000 + 1), Trunc(BoundB * 1000 + 1)) / 1000;
+  Result :=
+      RandomIntRange(
+              Trunc(BoundA * RandomFloatResolution + 1),
+              Trunc(BoundB * RandomFloatResolution + 1))
+          / RandomFloatResolution;
 end;
 
 function SeededRandomFloatRange(Seed: Cardinal; BoundA, BoundB: Double): Double;
 begin
-  Result := SeededRandomIntRange(Trunc(BoundA * 1000 + 1), Trunc(BoundB * 1000 + 1), Seed) / 1000;
+  Result :=
+      SeededRandomIntRange(
+              Trunc(BoundA * RandomFloatResolution + 1),
+              Trunc(BoundB * RandomFloatResolution + 1),
+              Seed)
+          / RandomFloatResolution;
 end;
 
 function StepRandomSeed(Seed: Cardinal): Cardinal;
@@ -280,7 +401,12 @@ begin
     Seed := Seed * 7981 + 567 + Seed div 7931;
     if Seed = OldSeed then
       Seed := Seed * 6281 + 317 + Seed div 7311;
-    Result := SeededRandomIntRange(Trunc(BoundA * 1000 + 1), Trunc(BoundB * 1000 + 1), Seed) / 1000;
+    Result :=
+        SeededRandomIntRange(
+                Trunc(BoundA * RandomFloatResolution + 1),
+                Trunc(BoundB * RandomFloatResolution + 1),
+                Seed)
+            / RandomFloatResolution;
   end;
 end;
 
@@ -321,27 +447,40 @@ begin
 end;
 
 function PointFromRadiusAngle(Radius, Angle: Single): TPointF;
+var
+  Sine, Cosine: Extended;
 begin
-  Result.X := Radius * Cos(Angle);
-  Result.Y := Radius * Sin(Angle)
+  // FSINCOS kept both values at extended precision until the final Single stores.
+  SinCos(Extended(Angle), Sine, Cosine);
+  Result.X := Radius * Cosine;
+  Result.Y := Radius * Sine;
 end;
 
 function OffsetPointByRadiusAngle(Origin: TPointF; Radius, Angle: Single): TPointF;
+var
+  Sine, Cosine: Extended;
 begin
-  Result.X := Origin.X + Radius * Cos(Angle);
-  Result.Y := Origin.Y + Radius * Sin(Angle)
+  SinCos(Extended(Angle), Sine, Cosine);
+  Result.X := Radius * Cosine + Origin.X;
+  Result.Y := Radius * Sine + Origin.Y;
 end;
 
 function RotateAndTranslatePoint(Point, Translation: TPointF; Angle: Single): TPointF;
+var
+  Sine, Cosine: Extended;
 begin
-  Result.X := Point.X * Cos(Angle) - Point.Y * Sin(Angle) + Translation.X;
-  Result.Y := Point.X * Sin(Angle) + Point.Y * Cos(Angle) + Translation.Y
+  SinCos(Extended(Angle), Sine, Cosine);
+  Result.X := Point.X * Cosine - Point.Y * Sine + Translation.X;
+  Result.Y := Point.Y * Cosine + Point.X * Sine + Translation.Y;
 end;
 
 function PolarToPoint(Polar: TPolarPoint): TPointF;
+var
+  Sine, Cosine: Extended;
 begin
-  Result.X := Polar.Radius * Sin(Polar.AngleDegrees * PolarDegreesToRadians);
-  Result.Y := -Polar.Radius * Cos(Polar.AngleDegrees * PolarDegreesToRadians)
+  SinCos(Extended(Polar.AngleDegrees) * PolarDegreesToRadians, Sine, Cosine);
+  Result.Y := -(Polar.Radius * Cosine);
+  Result.X := Polar.Radius * Sine;
 end;
 
 function IntegerPointToPolar(Point: TPoint): TPolarRadiansPoint;
@@ -362,7 +501,7 @@ end;
 
 function RadiansToHeadingDegrees(Angle: Double): Double;
 begin
-  Result := Angle * (180 / 3.1415926);
+  Result := Angle * (180 / GamePi);
   if Result < 0 then
     Result := 360 + Result;
 end;
@@ -371,7 +510,7 @@ function HeadingDegreesToRadians(Angle: Double): Double;
 begin
   if Angle > 180 then
     Angle := Angle - 360;
-  Result := Angle * (3.1415926 / 180);
+  Result := Angle * (GamePi / 180);
 end;
 
 function PointBearingDegrees(PointA, PointB: TPointF): Double;
@@ -752,21 +891,21 @@ end;
 procedure ReplaceTextToken(var Text: WideString; Token, Replacement, ColorTag: WideString);
 begin
   if ColorTag <> '' then
-    Replacement := ColorTag + Replacement + '</color>';
+    Replacement := ColorTag + Replacement + EndColorTag;
   Text := ReplaceAllWideString(Text, Token, Replacement);
 end;
 
 function ReplaceColoredToken(Text, Token, Replacement, ColorTag: WideString): WideString;
 begin
   if ColorTag <> '' then
-    Replacement := ColorTag + Replacement + '</color>';
+    Replacement := ColorTag + Replacement + EndColorTag;
   Result := ReplaceAllWideString(Text, Token, Replacement);
 end;
 
 function FormatText1(Text, ColorTag, Token, Replacement: WideString): WideString;
 begin
   if ColorTag <> '' then
-    Replacement := ColorTag + Replacement + '</color>';
+    Replacement := ColorTag + Replacement + EndColorTag;
   Result := ReplaceAllWideString(Text, Token, Replacement);
 end;
 
@@ -781,8 +920,8 @@ function FormatText2(
 begin
   if ColorTag <> '' then
   begin
-    Replacement1 := ColorTag + Replacement1 + '</color>';
-    Replacement2 := ColorTag + Replacement2 + '</color>';
+    Replacement1 := ColorTag + Replacement1 + EndColorTag;
+    Replacement2 := ColorTag + Replacement2 + EndColorTag;
   end;
   Result :=
       ReplaceAllWideString(ReplaceAllWideString(Text, Token1, Replacement1), Token2, Replacement2);
@@ -801,9 +940,9 @@ function FormatText3(
 begin
   if ColorTag <> '' then
   begin
-    Replacement1 := ColorTag + Replacement1 + '</color>';
-    Replacement2 := ColorTag + Replacement2 + '</color>';
-    Replacement3 := ColorTag + Replacement3 + '</color>';
+    Replacement1 := ColorTag + Replacement1 + EndColorTag;
+    Replacement2 := ColorTag + Replacement2 + EndColorTag;
+    Replacement3 := ColorTag + Replacement3 + EndColorTag;
   end;
   Result :=
       ReplaceAllWideString(
@@ -820,19 +959,19 @@ end;
 function WrapTextInColor(Text, ColorTag: WideString): WideString;
 begin
   if (ColorTag <> '') and (Text <> '') then
-    Result := ColorTag + Text + '</color>'
+    Result := ColorTag + Text + EndColorTag
   else
     Result := Text;
 end;
 
 function NormalizeTextHighlightColors(Text: WideString): WideString;
 begin
-  Result := FormatText1(Text, '', '<color=17,139,255>', '<color=255,240,100>');
-  Result := FormatText1(Result, '', '<color=127,127,127>', '<color=255,240,100>');
-  Result := FormatText1(Result, '', '<color=191,185,128>', '<color=255,240,100>');
-  Result := FormatText1(Result, '', InfoNameColorTag, '<color=255,240,100>');
-  Result := FormatText1(Result, '', '<color=39,172,177>', '<color=255,240,100>');
-  Result := FormatText1(Result, '', InfoHullSeriesColorTag, '<color=255,240,100>');
+  Result := FormatText1(Text, '', MicroModuleHighPriorityColorTag, TextHighlightColorTag);
+  Result := FormatText1(Result, '', GrayColorTag, TextHighlightColorTag);
+  Result := FormatText1(Result, '', '<color=191,185,128>', TextHighlightColorTag);
+  Result := FormatText1(Result, '', InfoNameColorTag, TextHighlightColorTag);
+  Result := FormatText1(Result, '', '<color=39,172,177>', TextHighlightColorTag);
+  Result := FormatText1(Result, '', InfoHullSeriesColorTag, TextHighlightColorTag);
 end;
 
 function IncrementWrapped(var Value: Integer; Minimum, Maximum: Integer): Integer;

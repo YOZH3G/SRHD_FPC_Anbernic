@@ -1,28 +1,32 @@
-{$EXCESSPRECISION OFF}
 unit aGroup;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_Buf,
   EC_Struct,
-  Windows,
   aGalaxy,
   aShip;
+
 type
+
   TGroup = class;
+
+  {$Z1}
+  TGroupWaitMode = (GroupWaitArrival = 0, GroupWaitAssembly = 2, GroupWaitUntilTurn = 3);
+
   TGroupRouteOrder = record
-    Kind: Byte;
-    Gap1: array[0..2] of Byte;
+    Kind: TShipOrder;
     Target: TObject;
     Destination: TPointF;
-    WaitMode: Byte;
-    Gap11: array[0..2] of Byte;
+    WaitMode: TGroupWaitMode;
     WaitUntilTurn: Integer;
   end;
+
   TGroup = class(TObjectEx)
     CreatedTurn: Integer;
     GenerationSeed: Cardinal;
@@ -46,17 +50,18 @@ type
     function GetShipGreeting(Ship: Pointer): WideString;
     function FindCentralMemberStar: TStar;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   aConst,
-  aGalaxyStruct,
   SysUtils,
   Math,
   aPlanet,
   aMyFunction,
   Globals,
-  GlobalsV;
+  GlobalsV,
+  aGalaxyStruct;
 
 constructor TGroup.Create;
 begin
@@ -108,18 +113,18 @@ begin
   begin
     Order := Route[I];
     Buffer.AddAnsiChar(AnsiChar(Order.Kind));
-    if Order.Kind = 3 then
+    if Order.Kind = soJump then
       Buffer.AddDWord((Order.Target as TStar).Id)
-    else if Order.Kind = 4 then
+    else if Order.Kind = soJumpHole then
       Buffer.AddDWord((Order.Target as THole).Id)
-    else if Order.Kind = 2 then
+    else if Order.Kind = soLand then
     begin
       if Order.Target is TShip then
-        Buffer.AddDWord(Cardinal((Order.Target as TShip).Id) or $80000000)
+        Buffer.AddDWord(Cardinal((Order.Target as TShip).Id) or OrderTargetShipFlag)
       else
         Buffer.AddDWord((Order.Target as TPlanet).Id);
     end
-    else if Order.Kind = 6 then
+    else if Order.Kind = soFollowShip then
       Buffer.AddDWord((Order.Target as TShip).Id)
     else
       Buffer.AddDWord(0);
@@ -142,21 +147,21 @@ begin
   RandomState := Buffer.GetUInt32;
   Buffer.GetByte;
   Count := Buffer.GetWord;
-  if (Count < 0) or (Count > 10000) then
+  if (Count < 0) or (Count > MaxSavedListCount) then
     raise EAbort.Create('Err TGroup.Load FShips');
   for I := 0 to Count - 1 do
     Ships.Add(Pointer(Buffer.GetUInt32));
   Count := Buffer.GetWord;
-  if (Count < 0) or (Count > 10000) then
+  if (Count < 0) or (Count > MaxSavedListCount) then
     raise EAbort.Create('Err TGroup.Load FOrders');
   SetLength(Route, Count);
   for I := 0 to Count - 1 do
   begin
-    Route[I].Kind := Buffer.GetByte;
+    Route[I].Kind := TShipOrder(Buffer.GetByte);
     Route[I].Target := TObject(Buffer.GetUInt32);
     Route[I].Destination.X := Buffer.GetSingle;
     Route[I].Destination.Y := Buffer.GetSingle;
-    Route[I].WaitMode := Buffer.GetByte;
+    Route[I].WaitMode := TGroupWaitMode(Buffer.GetByte);
     Route[I].WaitUntilTurn := Buffer.GetInt32;
   end;
 end;
@@ -174,19 +179,20 @@ begin
   end;
   for I := 0 to Length(Route) - 1 do
   begin
-    if Route[I].Kind = 3 then
+    if Route[I].Kind = soJump then
       Route[I].Target := TObject(Galaxy.IdToStar(Cardinal(Route[I].Target))) as TStar
-    else if Route[I].Kind = 4 then
+    else if Route[I].Kind = soJumpHole then
       Route[I].Target := TObject(Galaxy.IdToHole(Cardinal(Route[I].Target))) as THole
-    else if Route[I].Kind = 2 then
+    else if Route[I].Kind = soLand then
     begin
-      if Cardinal(Route[I].Target) and $80000000 = $80000000 then
+      if Cardinal(Route[I].Target) and OrderTargetShipFlag = OrderTargetShipFlag then
         Route[I].Target :=
-            TObject(Galaxy.IdToShip(Cardinal(Route[I].Target) and $7FFFFFFF, True)) as TShip
+            TObject(Galaxy.IdToShip(Cardinal(Route[I].Target) and TaggedObjectIdMask, True))
+                as TShip
       else
         Route[I].Target := TObject(Galaxy.IdToPlanet(Cardinal(Route[I].Target))) as TPlanet;
     end
-    else if Route[I].Kind = 6 then
+    else if Route[I].Kind = soFollowShip then
       Route[I].Target := TObject(Galaxy.IdToShip(Cardinal(Route[I].Target), True)) as TShip
     else
       Route[I].Target := nil;
@@ -269,9 +275,9 @@ begin
   SetLength(Route, 4);
   with Route[0] do
   begin
-    Kind := 3;
+    Kind := soJump;
     Target := AssemblyStar;
-    WaitMode := 0;
+    WaitMode := GroupWaitArrival;
     WaitUntilTurn := 0;
   end;
   Planet := TObject(AssemblyStar.FindFirstInhabitedPlanet) as TPlanet;
@@ -283,24 +289,24 @@ begin
   end;
   with Route[1] do
   begin
-    Kind := 2;
+    Kind := soLand;
     Target := Planet;
-    WaitMode := 0;
+    WaitMode := GroupWaitArrival;
     WaitUntilTurn := 0;
   end;
   with Route[2] do
   begin
-    Kind := 1;
+    Kind := soMove;
     Target := nil;
     Destination := AssemblyStar.GetBoundaryPointTowardStar(TargetStar);
-    WaitMode := 3;
+    WaitMode := GroupWaitUntilTurn;
     WaitUntilTurn := Galaxy.CurrentTurn + NextRandomIntRange(45, 55, RandomState);
   end;
   with Route[3] do
   begin
-    Kind := 3;
+    Kind := soJump;
     Target := TargetStar;
-    WaitMode := 0;
+    WaitMode := GroupWaitArrival;
     WaitUntilTurn := 0;
   end;
   if TargetStar.Status.CustomFaction <> '' then
@@ -321,22 +327,22 @@ begin
             'GalaxyNews.Group.WarriorLiberator.Create',
             RandomState * (Galaxy.CurrentTurn mod 71)
         );
-  ReplaceTextToken(Text, '<StarNormal>', AssemblyStar.Name, '<color=255,240,100>');
-  ReplaceTextToken(Text, '<StarEnemy>', TargetStar.Name, '<color=255,240,100>');
+  ReplaceTextToken(Text, '<StarNormal>', AssemblyStar.Name, TextHighlightColorTag);
+  ReplaceTextToken(Text, '<StarEnemy>', TargetStar.Name, TextHighlightColorTag);
   ReplaceTextToken(
       Text,
       '<SectorNormal>',
       AssemblyStar.Constellation.GetName,
-      '<color=255,240,100>'
+      TextHighlightColorTag
   );
-  ReplaceTextToken(Text, '<SectorEnemy>', TargetStar.Constellation.GetName, '<color=255,240,100>');
+  ReplaceTextToken(Text, '<SectorEnemy>', TargetStar.Constellation.GetName, TextHighlightColorTag);
   ReplaceTextToken(
       Text,
       '<Date>',
       Galaxy.FormatTurnDate(Route[2].WaitUntilTurn),
-      '<color=255,240,100>'
+      TextHighlightColorTag
   );
-  Galaxy.AddPlanetNews(26, Text);
+  Galaxy.AddPlanetNews(gnLiberationGroupCreated, Text);
 end;
 
 function TGroup.AreShipsAssembled: Boolean;
@@ -391,7 +397,7 @@ begin
                   'ShipGreetings.Group.WarriorLiberatorBefore',
                   NextRandomIntRange(100, 1000, RandomState)
               ),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<StarEnemy>',
               Star.Name,
               '<Date>',
@@ -404,7 +410,7 @@ begin
                   'ShipGreetings.Group.WarriorLiberatorAfter',
                   NextRandomIntRange(100, 1000, RandomState)
               ),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<StarEnemy>',
               Star.Name,
               '<Date>',
@@ -438,11 +444,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  THole.ClassName;
-  TPlanet.ClassName;
-  TShip.ClassName;
-  TStar.ClassName;
-end;
 end.

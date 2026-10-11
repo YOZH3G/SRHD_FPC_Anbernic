@@ -1,363 +1,236 @@
 #!/usr/bin/env python3
-"""Build Space Rangers HD for macOS or Android ARM64."""
+"""Build Space Rangers HD for Linux, macOS, Android, iOS, or the browser."""
 
 import argparse
 import json
 import os
 import plistlib
-import re
-import resource
 import shlex
 import shutil
 import subprocess
-import zipfile
 from pathlib import Path
 
+from android import build_android
+from build_support import (
+    BuildStamp,
+    build_okgf,
+    compile_native,
+    copy_if_changed,
+    file_state,
+    link_native,
+    output,
+    require_tool,
+    run_step,
+    sdl_source,
+)
 from compiler import prepare_compiler
-
-ROOT = Path(__file__).resolve().parents[1]
-PASCAL_FLAGS = ("-Mdelphi", "-FcUTF8")
-
-
-def require_tool(name: str) -> Path:
-    path = shutil.which(name)
-    if path is None:
-        raise FileNotFoundError(f"Required tool not found: {name}")
-    return Path(path).resolve()
+from ios import build_ios
+from pascal import build_paszlib, compile_pascal, pascal_flags
+from targets import ROOT, BuildConfig, add_build_arguments
 
 
-def output(*command: str) -> str:
-    return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT).strip()
-
-
-def run_step(work: Path, name: str, command: list[str | Path]) -> None:
-    """Keep each build step's output beside its generated files."""
-    log = work / f"{name}.log"
-    print(f"Building {name}…", flush=True)
-    with log.open("w") as stream:
-        try:
-            subprocess.run(
-                [str(arg) for arg in command],
-                cwd=work,
-                stdout=stream,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
-        except subprocess.CalledProcessError as error:
-            print("\n".join(log.read_text(errors="replace").splitlines()[-30:]))
-            raise RuntimeError(f"{name} failed; see {log}") from error
-
-
-def command_signature(command: list[str | Path]) -> str:
-    compiler = Path(command[0]).resolve()
-    stat = compiler.stat()
-    return json.dumps([list(map(str, command)), str(compiler), stat.st_mtime_ns, stat.st_size])
-
-
-def compile_pascal(work: Path, command: list[str | Path], rebuild: bool) -> None:
-    # FPC tracks unit/source dependencies, but not every change to compiler options.
-    stamp = work / "pascal-command.json"
-    signature = command_signature(command)
-    if rebuild or not stamp.is_file() or stamp.read_text() != signature:
-        command = [command[0], "-B", *command[1:]]
-    # A failed build must not leave units compiled with a mixture of settings.
-    stamp.write_text("")
-    run_step(work, "pascal", command)
-    stamp.write_text(signature)
-
-
-def compile_native(work: Path, command: list[str | Path], rebuild: bool) -> None:
-    stamp = work / "native-command.json"
-    depfile = work / "native.d"
-    target = Path(command[command.index("-o") + 1])
-    command = [*command, "-MD", "-MF", depfile]
-    signature = command_signature(command)
-    if (
-        not rebuild
-        and target.is_file()
-        and depfile.is_file()
-        and stamp.is_file()
-        and stamp.read_text() == signature
-    ):
-        dependencies = shlex.split(depfile.read_text().replace("\\\n", "").split(": ", 1)[1])
-        if dependencies and all(
-            (work / name).is_file()
-            and (work / name).stat().st_mtime_ns <= target.stat().st_mtime_ns
-            for name in dependencies
-        ):
-            print("Native platform code is up to date.", flush=True)
-            return
-    stamp.write_text("")
-    run_step(work, "native", command)
-    stamp.write_text(signature)
-
-
-def build_okgf(work: Path, release: bool, *options: str, rebuild: bool = False) -> Path:
-    directory = work / "native"
-    configuration = "Release" if release else "RelWithDebInfo"
-    run_step(work, "configure", [
-        "cmake", "-S", ROOT / "native", "-B", directory, f"-DCMAKE_BUILD_TYPE={configuration}",
-        *options,
-    ])  # fmt: skip
-    run_step(
-        work,
-        "okgf",
-        [
-            "cmake",
-            "--build",
-            directory,
-            "--parallel",
-            *(["--clean-first"] if rebuild else []),
-        ],
-    )
-    return directory
-
-
-def pascal_flags(release: bool, *platform_paths: Path) -> list[str]:
-    search_paths = [
-        *platform_paths,
-        ROOT / "platform",
-        ROOT / "source",
-        *sorted(path for path in (ROOT / "source").rglob("*") if path.is_dir()),
-    ]
-    return [
-        *PASCAL_FLAGS,
-        "-O4" if release else "-O2",
-        # -O4 enables field reordering and fast math; override it afterward.
-        "-OoNOORDERFIELDS",
-        "-OoNOFASTMATH",
-        "-gl",
-        *(f"-Fu{path}" for path in search_paths),
-    ]
-
-
-def build_macos(release: bool, rebuild: bool = False, *, lto: bool = False) -> Path:
-    compiler, compiler_flags = prepare_compiler("macos", run_step, lto=lto)
+def build_macos(config: BuildConfig, rebuild: bool) -> Path:
+    compiler, compiler_flags = prepare_compiler(config)
     clang = require_tool("clang")
     sdk = output("xcrun", "--show-sdk-path")
-    configuration = ("release" if release else "debug") + ("-lto" if lto else "")
-    work = ROOT / ".local" / configuration
-    app = work / "Space Rangers HD.app"
-    libraries = app / "Contents/MacOS"
-    units = work / "units"
-    for directory in (libraries, units):
-        directory.mkdir(parents=True, exist_ok=True)
+    work, libraries, units = config.work, config.binary_directory, config.units
+    config.create_directories()
 
     native = build_okgf(
         work,
-        release,
+        config.release,
         "-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0",
         f"-DCMAKE_C_COMPILER={clang}",
-        "-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -g",
+        "-DCMAKE_C_FLAGS_RELEASE=-O2 -DNDEBUG -g",
         rebuild=rebuild,
     )
-    shutil.copy2(native / "libokgf.dylib", libraries)
-    cflags = shlex.split(output("pkg-config", "--cflags", "sdl2", "SDL2_mixer", "libjpeg"))
-    ldflags = shlex.split(output("pkg-config", "--libs", "sdl2", "SDL2_mixer", "libjpeg"))
-    native_object = work / "game_native.o"
-    # Keep the object: dsymutil needs its DWARF after linking the library.
-    compile_native(work, [
-        clang, "-c", "-O3" if release else "-O2", "-g",
-        "-Wall", "-Wextra", "-mmacosx-version-min=11.0",
-        ROOT / "platform/game_native.c", *cflags, "-o", native_object,
-    ], rebuild)  # fmt: skip
-    run_step(work, "native-link", [
-        clang, "-dynamiclib", "-mmacosx-version-min=11.0", native_object, *ldflags,
-        "-Wl,-install_name,@rpath/libgamenative.dylib", "-o", libraries / "libgamenative.dylib",
-    ])  # fmt: skip
-    compile_pascal(work, [
-        compiler, *compiler_flags, *pascal_flags(release), "-Aclang-llvm-darwin",
+    # Signing changes the bundled copy. Compare the original library's state,
+    # rather than treating the added signature as a new source change.
+    copy_stamp = BuildStamp(work / "okgf-copy.json")
+    copy_state = json.dumps(file_state([native / "libokgf.dylib"]))
+    changed = not copy_stamp.matches(copy_state, libraries / "libokgf.dylib")
+    if changed:
+        with copy_stamp.recording(copy_state):
+            shutil.copy2(native / "libokgf.dylib", libraries)
+    paszlib = build_paszlib(work, compiler, compiler_flags, rebuild, "-Aclang-llvm-darwin")
+    changed = compile_pascal(work, [
+        compiler, *compiler_flags, *pascal_flags(config.release, paszlib), "-Aclang-llvm-darwin",
         f"-FU{units}", f"-FE{libraries}", f"-Fl{libraries}",
-        "-k-lgamenative", "-k-lokgf", "-k-lz", "-k-rpath", "-k@executable_path", f"-XR{sdk}",
+        f"-Fl{output('brew', '--prefix')}/lib",
+        "-k-lokgf", "-k-rpath", "-k@executable_path", f"-XR{sdk}",
         # Retain the linker's generated object so dsymutil can read LTO DWARF.
-        *(["-k-object_path_lto", f"-k{work / 'lto.o'}"] if lto else []),
+        *(["-k-object_path_lto", f'-k"{work / "lto.o"}"'] if config.lto else []),
         ROOT / "source/Rangers.dpr",
-    ], rebuild)  # fmt: skip
-    for name in ("Rangers", "libgamenative.dylib", "libokgf.dylib"):
-        run_step(work, f"symbols-{name}", [
-            "xcrun", "dsymutil", libraries / name, "-o", libraries / f"{name}.dSYM",
-        ])  # fmt: skip
-    (app / "Contents/Info.plist").write_bytes(
-        plistlib.dumps(
-            {
-                "CFBundleExecutable": "Rangers",
-                "CFBundleIdentifier": "org.spacerangershd.fpc",
-                "CFBundleName": "Space Rangers HD",
-                "CFBundleDisplayName": "Space Rangers HD",
-                "CFBundlePackageType": "APPL",
-                "CFBundleVersion": "1",
-                "NSHighResolutionCapable": True,
-                "LSMinimumSystemVersion": "11.0",
-            }
-        )
+    ], rebuild, libraries / "Rangers", (native / "libokgf.dylib",)) or changed  # fmt: skip
+    package_macos(config, changed)
+    return config.artifact
+
+
+def package_macos(config: BuildConfig, changed: bool) -> None:
+    """Update debug symbols and bundle metadata before ad-hoc signing."""
+    work, app, libraries = config.work, config.artifact, config.binary_directory
+    for name in ("Rangers", "libokgf.dylib"):
+        if changed or not (libraries / f"{name}.dSYM").is_dir():
+            run_step(work, f"symbols-{name}", [
+                "xcrun", "dsymutil", libraries / name, "-o", libraries / f"{name}.dSYM",
+            ])  # fmt: skip
+            changed = True
+    info = plistlib.dumps(
+        {
+            "CFBundleExecutable": "Rangers",
+            "CFBundleIdentifier": "org.spacerangershd.fpc",
+            "CFBundleName": "Space Rangers HD",
+            "CFBundleDisplayName": "Space Rangers HD",
+            "CFBundlePackageType": "APPL",
+            "CFBundleVersion": "1",
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "11.0",
+        }
     )
-    run_step(work, "sign", ["codesign", "--force", "--deep", "--sign", "-", app])
-    return app
+    info_file = app / "Contents/Info.plist"
+    if not info_file.is_file() or info_file.read_bytes() != info:
+        info_file.write_bytes(info)
+        changed = True
+    if changed or not (app / "Contents/_CodeSignature/CodeResources").is_file():
+        run_step(work, "sign", ["codesign", "--force", "--deep", "--sign", "-", app])
 
 
-def latest_sdk_directory(parent: Path, prefix: str = "") -> Path:
-    """Select a numbered SDK release, excluding preview installations."""
-    versions = {}
-    for path in parent.iterdir():
-        version = path.name.removeprefix(prefix)
-        if path.is_dir() and path.name.startswith(prefix) and re.fullmatch(r"\d+(\.\d+)*", version):
-            versions[tuple(map(int, version.split(".")))] = path
-    if not versions:
-        raise FileNotFoundError(f"No installed SDK releases found in {parent}")
-    return versions[max(versions)]
-
-
-def prepare_android_binutils(directory: Path, toolchain: Path) -> None:
-    for name, executable in (
-        ("clang", "clang"),
-        ("ld", "ld.lld"),
-        ("ar", "llvm-ar"),
-        ("strip", "llvm-strip"),
-    ):
-        link = directory / f"aarch64-linux-android-{name}"
-        link.unlink(missing_ok=True)
-        link.symlink_to(toolchain / executable)
-
-
-def build_android(release: bool, rebuild: bool = False) -> Path:
-    required = ("ANDROID_HOME", "ANDROID_NDK_HOME", "ANDROID_PREFIX", "SDL_SOURCE")
-    missing = [name for name in required if not os.environ.get(name)]
-    if missing:
-        raise RuntimeError("Set installed dependency paths: " + ", ".join(missing))
-    sdk, ndk, prefix, sdl_source = (
-        Path(os.environ[name]).expanduser().resolve() for name in required
+def build_linux(config: BuildConfig, rebuild: bool) -> Path:
+    work, libraries, units = config.work, config.binary_directory, config.units
+    config.create_directories()
+    # Check system dependencies before the more expensive compiler bootstrap.
+    require_tool("cmake")
+    require_tool("pkg-config")
+    require_tool("clang")
+    require_tool("ld.lld")
+    subprocess.run(
+        ["pkg-config", "--print-errors", "--exists", "sdl2 >= 2.26", "vorbisfile", "ogg"],
+        check=True,
     )
-    toolchain = next((ndk / "toolchains/llvm/prebuilt").glob("*/bin"), None)
-    if toolchain is None:
-        raise FileNotFoundError(f"No LLVM toolchain found in {ndk}")
-    platform = ROOT / "platform/android"
-    work = ROOT / ".local/android"
-    libraries, units, binutils = (work / name for name in ("lib", "units", "bin"))
-    for directory in (libraries, units, binutils):
-        directory.mkdir(parents=True, exist_ok=True)
-    prepare_android_binutils(binutils, toolchain)
-    compiler, compiler_flags = prepare_compiler("android", run_step, toolchain)
+    native = build_okgf(work, config.release, rebuild=rebuild)
+    copy_if_changed(native / "libokgf.so", libraries / "libokgf.so")
+    compiler, compiler_flags = prepare_compiler(config)
+    # FPC's LLVM exception runtime uses libgcc; -n disables system fpc.cfg.
+    libgcc = Path(output("clang", "-print-libgcc-file-name"))
+    if not libgcc.is_file():
+        raise FileNotFoundError("Clang cannot locate libgcc; install the GCC runtime.")
+    compiler_flags += [f"-Fl{libgcc.parent}"]
+    paszlib = build_paszlib(work, compiler, compiler_flags, rebuild)
+    # CMake finds C libraries; FPC needs the corresponding native search paths.
+    library_flags = shlex.split(output("pkg-config", "--libs-only-L", "sdl2", "vorbisfile"))
+    compile_pascal(work, [
+        compiler, *compiler_flags, *pascal_flags(config.release, paszlib),
+        f"-FU{units}", f"-FE{libraries}", f"-Fl{libraries}",
+        *("-Fl" + flag[2:] for flag in library_flags),
+        # LLD resolves command-line -l before FPC's script SEARCH_DIR entries.
+        # FPC reparses -k options; quote the whole linker argument for spaced paths.
+        f'-k"-L{libraries}"', "-k-lokgf", "-k--enable-new-dtags", "-k-rpath", "-k$ORIGIN",
+        ROOT / "source/Rangers.dpr",
+    ], rebuild, libraries / "Rangers", (libraries / "libokgf.so", libgcc))  # fmt: skip
+    return config.artifact
 
+
+def build_wasm(config: BuildConfig, rebuild: bool) -> Path:
+    emcc = require_tool("emcc")
+    emxx = require_tool("em++")
+    toolchain = Path(output("em-config", "LLVM_ROOT"))
+    work, units, binary = config.work, config.units, config.binary_directory
+    config.create_directories()
+    os.environ.setdefault("EM_CACHE", str(ROOT / ".local/emscripten-cache"))
+    os.environ.setdefault("EMCC_CORES", "6")
+    os.environ.setdefault("BINARYEN_CORES", "6")
+    compiler, flags = prepare_compiler(config, toolchain)
+    paszlib = build_paszlib(work, compiler, flags, rebuild)
     native = build_okgf(
         work,
-        release,
-        "-G",
-        "Ninja",
-        f"-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake",
-        "-DANDROID_ABI=arm64-v8a",
-        "-DANDROID_PLATFORM=android-26",
-        f"-DCMAKE_FIND_ROOT_PATH={prefix}",
+        config.release,
+        *(["-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON"] if config.lto else []),
         rebuild=rebuild,
+        wasm=True,
+        jobs=6,
     )
-    shutil.copy2(native / "libokgf.so", libraries)
-    shutil.copy2(prefix / "lib/libSDL2.so", libraries)
-    run_step(work, "native", [
-        toolchain / "aarch64-linux-android26-clang", "-shared", "-fPIC",
-        "-O3" if release else "-O2", f"-I{prefix}/include", f"-I{prefix}/include/SDL2",
-        f"-I{platform}", ROOT / "platform/game_native.c", platform / "android_native.c",
-        f"-L{prefix}/lib", "-lSDL2_mixer", "-lSDL2", "-ljpeg", "-llog", "-landroid", "-lm",
-        "-Wl,-z,max-page-size=16384", "-Wl,-soname,libgamenative.so",
-        "-o", libraries / "libgamenative.so",
-    ])  # fmt: skip
-    system_libraries = toolchain.parent / "sysroot/usr/lib/aarch64-linux-android"
-    clang_libraries = Path(output(str(toolchain / "clang"), "-print-resource-dir")) / "lib/linux"
     compile_pascal(work, [
-        compiler, *compiler_flags, "-Tandroid", *pascal_flags(release, platform),
-        "-Aclang-llvm", "-Cg", f"-Fl{clang_libraries}/aarch64",
-        "-XPaarch64-linux-android-",
-        f"-FD{binutils}", f"-FU{units}", f"-FE{libraries}", f"-Fl{libraries}",
-        f"-Fl{system_libraries}/26", f"-Fl{system_libraries}", f"-k-L{system_libraries}/26",
-        "-k-z", "-kmax-page-size=16384", "-k-lm", "-k--no-undefined",
-        platform / "main.lpr",
-    ], rebuild)  # fmt: skip
-    return package_android(work, sdk, sdl_source, prefix, toolchain)
+        compiler, *flags, *pascal_flags(config.release, paszlib, ROOT / "platform/wasm"),
+        "-Cn", "-XMFPC_GAME_MAIN", f"-FU{units}", f"-FE{binary}",
+        ROOT / "source/Rangers.dpr",
+    ], rebuild, binary / "ppas.sh")  # fmt: skip
+    link_wasm(config, native, (emcc, toolchain / "clang", toolchain / "wasm-ld"), emxx, rebuild)
+    copy_if_changed(ROOT / "platform/wasm/index.html", binary / "index.html")
+    return config.artifact
 
 
-def package_android(work: Path, sdk: Path, sdl_source: Path, prefix: Path, toolchain: Path) -> Path:
-    java_home = os.environ.get("JAVA_HOME")
-    java = Path(java_home).expanduser() / "bin" if java_home else require_tool("javac").parent
-    sdk_tools = latest_sdk_directory(sdk / "build-tools")
-    android_jar = latest_sdk_directory(sdk / "platforms", "android-") / "android.jar"
-    platform = ROOT / "platform/android"
-    classes, dex = work / "classes", work / "dex"
-    for directory in (classes, dex):
-        directory.mkdir(exist_ok=True)
-    sources = sorted(
-        [
-            *platform.glob("java/**/*.java"),
-            *(sdl_source / "android-project/app/src/main/java").rglob("*.java"),
-        ]
-    )
-    run_step(work, "java", [
-        java / "javac", "-encoding", "UTF-8", "--release", "8", "-classpath", android_jar,
-        "-d", classes, *sources,
-    ])  # fmt: skip
-    run_step(work, "dex", [
-        sdk_tools / "d8", "--lib", android_jar, "--min-api", "26", "--output", dex,
-        *sorted(classes.rglob("*.class")),
-    ])  # fmt: skip
-    unsigned = work / "unsigned.apk"
-    run_step(work, "package", [
-        sdk_tools / "aapt2", "link", "-I", android_jar,
-        "--manifest", platform / "AndroidManifest.xml", "--version-code", "1",
-        "--version-name", "0.1", "-o", unsigned,
-    ])  # fmt: skip
-    with zipfile.ZipFile(unsigned, "a", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.write(dex / "classes.dex", "classes.dex")
-        for name in ("libSDL2.so", "libokgf.so", "libgamenative.so", "libmain.so"):
-            packaged = work / f"stripped-{name}"
-            shutil.copy2(work / "lib" / name, packaged)
-            run_step(
-                work, f"strip-{name}", [toolchain / "llvm-strip", "--strip-unneeded", packaged]
-            )
-            archive.write(packaged, f"lib/arm64-v8a/{name}")
-        archive.write(ROOT / "vendor/okgf/LICENSE", "assets/licenses/OKGF.txt")
-        archive.write(sdl_source / "LICENSE.txt", "assets/licenses/SDL2.txt")
-        licenses = prefix / "share/licenses"
-        for path in sorted(licenses.rglob("*")):
-            if path.is_file():
-                archive.write(path, "assets/licenses/" + str(path.relative_to(licenses)))
-    return sign_android_apk(work, unsigned, sdk_tools, java)
-
-
-def sign_android_apk(work: Path, unsigned: Path, sdk_tools: Path, java: Path) -> Path:
-    aligned = work / "aligned.apk"
-    run_step(work, "align", [sdk_tools / "zipalign", "-f", "-P", "16", "4", unsigned, aligned])
-    key = work / "debug.keystore"
-    if not key.exists():
-        run_step(work, "key", [
-            java / "keytool", "-genkeypair", "-keystore", key, "-alias", "androiddebugkey",
-            "-storepass", "android", "-keypass", "android", "-keyalg", "RSA", "-validity", "10000",
-            "-dname", "CN=Android Debug,O=Android,C=US",
-        ])  # fmt: skip
-    apk = work / "Rangers.apk"
-    run_step(work, "sign", [
-        sdk_tools / "apksigner", "sign", "--ks", key, "--ks-pass", "pass:android",
-        "--out", apk, aligned,
-    ])  # fmt: skip
-    run_step(work, "verify", [sdk_tools / "apksigner", "verify", apk])
-    return apk
+def link_wasm(
+    config: BuildConfig,
+    native: Path,
+    native_tools: tuple[Path, ...],
+    emxx: Path,
+    rebuild: bool,
+) -> None:
+    """Compile browser adapters and link FPC's object list with Emscripten."""
+    work, binary = config.work, config.binary_directory
+    # FPC writes the transitive object list into its deferred linker command.
+    # Let Emscripten perform the final link so libc, SDL and the JS loader agree
+    # on shared memory, exceptions and filesystem configuration.
+    commands = [
+        shlex.split(line)
+        for line in (binary / "ppas.sh").read_text().splitlines()
+        if "wasm-ld" in line
+    ]
+    link = next((line for line in commands if line and Path(line[0]).name == "wasm-ld"), [])
+    objects = [arg for arg in link if arg.endswith(".o")]
+    if not objects:
+        raise RuntimeError("FPC did not write a WebAssembly object list to ppas.sh.")
+    platform = ROOT / "platform/wasm"
+    sdl = sdl_source(native)
+    native_objects = []
+    for source in sorted(platform.glob("*.cpp")):
+        obj = work / (source.stem + ".o")
+        compile_native(work, [
+            emxx,
+            "-O2", "-pthread", "-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0",
+            "-std=c++17", f"-I{sdl / 'include'}",
+            *(["-flto"] if config.lto else []), "-c", source, "-o", obj,
+        ], rebuild, native_tools)  # fmt: skip
+        native_objects.append(obj)
+    link_native(work, [
+        emxx, "-O2", "-pthread", "-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0",
+        *(["-flto"] if config.lto else []), *objects, *native_objects,
+        native / "libokgf.a", native / "libSDL2.a",
+        "-sUSE_LIBJPEG=1", "-sUSE_LIBPNG=1", "-sUSE_ZLIB=1", "-sUSE_VORBIS=1",
+        "-sWASMFS=1", "-sFORCE_FILESYSTEM=1", "-sPROXY_TO_PTHREAD=1",
+        "-sPTHREAD_POOL_SIZE=16", "-sALLOW_BLOCKING_ON_MAIN_THREAD=0",
+        "-sALLOW_MEMORY_GROWTH=1", "-sINITIAL_MEMORY=134217728", "-sMAXIMUM_MEMORY=2147483648",
+        "-sSTACK_SIZE=8388608", "-sDEFAULT_PTHREAD_STACK_SIZE=8388608",
+        "-sEXIT_RUNTIME=1", "-sASSERTIONS=1", "-sGL_ENABLE_GET_PROC_ADDRESS=1",
+        "-sOFFSCREEN_FRAMEBUFFER=1", "-sJS_MATH=0", "-g2", "-Wl,--threads=6",
+        "-o", binary / "srhd-fpc.js",
+    ], [*map(Path, objects), *native_objects, native / "libokgf.a", native / "libSDL2.a", *native_tools],
+       [binary / "srhd-fpc.js", binary / "srhd-fpc.wasm"], rebuild)  # fmt: skip
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", choices=("macos", "android"), default="macos")
-    parser.add_argument("--release", action="store_true", help="Build an optimized release.")
-    parser.add_argument("--lto", action="store_true", help="Enable LTO in a separate macOS build.")
+    add_build_arguments(parser)
     parser.add_argument(
         "--rebuild", action="store_true", help="Rebuild all game units and native code."
     )
     args = parser.parse_args()
-    if args.lto and args.target != "macos":
-        parser.error("--lto is currently supported only for macOS builds.")
     try:
-        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-        desired = 4096 if hard == resource.RLIM_INFINITY else min(4096, hard)
-        resource.setrlimit(resource.RLIMIT_NOFILE, (max(soft, desired), hard))
-        if args.target == "android":
-            artifact = build_android(args.release, args.rebuild)
-        else:
-            artifact = build_macos(args.release, args.rebuild, lto=args.lto)
+        config = BuildConfig(
+            args.target, args.release, args.lto, simulator_arch=args.simulator_arch
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    try:
+        builders = {
+            "linux": build_linux,
+            "macos": build_macos,
+            "wasm": build_wasm,
+            "android": build_android,
+            "ios": build_ios,
+            "ios-simulator": build_ios,
+        }
+        artifact = builders[config.target](config, args.rebuild)
     except subprocess.CalledProcessError as error:
         parser.exit(1, error.output or str(error))
     except (OSError, RuntimeError) as error:

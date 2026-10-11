@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ab_W01;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Struct,
@@ -12,16 +11,17 @@ uses
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW01 = class;
+
   TabW01 = class(TabObject)
     ValueB0: Single;
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapBD: array[0..2] of Byte;
     TrailDistance: Single;
-    GapC4: array[0..3] of Byte;
     LastTrailPosition: TVector3D;
     ExpireTick: Integer;
     TurnSpeed: Single;
@@ -32,10 +32,10 @@ type
     destructor Destroy; override;
     procedure Launch(Owner: TabObject; Amount: Integer; Offset: Single);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   ab_Ship,
   GlobalsV;
@@ -208,8 +208,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabShip.ClassName;
-end;
 end.

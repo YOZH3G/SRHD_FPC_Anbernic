@@ -1,21 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit SE_Laser;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Str,
   EC_Struct,
   GI_MessageLoop,
   GI_RotateImage2,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TLaserSE = class;
+
   TLaserSE = class(TObjectSE)
     FrameImages: TStringsEC;
     FrameInterval: Cardinal;
@@ -25,7 +27,6 @@ type
     FrameIndex: Integer;
     AnimationTimer: PCallbackTimerGI;
     ManualAnimation: Boolean;
-    Gap6D: array[0..2] of Byte;
     EndPosition: TPointF;
     procedure AttachToSpace(ASpace: TSpaceSE); override;
     procedure DetachFromSpace; override;
@@ -41,10 +42,13 @@ type
     procedure StopAnimationTimer;
     procedure AdvanceAnimationTimer(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
+
 implementation
+
 uses
   Math,
-  GI_Main;
+  GI_Main,
+  aMyFunction;
 
 destructor TLaserSE.Destroy;
 begin
@@ -91,7 +95,7 @@ begin
   Angle := ArcTan2(TargetPosition.X - Position.X, -(TargetPosition.Y - Position.Y));
   AngleSin := Sin(Angle);
   AngleCos := Cos(Angle);
-  ImageAngle := Round(Angle / 3.1415926 * 127) and $FF;
+  ImageAngle := Round(Angle / GamePi * 127) and $FF;
   Distance := SegmentSize / 2;
   BeamLength := Sqrt(Sqr(TargetPosition.X - Position.X) + Sqr(TargetPosition.Y - Position.Y));
   Segments := TList.Create;
@@ -112,6 +116,10 @@ begin
     );
     Segments.Add(Segment);
     Distance := Distance + SegmentSize - 4;
+  end;
+  { Native code retains this empty check of the final segment. }
+  if Segment <> nil then
+  begin
   end;
   EndPosition :=
       MakePointF(

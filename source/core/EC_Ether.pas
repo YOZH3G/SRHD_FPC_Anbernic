@@ -1,26 +1,33 @@
-{$EXCESSPRECISION OFF}
 unit EC_Ether;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   EC_Buf,
   SyncObjs;
+
 type
+
   TEther = class;
+
   TEtherUnit = class;
+
   PointerToTEtherIndex = ^TEtherIndex;
+
   TEtherUnit = class(TObject)
     Prev: TEtherUnit;
     Next: TEtherUnit;
     Value: Integer;
     Name: WideString;
   end;
+
   PEtherIndex = PointerToTEtherIndex;
+
   TEtherIndex = array[0..536870910] of TEtherUnit;
+
   TEther = class(TObjectEx)
     First: TEtherUnit;
     Last: TEtherUnit;
@@ -41,9 +48,10 @@ type
     procedure Enter;
     procedure Leave;
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   EC_Str;
 
@@ -55,11 +63,11 @@ end;
 
 destructor TEther.Destroy;
 begin
-  // The Win32 destructor unlocks an unowned critical section. POSIX rejects
-  // that operation; dispose this instance's entries and owned lock instead.
+  // Original $4DC894 unlocks an unowned critical section and leaks its storage.
+  // FPC reports that invalid unlock as EThreadError. Destroy the owned data and
+  // lock instead; the script owner has already stopped using this object.
   Clear;
   Lock.Free;
-  Lock := nil;
   inherited Destroy;
 end;
 
@@ -106,6 +114,8 @@ end;
 function TEther.GetIndexedEntry(Index: Integer): TEtherUnit;
 begin
   Result := SortedItems^[Index];
+  // Original bug ($4DC9FC): POP EAX discards the loaded entry and returns Self.
+  Result := TEtherUnit(Pointer(Self));
 end;
 
 procedure TEther.SetIndexedEntry(Index: Integer; Item: TEtherUnit);
@@ -152,17 +162,22 @@ var
   Index: Integer;
 begin
   Enter;
-  Item := AppendEntry;
-  Item.Name := Name;
-  Item.Value := Value;
-  Index := FindInsertionIndex(Name);
-  Inc(Count);
-  SortedItems := ReAllocREC(SortedItems, Count * SizeOf(TEtherUnit));
-  MoveCount := Count - 1 - Index;
-  if MoveCount > 0 then
-    Move(SortedItems^[Index], SortedItems^[Index + 1], MoveCount * SizeOf(TEtherUnit));
-  SetIndexedEntry(Index, Item);
-  Leave;
+  try
+    Item := AppendEntry;
+    Item.Name := Name;
+    Item.Value := Value;
+    Index := FindInsertionIndex(Name);
+    Inc(Count);
+    SortedItems := ReAllocREC(SortedItems, Count * SizeOf(TEtherUnit));
+    MoveCount := Count - 1 - Index;
+    if MoveCount > 0 then
+      Move(SortedItems^[Index], SortedItems^[Index + 1], MoveCount * SizeOf(TEtherUnit));
+    SetIndexedEntry(Index, Item);
+  finally
+    // A failed allocation or lookup must not leave the lock owned by a worker
+    // that exits before the script is destroyed on the main thread.
+    Leave;
+  end;
 end;
 
 procedure TEther.SaveToBuffer(Buffer: TBufEC);

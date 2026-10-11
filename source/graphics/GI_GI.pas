@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_GI;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -13,8 +12,11 @@ uses
   GI_MessageLoop,
   GR_GraphBuf,
   Types;
+
 type
+
   TgiGI = class;
+
   TgiGI = class(TObjectGI)
     ImageCache: TCGiControlEC;
     ImageKindX: TImageKindXGI;
@@ -40,10 +42,12 @@ type
     procedure LoadImageProperties(Block: TBlockParEC);
     procedure SetHardwareMirrorHorizontal(Value: Boolean);
   end;
+
 procedure LoadGiByPathIntoGraphBuf(const GiPath: WideString; Destination: TGraphBufGR);
+
 implementation
+
 uses
-  Math,
   EC_Cache,
   EC_Mem,
   GR_Main,
@@ -150,6 +154,7 @@ var
   Buffer: TGraphBufGR;
   Clip: TRect;
 begin
+  Point := ScreenToLogicalPoint(Point);
   Result := False;
   Pixel := 0;
   Clip.Left := Point.X;
@@ -483,7 +488,7 @@ begin
                   X + TileOrigin.X,
                   Y + TileOrigin.Y,
                   Alpha,
-                  $FFFFFF,
+                  RgbWhite,
                   @ClipRect,
                   False,
                   HardwareMirrorHorizontal
@@ -507,7 +512,7 @@ begin
                 X,
                 Y,
                 Alpha,
-                $FFFFFF,
+                RgbWhite,
                 @ClipRect,
                 False,
                 HardwareMirrorHorizontal

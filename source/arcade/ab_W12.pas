@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ab_W12;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Struct,
@@ -12,13 +11,15 @@ uses
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW12 = class;
+
   TabW12 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapB9: array[0..2] of Byte;
     ExpireTick: Integer;
     OrbitAngle: Single;
     OrbitRadius: Single;
@@ -29,9 +30,10 @@ type
     destructor Destroy; override;
     procedure Launch(Owner: TabObject; Amount: Integer; Angle: Single);
   end;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   GlobalsV;
 

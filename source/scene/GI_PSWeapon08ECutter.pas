@@ -1,34 +1,41 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon08ECutter;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTECutterParticle = ^TECutterParticle;
+
   PECutterParticle = PointerToTECutterParticle;
+
   TECutterParticle = record
     Kind: Integer;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    GapF: array[0..0] of Byte;
     Velocity: TPointF;
     Gap18: array[0..1] of Byte;
     Unknown1A: Byte;
-    Gap1B: array[0..0] of Byte;
   end;
+
   TECutterPalette = array[0..7] of Word;
+
 var
+
   ECutterPalettes: array of TECutterPalette;
+
 type
+
   TPSWeapon08ECutter = class;
+
   TPSWeapon08ECutter = class(TPSWeaponGI)
     Particles: PECutterParticle;
     ParticleCount: Integer;
@@ -47,9 +54,13 @@ type
     procedure GrowParticles;
     function AddParticle: PECutterParticle;
   end;
+
 procedure LoadECutterPalettes;
+
 implementation
+
 uses
+  GI_Main,
   GlobalsV,
   SysUtils,
   Math,
@@ -60,8 +71,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $87791C
-// @unit-finalization $68F3E4
 
 constructor TPSWeapon08ECutter.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -102,10 +111,7 @@ end;
 
 procedure TPSWeapon08ECutter.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon08ECutter.ClearParticles;

@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fCfgSettings;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_CacheFont,
   EC_BlockPar,
@@ -14,12 +13,14 @@ uses
   GI_MessageLoop,
   GI_Panel,
   Types;
+
 type
+
   TfCfgSettings = class;
+
   TOptionSliderEvent = procedure(Sender: TCountBarGI) of object;
+
   TfCfgSettings = class(TMessageLoopGI)
-    // CHANGE: PORTABILITY - Let native startup recreate the window after resolution changes.
-    RestartRequested: Boolean;
     ActiveGroupIndex: Integer;
     BuildGroupIndex: Integer;
     CurrentOptionName: WideString;
@@ -31,11 +32,11 @@ type
     ModeRightPosition: TPoint;
     GroupButtonTops: array[0..3] of Integer;
     ModeLeaveTimer: PCallbackTimerGI;
-    RobotAvailability: PtrInt;
+    RobotAvailability: Integer;
     HasInstalledPackages: Boolean;
-    Gap13D: array[0..2] of Byte;
-
-    procedure ConstrainNativeOptions;
+    MobileDpScale: Single;
+    MobileChoiceCount: Integer;
+    MobileChoiceRowTop: Integer;
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure SelectMusic; override;
@@ -56,6 +57,11 @@ type
         Caption: WideString;
         Selected: Boolean;
         Disabled: Boolean
+    );
+    procedure AddMobileOptionChoice(
+        Value: Integer;
+        const Caption: WideString;
+        Selected, Disabled: Boolean
     );
     procedure OptionChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure OptionChoiceMouseEnter(Sender: TObjectGI);
@@ -94,18 +100,23 @@ type
     procedure ApplyClicked(Sender: TObjectGI);
     function CreateWarningImage(Owner: TLabelGI; Item: PFontObjectEC): TObjectGI;
   end;
+
 var
+
   SettingsModeColorNormal: Cardinal;
+
   SettingsModeColorHighlighted: Cardinal;
+
 function EstimateCpuClockMHz: Double;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  aCalc,
-  GameNative,
+  GameWindow,
+  GameSystem,
   SimpleSteamApi,
   aGalaxyStruct,
-  Windows,
+  GameInput,
   Classes,
   SysUtils,
   Math,
@@ -123,6 +134,7 @@ uses
   aScript,
   GI_GraphButton,
   GI_PanelScrollBar,
+  GI_SettingsLayout,
   GI_MessageBox,
   EC_Struct,
   GI_Main,
@@ -132,47 +144,21 @@ uses
   GR_Sound,
   fStarMap;
 
-// CHANGE: LIMITATION - Keep settings aligned with the native renderer and available media.
-procedure TfCfgSettings.ConstrainNativeOptions;
-var
-  Group, Saved: Integer;
-  Control, Image: TObjectGI;
-begin
-  Saved := ActiveGroupIndex;
-  ActiveGroupIndex := 1;
-  SetOptionValue('HardwareRender', Ord(HardwareRenderingRequested));
-  SetOptionValue('SoftwareCursor', 0);
-  SetOptionValue('Intro', 0);
-  SetOptionValue('Video', 0);
-  ActiveGroupIndex := Saved;
-  for Group := 0 to 5 do
-  begin
-    Control := GroupPanels[Group].FirstChild;
-    while Control <> nil do
-    begin
-      Image := Control;
-      if (Control is TLabelGI) and (Control.UserValue <> 0) then
-        Image := TObjectGI(Control.UserValue);
-      if (Image.ControlName = 'HardwareRender')
-          or (Image.ControlName = 'SoftwareCursor')
-          or (Image.ControlName = 'Intro')
-          or (Image.ControlName = 'Video') then
-      begin
-        Control.LeftButtonDownCallback := nil;
-        Control.MouseEnterCallback := nil;
-        Control.MouseLeaveCallback := nil;
-        Control.SetHitTestDisabled(True);
-      end;
-      Control := Control.NextSibling;
-    end;
-  end;
-end;
-
 function EstimateCpuClockMHz: Double;
 begin
-  // ARM64 has no x86 cycle counter; retain the native failed-probe preset.
-  Result := 1500;
+  Result := GameCpuClockMHz;
 end;
+
+function OptionCaption(const Key, English, Russian: WideString): WideString;
+begin
+  Result := LocalizedText('FormCfgSettings.' + Key);
+  if Result = '' then
+    if LowerCaseWideString(SelectedLanguage) = 'russian' then
+      Result := Russian
+    else
+      Result := English;
+end;
+
 procedure TfCfgSettings.InitializeLayout;
 begin
   inherited InitializeLayout;
@@ -265,6 +251,9 @@ begin
   end;
   ModeLeftPosition := GetByName('ModeLeftPanel').LocalPosition;
   ModeRightPosition := GetByName('ModeRightPanel').LocalPosition;
+  // The state images swap on press; their parent owns the whole tap.
+  GetByName('ModeLeftPanel').TouchInteraction := tiTap;
+  GetByName('ModeRightPanel').TouchInteraction := tiTap;
   with GetByName('ModeLeftButtonN') do
   begin
     MouseEnterCallback := ModeMouseEnter;
@@ -299,7 +288,9 @@ begin
   end;
   SettingsModeColorNormal := GetStyleColorGI('Settings.ModeColorNormal', 0, 44, 70);
   SettingsModeColorHighlighted := GetStyleColorGI('Settings.ModeColorHighlighted', 0, 255, 255);
+  MobileDpScale := PrepareMobileSettings(GetByName('MainPanel'));
 end;
+
 procedure TfCfgSettings.OnOpen;
 var
   Panel: TPanelScrollBarGI;
@@ -308,7 +299,6 @@ var
   ValueLabel: TLabelGI;
   Block: TBlockParEC;
 begin
-  RestartRequested := False;
   if IsInstallFeatureEnabled('Robot') then
   begin
     RobotAvailability := 1;
@@ -356,12 +346,24 @@ begin
       for I := 0 to LanguageCount - 1 do
       begin
         Language := ExtractDelimitedPartW(AvailableLanguageCodes, I, ',');
-        if FileExists(AnsiString('install_' + Language + '.txt')) then
+        LanguageName := Language;
+        if FileExists(NativeGamePath(AnsiString('install_' + Language + '.txt'))) then
         begin
           Block := TBlockParEC.Create;
-          Block.LoadFromTextFileWithEncodingProbe(PWideChar('install_' + Language + '.txt'), False);
-          LanguageName := Block.GetParam('LangName');
-          Block.Free;
+          try
+            Block.LoadFromTextFileWithEncodingProbe(
+                PWideChar('install_' + Language + '.txt'),
+                False
+            );
+            if Block.CountParams('LangName') > 0 then
+            begin
+              LanguageName := Block.GetParam('LangName');
+              if TrimWideString(LanguageName) = '' then
+                LanguageName := Language;
+            end;
+          finally
+            Block.Free;
+          end;
         end;
         AddOptionChoice(
             I,
@@ -411,6 +413,38 @@ begin
   AddOptionLabel('ViewFollowShip', LocalizedText('FormCfgSettings.ViewFollowShip'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), ViewFollowShip, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not ViewFollowShip, False);
+  if HardwareRenderingEnabled then
+  begin
+    ValueLabel :=
+        AddOptionLabel(
+            'SpaceZoomPercent',
+            OptionCaption(
+                'SpaceZoomPercent',
+                'Space zoom: <Value>%',
+                'Масштаб в космосе: <Value>%'
+            ),
+            False
+        );
+    AddOptionSlider(
+        ValueLabel,
+        MinSpaceZoomPercent,
+        MaxSpaceZoomPercent,
+        SpaceZoomPercent,
+        1,
+        FormatInteger
+    );
+    AddOptionLabel(
+        'SpacePinchZoom',
+        OptionCaption(
+            'SpacePinchZoom',
+            'Pinch to zoom in space',
+            'Масштабирование двумя пальцами'
+        ),
+        False
+    );
+    AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), SpacePinchZoom, False);
+    AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not SpacePinchZoom, False);
+  end;
   AddOptionLabel('ViewPathLength', LocalizedText('FormCfgSettings.ViewPathLength'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), ViewPathLength, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not ViewPathLength, False);
@@ -435,7 +469,7 @@ begin
   AddOptionSlider(ValueLabel, 0, 100, MaxPlayerNews, 1, FormatInteger);
   ValueLabel :=
       AddOptionLabel('TurnSaveStep', LocalizedText('FormCfgSettings.TurnSaveStep'), False);
-  AddOptionSlider(ValueLabel, 0, 365, TurnSaveStep, 1, FormatTurnSaveStep);
+  AddOptionSlider(ValueLabel, 0, TurnsPerYear, TurnSaveStep, 1, FormatTurnSaveStep);
   ValueLabel :=
       AddOptionLabel('QuickSaveExtraSlots', LocalizedText('FormCfgSettings.QuickSaveSlots'), False);
   AddOptionSlider(ValueLabel, 0, 9, QuickSaveExtraSlots, 1, FormatInteger);
@@ -458,7 +492,30 @@ begin
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), DisableAutoPilot, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not DisableAutoPilot, False);
   BuildGroupIndex := 1;
-  if AltResolutionSwitch then
+  AddOptionLabel(
+      'MobileUI',
+      OptionCaption('MobileUI', 'Mobile UI', 'Мобильный интерфейс'),
+      True
+  );
+  AddOptionChoice(
+      Ord(gumAutomatic),
+      LocalizedText('FormCfgSettings.HelpButAuto'),
+      GameUiMode = gumAutomatic,
+      False
+  );
+  AddOptionChoice(
+      Ord(gumMobile),
+      LocalizedText('FormCfgSettings.Yes'),
+      GameUiMode = gumMobile,
+      False
+  );
+  AddOptionChoice(
+      Ord(gumDesktop),
+      LocalizedText('FormCfgSettings.No'),
+      GameUiMode = gumDesktop,
+      False
+  );
+  if AltResolutionSwitch or GameWindowUsesRenderResolution then
   begin
     AddOptionLabel('Resolution', LocalizedText('FormCfgSettings.Resolution'), True);
     I := GameDisplayModeCount - 1;
@@ -468,7 +525,12 @@ begin
         if Width = 0 then
           AddOptionChoice(
               I,
-              LocalizedText('FormCfgSettings.HelpButAuto'),
+              LocalizedText('FormCfgSettings.HelpButAuto')
+                  + ' ('
+                  + IntToStr(DesktopDisplayMode.Width)
+                  + 'x'
+                  + IntToStr(DesktopDisplayMode.Height)
+                  + ')',
               SelectedGameDisplayMode = I,
               False
           )
@@ -497,10 +559,13 @@ begin
   AddOptionLabel('VSync', LocalizedText('FormCfgSettings.VSync'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), VSyncEnabled, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not VSyncEnabled, False);
-  AddOptionLabel('Window', LocalizedText('FormCfgSettings.Window'), False);
-  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), WindowedModeRequested, False);
-  AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not WindowedModeRequested, False);
-  if AlternateViewportEnabled then
+  if not GameWindowIsMobile then
+  begin
+    AddOptionLabel('Window', LocalizedText('FormCfgSettings.Window'), False);
+    AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), WindowedModeRequested, False);
+    AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not WindowedModeRequested, False);
+  end;
+  if AlternateViewportEnabled and not GameWindowUsesNativeRaster then
   begin
     AddOptionLabel('RenderMode', LocalizedText('FormCfgSettings.RenderMode'), False);
     AddOptionChoice(1, LocalizedText('FormCfgSettings.RenderMode1'), ScaleViewportToWindow, False);
@@ -735,9 +800,7 @@ begin
       False
   );
   BuildGroupIndex := 2;
-
   AddOptionLabel('Sound', LocalizedText('FormCfgSettings.Sound'), True);
-
   AddOptionChoice(
       1,
       LocalizedText('FormCfgSettings.Yes'),
@@ -754,10 +817,8 @@ begin
   );
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not SoundInSpaceEnabled, False);
   ValueLabel := AddOptionLabel('SoundVolume', LocalizedText('FormCfgSettings.SoundVolume'), False);
-
   AddOptionSlider(ValueLabel, 0, 100, Round(SoundVolume * 100.0), 1, FormatInteger);
   AddOptionLabel('Music', LocalizedText('FormCfgSettings.Music'), True);
-
   AddOptionChoice(
       1,
       LocalizedText('FormCfgSettings.Yes'),
@@ -774,9 +835,7 @@ begin
   );
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not MusicInSpaceEnabled, False);
   ValueLabel := AddOptionLabel('MusicVolume', LocalizedText('FormCfgSettings.MusicVolume'), False);
-
   AddOptionSlider(ValueLabel, 0, 100, Round(MusicVolume * 100.0), 1, FormatInteger);
-
   AddOptionLabel('MusicInHyper', LocalizedText('FormCfgSettings.MusicInHyper'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), MusicInHyperEnabled, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not MusicInHyperEnabled, False);
@@ -784,7 +843,7 @@ begin
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), MusicInPlanetEnabled, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not MusicInPlanetEnabled, False);
   BuildGroupIndex := 4;
-  if AltResolutionSwitch then
+  if AltResolutionSwitch or GameWindowUsesRenderResolution then
   begin
     AddOptionLabel('RobotResolution', LocalizedText('FormCfgSettings.Resolution'), True);
     I := RobotDisplayModeCount - 1;
@@ -977,21 +1036,21 @@ begin
   ActiveGroupIndex := 0;
   RefreshVisibleGroup;
   RefreshModeUi;
-  ConstrainNativeOptions;
   if Galaxy <> nil then
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(131);
 end;
+
 procedure TfCfgSettings.OnClose;
 begin
-
   if Galaxy <> nil then
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(132);
   if ModeLeaveTimer <> nil then
   begin
     CancelCallbackTimer(ModeLeaveTimer);
     ModeLeaveTimer := nil;
   end;
 end;
+
 procedure TfCfgSettings.MainPanelMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Button: TGraphButtonGI;
@@ -1027,6 +1086,7 @@ begin
   until True;
   ShowControlHelp(Button, Show);
 end;
+
 procedure TfCfgSettings.ShowControlHelp(Sender: TObjectGI; Show: Boolean);
 begin
   with GetByName('LabelHelp') as TLabelGI do
@@ -1037,6 +1097,7 @@ begin
     SetText(Sender.HelpText);
   end;
 end;
+
 procedure TfCfgSettings.GroupClicked(Sender: TObjectGI);
 var
   Group: Integer;
@@ -1055,6 +1116,7 @@ begin
     RefreshModeUi;
   end;
 end;
+
 procedure TfCfgSettings.RefreshVisibleGroup;
 var
   I: Integer;
@@ -1077,38 +1139,138 @@ begin
     SetVerticalScrollbarEnabled(GroupNextY[ActiveGroupIndex] > ClientSize.Y);
   end;
 end;
+
 function TfCfgSettings.AddOptionLabel(
     OptionName, Caption: WideString;
     UnusedFlag: Boolean
 ): TLabelGI;
 begin
   CurrentOptionName := OptionName;
+  MobileChoiceCount := 0;
+  if MobileDpScale > 0 then
+  begin
+    Caption := ReplaceAllWideString(Caption, #13#10, ' ');
+    Caption := ReplaceAllWideString(Caption, #13, ' ');
+    Caption := ReplaceAllWideString(Caption, #10, ' ');
+  end;
   if GroupNextY[BuildGroupIndex] <> 0 then
   begin
-    // Native retains a zero-spacing adjustment before the separator.
-    GroupNextY[BuildGroupIndex] := GroupNextY[BuildGroupIndex];
     with TImageGI.Create(GroupPanels[BuildGroupIndex]) do
     begin
       SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'Line');
       SetPosition(Classes.Point(0, GroupNextY[BuildGroupIndex]));
-      SetSize(Classes.Point(GroupPanels[BuildGroupIndex].ClientSize.X, GetContentSize.Y + 2));
-      Inc(GroupNextY[BuildGroupIndex], ClientSize.Y);
+      if MobileDpScale > 0 then
+      begin
+        SetSize(Point(GroupPanels[BuildGroupIndex].ClientSize.X, 2));
+        Inc(GroupNextY[BuildGroupIndex], 7);
+      end
+      else
+      begin
+        SetSize(Classes.Point(GroupPanels[BuildGroupIndex].ClientSize.X, GetContentSize.Y + 2));
+        Inc(GroupNextY[BuildGroupIndex], ClientSize.Y);
+      end;
     end;
   end;
   Result := TLabelGI.Create(GroupPanels[BuildGroupIndex]);
-  Result.SetFontName(NormalFontName);
+  if MobileDpScale > 0 then
+  begin
+    Result.SetWordWrapEnabled(True);
+    Result.SetFontName(SmoothHugeFontName)
+  end
+  else
+    Result.SetFontName(NormalFontName);
   Result.SetPositionModeW(False);
   Result.SetPosition(Classes.Point(0, GroupNextY[BuildGroupIndex]));
   Result.SetSize(Classes.Point(GroupPanels[BuildGroupIndex].ClientSize.X, 1));
   Result.SetTextAlignX(taxLeft);
   Result.SetTextAlignY(tayAuto);
   Result.SetTextColor(CurrentPixelFormat.PackRgbBytes(205, 205, 205));
-  Result.SetText(Caption + '.');
+  if MobileDpScale > 0 then
+    Result.SetText(Caption)
+  else
+    Result.SetText(Caption + '.');
   Result.HelpText := Caption;
   Result.SetTextAlignY(tayTop);
   Result.SetSize(Classes.Point(Result.ClientSize.X, Result.ClientSize.Y + 1));
-  Inc(GroupNextY[BuildGroupIndex], 2);
+  if MobileDpScale > 0 then
+    Inc(GroupNextY[BuildGroupIndex], Result.ClientSize.Y + 2)
+  else
+    Inc(GroupNextY[BuildGroupIndex], 2);
 end;
+
+procedure TfCfgSettings.AddMobileOptionChoice(
+    Value: Integer;
+    const Caption: WideString;
+    Selected, Disabled: Boolean
+);
+var
+  Image: TImageGI;
+  LabelControl: TLabelGI;
+  Cell: TPanelGI;
+  Left, Top, Width, TextWidth, RowHeight: Integer;
+begin
+  Width := (GroupPanels[BuildGroupIndex].ClientSize.X - 16) div 2;
+  Left := (MobileChoiceCount mod 2) * (Width + 16);
+  if MobileChoiceCount mod 2 = 0 then
+    MobileChoiceRowTop := GroupNextY[BuildGroupIndex];
+  Top := MobileChoiceRowTop;
+  Inc(MobileChoiceCount);
+  Image := TImageGI.Create(GroupPanels[BuildGroupIndex]);
+  if Selected then
+    Image.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD')
+  else if Disabled then
+    Image.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchH')
+  else
+    Image.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN');
+  LabelControl := TLabelGI.Create(GroupPanels[BuildGroupIndex]);
+  LabelControl.SetFontName(SmoothHugeFontName);
+  LabelControl.SetText(Caption);
+  TextWidth := Width - Image.GetContentSize.X - 8;
+  if LabelControl.MeasureContentSize(nil).X > TextWidth then
+  begin
+    if MobileChoiceCount mod 2 = 0 then
+      Top := GroupNextY[BuildGroupIndex];
+    Left := 0;
+    Width := GroupPanels[BuildGroupIndex].ClientSize.X;
+    TextWidth := Width - Image.GetContentSize.X - 8;
+    MobileChoiceCount := 0;
+  end;
+  LabelControl.SetWordWrapEnabled(True);
+  LabelControl.SetTextAlignX(taxLeft);
+  LabelControl.SetTextAlignY(tayAuto);
+  LabelControl.SetPosition(Point(Left + Image.GetContentSize.X + 8, Top));
+  LabelControl.SetSize(Point(TextWidth, 1));
+  RowHeight := Max(LabelControl.ClientSize.Y, Ceil(30 / MobileDpScale));
+  LabelControl.SetTextAlignY(tayCenterEx);
+  LabelControl.SetSize(Point(TextWidth, RowHeight));
+  if Selected then
+    LabelControl.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 234, 118))
+  else
+    LabelControl.SetTextColor(CurrentPixelFormat.PackRgbBytes(205, 205, 205));
+  Image.SetPosition(Point(Left, Top));
+  Image.SetSize(Point(Image.GetContentSize.X, RowHeight));
+  Image.SetImageKindY(ikyCenter);
+  if not Disabled or (CurrentOptionName = 'Lang') then
+    Image.SetName(CurrentOptionName);
+  Image.UserValue := Value;
+  Image.UserIndex := PtrInt(LabelControl);
+  // Keep the named value image in the group for the existing option lookup.
+  // A separate full cell owns activation, including the gap beside its marker.
+  Cell := TPanelGI.Create(GroupPanels[BuildGroupIndex]);
+  Cell.SetPosition(Point(Left, Top));
+  Cell.SetSize(Point(Width, RowHeight));
+  Cell.UserValue := PtrInt(Image);
+  Cell.TouchInteraction := tiTap;
+  Cell.MouseBlocking := True;
+  if not Disabled then
+  begin
+    Cell.LeftButtonDownCallback := OptionChoiceMouseDown;
+    Cell.MouseEnterCallback := OptionChoiceMouseEnter;
+    Cell.MouseLeaveCallback := OptionChoiceMouseLeave;
+  end;
+  GroupNextY[BuildGroupIndex] := Max(GroupNextY[BuildGroupIndex], Top + RowHeight + 2);
+end;
+
 procedure TfCfgSettings.AddOptionChoice(
     Value: Integer;
     Caption: WideString;
@@ -1119,6 +1281,11 @@ var
   ValueLabel: TLabelGI;
   RightMargin: Integer;
 begin
+  if MobileDpScale > 0 then
+  begin
+    AddMobileOptionChoice(Value, Caption, Selected, Disabled);
+    Exit;
+  end;
   RightMargin := GiScalePixelsEx(50, 30);
   ValueLabel := TLabelGI.Create(GroupPanels[BuildGroupIndex]);
   ValueLabel.SetFontName(NormalFontName);
@@ -1176,10 +1343,11 @@ begin
               + (Max(ValueLabel.ClientSize.Y, Image.ClientSize.Y) - ValueLabel.ClientSize.Y) div 2
       )
   );
+  ValueLabel.UserValue := PtrInt(Image);
   GroupNextY[BuildGroupIndex] :=
       GroupNextY[BuildGroupIndex] + ValueLabel.ClientSize.Y + GiScalePixels(5);
-  ValueLabel.UserValue := PtrInt(Image);
 end;
+
 procedure TfCfgSettings.OptionChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Control: TObjectGI;
@@ -1189,16 +1357,24 @@ begin
   Control := GroupPanels[ActiveGroupIndex].FirstChild;
   while Control <> nil do
   begin
-    if Control.ControlName = Sender.ControlName then
+    if (Control is TImageGI) and (Control.ControlName = Sender.ControlName) then
+    begin
       if Control = Sender then
         (Control as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD')
       else
         (Control as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN');
+      if (MobileDpScale > 0) and (Control.UserIndex <> 0) then
+        if Control = Sender then
+          TLabelGI(Control.UserIndex).SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 234, 118))
+        else
+          TLabelGI(Control.UserIndex).SetTextColor(CurrentPixelFormat.PackRgbBytes(205, 205, 205));
+    end;
     Control := Control.NextSibling;
   end;
   if (Point.X <> -1000) or (Point.Y <> -1000) then
     SoundManager.PlaySound('Sound.ButtonClick');
 end;
+
 procedure TfCfgSettings.OptionChoiceMouseEnter(Sender: TObjectGI);
 begin
   if not (Sender is TImageGI) then
@@ -1206,6 +1382,7 @@ begin
   if (Sender as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN' then
     (Sender as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchA');
 end;
+
 procedure TfCfgSettings.OptionChoiceMouseLeave(Sender: TObjectGI);
 begin
   if not (Sender is TImageGI) then
@@ -1213,6 +1390,7 @@ begin
   if (Sender as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchA' then
     (Sender as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN');
 end;
+
 procedure TfCfgSettings.AddOptionSlider(
     ValueLabel: TLabelGI;
     Minimum, Maximum, Position, UnusedStep: Integer;
@@ -1222,7 +1400,6 @@ var
   Slider: TCountBarGI;
 begin
   Slider := TCountBarGI.Create(GroupPanels[BuildGroupIndex]);
-  GroupNextY[BuildGroupIndex] := GroupNextY[BuildGroupIndex];
   Slider.SetPositionModeW(False);
   if GiResourceVariant = 2 then
     Slider.SetSize(Classes.Point(199, 20))
@@ -1276,10 +1453,18 @@ begin
   Slider.SetPositionInternal(Position);
   Slider.SetName(CurrentOptionName);
   Slider.UserIndex := PtrInt(ValueLabel);
+  if MobileDpScale > 0 then
+  begin
+    // Retain the original slider skin within a full-height touch row.
+    Slider.SetSize(Point(GroupPanels[BuildGroupIndex].ClientSize.X, Ceil(36 / MobileDpScale)));
+    TObjectGI(Slider).SetPosition(Point(0, GroupNextY[BuildGroupIndex]));
+    PrepareMobileSettingsSlider(Slider);
+  end;
   GroupNextY[BuildGroupIndex] :=
       GroupNextY[BuildGroupIndex] + Slider.ClientSize.Y + GiScalePixels(6);
   Callback(Slider);
 end;
+
 function TfCfgSettings.HasOptionValue(OptionName: WideString): Boolean;
 var
   Control: TObjectGI;
@@ -1306,6 +1491,7 @@ begin
   end;
   Result := False;
 end;
+
 function TfCfgSettings.GetOptionValue(OptionName: WideString): Integer;
 var
   Control: TObjectGI;
@@ -1333,6 +1519,7 @@ begin
   end;
   RaiseWideMessage('UnitGet Type=' + OptionName);
 end;
+
 procedure TfCfgSettings.SetOptionValue(OptionName: WideString; Value: Integer);
 var
   Control: TObjectGI;
@@ -1344,7 +1531,11 @@ begin
     begin
       if (Control is TImageGI)
           and (Control.UserValue = Value)
-          and Assigned(Control.LeftButtonDownCallback) then
+          and (Assigned(Control.LeftButtonDownCallback)
+              or ((MobileDpScale > 0)
+                  and (Control.UserIndex <> 0)
+                  and (TImageGI(Control).GetImagePath
+                      <> 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchH'))) then
       begin
         OptionChoiceMouseDown(Control, 0, Classes.Point(-1000, -1000));
         Break;
@@ -1358,6 +1549,7 @@ begin
     Control := Control.NextSibling;
   end;
 end;
+
 procedure TfCfgSettings.FormatResolution(Sender: TCountBarGI);
 var
   Index: Integer;
@@ -1370,23 +1562,24 @@ begin
     if GameDisplayModes[Index].Width = 0 then
       ValueLabel.SetText(
           ValueLabel.HelpText
-              + '<color=255,240,100>'
+              + TextHighlightColorTag
               + ' '
               + LocalizedText('FormCfgSettings.HelpAuto')
-              + '</color>'
+              + EndColorTag
       )
     else
       ValueLabel.SetText(
           ValueLabel.HelpText
-              + '<color=255,240,100>'
+              + TextHighlightColorTag
               + ' '
               + WideString(IntToStr(GameDisplayModes[Index].Width))
               + 'x'
               + WideString(IntToStr(GameDisplayModes[Index].Height))
-              + '</color>'
+              + EndColorTag
       );
   end;
 end;
+
 procedure TfCfgSettings.FormatRobotResolution(Sender: TCountBarGI);
 var
   Index: Integer;
@@ -1399,23 +1592,24 @@ begin
     if RobotDisplayModes[Index].Width = 0 then
       ValueLabel.SetText(
           ValueLabel.HelpText
-              + '<color=255,240,100>'
+              + TextHighlightColorTag
               + ' '
               + LocalizedText('FormCfgSettings.HelpAuto')
-              + '</color>'
+              + EndColorTag
       )
     else
       ValueLabel.SetText(
           ValueLabel.HelpText
-              + '<color=255,240,100>'
+              + TextHighlightColorTag
               + ' '
               + WideString(IntToStr(RobotDisplayModes[Index].Width))
               + 'x'
               + WideString(IntToStr(RobotDisplayModes[Index].Height))
-              + '</color>'
+              + EndColorTag
       );
   end;
 end;
+
 procedure TfCfgSettings.FormatRobotFsaaSamples(Sender: TCountBarGI);
 var
   Index: Integer;
@@ -1430,11 +1624,12 @@ begin
             ValueLabel.HelpText,
             '<Value>',
             WideString(IntToStr(SupportedMultiSamples[Index])),
-            '<color=255,240,100>'
+            TextHighlightColorTag
         )
     );
   end;
 end;
+
 procedure TfCfgSettings.PreviewBrightness(Sender: TCountBarGI);
 var
   ValueLabel: TLabelGI;
@@ -1454,11 +1649,12 @@ begin
             ValueLabel.HelpText,
             '<Value>',
             WideString(IntToStr(Sender.Position)),
-            '<color=255,240,100>'
+            TextHighlightColorTag
         )
     );
   end;
 end;
+
 procedure TfCfgSettings.PreviewContrast(Sender: TCountBarGI);
 var
   ValueLabel: TLabelGI;
@@ -1478,11 +1674,12 @@ begin
             ValueLabel.HelpText,
             '<Value>',
             WideString(IntToStr(Sender.Position)),
-            '<color=255,240,100>'
+            TextHighlightColorTag
         )
     );
   end;
 end;
+
 procedure TfCfgSettings.FormatInteger(Sender: TCountBarGI);
 var
   ValueLabel: TLabelGI;
@@ -1495,11 +1692,12 @@ begin
             ValueLabel.HelpText,
             '<Value>',
             WideString(IntToStr(Sender.Position)),
-            '<color=255,240,100>'
+            TextHighlightColorTag
         )
     );
   end;
 end;
+
 procedure TfCfgSettings.FormatTurnSaveStep(Sender: TCountBarGI);
 var
   Value: Integer;
@@ -1520,7 +1718,7 @@ begin
               LocalizedText('FormCfgSettings.TurnSaveStep2'),
               '<Value>',
               WideString(IntToStr(Value)),
-              '<color=255,240,100>'
+              TextHighlightColorTag
           )
     else
       Text :=
@@ -1528,12 +1726,13 @@ begin
               LocalizedText('FormCfgSettings.TurnSaveStep3'),
               '<Value>',
               WideString(IntToStr(Value)),
-              '<color=255,240,100>'
+              TextHighlightColorTag
           );
     ValueLabel
-        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, '<color=255,240,100>'));
+        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
   end;
 end;
+
 procedure TfCfgSettings.FormatForsageDeactivatePercent(Sender: TCountBarGI);
 var
   Value: Integer;
@@ -1552,14 +1751,15 @@ begin
               LocalizedText('FormCfgSettings.ForsageTurnOffStep'),
               '<Value>',
               WideString(IntToStr(100 - Value)),
-              '<color=255,240,100>'
+              TextHighlightColorTag
           )
     else
       Text := LocalizedText('FormCfgSettings.ForsageTurnOffAlways');
     ValueLabel
-        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, '<color=255,240,100>'));
+        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
   end;
 end;
+
 procedure TfCfgSettings.HighPresetClicked(Sender: TObjectGI);
 var
   SavedGroup: Integer;
@@ -1572,7 +1772,8 @@ begin
   SetOptionValue('FilmSpeed', 2);
   SetOptionValue('BeginCalcNextTurn', 100);
   ActiveGroupIndex := 1;
-  SetOptionValue('Resolution', 2);
+  if not GameWindowIsMobile then
+    SetOptionValue('Resolution', 2);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
   SetOptionValue('Video', 1);
@@ -1618,6 +1819,7 @@ begin
   ActiveGroupIndex := SavedGroup;
   ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormCfgSettings.AutoMax'), mbgOK or mbgUnused04);
 end;
+
 procedure TfCfgSettings.MediumPresetClicked(Sender: TObjectGI);
 var
   SavedGroup: Integer;
@@ -1680,6 +1882,7 @@ begin
       mbgOK or mbgUnused04
   );
 end;
+
 procedure TfCfgSettings.LowPresetClicked(Sender: TObjectGI);
 var
   SavedGroup: Integer;
@@ -1692,7 +1895,8 @@ begin
   SetOptionValue('FilmSpeed', 0);
   SetOptionValue('BeginCalcNextTurn', 0);
   ActiveGroupIndex := 1;
-  SetOptionValue('Resolution', 1);
+  if not GameWindowIsMobile then
+    SetOptionValue('Resolution', 1);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
   SetOptionValue('Video', 0);
@@ -1738,16 +1942,15 @@ begin
   ActiveGroupIndex := SavedGroup;
   ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormCfgSettings.AutoMin'), mbgOK or mbgUnused04);
 end;
+
 procedure TfCfgSettings.AutoPresetClicked(Sender: TObjectGI);
 var
   SavedGroup, ClockMHz, MemoryMB: Integer;
-  ModernWindows: Boolean;
-  TotalMemory, AvailableMemory: QWord;
+  Memory: TGameMemoryStatus;
 begin
   ClockMHz := Round(Min(Min(EstimateCpuClockMHz, EstimateCpuClockMHz), EstimateCpuClockMHz));
-  sr_memory(TotalMemory, AvailableMemory);
-  MemoryMB := Min(TotalMemory shr 20, QWord(MaxInt));
-  ModernWindows := True; // All supported macOS versions provide the required runtime.
+  QueryGameMemory(Memory);
+  MemoryMB := Memory.TotalPhys shr 20;
   SavedGroup := ActiveGroupIndex;
   ActiveGroupIndex := 0;
   SetOptionValue('CountFilmSave', 30);
@@ -1767,7 +1970,8 @@ begin
   end;
   SetOptionValue('BeginCalcNextTurn', 100);
   ActiveGroupIndex := 1;
-  SetOptionValue('Resolution', 2);
+  if not GameWindowIsMobile then
+    SetOptionValue('Resolution', 2);
   SetOptionValue('Brightness', 50);
   SetOptionValue('Contrast', 50);
   SetOptionValue('Video', Ord(ClockMHz >= 500));
@@ -1795,7 +1999,8 @@ begin
   begin
     SetOptionValue('AnimMenuShip', 1);
   end;
-  SetOptionValue('SoftwareCursor', Ord(ModernWindows));
+  // The original only disabled this preset for hosts older than Windows XP.
+  SetOptionValue('SoftwareCursor', 1);
   SetOptionValue(
       'AnimHangar',
       Ord((ClockMHz >= 2000) or ((ClockMHz >= 1400) and (MemoryMB > 500)))
@@ -1882,7 +2087,7 @@ begin
   begin
     SetOptionValue('RobotSky', 0);
   end;
-  SetOptionValue('RobotSoftwareCursor', Ord(not ModernWindows));
+  SetOptionValue('RobotSoftwareCursor', 0);
   ActiveGroupIndex := 5;
   SetOptionValue('RobotSound', Ord(ClockMHz >= 700));
   SetOptionValue('RobotSoundVolume', 100);
@@ -1891,13 +2096,26 @@ begin
   ActiveGroupIndex := SavedGroup;
   ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormCfgSettings.Auto'), mbgOK or mbgUnused04);
 end;
+
 procedure TfCfgSettings.CancelClicked(Sender: TObjectGI);
 begin
   RequestedScreenId := SettingsReturnScreenId;
   RequestClose(1);
 end;
+
 procedure TfCfgSettings.RefreshModeUi;
 begin
+  if MobileDpScale > 0 then
+  begin
+    GetByName('ModeLeftPanel').SetActive(False);
+    GetByName('ModeRightPanel').SetActive(False);
+    GetByName('ModeLeft').SetActive(True);
+    GetByName('ModeRight').SetActive(False);
+    GetByName('ButGroup3').SetActive(False);
+    GetByName('WarningMod').SetActive(False);
+    GetByName('Warning').SetActive(False);
+    Exit;
+  end;
   if SettingsMode = 0 then
   begin
     with GetByName('WarningMod') as TLabelGI do
@@ -2048,6 +2266,7 @@ begin
     GetByName('ModeLeftPanel').SetPosition(ModeLeftPosition);
   end;
 end;
+
 procedure TfCfgSettings.ModeMouseEnter(Sender: TObjectGI);
 begin
   if ModeLeaveTimer <> nil then
@@ -2063,6 +2282,7 @@ begin
   end;
   RefreshModeUi;
 end;
+
 procedure TfCfgSettings.ModeMouseLeave(Sender: TObjectGI);
 begin
   if ModeLeaveTimer <> nil then
@@ -2072,6 +2292,7 @@ begin
   end;
   ModeLeaveTimer := ScheduleCallbackTimer(20, 20, ModeLeaveTimerTick, Sender.UserValue);
 end;
+
 procedure TfCfgSettings.ModeLeaveTimerTick(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
   if ModeLeaveTimer <> nil then
@@ -2087,6 +2308,7 @@ begin
   end;
   RefreshModeUi;
 end;
+
 procedure TfCfgSettings.ModeMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   if Sender.UserValue = SettingsMode then
@@ -2097,6 +2319,7 @@ begin
   end;
   RefreshModeUi;
 end;
+
 procedure TfCfgSettings.ModeMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   if Sender.UserValue = SettingsMode then
@@ -2119,6 +2342,7 @@ begin
     RefreshVisibleGroup;
   end;
 end;
+
 procedure TfCfgSettings.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
   if Key = VK_ESCAPE then
@@ -2126,6 +2350,7 @@ begin
   else if Key = VK_RETURN then
     ApplyClicked(nil);
 end;
+
 procedure TfCfgSettings.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 begin
   with GetByName('PanelSet') as TPanelScrollBarGI do
@@ -2134,30 +2359,30 @@ begin
     else if Delta = -WHEEL_DELTA then
       VerticalScrollBar.SetPosition(VerticalScrollBar.Position + VerticalScrollBar.SmallChange);
 end;
+
 {$I-}
 procedure TfCfgSettings.ApplyClicked(Sender: TObjectGI);
 var
   RestartNeeded, ResetNeeded: Boolean;
   Index: Integer;
   Text: WideString;
-
   Buffer: TSoundBuffer;
-
   Language: WideString;
   LanguageFile: TextFile;
 begin
-  ConstrainNativeOptions;
   RestartNeeded := False;
   ResetNeeded := False;
   ActiveGroupIndex := 0;
   if not SteamInitialized and (RequestedLanguage = '') then
   begin
     Language := ExtractDelimitedPartW(AvailableLanguageCodes, GetOptionValue('Lang'), ',');
-    if SelectedLanguage <> Language then
+    // With no enumerated languages, the UI displays SelectedLanguage itself.
+    // Applying another option must not replace that fallback with an empty code.
+    if (Language <> '') and (SelectedLanguage <> Language) then
     begin
       SelectedLanguage := Language;
       Text := GetGameUserDirectory + 'Lang.txt';
-      AssignFile(LanguageFile, AnsiString(Text));
+      AssignFile(LanguageFile, NativeGamePath(Text));
       Rewrite(LanguageFile);
       Write(LanguageFile, 'Lang=');
       Writeln(LanguageFile, SelectedLanguage);
@@ -2168,7 +2393,7 @@ begin
         LanguageInstallConfig.Free;
         LanguageInstallConfig := nil;
       end;
-      if not FileExists(AnsiString('install_' + SelectedLanguage + '.txt')) then
+      if not FileExists(NativeGamePath(AnsiString('install_' + SelectedLanguage + '.txt'))) then
         raise Exception.Create(AnsiString('Not installed language: ' + SelectedLanguage))
       else
       begin
@@ -2189,6 +2414,13 @@ begin
   UserSettingsConfig.SetOrAddParam('RightClickOnShip', WideString(IntToStr(RightClickOnShip)));
   ViewFollowShip := Boolean(GetOptionValue('ViewFollowShip'));
   UserSettingsConfig.SetOrAddParam('ViewFollowShip', BoolToWideString(ViewFollowShip));
+  if HardwareRenderingEnabled then
+  begin
+    SpaceZoomPercent := GetOptionValue('SpaceZoomPercent');
+    UserSettingsConfig.SetOrAddParam('SpaceZoomPercent', WideString(IntToStr(SpaceZoomPercent)));
+    SpacePinchZoom := Boolean(GetOptionValue('SpacePinchZoom'));
+    UserSettingsConfig.SetOrAddParam('SpacePinchZoom', BoolToWideString(SpacePinchZoom));
+  end;
   ViewPathLength := Boolean(GetOptionValue('ViewPathLength'));
   UserSettingsConfig.SetOrAddParam('ViewPathLength', BoolToWideString(ViewPathLength));
   ActionDoubleClick := Boolean(GetOptionValue('ActionDoubleClick'));
@@ -2220,7 +2452,16 @@ begin
   BeginCalcNextTurn := GetOptionValue('BeginCalcNextTurn') / 100.0;
   UserSettingsConfig
       .SetOrAddParam('BeginCalcNextTurn', WideString(IntToStr(Round(BeginCalcNextTurn * 100.0))));
+
   ActiveGroupIndex := 1;
+  Index := GetOptionValue('MobileUI');
+  if Index <> Ord(GameUiMode) then
+  begin
+    UserSettingsConfig.SetOrAddParam('MobileUI', WideString(IntToStr(Index)));
+    // Rebuild through the normal resolution-change path. Keep the old mode
+    // until its screens close; their callbacks still own the old layout.
+    RestartNeeded := True;
+  end;
   Index := GetOptionValue('Resolution');
   if SelectedGameDisplayMode <> Index then
   begin
@@ -2256,13 +2497,14 @@ begin
     VSyncEnabled := not VSyncEnabled;
     UserSettingsConfig.SetOrAddParam('VSync', BoolToWideString(VSyncEnabled));
   end;
-  if Boolean(GetOptionValue('Window')) <> WindowedModeRequested then
+  if not GameWindowIsMobile and (Boolean(GetOptionValue('Window')) <> WindowedModeRequested) then
   begin
     ResetNeeded := True;
     WindowedModeRequested := Boolean(GetOptionValue('Window'));
     UserSettingsConfig.SetOrAddParam('Window', BoolToWideString(WindowedModeRequested));
   end;
   if AlternateViewportEnabled
+      and not GameWindowUsesNativeRaster
       and (Boolean(GetOptionValue('RenderMode')) <> ScaleViewportToWindow) then
   begin
     RestartNeeded := True;
@@ -2360,26 +2602,23 @@ begin
   ScreenshotJpegQuality := GetOptionValue('ScreenShotQuality');
   UserSettingsConfig
       .SetOrAddParam('ScreenShotQuality', WideString(IntToStr(ScreenshotJpegQuality)));
-  ActiveGroupIndex := 2;
 
+  ActiveGroupIndex := 2;
   if Boolean(GetOptionValue('Sound')) <> SoundEnabled then
   begin
     UserSettingsConfig.SetOrAddParam('Sound', BoolToWideString(not SoundEnabled));
     RestartNeeded := True;
   end;
-
   SoundInSpaceEnabled := Boolean(GetOptionValue('SoundInSpace'));
   UserSettingsConfig.SetOrAddParam('SoundInSpace', BoolToWideString(SoundInSpaceEnabled));
   SoundVolume := GetOptionValue('SoundVolume') / 100.0;
   UserSettingsConfig
       .SetOrAddParam('SoundVolume', WideString(IntToStr(GetOptionValue('SoundVolume'))));
-
   if Boolean(GetOptionValue('Music')) <> MusicEnabled then
   begin
     UserSettingsConfig.SetOrAddParam('Music', BoolToWideString(not MusicEnabled));
     RestartNeeded := True;
   end;
-
   MusicInSpaceEnabled := Boolean(GetOptionValue('MusicInSpace'));
   UserSettingsConfig.SetOrAddParam('MusicInSpace', BoolToWideString(MusicInSpaceEnabled));
   MusicVolume := GetOptionValue('MusicVolume') / 100.0;
@@ -2389,6 +2628,7 @@ begin
   UserSettingsConfig.SetOrAddParam('MusicInHyper', BoolToWideString(MusicInHyperEnabled));
   MusicInPlanetEnabled := Boolean(GetOptionValue('MusicInPlanet'));
   UserSettingsConfig.SetOrAddParam('MusicInPlanet', BoolToWideString(MusicInPlanetEnabled));
+
   ActiveGroupIndex := 4;
   SelectedRobotDisplayMode := GetOptionValue('RobotResolution');
   UserSettingsConfig.SetOrAddParam(
@@ -2440,6 +2680,7 @@ begin
       .SetOrAddParam('RobotSoftwareCursor', BoolToWideString(RobotSettings.SoftwareCursor));
   RobotSettings.Sky := Byte(GetOptionValue('RobotSky'));
   UserSettingsConfig.SetOrAddParam('RobotSky', WideString(IntToStr(RobotSettings.Sky)));
+
   ActiveGroupIndex := 5;
   RobotMusic := Boolean(GetOptionValue('RobotMusic'));
   UserSettingsConfig.SetOrAddParam('RobotMusic', BoolToWideString(RobotMusic));
@@ -2451,12 +2692,11 @@ begin
   RobotSoundVolume := GetOptionValue('RobotSoundVolume') / 100.0;
   UserSettingsConfig
       .SetOrAddParam('RobotSoundVolume', WideString(IntToStr(GetOptionValue('RobotSoundVolume'))));
+
   ActiveGroupIndex := 3;
   Text := GetGameUserDirectory + 'cfg.txt';
   UserSettingsConfig.SaveTextFile(PWideChar(Text), True, False);
-  if (StarMapScreen <> nil) and (StarMapScreen.MapControls <> nil) then
-    StarMapScreen.ConfigureMiddleButtonAction;
-
+  StarMapScreen.ConfigureMiddleButtonAction;
   if SoundManager <> nil then
   begin
     Buffer := SoundManager.FirstBuffer;
@@ -2469,15 +2709,13 @@ begin
       Buffer := Buffer.Next;
     end;
   end;
-
   if ShowSystemMouse then
-    while ShowCursor(True) < 0 do
+    while ShowGameCursor(True) < 0 do
   else
-    while ShowCursor(False) >= 0 do
+    while ShowGameCursor(False) >= 0 do
       ;
   if ResetNeeded and not RestartNeeded then
     GR_DXReset;
-  RestartRequested := RestartNeeded;
   if not RestartNeeded then
     RequestedScreenId := SettingsReturnScreenId
   else
@@ -2490,6 +2728,7 @@ begin
   RequestClose(1);
 end;
 {$I+}
+
 function TfCfgSettings.CreateWarningImage(Owner: TLabelGI; Item: PFontObjectEC): TObjectGI;
 begin
   Result := TImageGI.Create(Owner);
@@ -2500,6 +2739,7 @@ begin
     SetImageKindY(ikyTop);
   end;
 end;
+
 procedure TfCfgSettings.SelectMusic;
 begin
   if GetPlayer = nil then
@@ -2508,13 +2748,12 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
         MusicManager.PlayCategory(
             'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                    .InternalName
+                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                 + 'Pirate'
         )
       else
@@ -2528,16 +2767,13 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+    else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
-              + 'Pirate'
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
       )
     else
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
       );
   end
   else if GetPlayer.InNormalSpace then
@@ -2559,20 +2795,14 @@ begin
       MusicManager.RequestFadeOut;
   end;
 end;
+
 procedure TfCfgSettings.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
   if Galaxy <> nil then
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10000);
   ExecuteGameplayUiCode(Block, Key);
   if Galaxy <> nil then
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20000);
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCountBarGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-end;
+
 end.

@@ -1,20 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit SE_BGObj;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_MessageLoop,
   GI_Image,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TBGObjSE = class;
+
   TBGObjSE = class(TObjectSE)
     ImagePath: WideString;
     Radius: Single;
@@ -25,9 +27,10 @@ type
     procedure LoadTemplate(Block: TBlockParEC); override;
     procedure QueueImageLoad(PendingLoads: TList; Owner: TObjectGI); override;
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str,
   GI_Main;
 

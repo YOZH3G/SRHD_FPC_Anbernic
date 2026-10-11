@@ -1,37 +1,46 @@
-{$EXCESSPRECISION OFF}
 unit GI_XviD;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_File,
   EC_Buf,
   EC_BlockPar,
   GI_MessageLoop,
-  VFW;
+  GameAVI,
+  Dynlibs;
+
 type
+
   TxvidGI = class;
+
   TXvidFunction =
       function(Handle: Pointer; Option: Integer; Param1: Pointer; Param2: Pointer): Integer; cdecl;
-  TXvidGlobalInit = packed record
+
+  {$PUSH}
+  {$PACKRECORDS C}
+  TXvidGlobalInit = record
     Version: Integer;
     CpuFlags: Cardinal;
     Debug: Integer;
   end;
-  TXvidDecoderCreate = packed record
+
+  TXvidDecoderCreate = record
     Version: Integer;
     Width: Integer;
     Height: Integer;
     Handle: Pointer;
   end;
-  TXvidImage = packed record
+
+  TXvidImage = record
     ColorSpace: Integer;
     Planes: array[0..3] of Pointer;
     Strides: array[0..3] of Integer;
   end;
-  TXvidDecoderFrame = packed record
+
+  TXvidDecoderFrame = record
     Version: Integer;
     General: Integer;
     Bitstream: Pointer;
@@ -39,11 +48,9 @@ type
     Output: TXvidImage;
     Brightness: Integer;
   end;
-  TXvidDecoderStats = packed record
-    Version: Integer;
-    FrameType: Integer;
-    Data: array[0..23] of Byte;
-  end;
+
+  {$POP}
+
   TxvidGI = class(TObjectGI)
     SourceFile: TFileEC;
     CompressedFrame: TBufEC;
@@ -53,15 +60,11 @@ type
     TargetFrame: Integer;
     VideoWidth: Integer;
     VideoHeight: Integer;
-    Gap144: array[0..3] of Byte;
     PlaybackFinished: TObjectNotifyEventGI;
     ColorSpace: Integer;
     FillViewport: Boolean;
-    Gap155: array[0..2] of Byte;
-    AviFile: IAVIFile;
-    AviStream: IAVIStream;
+    AviFile: TGameAVI;
     FrameCount: Integer;
-    Gap164: array[0..3] of Byte;
     FramesPerSecond: Double;
     procedure Clear; override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -76,14 +79,29 @@ type
     function SetPlaybackTime(TimeMs: Double): Boolean;
     procedure SetFramePosition(Frame: Integer);
   end;
+
+const
+{$IFDEF MSWINDOWS}
+  XvidLibraryName = 'xvidcore.dll';
+{$ELSE}
+  {$IFDEF DARWIN}
+  XvidLibraryName = 'libxvidcore.dylib';
+  {$ELSE}
+  XvidLibraryName = 'libxvidcore.so.4';
+  {$ENDIF}
+{$ENDIF}
+
 var
-  XvidLibrary: Cardinal = 0;
+  XvidLibrary: TLibHandle = 0;
+
   XvidGlobal: TXvidFunction = nil;
+
   XvidDecore: TXvidFunction = nil;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  Types,
   SysUtils,
   Direct3D9,
   GR_DX,
@@ -110,11 +128,9 @@ end;
 
 function TxvidGI.ImageOpen(const FileName: WideString; FillViewport: Boolean): Boolean;
 var
-  ErrorCode, FormatSize, Status: Integer;
+  ErrorCode, Status: Integer;
   GlobalInit: TXvidGlobalInit;
   DecoderCreate: TXvidDecoderCreate;
-  Format: TBitmapInfoHeader;
-  Info: TAVIStreamInfoA;
 begin
   Result := True;
   Self.FillViewport := FillViewport;
@@ -122,9 +138,9 @@ begin
   try
     if XvidLibrary = 0 then
     begin
-      XvidLibrary := LoadLibrary('xvidcore.dll');
+      XvidLibrary := LoadLibrary(XvidLibraryName);
       if XvidLibrary = 0 then
-        RaiseWideMessage('Error xvidcore.dll');
+        RaiseWideMessage('Error loading ' + XvidLibraryName + ': ' + GetLoadErrorStr);
       XvidGlobal := GetProcAddress(XvidLibrary, 'xvid_global');
       if not Assigned(XvidGlobal) then
         RaiseWideMessage('Error xvid_global');
@@ -139,34 +155,21 @@ begin
     SourceFile := TFileEC.Create;
     CompressedFrame := TBufEC.Create;
     CompressedFrame.SetSize($180000);
-    AVIFileInit;
-    Status := AVIFileOpenA(AviFile, PAnsiChar(AnsiString(FileName)), 0, nil);
-    if Status <> 0 then
-      RaiseWideMessage('Error AVIFileOpenA = ' + IntToStr(Status));
-    Status := AVIFileGetStream(AviFile, AviStream, $73646976, 0);
-    if Status <> 0 then
-      RaiseWideMessage('Error AVIFileGetStream = ' + IntToStr(Status));
-    AVIStreamInfoA(AviStream, Info, SizeOf(Info));
-    FramesPerSecond := Info.Rate / Info.Scale;
-    FormatSize := SizeOf(Format);
-    Status := AVIStreamReadFormat(AviStream, 0, @Format, FormatSize);
-    if Status <> 0 then
-      RaiseWideMessage('Error AVIStreamReadFormat ret = ' + IntToStr(Status));
-    FrameCount := AVIStreamLength(AviStream);
-    if FrameCount < 0 then
-      RaiseWideMessage('Error AVIStreamLength FAVILen = ' + IntToStr(FrameCount));
+    AviFile := TGameAVI.Create(FileName);
+    FramesPerSecond := AviFile.FramesPerSecond;
+    FrameCount := AviFile.FrameCount;
     FillChar(DecoderCreate, SizeOf(DecoderCreate), 0);
     DecoderCreate.Version := $10100;
-    DecoderCreate.Width := Format.biWidth;
-    DecoderCreate.Height := Format.biHeight;
+    DecoderCreate.Width := AviFile.Width;
+    DecoderCreate.Height := AviFile.Height;
     Status := XvidDecore(nil, 0, @DecoderCreate, nil);
     if Status <> 0 then
       RaiseWideMessage('Error xvid_decore_func = ' + IntToStr(Status));
     DecoderHandle := DecoderCreate.Handle;
     DecodedFrameCount := 0;
     ColorSpace := $40;
-    VideoWidth := Format.biWidth;
-    VideoHeight := Format.biHeight;
+    VideoWidth := AviFile.Width;
+    VideoHeight := AviFile.Height;
     if Direct3DDevice = nil then
       raise Exception.Create('TxvidGI.ImageOpen(..)::GR_D3DDevice = nil');
     ErrorCode :=
@@ -207,11 +210,7 @@ begin
           'Error XvidClose: xvid_decore_func - XVID_DEC_DESTROY = ' + IntToStr(Status)
       );
   end;
-  if AviStream <> nil then
-    AviStream := nil;
-  if AviFile <> nil then
-    AviFile := nil;
-  AVIFileExit;
+  FreeAndNil(AviFile);
 end;
 
 procedure TxvidGI.ImageClose;
@@ -254,31 +253,19 @@ var
   Data: Pointer;
   LockedRect: TD3DLockedRect;
   Frame: TXvidDecoderFrame;
-  Stats: TXvidDecoderStats;
 begin
   if DecodedFrameCount >= FrameCount then
   begin
     Result := False;
     Exit;
   end;
-  if AVIStreamRead(
-          AviStream,
-          DecodedFrameCount,
-          1,
-          CompressedFrame.Data,
-          CompressedFrame.DataSize,
-          @BytesRead,
-          nil)
-      <> 0 then
-    RaiseWideMessage('AVI stream read');
+  BytesRead := AviFile.ReadFrame(DecodedFrameCount, CompressedFrame.Data, CompressedFrame.DataSize);
   Data := CompressedFrame.Data;
   ErrorCode := OffscreenTexture.LockRect(0, LockedRect, nil, 0);
   if ErrorCode <> 0 then
     raise Exception.Create('GR_lpTexAVI.LockRect error');
   while BytesRead > 1 do
   begin
-    FillChar(Stats, SizeOf(Stats), 0);
-    Stats.Version := $10100;
     FillChar(Frame, SizeOf(Frame), 0);
     Frame.Version := $10100;
     Frame.General := 1;
@@ -287,10 +274,11 @@ begin
     Frame.Output.ColorSpace := ColorSpace;
     Frame.Output.Planes[0] := LockedRect.Bits;
     Frame.Output.Strides[0] := LockedRect.Pitch;
-    BytesUsed := XvidDecore(DecoderHandle, 2, @Frame, @Stats);
-    if BytesUsed < 0 then
+    // Statistics are optional and unused; avoid allocating a versioned C union.
+    BytesUsed := XvidDecore(DecoderHandle, 2, @Frame, nil);
+    if (BytesUsed <= 0) or (Cardinal(BytesUsed) > BytesRead) then
       RaiseWideMessage('AVI decode');
-    Data := Pointer(PtrUInt(Data) + BytesUsed);
+    Data := Pointer(PAnsiChar(Data) + BytesUsed);
     Dec(BytesRead, BytesUsed);
   end;
   OffscreenTexture.UnlockRect(0);
@@ -330,4 +318,7 @@ begin
   end;
 end;
 
+finalization
+  if XvidLibrary <> 0 then
+    UnloadLibrary(XvidLibrary);
 end.

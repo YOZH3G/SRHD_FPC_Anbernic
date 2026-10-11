@@ -1,23 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit ab_W13;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW13 = class;
+
   TabW13 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapB9: array[0..2] of Byte;
     Generation: Integer;
     ExpireTick: Integer;
     procedure Advance; override;
@@ -32,9 +33,10 @@ type
         Origin: TabObject
     );
   end;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   aMyFunction;
 

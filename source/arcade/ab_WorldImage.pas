@@ -1,19 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit ab_WorldImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   EC_Struct,
   GI_Image;
+
 const
+
   afmRestart = 0;
+
   afmRandomStart = 1;
+
 type
+
   PointerToTabWorldImage = ^TabWorldImage;
+
   PabWorldImage = PointerToTabWorldImage;
+
   TabWorldImage = record
     Prev: PabWorldImage;
     Next: PabWorldImage;
@@ -24,41 +31,54 @@ type
     FrontDepth: Single;
     BackDepth: Single;
     Dirty: Boolean;
-    Gap35: array[0..2] of Byte;
     FrameMode: Integer;
     LoopAnimation: Boolean;
     Finished: Boolean;
     StopAnimation: Boolean;
-    Gap3F: array[0..0] of Byte;
   end;
+
 var
-  WorldImageHeap: Cardinal = 0;
+
+  WorldImageHeap: TGameHeapHandle = 0;
+
   FirstWorldImage: PabWorldImage = nil;
+
   LastWorldImage: PabWorldImage = nil;
+
 procedure ab_WorldImage_Clear;
+
 function ab_WorldImage_Add: PabWorldImage;
+
 procedure ab_WorldImage_Delete(Entry: PabWorldImage);
+
 function ab_WorldImage_Create(
     Position: TVector3D;
     const FrontPath: WideString;
     const BackPath: WideString;
     StopAnimation: Boolean
 ): PabWorldImage;
+
 procedure ab_WorldImage_Set(
     Entry: PabWorldImage;
     Position: TVector3D;
     const FrontPath: WideString;
     const BackPath: WideString
 );
+
 procedure ab_WorldImage_SetPosition(Entry: PabWorldImage; Position: TVector3D);
+
 procedure ab_WorldImage_SetDepth(Entry: PabWorldImage; FrontDepth: Single; BackDepth: Single);
+
 procedure ab_WorldImage_SetFrameMode(Entry: PabWorldImage; Value: Integer);
+
 procedure ab_WorldImage_SetLooping(Entry: PabWorldImage; Value: Boolean);
+
 procedure ab_WorldImage_Update;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  Types,
   Classes,
   SysUtils,
   EC_Mem,
@@ -73,7 +93,7 @@ begin
     ab_WorldImage_Delete(LastWorldImage);
   if WorldImageHeap <> 0 then
   begin
-    HeapDestroy(WorldImageHeap);
+    GameHeap.HeapDestroy(WorldImageHeap);
     WorldImageHeap := 0;
   end;
 end;
@@ -84,7 +104,7 @@ var
 begin
   if WorldImageHeap = 0 then
   begin
-    WorldImageHeap := HeapCreate(1, $8000, 0);
+    WorldImageHeap := GameHeap.HeapCreate(1, $8000, 0);
     if WorldImageHeap = 0 then
       raise Exception.Create('ab_WorldImage_Add.HeapCreate');
   end;
@@ -219,7 +239,6 @@ begin
           Entry.Image.SetOrigin(HalfPoint(Entry.Image.ClientSize));
           if (Entry.Image.GaiImageControl <> nil) and not Entry.StopAnimation then
           begin
-            // WorldImageCycleComplete reads this slot back as PabWorldImage.
             Entry.Image.GaiImageControl.UserValue := PtrInt(Entry);
             if not Entry.LoopAnimation then
               Entry.Image.GaiImageControl.CycleCompleteCallback :=

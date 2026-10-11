@@ -1,51 +1,76 @@
-{$EXCESSPRECISION OFF}
 unit GR_gi;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   GR_GraphBuf,
   Types;
+
 type
+
   TgiGR = class;
-  PointerToTgiClipRectDiskGR = ^TgiClipRectDiskGR;
-  PointerToTgiHeaderGR = ^TgiHeaderGR;
-  PointerToTgiPlaneGR = ^TgiPlaneGR;
-  PointerToTGaiHeader = ^TGaiHeader;
+
+  PointerToTGaiFrameEntry = ^TGaiFrameEntry;
+
+  PointerToTGaiSequenceFrameEntry = ^TGaiSequenceFrameEntry;
+
   PointerToTGaiSequenceTableHeader = ^TGaiSequenceTableHeader;
+
+  PointerToTgiClipRectDiskGR = ^TgiClipRectDiskGR;
+
+  PointerToTgiHeaderGR = ^TgiHeaderGR;
+
+  PointerToTgiPlaneGR = ^TgiPlaneGR;
+
+  PointerToTGaiHeader = ^TGaiHeader;
+
   TGaiHeader = packed record
-    Gap0: array[0..7] of Byte;
+    Magic: array[0..3] of AnsiChar;
+    Version: Integer;
     Bounds: TRect;
     FrameCount: Integer;
     Flags: Cardinal;
     SequenceTableOffset: Integer;
-    Gap24: array[0..11] of Byte;
+    SequenceTableSize: Integer;
+    Gap28: array[0..7] of Byte;
   end;
+
   PGaiHeader = PointerToTGaiHeader;
+
   TGaiFrameEntry = packed record
     DataOffset: Integer;
     DataSize: Integer;
   end;
+
+  PGaiFrameEntry = PointerToTGaiFrameEntry;
+
   TGaiSequenceTableHeader = packed record
     SequenceCount: Integer;
     Gap4: array[0..3] of Byte;
   end;
+
   PGaiSequenceTableHeader = PointerToTGaiSequenceTableHeader;
+
   TGaiSequenceDirectoryEntry = packed record
     SequenceDataOffset: Integer;
     Gap4: array[0..3] of Byte;
   end;
+
   TGaiSequenceFrameEntry = packed record
     SourceFrameIndex: Integer;
     FrameDelay: Integer;
   end;
+
+  PGaiSequenceFrameEntry = PointerToTGaiSequenceFrameEntry;
+
   TGaiSequenceDataBlock = packed record
     FrameCount: Integer;
   end;
+
   TgiHeaderGR = packed record
     Magic: array[0..3] of AnsiChar;
     Version: Integer;
@@ -60,26 +85,31 @@ type
     ClipRectTableOffset: Integer;
     Gap38: array[0..7] of Byte;
   end;
+
   PgiHeaderGR = PointerToTgiHeaderGR;
+
   TgiPlaneGR = packed record
     DataOffset: Integer;
     DataSize: Integer;
     Bounds: TRect;
     Gap18: array[0..7] of Byte;
   end;
+
   PgiPlaneGR = PointerToTgiPlaneGR;
+
   TgiClipRectDiskGR = packed record
     Left: Word;
     Top: Word;
     Bottom: Word;
     Right: Word;
   end;
+
   PgiClipRectDiskGR = PointerToTgiClipRectDiskGR;
+
   TgiGR = class(TObjectEx)
     Data: Pointer;
     DataSize: Integer;
     UsesExternalData: Boolean;
-    GapD: array[0..2] of Byte;
     Header: PgiHeaderGR;
     constructor Create;
     destructor Destroy; override;
@@ -124,27 +154,30 @@ type
     procedure CreateFromGraphBuf(GraphBuf: TGraphBufGR; StorageMode: Integer);
     procedure CreateFormat2FromGraphBuf(GraphBuf: TGraphBufGR; TopLeft: TPoint);
   end;
+
 procedure PrepareRawGiColorCache(Data: Pointer);
+
 implementation
+
 uses
-  ZLib,
-  Math,
   Classes,
   EC_Mem,
   EC_OKGF,
-  Windows,
   GR_Main,
   GlobalsV,
   EC_Str;
+
 constructor TgiGR.Create;
 begin
   inherited Create;
 end;
+
 destructor TgiGR.Destroy;
 begin
   ClearData;
   inherited Destroy;
 end;
+
 procedure TgiGR.ClearData;
 begin
   if (Data <> nil) and not UsesExternalData then
@@ -154,10 +187,12 @@ begin
   UsesExternalData := False;
   Header := nil;
 end;
+
 function TgiGR.IsEmpty: Boolean;
 begin
   Result := Header = nil;
 end;
+
 procedure TgiGR.LoadRawGiBytes(BufferPtr: Pointer; ByteCount: Integer);
 begin
   ClearData;
@@ -166,15 +201,17 @@ begin
   UsesExternalData := True;
   Header := Data;
 end;
+
 procedure TgiGR.LoadRawGiFromBuffer(SourceBuffer: TBufEC);
 begin
   ClearData;
   DataSize := SourceBuffer.DataSize;
   Data := AllocEC(DataSize);
-  CopyMemory(Data, SourceBuffer.Data, DataSize);
+  System.Move(Pointer(SourceBuffer.Data)^, Pointer(Data)^, DataSize);
   UsesExternalData := False;
   Header := Data;
 end;
+
 procedure TgiGR.LoadCompressedGiBytes(BufferPtr: Pointer; ByteCount: Integer);
 begin
   ClearData;
@@ -196,45 +233,53 @@ begin
     UsesExternalData := False;
   end;
 end;
+
 function TgiGR.GetBoundsRect: TRect;
 begin
   Result := Header.Bounds;
 end;
+
 function TgiGR.GetContentSize: TPoint;
 begin
   Result.X := Header.Bounds.Right - Header.Bounds.Left;
   Result.Y := Header.Bounds.Bottom - Header.Bounds.Top;
 end;
+
 function TgiGR.GetTopLeft: TPoint;
 begin
   Result.X := Header.Bounds.Left;
   Result.Y := Header.Bounds.Top;
 end;
+
 function TgiGR.GetFormat: Integer;
 begin
   Result := Header.Format;
 end;
+
 function TgiGR.GetPlane(PlaneIndex: Integer): PgiPlaneGR;
 begin
-  Result := Pointer(PlaneIndex * SizeOf(TgiPlaneGR) + SizeOf(TgiHeaderGR) + PtrUInt(Data));
+  Result := Pointer(PlaneIndex * SizeOf(TgiPlaneGR) + SizeOf(TgiHeaderGR) + PAnsiChar(Data));
 end;
+
 function TgiGR.GetClipRectCount: Integer;
 begin
   Result := Header.ClipRectCount;
 end;
+
 function TgiGR.GetClipRect(RectIndex: Integer): TRect;
 var
   Rect: PgiClipRectDiskGR;
 begin
   Rect :=
       Pointer(
-          PtrUInt(Data) + Header.ClipRectTableOffset + 1 + RectIndex * SizeOf(TgiClipRectDiskGR)
+          PAnsiChar(Data) + Header.ClipRectTableOffset + 1 + RectIndex * SizeOf(TgiClipRectDiskGR)
       );
   Result.Left := Rect.Left;
   Result.Top := Rect.Top;
   Result.Right := Rect.Right;
   Result.Bottom := Rect.Bottom;
 end;
+
 procedure TgiGR.BuildPalettedFormat4ColorCache;
 var
   Plane: PgiPlaneGR;
@@ -259,6 +304,7 @@ begin
     Dest := AddPointerOffset(Dest, SizeOf(Word));
   end;
 end;
+
 procedure TgiGR.DrawToGraphBuf(
     GraphBuf: TGraphBufGR;
     X, Y: Integer;
@@ -272,7 +318,7 @@ begin
   case Header.Format of
     0:
     begin
-      Plane := Pointer(PtrUInt(Data) + SizeOf(TgiHeaderGR));
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
       if Plane.DataOffset <> 0 then
       begin
         if (Header.RedMask = $FF0000)
@@ -284,7 +330,7 @@ begin
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               (Header.Bounds.Right - Header.Bounds.Left) * SizeOf(Word),
               Header.Bounds.Right - Header.Bounds.Left,
               Header.Bounds.Bottom - Header.Bounds.Top,
@@ -296,7 +342,7 @@ begin
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               (Header.Bounds.Right - Header.Bounds.Left) * SizeOf(Word),
               Header.Bounds.Right - Header.Bounds.Left,
               Header.Bounds.Bottom - Header.Bounds.Top,
@@ -307,14 +353,14 @@ begin
     end;
     1:
     begin
-      Plane := Pointer(PtrUInt(Data) + SizeOf(TgiHeaderGR));
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
       if Plane.DataOffset <> 0 then
         DrawTransparentBuffer16(
             GraphBuf.GetPixels,
             GraphBuf.PitchBytes,
             X + Plane.Bounds.Left - Header.Bounds.Left,
             Y + Plane.Bounds.Top - Header.Bounds.Top,
-            Pointer(PtrUInt(Data) + Plane.DataOffset),
+            Pointer(PAnsiChar(Data) + Plane.DataOffset),
             DrawRect,
             False
         );
@@ -325,34 +371,34 @@ begin
       InclusiveClip.Top := DrawRect.Top;
       InclusiveClip.Right := DrawRect.Right - 1;
       InclusiveClip.Bottom := DrawRect.Bottom - 1;
-      Plane := Pointer(PtrUInt(Data) + 128);
+      Plane := Pointer(PAnsiChar(Data) + (SizeOf(TgiHeaderGR) + 2 * SizeOf(TgiPlaneGR)));
       if Plane.DataOffset <> 0 then
         Ex_OKGR_AlphaBuf_DrawClip_16(
             GraphBuf.GetPixels,
             GraphBuf.PitchBytes,
             X + Plane.Bounds.Left - Header.Bounds.Left,
             Y + Plane.Bounds.Top - Header.Bounds.Top,
-            Pointer(PtrUInt(Data) + Plane.DataOffset),
+            Pointer(PAnsiChar(Data) + Plane.DataOffset),
             InclusiveClip
         );
-      Plane := Pointer(PtrUInt(Data) + 96);
+      Plane := Pointer(PAnsiChar(Data) + (SizeOf(TgiHeaderGR) + SizeOf(TgiPlaneGR)));
       if Plane.DataOffset <> 0 then
         Ex_OKGR_TransAlphaBuf_DrawClip_WORD(
             GraphBuf.GetPixels,
             GraphBuf.PitchBytes,
             X + Plane.Bounds.Left - Header.Bounds.Left,
             Y + Plane.Bounds.Top - Header.Bounds.Top,
-            Pointer(PtrUInt(Data) + Plane.DataOffset),
+            Pointer(PAnsiChar(Data) + Plane.DataOffset),
             InclusiveClip
         );
-      Plane := Pointer(PtrUInt(Data) + 64);
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
       if Plane.DataOffset <> 0 then
         Ex_OKGR_TransBuf_DrawClip_WORD(
             GraphBuf.GetPixels,
             GraphBuf.PitchBytes,
             X + Plane.Bounds.Left - Header.Bounds.Left,
             Y + Plane.Bounds.Top - Header.Bounds.Top,
-            Pointer(PtrUInt(Data) + Plane.DataOffset),
+            Pointer(PAnsiChar(Data) + Plane.DataOffset),
             InclusiveClip
         );
     end;
@@ -364,48 +410,48 @@ begin
       InclusiveClip.Bottom := DrawRect.Bottom - 1;
       if Alpha = 255 then
       begin
-        Plane := Pointer(PtrUInt(Data) + 64);
+        Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
         if Plane.DataOffset <> 0 then
           Ex_OKGR_AlphaIndexed_CopyDrawClip_WORD(
               GraphBuf.GetPixels,
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               InclusiveClip
           );
-        Plane := Pointer(PtrUInt(Data) + 96);
+        Plane := Pointer(PAnsiChar(Data) + (SizeOf(TgiHeaderGR) + SizeOf(TgiPlaneGR)));
         if Plane.DataOffset <> 0 then
           Ex_OKGR_AlphaIndexed_AlphaDrawClip_16(
               GraphBuf.GetPixels,
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               InclusiveClip
           );
       end
       else if Alpha >= 4 then
       begin
-        Plane := Pointer(PtrUInt(Data) + 64);
+        Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
         if Plane.DataOffset <> 0 then
           Ex_OKGR_AlphaIndexed_CopyDrawClip_Alpha_16(
               GraphBuf.GetPixels,
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               InclusiveClip,
               Alpha
           );
-        Plane := Pointer(PtrUInt(Data) + 96);
+        Plane := Pointer(PAnsiChar(Data) + (SizeOf(TgiHeaderGR) + SizeOf(TgiPlaneGR)));
         if Plane.DataOffset <> 0 then
           Ex_OKGR_AlphaIndexed_AlphaDrawClip_Alpha_16(
               GraphBuf.GetPixels,
               GraphBuf.PitchBytes,
               X + Plane.Bounds.Left - Header.Bounds.Left,
               Y + Plane.Bounds.Top - Header.Bounds.Top,
-              Pointer(PtrUInt(Data) + Plane.DataOffset),
+              Pointer(PAnsiChar(Data) + Plane.DataOffset),
               InclusiveClip,
               Alpha
           );
@@ -413,15 +459,15 @@ begin
     end;
     4:
     begin
-      Plane := Pointer(PtrUInt(Data) + SizeOf(TgiHeaderGR));
-      PalettePlane := Pointer(PtrUInt(Data) + (SizeOf(TgiHeaderGR) + SizeOf(TgiPlaneGR)));
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
+      PalettePlane := Pointer(PAnsiChar(Data) + (SizeOf(TgiHeaderGR) + SizeOf(TgiPlaneGR)));
       CopyPalettedBuffer16Clipped(
           GraphBuf.GetPixels,
           GraphBuf.PitchBytes,
           X + Plane.Bounds.Left - Header.Bounds.Left,
           Y + Plane.Bounds.Top - Header.Bounds.Top,
-          Pointer(PtrUInt(Data) + Plane.DataOffset),
-          Pointer(PalettePlane.DataOffset + PtrUInt(Data)),
+          Pointer(PAnsiChar(Data) + Plane.DataOffset),
+          Pointer(PalettePlane.DataOffset + PAnsiChar(Data)),
           Header.Bounds.Right - Header.Bounds.Left,
           Header.Bounds.Right - Header.Bounds.Left,
           Header.Bounds.Bottom - Header.Bounds.Top,
@@ -430,24 +476,29 @@ begin
     end;
     5:
     begin
-      Plane := Pointer(PtrUInt(Data) + SizeOf(TgiHeaderGR));
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
       Ex_OKGR_F5_DrawRGBA(
-          Pointer(PtrUInt(GraphBuf.GetPixels) + (X * SizeOf(TColorRGBA) + GraphBuf.PitchBytes * Y)),
+          Pointer(
+              PAnsiChar(GraphBuf.GetPixels) + (X * SizeOf(TColorRGBA) + GraphBuf.PitchBytes * Y)
+          ),
           GraphBuf.PitchBytes,
-          Pointer(PtrUInt(Data) + Plane.DataOffset)
+          Pointer(PAnsiChar(Data) + Plane.DataOffset)
       );
     end;
     6:
     begin
-      Plane := Pointer(PtrUInt(Data) + SizeOf(TgiHeaderGR));
+      Plane := Pointer(PAnsiChar(Data) + SizeOf(TgiHeaderGR));
       Ex_OKGR_F6_DrawRGBA(
-          Pointer(PtrUInt(GraphBuf.GetPixels) + (X * SizeOf(TColorRGBA) + GraphBuf.PitchBytes * Y)),
+          Pointer(
+              PAnsiChar(GraphBuf.GetPixels) + (X * SizeOf(TColorRGBA) + GraphBuf.PitchBytes * Y)
+          ),
           GraphBuf.PitchBytes,
-          Pointer(PtrUInt(Data) + Plane.DataOffset)
+          Pointer(PAnsiChar(Data) + Plane.DataOffset)
       );
     end;
   end;
 end;
+
 procedure TgiGR.DecodeToGraphBuf(GraphBuf: TGraphBufGR; Keep16BitPixels: Boolean);
 var
   Plane, PalettePlane: PgiPlaneGR;
@@ -467,9 +518,11 @@ begin
       begin
         if Keep16BitPixels then
           for Y := 0 to Cardinal(GraphBuf.Height) - 1 do
-            CopyMemory(
-                AddPointerOffset(GraphBuf.GetPixels, GraphBuf.PitchBytes * Y),
-                AddPointerOffset(Data, Plane.DataOffset + Y * GraphBuf.Width * SizeOf(Word)),
+            System.Move(
+                Pointer(
+                    AddPointerOffset(Data, Plane.DataOffset + Y * GraphBuf.Width * SizeOf(Word))
+                )^,
+                Pointer(AddPointerOffset(GraphBuf.GetPixels, GraphBuf.PitchBytes * Y))^,
                 GraphBuf.Width * SizeOf(Word)
             )
         else
@@ -483,9 +536,9 @@ begin
           );
       end
       else
-        CopyMemory(
-            GraphBuf.GetPixels,
-            AddPointerOffset(Data, Plane.DataOffset),
+        System.Move(
+            Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
+            Pointer(GraphBuf.GetPixels)^,
             GraphBuf.Width * SizeOf(TColorRGBA) * GraphBuf.Height
         );
     end;
@@ -632,6 +685,7 @@ begin
     end;
   end;
 end;
+
 procedure TgiGR.DecodeRawRegion(
     Destination: Pointer;
     PitchBytes, SourceX, SourceY, Width, Height: Integer;
@@ -651,12 +705,14 @@ begin
         SourcePitch := (Header.Bounds.Right - Header.Bounds.Left) * SizeOf(Word);
         if Keep16BitPixels then
           for Y := 0 to Height - 1 do
-            CopyMemory(
-                AddPointerOffset(Destination, PitchBytes * Y),
-                AddPointerOffset(
-                    Data,
-                    (SourceY + Y) * SourcePitch + SourceX * SizeOf(Word) + Plane.DataOffset
-                ),
+            System.Move(
+                Pointer(
+                    AddPointerOffset(
+                        Data,
+                        (SourceY + Y) * SourcePitch + SourceX * SizeOf(Word) + Plane.DataOffset
+                    )
+                )^,
+                Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
                 Width * SizeOf(Word)
             )
         else
@@ -676,12 +732,14 @@ begin
       begin
         SourcePitch := (Header.Bounds.Right - Header.Bounds.Left) * SizeOf(TColorRGBA);
         for Y := 0 to Height - 1 do
-          CopyMemory(
-              AddPointerOffset(Destination, PitchBytes * Y),
-              AddPointerOffset(
-                  Data,
-                  (Y + SourceY) * SourcePitch + SourceX * SizeOf(TColorRGBA) + Plane.DataOffset
-              ),
+          System.Move(
+              Pointer(
+                  AddPointerOffset(
+                      Data,
+                      (Y + SourceY) * SourcePitch + SourceX * SizeOf(TColorRGBA) + Plane.DataOffset
+                  )
+              )^,
+              Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
               Width * SizeOf(TColorRGBA)
           );
       end;
@@ -692,6 +750,7 @@ begin
         'Error in TgiGR.DrawRGBA()::FZag.format=' + IntToWideString(Header.Format)
     );
 end;
+
 procedure TgiGR.DecodeToPixels(
     Destination: Pointer;
     PitchBytes, Width, Height: Integer;
@@ -710,9 +769,9 @@ begin
       begin
         if Keep16BitPixels then
           for Y := 0 to Height - 1 do
-            CopyMemory(
-                AddPointerOffset(Destination, PitchBytes * Y),
-                AddPointerOffset(Data, Y * Width * SizeOf(Word) + Plane.DataOffset),
+            System.Move(
+                Pointer(AddPointerOffset(Data, Y * Width * SizeOf(Word) + Plane.DataOffset))^,
+                Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
                 Width * SizeOf(Word)
             )
         else
@@ -726,7 +785,11 @@ begin
           );
       end
       else
-        CopyMemory(Destination, AddPointerOffset(Data, Plane.DataOffset), PitchBytes * Height);
+        System.Move(
+            Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
+            Pointer(Destination)^,
+            PitchBytes * Height
+        );
     end;
   end
   else if Header.Format = 1 then
@@ -829,28 +892,29 @@ begin
     Ex_OKGR_F6_DrawRGBA(Destination, PitchBytes, AddPointerOffset(Data, Plane.DataOffset));
   end;
 end;
+
 procedure TgiGR.CreateFromGraphBuf(GraphBuf: TGraphBufGR; StorageMode: Integer);
 var
   Plane: PgiPlaneGR;
   ByteCount: Cardinal;
-  procedure SwapGiSourceRedBlue; // @addr $4782CC @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x00478486 0x004784FC"
+
+  procedure SwapGiSourceRedBlue;
   var
-    Pixels: Pointer;
-    Count, I: Integer;
-    B: Byte;
-    P: PByte;
+    Pixels: PColorRGBA;
+    Count, Index: Integer;
+    Red: Byte;
   begin
     Pixels := GraphBuf.GetPixels;
     Count := GraphBuf.Width * GraphBuf.Height;
-    P := Pixels;
-    for I := 0 to Count - 1 do
+    for Index := 1 to Count do
     begin
-      B := P[0];
-      P[0] := P[2];
-      P[2] := B;
-      Inc(P, 4)
+      Red := Pixels.R;
+      Pixels.R := Pixels.B;
+      Pixels.B := Red;
+      Inc(Pixels);
     end;
   end;
+
 begin
   ClearData;
   ByteCount := GraphBuf.Width * GraphBuf.Height;
@@ -878,7 +942,11 @@ begin
       Header.GreenMask := $FF00;
       Header.BlueMask := $FF;
       Header.AlphaMask := $FF000000;
-      CopyMemory(AddPointerOffset(Data, Plane.DataOffset), GraphBuf.GetPixels, ByteCount);
+      System.Move(
+          Pointer(GraphBuf.GetPixels)^,
+          Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
+          ByteCount
+      );
     end;
     1:
     begin
@@ -902,6 +970,7 @@ begin
     end;
   end;
 end;
+
 procedure TgiGR.CreateFormat2FromGraphBuf(GraphBuf: TGraphBufGR; TopLeft: TPoint);
 var
   Plane: PgiPlaneGR;
@@ -987,6 +1056,7 @@ begin
       );
   Plane.Bounds := Header.Bounds;
 end;
+
 procedure PrepareRawGiColorCache(Data: Pointer);
 var
   Image: TgiGR;
@@ -996,4 +1066,5 @@ begin
   Image.BuildPalettedFormat4ColorCache;
   Image.Free;
 end;
+
 end.

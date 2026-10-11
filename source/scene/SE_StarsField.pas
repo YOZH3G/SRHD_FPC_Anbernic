@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit SE_StarsField;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -14,8 +13,11 @@ uses
   GI_InfiniteImage,
   SE_Space,
   Types;
+
 type
+
   TStarsFieldSE = class;
+
   TStarsFieldSE = class(TObjectSE)
     ImagePath: WideString;
     InfiniteImage: TInfiniteImageGI;
@@ -25,9 +27,10 @@ type
     procedure LoadTemplate(Block: TBlockParEC); override;
     procedure QueueImageLoad(PendingLoads: TList; Owner: TObjectGI); override;
   end;
+
 implementation
+
 uses
-  Math,
   GI_Main,
   GlobalsV,
   GI_Image;

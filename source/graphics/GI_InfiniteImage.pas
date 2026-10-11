@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit GI_InfiniteImage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
   EC_CacheBitmap,
   GI_MessageLoop,
   Types;
+
 type
+
   TInfiniteImageGI = class;
+
   TInfiniteImageGI = class(TObjectGI)
     ImageCache: TCBitmapControlEC;
     procedure QueueImageLoad(PendingLoads: TList); override;
@@ -24,7 +26,9 @@ type
     procedure SetImagePath(Path: WideString);
     procedure LoadImageProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   GlobalsV,
   Math,

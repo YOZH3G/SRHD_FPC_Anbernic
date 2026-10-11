@@ -1,17 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit GI_SBPath;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_Image,
   GI_MessageLoop,
   Types;
+
 type
+
   TSBPathGI = class;
+
   TSBPathGI = class(TObjectGI)
     PointCount: Integer;
     Points: array of TPoint;
@@ -19,7 +21,6 @@ type
     Maximum: Integer;
     Position: Integer;
     Dragging: Boolean;
-    Gap135: array[0..2] of Byte;
     ThumbImage: TImageGI;
     HitRadius: Integer;
     ChangeCallback: TObjectNotifyEventGI;
@@ -30,6 +31,7 @@ type
     procedure OnMouseLeave; override;
     procedure OnActivate; override;
     procedure OnDeactivate; override;
+    procedure CancelPointerInput; override;
     procedure ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint); override;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); override;
     procedure LoadFromBlock(Block: TBlockParEC); override;
@@ -42,9 +44,10 @@ type
     function FindClosestPoint(Point: TPoint; var DistanceSquared: Integer): Integer;
     procedure LoadPathProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   Classes,
   SysUtils,
@@ -53,6 +56,7 @@ uses
 constructor TSBPathGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiDrag;
   ThumbImage := TImageGI.Create(Self);
   Minimum := 0;
   Maximum := 100;
@@ -144,6 +148,14 @@ end;
 procedure TSBPathGI.OnDeactivate;
 begin
   inherited OnDeactivate;
+  Dragging := False;
+end;
+
+procedure TSBPathGI.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  // Keep the current value and stop later hover motion from changing it.
+  // Cancellation must not dispatch pointer or change callbacks.
   Dragging := False;
 end;
 

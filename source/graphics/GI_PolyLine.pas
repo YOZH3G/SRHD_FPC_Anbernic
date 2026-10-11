@@ -1,28 +1,31 @@
-{$EXCESSPRECISION OFF}
 unit GI_PolyLine;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   GI_MessageLoop,
   GI_Circle,
   EC_BlockPar,
-  Types,
-  Windows;
+  Types;
+
 type
+
   TPolyLineGI = class;
+
   PointerToTPolyLineSegmentGI = ^TPolyLineSegmentGI;
+
   PPolyLineSegmentGI = PointerToTPolyLineSegmentGI;
-  TPolyLineSegmentGI = packed record
+
+  TPolyLineSegmentGI = record
     Next: PPolyLineSegmentGI;
     Prev: PPolyLineSegmentGI;
     First: TPoint;
     Last: TPoint;
     UserData: Integer;
     Animated: Boolean;
-    Gap1D: array[0..2] of Byte;
     PixelCount: Integer;
     PixelCapacity: Integer;
     PixelFirst: TPoint;
@@ -31,28 +34,25 @@ type
     Visible: Boolean;
     PreviousFirst: TPoint;
     PreviousLast: TPoint;
-    Gap4D: array[0..2] of Byte;
     PreviousPixels: Pointer;
     PreviouslyVisible: Boolean;
-    Gap55: array[0..2] of Byte;
     ClippedColor: Cardinal;
     ClippedEndColor: Cardinal;
     Color: Cardinal;
     EndColor: Cardinal;
     Kind: Integer;
   end;
+
   TPolyLineGI = class(TObjectGI)
     FirstSegment: PPolyLineSegmentGI;
     LastSegment: PPolyLineSegmentGI;
     AnimationPhase: Cardinal;
     AnimationTimer: PCallbackTimerGI;
     FrameDrawing: Boolean;
-    Gap131: array[0..2] of Byte;
     ShadowCircle: TCircleGI;
     AutoRebuildBounds: Boolean;
     NormalizeBounds: Boolean;
-    Gap13A: array[0..1] of Byte;
-    SegmentHeap: Cardinal;
+    SegmentHeap: TGameHeapHandle;
     procedure Clear; override;
     procedure LoadFromConfigPath(const Path: WideString); override;
     procedure Invalidate; override;
@@ -91,9 +91,10 @@ type
     procedure StopAnimation;
     procedure AdvanceAnimation(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   EC_Struct,
   GR_Main,
@@ -108,7 +109,7 @@ uses
 constructor TPolyLineGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
-  SegmentHeap := HeapCreate(1, $8000, 0);
+  SegmentHeap := GameHeap.HeapCreate(1, $8000, 0);
   if SegmentHeap = 0 then
     raise Exception.Create('TPolyLineGI.HeapCreate');
   ClientSize := Classes.Point(1, 1);
@@ -128,7 +129,7 @@ begin
   Clear;
   if SegmentHeap <> 0 then
   begin
-    HeapDestroy(SegmentHeap);
+    GameHeap.HeapDestroy(SegmentHeap);
     SegmentHeap := 0;
   end;
   inherited Destroy;
@@ -219,6 +220,7 @@ end;
 
 procedure TPolyLineGI.LoadPolyLineProperties(Block: TBlockParEC);
 begin
+
 end;
 
 procedure TPolyLineGI.RebuildBounds;
@@ -340,7 +342,7 @@ begin
   if Segment.PreviouslyVisible and (Segment.PreviousPixels <> nil) then
   begin
     Buffer := AllocEC(Segment.PixelCount * 2 + 10);
-    CopyMemory(Buffer, Segment.PreviousPixels, Segment.PixelCount * 2 + 10);
+    System.Move(Pointer(Segment.PreviousPixels)^, Pointer(Buffer)^, Segment.PixelCount * 2 + 10);
     MessageLoop.AddSavedLine(Segment.PreviousFirst, Segment.PreviousLast, Buffer);
   end;
   RemoveSegment(Segment);
@@ -465,7 +467,6 @@ begin
     end;
     Segment := Segment.Next;
   end;
-
 end;
 
 procedure TPolyLineGI.DrawUpdateRects(ClipRect: TRect);
@@ -711,6 +712,7 @@ end;
 
 procedure TPolyLineGI.CommitFrameDraw;
 begin
+
 end;
 
 end.

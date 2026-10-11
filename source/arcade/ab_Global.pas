@@ -1,10 +1,6 @@
-{$EXCESSPRECISION OFF}
 unit ab_Global;
 
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+{$I GameOptions.inc}
 
 interface
 
@@ -15,6 +11,8 @@ uses
   Types;
 
 const
+
+  ArcadeTickMs = 20;
 
   abkRegeneration = 0;
 
@@ -325,9 +323,9 @@ function MultiplyMatrix4D(const Left: TMatrix4D; const Right: TMatrix4D): TMatri
 function ProjectPointByMatrix(const Matrix: TMatrix4D; const Source: TVector3D): TVector3D;
 
 function TryIntersectRayWithSphere(
-    constref RayOrigin: TVector3D;
-    constref RayPointOnRay: TVector3D;
-    constref SphereCenter: TVector3D;
+    RayOrigin: TVector3D;
+    RayPointOnRay: TVector3D;
+    SphereCenter: TVector3D;
     SphereRadius: Double;
     var HitPoint: TVector3D
 ): Boolean;
@@ -339,7 +337,6 @@ uses
   aMyFunction,
   GR_Main;
 
-{ @routine $4EC5A4 MakeSphericalBearingState }
 function MakeSphericalBearingState(
     LongitudeDegrees,
     PolarAngleDegrees,
@@ -350,9 +347,7 @@ begin
   Result.PolarAngleDegrees := PolarAngleDegrees;
   Result.BearingDegrees := BearingDegrees;
 end;
-{ @end $4EC5A4 }
 
-{ @routine $4EC5DC SphericalToVector3D }
 function SphericalToVector3D(LongitudeRadians, PolarAngleRadians, Radius: Double): TVector3D;
 var
   V: TVector3D;
@@ -364,9 +359,7 @@ begin
   Result.Y := V.Y;
   Result.Z := -Cos(LongitudeRadians) * V.X;
 end;
-{ @end $4EC5DC }
 
-{ @routine $4EC664 VectorToSphericalAngles }
 procedure VectorToSphericalAngles(
     Vector: TVector3D;
     var LongitudeDegrees, PolarAngleDegrees: Double
@@ -378,9 +371,7 @@ begin
   PolarAngleDegrees := RadiansToHeadingDegrees(ArcCos(-Vector.Y / Radius));
   LongitudeDegrees := RadiansToHeadingDegrees(Pi - ArcTan2(Vector.X, Vector.Z));
 end;
-{ @end $4EC664 }
 
-{ @routine $4EC71C AdvanceSphericalBearingState }
 procedure AdvanceSphericalBearingState(
     var LongitudeDegrees, PolarAngleDegrees, BearingDegrees: Double;
     SphereRadius, ArcDistance: Double
@@ -436,9 +427,7 @@ begin
   if Reverse then
     BearingDegrees := WrapHeadingDegrees(BearingDegrees + 180);
 end;
-{ @end $4EC71C }
 
-{ @routine $4ECB08 AdvanceSphericalStateOnCurrentSphere }
 function AdvanceSphericalStateOnCurrentSphere(
     Source: TSphericalBearingState;
     ArcDistance: Double
@@ -453,9 +442,7 @@ begin
       ArcDistance
   );
 end;
-{ @end $4ECB08 }
 
-{ @routine $4ECB5C AdvanceSphericalStateAlongBearing }
 function AdvanceSphericalStateAlongBearing(
     Source: TSphericalBearingState;
     TravelBearingDegrees, ArcDistance: Double
@@ -474,9 +461,7 @@ begin
   );
   Result.BearingDegrees := WrapHeadingDegrees(TravelBearingDegrees + RelativeBearing);
 end;
-{ @end $4ECB5C }
 
-{ @routine $4ECBE0 AdvanceSphericalStateAndTravelBearing }
 function AdvanceSphericalStateAndTravelBearing(
     Source: TSphericalBearingState;
     var TravelBearingDegrees: Double;
@@ -496,9 +481,7 @@ begin
   );
   Result.BearingDegrees := WrapHeadingDegrees(TravelBearingDegrees + RelativeBearing);
 end;
-{ @end $4ECBE0 }
 
-{ @routine $4ECC6C ComputeSphericalBearingAndDistance }
 procedure ComputeSphericalBearingAndDistance(
     var BearingDeltaDegrees, Distance: Double;
     SourceLongitudeDegrees,
@@ -543,9 +526,7 @@ begin
   BearingDeltaDegrees :=
       HeadingDifferenceDegrees(SourceBearingDegrees, RadiansToHeadingDegrees(Bearing));
 end;
-{ @end $4ECC6C }
 
-{ @routine $4ECEFC ComputeSphericalDistance }
 procedure ComputeSphericalDistance(
     var Distance: Double;
     SourceLongitudeDegrees,
@@ -572,9 +553,7 @@ begin
   ArcAngle := ArcCos(Value);
   Distance := ArcAngle / (2 * Pi) * 2 * Pi * SphereRadius;
 end;
-{ @end $4ECEFC }
 
-{ @routine $4ED04C GetSphericalBearingAndDistance }
 function GetSphericalBearingAndDistance(
     Source,
     Target: TSphericalBearingState
@@ -591,9 +570,7 @@ begin
       SphereRadius
   );
 end;
-{ @end $4ED04C }
 
-{ @routine $4ED0B4 UpdateSphereProjectionMetrics }
 procedure UpdateSphereProjectionMetrics;
 var
   Angle: Double;
@@ -626,16 +603,12 @@ begin
   V := ProjectPointByMatrix(Combined, V);
   SphereProjectedRadius := Max(Abs(V.X), Abs(V.Y));
 end;
-{ @end $4ED0B4 }
 
-{ @routine $4ED3C0 IsDepthBeforeSphereHorizon }
 function IsDepthBeforeSphereHorizon(ProjectedDepth: Double): Boolean;
 begin
   Result := ProjectedDepth < SphereHorizonDepth;
 end;
-{ @end $4ED3C0 }
 
-{ @routine $4ED3E0 NormalizeVector3D }
 function NormalizeVector3D(const Source: TVector3D): TVector3D;
 var
   Scale: Double;
@@ -645,25 +618,19 @@ begin
   Result.Y := Source.Y * Scale;
   Result.Z := Source.Z * Scale;
 end;
-{ @end $4ED3E0 }
 
-{ @routine $4ED460 CrossProduct3D }
 function CrossProduct3D(const A, B: TVector3D): TVector3D;
 begin
   Result.X := A.Y * B.Z - A.Z * B.Y;
   Result.Y := A.Z * B.X - A.X * B.Z;
   Result.Z := A.X * B.Y - A.Y * B.X;
 end;
-{ @end $4ED460 }
 
-{ @routine $4ED4D4 DotProduct3D }
 function DotProduct3D(const A, B: TVector3D): Double;
 begin
   Result := A.X * B.X + A.Y * B.Y + A.Z * B.Z;
 end;
-{ @end $4ED4D4 }
 
-{ @routine $4ED514 ClearMatrix4D }
 procedure ClearMatrix4D(var Matrix: TMatrix4D);
 var
   I, J: Integer;
@@ -672,9 +639,7 @@ begin
     for J := 0 to 3 do
       Matrix[I, J] := 0;
 end;
-{ @end $4ED514 }
 
-{ @routine $4ED558 SetIdentityMatrix4D }
 procedure SetIdentityMatrix4D(var Matrix: TMatrix4D);
 begin
   Matrix[0, 0] := 1;
@@ -694,9 +659,7 @@ begin
   Matrix[2, 3] := 0;
   Matrix[3, 3] := 1;
 end;
-{ @end $4ED558 }
 
-{ @routine $4ED624 BuildZAxisRotationMatrix }
 function BuildZAxisRotationMatrix(AngleRadians: Double): TMatrix4D;
 var
   C, S: Double;
@@ -709,9 +672,7 @@ begin
   Result[0, 1] := -S;
   Result[1, 0] := S;
 end;
-{ @end $4ED624 }
 
-{ @routine $4ED69C BuildPerspectiveProjectionMatrix }
 function BuildPerspectiveProjectionMatrix(
     NearPlane,
     FarPlane,
@@ -731,9 +692,7 @@ begin
   Result[3, 2] := -Q * NearPlane;
   Result[2, 3] := S;
 end;
-{ @end $4ED69C }
 
-{ @routine $4ED748 BuildLookAtMatrix }
 function BuildLookAtMatrix(const CameraPos, TargetPos, UpVector: TVector3D): TMatrix4D;
 var
   Forward, Right, Up: TVector3D;
@@ -759,9 +718,7 @@ begin
   Result[3, 1] := -DotProduct3D(Up, CameraPos);
   Result[3, 2] := -DotProduct3D(Forward, CameraPos);
 end;
-{ @end $4ED748 }
 
-{ @routine $4EDD68 InvertMatrix4D }
 function InvertMatrix4D(const Matrix: TMatrix4D): TMatrix4D;
 var
   Permutations: array[0..3] of Integer;
@@ -770,10 +727,7 @@ var
   PermutationSign: Double;
   Factors: TMatrix4D;
 
-  // @nested $4ED8D0 SolveMatrix4DLuSystem
-  procedure SolveMatrix4DLuSystem(
-      const Factors: TMatrix4D
-  ); // @addr 0x4ED8D0 @ida "void __usercall $name(const TMatrix4D *Factors@<eax>, void *ParentFrame@<^0>);"
+  procedure SolveMatrix4DLuSystem(const Factors: TMatrix4D);
   var
     I, J, FirstNonzero, Pivot: Integer;
     Sum: Double;
@@ -800,11 +754,7 @@ var
     end;
   end;
 
-  // @nested $4EDA20 DecomposeMatrix4DLu
-  procedure DecomposeMatrix4DLu(
-      var Matrix: TMatrix4D;
-      var PermutationSign: Double
-  ); // @addr 0x4EDA20 @ida "void __usercall $name(TMatrix4D *Matrix@<eax>, double *PermutationSign@<edx>, void *ParentFrame@<^0>);"
+  procedure DecomposeMatrix4DLu(var Matrix: TMatrix4D; var PermutationSign: Double);
   var
     Big, Temp, Sum, Magnitude: Double;
     I, Pivot, J, K: Integer;
@@ -892,9 +842,7 @@ begin
       Result[I, J] := Solution[I];
   end;
 end;
-{ @end $4EDD68 }
 
-{ @routine $4EDE1C MultiplyMatrix4D }
 function MultiplyMatrix4D(const Left, Right: TMatrix4D): TMatrix4D;
 var
   I, J, K: Integer;
@@ -905,36 +853,40 @@ begin
       for K := 0 to 3 do
         Result[I, J] := Left[K, J] * Right[I, K] + Result[I, J];
 end;
-{ @end $4EDE1C }
 
-{ @routine $4EDEAC ProjectPointByMatrix }
 function ProjectPointByMatrix(const Matrix: TMatrix4D; const Source: TVector3D): TVector3D;
-// Portable equivalent of the native x87 homogeneous projection.
 var
-  InvW: Double;
+  InverseW: Extended;
 begin
-  InvW :=
-      1.0
-          / (Matrix[0, 3] * Source.X
-              + Matrix[1, 3] * Source.Y
-              + Matrix[2, 3] * Source.Z
+  // Preserve the x87 addition order and its single division followed by multiplies.
+  InverseW :=
+      1
+          / (Extended(Matrix[0, 3]) * Source.X
+              + Extended(Matrix[1, 3]) * Source.Y
+              + Extended(Matrix[2, 3]) * Source.Z
               + Matrix[3, 3]);
   Result.X :=
-      (Matrix[0, 0] * Source.X + Matrix[1, 0] * Source.Y + Matrix[2, 0] * Source.Z + Matrix[3, 0])
-          * InvW;
+      (Extended(Matrix[0, 0]) * Source.X
+              + Extended(Matrix[1, 0]) * Source.Y
+              + Extended(Matrix[2, 0]) * Source.Z
+              + Matrix[3, 0])
+          * InverseW;
   Result.Y :=
-      (Matrix[0, 1] * Source.X + Matrix[1, 1] * Source.Y + Matrix[2, 1] * Source.Z + Matrix[3, 1])
-          * InvW;
+      (Extended(Matrix[0, 1]) * Source.X
+              + Extended(Matrix[1, 1]) * Source.Y
+              + Extended(Matrix[2, 1]) * Source.Z
+              + Matrix[3, 1])
+          * InverseW;
+  // Z unwinds the remaining x87 stack in a different order from X and Y.
   Result.Z :=
-      (Matrix[0, 2] * Source.X + Matrix[3, 2] + Matrix[1, 2] * Source.Y + Matrix[2, 2] * Source.Z)
-          * InvW;
+      (Extended(Matrix[1, 2]) * Source.Y
+              + (Extended(Matrix[0, 2]) * Source.X
+                  + (Extended(Matrix[2, 2]) * Source.Z + Matrix[3, 2])))
+          * InverseW;
 end;
-{ @end $4EDEAC }
 
-{ @routine $4EDF2C TryIntersectRayWithSphere }
 function TryIntersectRayWithSphere(
-    // CHANGE: PORTABILITY - Avoid ARMHF record argument code generation failures.
-    constref RayOrigin, RayPointOnRay, SphereCenter: TVector3D;
+    RayOrigin, RayPointOnRay, SphereCenter: TVector3D;
     SphereRadius: Double;
     var HitPoint: TVector3D
 ): Boolean;
@@ -980,6 +932,5 @@ begin
   HitPoint.Z := Direction.Z * T + RayOrigin.Z;
   Result := T > 0.001;
 end;
-{ @end $4EDF2C }
 
 end.

@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit ab_W15;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW15 = class;
+
   TabW15 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
@@ -27,12 +29,14 @@ type
     procedure Launch(Owner: TabObject; Amount: Integer; Angle: Single);
     procedure Explode;
   end;
+
 var
+
   W15ProjectileCount: Integer = 0;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   ab_Ship,
   aMyFunction;
@@ -158,9 +162,4 @@ begin
   inherited UpdateVisuals;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabShip.ClassName;
-  TabW15.ClassName;
-end;
 end.

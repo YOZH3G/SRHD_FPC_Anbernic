@@ -5,7 +5,9 @@ import argparse
 import shutil
 from pathlib import Path
 
-from build import ROOT, pascal_flags, run_step
+from build_support import run_step
+from targets import ROOT
+from pascal import build_paszlib, compile_pascal, pascal_flags
 
 
 def build_linux(
@@ -47,56 +49,42 @@ def build_linux(
     )
     run_step(work, "okgf", ["cmake", "--build", native, "--parallel", "4"])
     shutil.copy2(native / "libokgf.so", libraries / "libokgf.so")
-    for name, target in (
-        ("libSDL2.so", "libSDL2-2.0.so.0"),
-        ("libSDL2_mixer.so", "libSDL2_mixer-2.0.so.0"),
-    ):
-        shutil.copy2(sysroot / "usr/lib" / name, libraries / target)
-    # The linker names are also required by Pascal external declarations.
-    for name, target in (
-        ("libSDL2.so", "libSDL2-2.0.so.0"),
-        ("libSDL2_mixer.so", "libSDL2_mixer-2.0.so.0"),
-    ):
-        link = libraries / name
+    # SDK SDL is used only for cross linking and QEMU checks; firmware supplies SDL.
+    shutil.copy2(sysroot / "usr/lib/libSDL2-2.0.so.0", libraries / "libSDL2-2.0.so.0")
+    link = libraries / "libSDL2.so"
+    link.unlink(missing_ok=True)
+    link.symlink_to("libSDL2-2.0.so.0")
+    for name, soname in [
+        ("vorbisfile", "libvorbisfile.so.3"),
+        ("vorbis", "libvorbis.so.0"),
+        ("vorbisenc", "libvorbisenc.so.2"),
+        ("ogg", "libogg.so.0"),
+    ]:
+        shutil.copy2(sysroot / f"usr/lib/{triplet}/{soname}", libraries / soname)
+        link = libraries / f"lib{name}.so"
         link.unlink(missing_ok=True)
-        link.symlink_to(target)
-    run_step(
-        work,
-        "native",
-        [
-            clang,
-            "-shared",
-            "-fPIC",
-            "-O2",
-            "-Wall",
-            "-Wextra",
-            f"-I{sysroot}/usr/include",
-            f"-I{sysroot}/usr/include/{triplet}",
-            ROOT / "platform/game_native.c",
-            f"-L{libraries}",
-            f"-L{sysroot}/usr/lib/{triplet}",
-            "-lSDL2_mixer",
-            "-lSDL2",
-            "-ljpeg",
-            "-lm",
-            "-Wl,--no-undefined",
-            "-Wl,-rpath,$ORIGIN",
-            "-Wl,-soname,libgamenative.so",
-            "-o",
-            libraries / "libgamenative.so",
-        ],
-    )
+        link.symlink_to(soname)
     packages = ROOT / "vendor/fpc/packages"
-    flags = [flag for flag in pascal_flags(True) if flag != "-B"]
+    backend = (
+        ["-CaEABIHF", "-CpARMV7A", "-CfVFPV3"] if arm else ["-Clv17.0", "-Aclang-llvm"]
+    )
+    compiler_flags = [
+        "-n",
+        "-Tlinux",
+        *backend,
+        "-Cg",
+        f"-Fu{runtime}",
+        f"-FD{toolchain}",
+        f"-XP{triplet}-",
+        f"-XR{sysroot}",
+    ]
+    paszlib = build_paszlib(work, compiler, compiler_flags, rebuild)
+    flags = ["-dSRHD_ANBERNIC", *pascal_flags(True, paszlib)]
     if arm:
         flags = ["-O2" if flag == "-O4" else flag for flag in flags]
-    if rebuild:
-        flags.insert(0, "-B")
     paths = ["rtl-objpas/src/inc", "fcl-base/src", "pthreads/src", "fcl-process/src"]
-    backend = ["-CaEABIHF", "-CpARMV7A", "-CfVFPV3"] if arm else ["-Clv17.0", "-Aclang-llvm"]
-    run_step(
+    compile_pascal(
         work,
-        "pascal",
         [
             compiler,
             "-n",
@@ -118,13 +106,14 @@ def build_linux(
             f"-Fl{sysroot}/usr/lib/{triplet}",
             f"-Fl{sysroot}/lib/{triplet}",
             f"-Fl{sysroot}/usr/lib/gcc/{triplet}/9",
-            "-k-lgamenative",
             "-k-lokgf",
-            "-k-lz",
             "-k-rpath",
             "-k$ORIGIN/lib",
             ROOT / "source/Rangers.dpr",
         ],
+        rebuild,
+        work / "Rangers",
+        (libraries / "libokgf.so",),
     )
     return work / "Rangers"
 
@@ -135,7 +124,9 @@ def main() -> None:
     parser.add_argument("--sysroot", type=Path, required=True)
     parser.add_argument("--toolchain", type=Path, required=True)
     parser.add_argument("--fpc-source", type=Path, required=True)
-    parser.add_argument("--rebuild", action="store_true", help="Recompile all Pascal units.")
+    parser.add_argument(
+        "--rebuild", action="store_true", help="Recompile all Pascal units."
+    )
     args = parser.parse_args()
     try:
         binary = build_linux(

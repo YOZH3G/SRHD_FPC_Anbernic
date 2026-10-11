@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon05Treton;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTTretonParticle = ^TTretonParticle;
+
   PTretonParticle = PointerToTTretonParticle;
+
   TTretonParticle = record
     Prev: PTretonParticle;
     Next: PTretonParticle;
@@ -23,13 +26,18 @@ type
     Velocity: TPointF;
     Countdown: Byte;
     State: Byte;
-    Gap1E: array[0..1] of Byte;
   end;
+
   TTretonPalette = array[0..1] of Word;
+
 var
+
   TretonPalettes: array of TTretonPalette;
+
 type
+
   TPSWeapon05Treton = class;
+
   TPSWeapon05Treton = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PTretonParticle;
@@ -54,8 +62,11 @@ type
     function AddParticle: PTretonParticle;
     procedure ClearParticles;
   end;
+
 procedure LoadTretonPalettes;
+
 implementation
+
 uses
   GlobalsV,
   SysUtils,
@@ -67,8 +78,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877904
-// @unit-finalization $68C194
 
 constructor TPSWeapon05Treton.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin

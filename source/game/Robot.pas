@@ -1,20 +1,27 @@
-{$EXCESSPRECISION OFF}
 unit Robot;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  Windows,
+  Dynlibs,
+  GameWindow,
   Types,
   GR_Sound,
-  GR_GraphBuf;
+  GR_GraphBuf,
+  aGalaxyStruct;
+
 type
+
   PointerToTRobotTextImage = ^TRobotTextImage;
+
   PointerToTRobotCallbacks = ^TRobotCallbacks;
+
   PointerToTRobotDisplaySettingsPrefix = ^TRobotDisplaySettingsPrefix;
+
   PointerToTRobotInterfacePrefix = ^TRobotInterfacePrefix;
+
   TRobotTextImage = record
     Buffer: TGraphBufGR;
     Pixels: Pointer;
@@ -22,14 +29,22 @@ type
     Width: Integer;
     Height: Integer;
   end;
+
   PRobotTextImage = PointerToTRobotTextImage;
+
   TRobotPlaySound = procedure(Name: PWideChar); stdcall;
+
   TRobotCreateSound =
       function(Name: PWideChar; Group: Integer; Looping: Integer): TSoundBufferControl; stdcall;
+
   TRobotSoundAction = procedure(Sound: TSoundBufferControl); stdcall;
+
   TRobotSoundQuery = function(Sound: TSoundBufferControl): Integer; stdcall;
+
   TRobotSoundSetValue = procedure(Sound: TSoundBufferControl; Value: Single); stdcall;
+
   TRobotSoundGetValue = function(Sound: TSoundBufferControl): Single; stdcall;
+
   TRobotRenderText =
       procedure(
           Text: PWideChar;
@@ -45,11 +60,17 @@ type
           Clip: PRect;
           Image: PRobotTextImage
       ); stdcall;
+
   TRobotFreeText = procedure(Image: PRobotTextImage); stdcall;
+
   TRobotProgress = procedure(Fraction: Single); stdcall;
+
   TRobotAction = procedure; stdcall;
+
   TRobotGetVolume = function: Single; stdcall;
+
   TRobotSetVolume = procedure(Value: Single); stdcall;
+
   TRobotCallbacks = record
     PlaySound: TRobotPlaySound;
     CreateSound: TRobotCreateSound;
@@ -68,8 +89,10 @@ type
     GetMusicVolume: TRobotGetVolume;
     SetMusicVolume: TRobotSetVolume;
   end;
+
   PRobotCallbacks = PointerToTRobotCallbacks;
-  TRobotDisplaySettingsPrefix = packed record
+
+  TRobotDisplaySettingsPrefix = record
     Direct3D: Pointer;
     Device: Pointer;
     ShowStencilShadows: Boolean;
@@ -90,11 +113,14 @@ type
     Anisotropy: Integer;
     MaxDistance: Single;
     VSync: Boolean;
-    Gap35: array[0..2] of Byte;
   end;
+
   PRobotDisplaySettings = PointerToTRobotDisplaySettingsPrefix;
+
   TRobotInitialize = procedure(Callbacks: PRobotCallbacks); stdcall;
+
   TRobotSupportQuery = function: Integer; stdcall;
+
   TRobotRun =
       function(
           Instance: Cardinal;
@@ -106,21 +132,30 @@ type
           WinText: PWideChar;
           LossText: PWideChar;
           TerronName: PWideChar;
-          Statistics: PInteger
+          Statistics: PPlanetBattleStatistics
       ): Integer; stdcall;
+
   TRobotInterfacePrefix = record
     Initialize: TRobotInitialize;
     Finalize: TRobotAction;
     Support: TRobotSupportQuery;
     Run: TRobotRun;
   end;
+
   PRobotInterfacePrefix = PointerToTRobotInterfacePrefix;
+
   TGetRobotInterface = function: PRobotInterfacePrefix; stdcall;
+
 var
+
   RobotInterface: PRobotInterfacePrefix = nil;
+
   RobotCallbacks: TRobotCallbacks;
-  RobotBattleStatistics: array[0..5] of Integer;
+
+  RobotBattleStatistics: TPlanetBattleStatistics;
+
   SupportedMultiSamples: array of Integer;
+
   RobotSettings: TRobotDisplaySettingsPrefix = (
       Direct3D: nil;
       Device: nil;
@@ -143,31 +178,53 @@ var
       MaxDistance: 0;
       VSync: False
   );
+
   RobotSound: Boolean = True;
+
   RobotMusic: Boolean = True;
+
   RobotVSync: Boolean = False;
+
   RobotFSAASamples: Integer = 0;
+
   RobotAnisotropy: Integer = 0;
+
   RobotMaxDistance: Integer = 0;
+
   SupportedMultiSampleCount: Integer = 0;
+
   MaximumAnisotropy: Cardinal = 0;
-  RobotModule: Cardinal = 0;
+
+  RobotModule: TLibHandle = 0;
+
 function GetRobotMultiSampleIndex: Integer;
+
 procedure InitializeRobotRuntime;
+
 procedure FinalizeRobotRuntime;
+
 procedure RobotPlaySound(Name: PWideChar); stdcall;
+
 function RobotCreateSound(
     Name: PWideChar;
     Group: Integer;
     Looping: Integer
 ): TSoundBufferControl; stdcall;
+
 procedure RobotFreeSound(Sound: TSoundBufferControl); stdcall;
+
 procedure RobotStartSound(Sound: TSoundBufferControl); stdcall;
+
 function RobotIsSoundPlaying(Sound: TSoundBufferControl): Integer; stdcall;
+
 procedure RobotSetSoundVolume(Sound: TSoundBufferControl; Value: Single); stdcall;
+
 procedure RobotSetSoundPan(Sound: TSoundBufferControl; Value: Single); stdcall;
+
 function RobotGetSoundVolume(Sound: TSoundBufferControl): Single; stdcall;
+
 function RobotGetSoundPan(Sound: TSoundBufferControl): Single; stdcall;
+
 procedure RobotRenderText(
     Text: PWideChar;
     FontName: PWideChar;
@@ -182,13 +239,19 @@ procedure RobotRenderText(
     Clip: PRect;
     Image: PRobotTextImage
 ); stdcall;
+
 procedure RobotFreeText(Image: PRobotTextImage); stdcall;
+
 procedure RobotSetProgress(Fraction: Single); stdcall;
+
 function RobotGetMusicVolume: Single; stdcall;
+
 procedure RobotSetMusicVolume(Value: Single); stdcall;
+
 procedure RobotPlayMusic; stdcall;
+
 procedure RobotReleaseTextures; stdcall;
-function AutoWinRobotBattle: Integer;
+
 function FRun(
     const MapName: WideString;
     const StartText: WideString;
@@ -196,12 +259,11 @@ function FRun(
     const LossText: WideString;
     const TerronName: WideString
 ): Integer;
-// CHANGE: LIMITATION - Resolve robot battles as victories.
-const
-  RobotAutoWin = True;
+
 implementation
+
 uses
-  Math,
+  GameSystem,
   GR_Main,
   GlobalsV,
   EC_Mem,
@@ -216,6 +278,7 @@ uses
   GI_MessageLoop,
   EC_HsFile,
   aGalaxy;
+
 function GetRobotMultiSampleIndex: Integer;
 var
   I: Integer;
@@ -228,15 +291,13 @@ begin
     end;
   Result := 0;
 end;
-procedure InitializeRobotRuntime;
 
+procedure InitializeRobotRuntime;
 var
   GetInterface: TGetRobotInterface;
   OverrideName: WideString;
   Callbacks: PRobotCallbacks;
-
 begin
-
   FinalizeRobotRuntime;
   if IsInstallFeatureEnabled('Robot') then
   begin
@@ -258,15 +319,16 @@ begin
     RobotCallbacks.ReleaseTextures := RobotReleaseTextures;
     RobotCallbacks.GetMusicVolume := RobotGetMusicVolume;
     RobotCallbacks.SetMusicVolume := RobotSetMusicVolume;
+{$IF Defined(MSWINDOWS) and Defined(CPU386)}
     if DirectXVersion >= $90000 then
     begin
       if LanguageDataConfig.GetBlock('RobotsMap').CountParams('MatrixOverride') > 0 then
       begin
         OverrideName := LanguageDataConfig.GetBlock('RobotsMap').GetParam('MatrixOverride');
-        RobotModule := LoadLibraryW(PWideChar(OverrideName));
+        RobotModule := LoadLibrary(UTF8Encode(OverrideName));
       end
       else
-        RobotModule := Windows.LoadLibrary('MatrixGame.dll');
+        RobotModule := LoadLibrary('MatrixGame.dll');
       if RobotModule <> 0 then
       begin
         GetInterface := GetProcAddress(RobotModule, 'GetRobotInterface');
@@ -286,9 +348,10 @@ begin
         end;
       end;
     end;
+{$ENDIF}
   end;
-
 end;
+
 procedure FinalizeRobotRuntime;
 begin
   if RobotInterface <> nil then
@@ -302,10 +365,12 @@ begin
     end;
   end;
 end;
+
 procedure RobotPlaySound(Name: PWideChar); stdcall;
 begin
   SoundManager.PlaySound(WideString(Name));
 end;
+
 function RobotCreateSound(Name: PWideChar; Group, Looping: Integer): TSoundBufferControl; stdcall;
 var
   Sound: TSoundBufferControl;
@@ -315,33 +380,39 @@ begin
     Sound.Configure(WideString(Name), Group, Looping <> 0);
   Result := Sound;
 end;
+
 procedure RobotFreeSound(Sound: TSoundBufferControl); stdcall;
 begin
   if Sound <> nil then
     Sound.Free;
 end;
+
 procedure RobotStartSound(Sound: TSoundBufferControl); stdcall;
 begin
   if Sound <> nil then
     if RobotSound then
       Sound.Play;
 end;
+
 function RobotIsSoundPlaying(Sound: TSoundBufferControl): Integer; stdcall;
 begin
   Result := 0;
   if Sound <> nil then
     Result := Integer(Sound.IsPlaying);
 end;
+
 procedure RobotSetSoundVolume(Sound: TSoundBufferControl; Value: Single); stdcall;
 begin
   if Sound <> nil then
     Sound.SetVolume(Value);
 end;
+
 procedure RobotSetSoundPan(Sound: TSoundBufferControl; Value: Single); stdcall;
 begin
   if Sound <> nil then
     Sound.SetPan(Value);
 end;
+
 function RobotGetSoundVolume(Sound: TSoundBufferControl): Single; stdcall;
 begin
   if Sound = nil then
@@ -349,6 +420,7 @@ begin
   else
     Result := Sound.Volume;
 end;
+
 function RobotGetSoundPan(Sound: TSoundBufferControl): Single; stdcall;
 begin
   if Sound = nil then
@@ -356,6 +428,12 @@ begin
   else
     Result := Sound.Pan;
 end;
+
+function CenterSpan(SpanStart, SpanEnd, ContentStart, ContentEnd: Integer): Integer; inline;
+begin
+  Result := SpanStart + (SpanEnd - SpanStart) div 2 - (ContentEnd - ContentStart) div 2;
+end;
+
 procedure RobotRenderText(
     Text, FontName: PWideChar;
     Color: Cardinal;
@@ -373,7 +451,8 @@ var
   DrawX, DrawY, CurrentY: Integer;
   ImageSize: TPoint;
   DrawClip, Bounds, SourceClip: TRect;
-  function MeasureRobotTextSize: TPoint; // @addr $83C644 @ida "void __usercall $name(TPoint *Result@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x83C9AB"
+
+  function MeasureRobotTextSize: TPoint;
   var
     Y: Integer;
     First: Boolean;
@@ -396,7 +475,7 @@ var
       while not Lines.IsAtEnd do
       begin
         LineBounds := Font.MeasureTaggedTextBounds(Lines.GetCurrentText, 0, Y, nil);
-        Windows.UnionRect(MergedBounds, MergedBounds, LineBounds);
+        Types.UnionRect(MergedBounds, MergedBounds, LineBounds);
         Inc(Y, Font.GetLineHeight);
         Lines.Next;
       end;
@@ -421,7 +500,7 @@ var
           while not WrappedLines.IsAtEnd do
           begin
             LineBounds := Font.MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, Y, nil);
-            Windows.UnionRect(MergedBounds, MergedBounds, LineBounds);
+            Types.UnionRect(MergedBounds, MergedBounds, LineBounds);
             Inc(Y, Font.GetLineHeight);
             WrappedLines.Next;
           end;
@@ -433,6 +512,7 @@ var
         Classes
             .Point(MergedBounds.Right - MergedBounds.Left, MergedBounds.Bottom - MergedBounds.Top);
   end;
+
 begin
   Control := nil;
   Font := nil;
@@ -473,7 +553,7 @@ begin
     Image.Width := Buffer.Width;
     Image.Height := Buffer.Height;
     DrawClip := Classes.Rect(0, 0, Width, Height);
-    if not Windows.IntersectRect(DrawClip, DrawClip, SourceClip) then
+    if not Types.IntersectRect(DrawClip, DrawClip, SourceClip) then
       Exit;
     DrawX := 0;
     DrawY := 0;
@@ -556,7 +636,7 @@ begin
             Font.DrawTaggedText32(
                 Buffer.GetPixels,
                 Buffer.PitchBytes,
-                (Width - 0) div 2 - (Bounds.Right - Bounds.Left) div 2 + OffsetX,
+                CenterSpan(0, Width, Bounds.Left, Bounds.Right) + OffsetX,
                 CurrentY + OffsetY,
                 WrappedLines.GetCurrentText,
                 DrawClip
@@ -598,12 +678,14 @@ begin
       WrappedLines.Free;
   end;
 end;
+
 procedure RobotFreeText(Image: PRobotTextImage); stdcall;
 begin
   if Image.Buffer <> nil then
     Image.Buffer.Free;
   FillChar(Image^, SizeOf(TRobotTextImage), 0);
 end;
+
 procedure RobotSetProgress(Fraction: Single); stdcall;
 var
   Panel: TfPanelLoad;
@@ -617,16 +699,18 @@ begin
       Panel.SetShutterOpenFraction(0);
       Panel.SetProgress(Fraction);
       Panel.Show;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).SetCursorActive(False);
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).InvalidateViewport;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).Present;
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).SetCursorActive(False);
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).InvalidateViewport;
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).Present;
       Panel.Hide;
     end;
 end;
+
 function RobotGetMusicVolume: Single; stdcall;
 begin
   Result := MusicVolumeScale;
 end;
+
 procedure RobotSetMusicVolume(Value: Single); stdcall;
 var
   Buffer: TSoundBuffer;
@@ -643,6 +727,7 @@ begin
     end;
   end;
 end;
+
 procedure RobotPlayMusic; stdcall;
 begin
   if MusicEnabled and RobotMusic and not MusicManager.HasSelectedMusic then
@@ -651,20 +736,12 @@ begin
     MusicManager.PlayCategory('Robot');
   end;
 end;
+
 procedure RobotReleaseTextures; stdcall;
 begin
   ReleaseAllTextureSurfaces;
 end;
-// CHANGE: LIMITATION - Return a campaign victory without running the robot battle engine.
-function AutoWinRobotBattle: Integer;
-begin
-  FillChar(RobotBattleStatistics, SizeOf(RobotBattleStatistics), 0);
-  RobotBattleActive := False;
 
-  AppendLogLineThreadSafe('Robot battle: automatic victory');
-
-  Result := 3;
-end;
 function FRun(const MapName, StartText, WinText, LossText, TerronName: WideString): Integer;
 var
   SavedDirectory, RobotDirectory: AnsiString;
@@ -673,23 +750,21 @@ var
   CursorState: TCursorStateGI;
   Memory: TMemoryStatusEx;
 begin
-  if RobotAutoWin then
-    Exit(AutoWinRobotBattle);
   if MusicEnabled and MusicManager.HasSelectedMusic then
     MusicManager.RequestFadeOut;
   AppendLogLineThreadSafe('Preparing to start planetary battle');
   SavedDirectory := GetCurrentDir;
   LooseFileRoot := SavedDirectory + '\';
   try
-    TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).CaptureCursorState(@CursorState);
+    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).CaptureCursorState(@CursorState);
     if InstallConfig.CountParams('RobotPath') > 0 then
     begin
-      SetCurrentDir(AnsiString(InstallConfig.GetParam('RobotPath')));
+      SetCurrentDir(NativeGamePath(AnsiString(InstallConfig.GetParam('RobotPath'))));
       RobotDirectory := GetCurrentDir;
     end;
     RobotSetProgress(0);
     Memory.Length := SizeOf(Memory);
-    GlobalMemoryStatusEx(Memory);
+    QueryGameMemory(Memory);
     if MemorySnapshotActive or (Galaxy <> nil) or ((Int64(Memory.AvailPhys) shr 30) <= 0) then
       GlobalCache.TrimToBudget(0);
     Result := 1;
@@ -741,12 +816,12 @@ begin
     RobotSettings.FSAASamples := RobotFSAASamples;
     RobotSettings.Anisotropy := RobotAnisotropy;
     RobotSettings.MaxDistance := RobotMaxDistance / 100;
-    RobotBattleStatistics[0] := 0;
-    RobotBattleStatistics[1] := 0;
-    RobotBattleStatistics[2] := 0;
-    RobotBattleStatistics[3] := 0;
-    RobotBattleStatistics[4] := 0;
-    RobotBattleStatistics[5] := 0;
+    RobotBattleStatistics.SignedTimeMs := 0;
+    RobotBattleStatistics.RobotsBuilt := 0;
+    RobotBattleStatistics.RobotsDestroyed := 0;
+    RobotBattleStatistics.TurretsBuilt := 0;
+    RobotBattleStatistics.TurretsDestroyed := 0;
+    RobotBattleStatistics.BuildingsDestroyed := 0;
     RobotSettings.Direct3D := Pointer(Direct3D);
     RobotSettings.Device := Pointer(Direct3DDevice);
     AppendLogLineThreadSafe('Starting planetary battle');
@@ -767,7 +842,7 @@ begin
                   PWideChar(WinText),
                   PWideChar(LossText),
                   PWideChar(TerronName),
-                  @RobotBattleStatistics[0]
+                  @RobotBattleStatistics
               )
         else
           Result :=
@@ -781,7 +856,7 @@ begin
                   PWideChar(WinText),
                   PWideChar(LossText),
                   PWideChar(TerronName),
-                  @RobotBattleStatistics[0]
+                  @RobotBattleStatistics
               );
       end;
     except
@@ -802,7 +877,7 @@ begin
     RobotBattleActive := False;
     AppendLogLineThreadSafe('Planetary battle finished');
     GR_DXReset;
-    Windows.SetWindowTextA(MainWindowHandle, 'Rangers');
+    SetGameWindowTitle('Rangers');
     ApplyGammaRamp(DisplayBrightness, DisplayContrast);
     SoundVolume := SavedSoundVolume;
     MusicVolume := SavedMusicVolume;
@@ -811,19 +886,19 @@ begin
     begin
       ExitScreenLoop := True;
       RequestedScreenId := screenNone;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RequestClose(1);
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
       Result := 0;
       Exit;
     end;
-    TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RestoreCursorState(@CursorState);
+    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RestoreCursorState(@CursorState);
     if ShowSystemMouse then
-      while ShowCursor(True) < 0 do
+      while ShowGameCursor(True) < 0 do
     else
-      while ShowCursor(False) >= 0 do
+      while ShowGameCursor(False) >= 0 do
         ;
-    TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).InvalidateViewport;
+    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).InvalidateViewport;
   finally
-    SetCurrentDir(SavedDirectory);
+    SetCurrentDir(NativeGamePath(SavedDirectory));
     LooseFileRoot := '';
   end;
   AppendLogLineThreadSafe('Cleanup after planetary battle finished');
@@ -832,4 +907,5 @@ begin
   if Failed then
     raise Exception.Create('Error in GIRobot.FRun');
 end;
+
 end.

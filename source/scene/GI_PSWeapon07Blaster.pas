@@ -1,37 +1,44 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon07Blaster;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTBlasterParticle = ^TBlasterParticle;
+
   PBlasterParticle = PointerToTBlasterParticle;
+
   TBlasterParticle = record
     Prev: PBlasterParticle;
     Next: PBlasterParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..0] of Byte;
     Unknown1E: Word;
     Gap20: array[0..3] of Byte;
     BaseX: Single;
   end;
+
   TBlasterPalette = array[0..1] of Word;
+
 var
+
   BlasterPalettes: array of TBlasterPalette;
+
 type
+
   TPSWeapon07Blaster = class;
+
   TPSWeapon07Blaster = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PBlasterParticle;
@@ -53,13 +60,18 @@ type
     function AddParticle: PBlasterParticle;
     procedure ClearParticles;
   end;
+
 var
+
   BlasterRandomIndex: Integer = 0;
+
 function NextBlasterRandom: Integer;
+
 procedure LoadBlasterPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Math,
@@ -70,10 +82,9 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877914
-// @unit-finalization $68E760
+
 var
-  BlasterRandomValues: array[0..127] of Integer; // @addr $88ACBC
+  BlasterRandomValues: array[0..127] of Integer;
 
 function NextBlasterRandom: Integer;
 begin
@@ -232,7 +243,7 @@ begin
       for J := 0 to 1 do
       begin
         Particle := AddParticle;
-        I := PresentationRandom(HalfWidth * 2 + 1) - HalfWidth;
+        I := Random(HalfWidth * 2 + 1) - HalfWidth;
         Particle.BaseX := (Y * 2.0 - 1.0) * (J + 1);
         Particle.Position.X := I + J;
         Particle.Position.Y := Y;
@@ -312,7 +323,7 @@ begin
               Spark.Velocity.Y := Current.Velocity.Y * 0.75;
               Spark.State := 2;
               Spark.Unknown1E := 30000;
-              I := Current.Alpha - PresentationRandom(128);
+              I := Current.Alpha - Random(128);
               if I > 255 then
                 I := 255
               else if I < 0 then
@@ -344,7 +355,7 @@ begin
             Spark.Velocity.Y := 0.7 * Current.Velocity.Y;
             Spark.State := 2;
             Spark.Unknown1E := 30000;
-            I := Current.Alpha + PresentationRandom(60) - 32;
+            I := Current.Alpha + Random(60) - 32;
             if I > 255 then
               I := 255
             else if I < 0 then
@@ -444,7 +455,7 @@ var
   Text: WideString;
 begin
   for Index := Low(BlasterRandomValues) to High(BlasterRandomValues) do
-    BlasterRandomValues[Index] := PresentationRandom(100);
+    BlasterRandomValues[Index] := Random(100);
   Block := GameDataConfig.GetBlockByPath('SE.Weapon.6.Palettes');
   ColorIndex := Block.GetBlockCount;
   Count := 0;

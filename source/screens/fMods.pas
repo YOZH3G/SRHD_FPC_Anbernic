@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fMods;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   GI_GraphButton,
@@ -13,8 +12,11 @@ uses
   Types,
   Classes,
   aModsInfo;
+
 type
+
   TfModsManager = class;
+
   TfModsManager = class(TMessageLoopGI)
     SelectedTab: Integer;
     TabCount: Integer;
@@ -26,7 +28,6 @@ type
     ErrorCounts: array of Integer;
     InvalidSelections: array of Boolean;
     NeedsValidation: Boolean;
-    GapF5: array[0..2] of Byte;
     procedure OnOpen; override;
     procedure SelectMusic; override;
     procedure ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer); override;
@@ -49,20 +50,28 @@ type
     procedure ShowInfoClick(Sender: TObjectGI);
     procedure ShowProblemsClick(Sender: TObjectGI);
   end;
+
 var
+
   ModsManagerScreen: TfModsManager = nil;
+
   ModTabColor: Cardinal;
+
   ModTabDownColor: Cardinal;
+
   ModSelectedColor: Cardinal;
+
   ModWarningColor: Cardinal;
+
   ModErrorColor: Cardinal;
+
 function ShowModsManager(Parent: TMessageLoopGI): Integer;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
-  Windows,
+  GameInput,
   EC_Str,
   GR_Main,
   GI_PanelScrollBar,
@@ -111,17 +120,13 @@ var
   Info, Dependency: TModInfo;
   Missing, Anonymous, NoSection, Groups, Group, Weights: TList;
   GroupIndices, Dependents, Block: TBlockParEC;
-  function AlignModRowHeight(
-      Height,
-      Step: Integer
-  ): Integer; // @addr $67B898 @ida "int __usercall $name@<eax>(int Height@<eax>, int Step@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67BAD4,0x67C03D,0x67C1CB"
+
+  function AlignModRowHeight(Height, Step: Integer): Integer;
   begin
     Result := Round(Height / Step + 0.501) * Step;
   end;
-  procedure AddModSectionTitle(
-      Text: WideString;
-      Tab: Integer
-  ); // @addr $67B8D4 @ida "void __usercall $name(unsigned __int16 *Text@<eax>, int Tab@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67D3D1,0x67D502"
+
+  procedure AddModSectionTitle(Text: WideString; Tab: Integer);
   var
     Image: TImageGI;
     LabelControl: TLabelGI;
@@ -151,10 +156,8 @@ var
     LabelControl.SetSize(Point(LabelControl.ClientSize.X, LabelControl.ClientSize.Y + 1));
     TabHeights[Tab] := TabHeights[Tab] + AlignModRowHeight(LabelControl.ClientSize.Y, 10) + 2;
   end;
-  procedure AddModRow(
-      Info: TModInfo;
-      Tab: Integer
-  ); // @addr $67BB5C @ida "void __usercall $name(TModInfo *Info@<eax>, int Tab@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67C462"
+
+  procedure AddModRow(Info: TModInfo; Tab: Integer);
   var
     Switch, Line: TImageGI;
     InfoButton: TGraphButtonGI;
@@ -204,7 +207,6 @@ var
       UpCallback := ShowProblemsClick;
       UserValue := PtrInt(Info);
     end;
-    // CHANGE: BUGFIX - Preserve the full label pointer on 64-bit builds.
     Switch.UserState := PtrInt(TLabelGI.Create(TabPanels[Tab]));
     with TLabelGI(Switch.UserState) do
     begin
@@ -242,10 +244,8 @@ var
     end;
     UpdateModSwitch(Switch);
   end;
-  procedure AddModRows(
-      List: TList;
-      Tab: Integer
-  ); // @addr $67C428 @ida "void __usercall $name(TList *List@<eax>, int Tab@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67D293,0x67D3DE,0x67D510"
+
+  procedure AddModRows(List: TList; Tab: Integer);
   var
     I: Integer;
     Info: TModInfo;
@@ -256,10 +256,8 @@ var
       AddModRow(Info, Tab);
     end;
   end;
-  procedure ConfigureModTab(
-      Text: WideString;
-      Tab: Integer
-  ); // @addr $67C474 @ida "void __usercall $name(unsigned __int16 *Text@<eax>, int Tab@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67D2B3,0x67D3EB,0x67D540"
+
+  procedure ConfigureModTab(Text: WideString; Tab: Integer);
   begin
     with TabButtons[Tab] do
     begin
@@ -269,6 +267,7 @@ var
       SetActive(True);
     end;
   end;
+
 begin
   inherited InitializeLayout;
   ModTabColor := GetStyleColorGI('Mods.ColorNormal', 88, 229, 255);
@@ -991,7 +990,7 @@ begin
   List.Free;
   Block := TBlockParEC.Create;
   Block.AddParam('CurrentMod', Folders);
-  Block.SaveTextFile('Mods\ModCFG.txt', True, False);
+  Block.SaveTextFile(ModSelectionConfigPath, True, False);
   Block.Free;
   ReloadModsRequested := True;
   if ExitCode = 0 then
@@ -1044,9 +1043,8 @@ var
   Value, Text, Temp: WideString;
   DisableIndices, DisableNames: TBlockParEC;
   Changed, PassChanged, Alternative: Boolean;
-  function CollectModDependencies(
-      Info: TModInfo
-  ): Boolean; // @addr $67ECF8 @ida "bool __usercall $name@<al>(TModInfo *Info@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x67EE39,0x67F010,0x67F63C"
+
+  function CollectModDependencies(Info: TModInfo): Boolean;
   var
     Name, Caption: WideString;
     Related: TModInfo;
@@ -1065,9 +1063,9 @@ var
         ReplaceTextToken(
             Name,
             '<ModName>',
-            '<color=255,240,100>'
+            TextHighlightColorTag
                 + TrimWideString(ExtractDelimitedPartW(Info.DependencyNames, PartIndex, ','))
-                + '</color>',
+                + EndColorTag,
             ''
         );
         ShowMessageBoxGI(Self, Name, mbgOK or mbgError);
@@ -1141,6 +1139,7 @@ var
     end;
     Result := True;
   end;
+
 begin
   SoundManager.PlaySound('Sound.ButtonClick');
   Info := TModInfo(Sender.UserValue);
@@ -1225,8 +1224,8 @@ begin
         end;
       end;
       Text := LocalizedText('FormMods.QueryTurnOffWithExtra');
-      ReplaceTextToken(Text, '<ModName>', '<color=255,240,100>' + Info.Name + '</color>', '');
-      ReplaceTextToken(Text, '<ModsList>', '<color=255,240,100>' + Value + '</color>', '');
+      ReplaceTextToken(Text, '<ModName>', TextHighlightColorTag + Info.Name + EndColorTag, '');
+      ReplaceTextToken(Text, '<ModsList>', TextHighlightColorTag + Value + EndColorTag, '');
       if ShowMessageBoxGI(GetInnermostScreenLoop, Text, mbgOK or mbgCancel or mbgQuestion)
           <> mbgResultOK then
         Exit;
@@ -1397,14 +1396,14 @@ begin
       if Value <> '' then
       begin
         Temp := LocalizedText('FormMods.QueryTurnOnWithExtra2');
-        ReplaceTextToken(Temp, '<ModsList>', '<color=255,240,100>' + Value + '</color>', '');
+        ReplaceTextToken(Temp, '<ModsList>', TextHighlightColorTag + Value + EndColorTag, '');
       end
       else
         Temp := '';
       if Text <> '' then
       begin
         Value := LocalizedText('FormMods.QueryTurnOnWithExtra1');
-        ReplaceTextToken(Value, '<ModsList>', '<color=255,240,100>' + Text + '</color>', '');
+        ReplaceTextToken(Value, '<ModsList>', TextHighlightColorTag + Text + EndColorTag, '');
       end
       else
         Value := '';
@@ -1529,7 +1528,7 @@ var
 begin
   Info := TModInfo(Sender.UserValue);
   Body := LocalizedText('FormMods.InfoName');
-  ReplaceTextToken(Body, '<Name>', '<color=255,240,100>' + Info.GetDisplayName + '</color>', '');
+  ReplaceTextToken(Body, '<Name>', TextHighlightColorTag + Info.GetDisplayName + EndColorTag, '');
   Body := Body + #13#10 + ' ' + #13#10;
   if Info.Author = '' then
     Text := LocalizedText('FormMods.InfoAuthorUnknown')
@@ -1537,7 +1536,7 @@ begin
     Text := LocalizedText('FormMods.InfoAuthors')
   else
     Text := LocalizedText('FormMods.InfoAuthor');
-  ReplaceTextToken(Text, '<Name>', '<color=255,240,100>' + Info.Author + '</color>', '');
+  ReplaceTextToken(Text, '<Name>', TextHighlightColorTag + Info.Author + EndColorTag, '');
   Body := Body + Text + #13#10 + ' ' + #13#10;
   if Info.FullDescription = '' then
     Body := Body + LocalizedText('FormMods.NoDescription') + #13#10 + ' ' + #13#10
@@ -1546,17 +1545,22 @@ begin
   if Info.DependencyNames <> '' then
   begin
     Text := LocalizedText('FormMods.InfoDependencies');
-    ReplaceTextToken(Text, '<Mods>', '<color=255,240,100>' + Info.DependencyNames + '</color>', '');
+    ReplaceTextToken(
+        Text,
+        '<Mods>',
+        TextHighlightColorTag + Info.DependencyNames + EndColorTag,
+        ''
+    );
     Body := Body + Text + #13#10 + ' ' + #13#10;
   end;
   if Info.ConflictNames <> '' then
   begin
     Text := LocalizedText('FormMods.InfoConflicts');
-    ReplaceTextToken(Text, '<Mods>', '<color=255,240,100>' + Info.ConflictNames + '</color>', '');
+    ReplaceTextToken(Text, '<Mods>', TextHighlightColorTag + Info.ConflictNames + EndColorTag, '');
     Body := Body + Text + #13#10 + ' ' + #13#10;
   end;
   Text := LocalizedText('FormMods.InfoPath');
-  ReplaceTextToken(Text, '<Path>', '<color=255,240,100>' + Info.Folder + '</color>', '');
+  ReplaceTextToken(Text, '<Path>', TextHighlightColorTag + Info.Folder + EndColorTag, '');
   Body := Body + Text;
   ShowMessageBoxGI(Self, Body, mbgOK or mbgUnused04 or mbgLeftAlign);
 end;
@@ -1573,7 +1577,7 @@ begin
   Selected := Info.SwitchImage.UserIndex = 1;
   Critical := False;
   Body := LocalizedText('FormMods.ProblemsInfoHeader');
-  ReplaceTextToken(Body, '<Name>', '<color=255,240,100>' + Info.GetDisplayName + '</color>', '');
+  ReplaceTextToken(Body, '<Name>', TextHighlightColorTag + Info.GetDisplayName + EndColorTag, '');
   Body := Body + #13#10 + ' ' + #13#10;
   if Info.MissingFolder then
   begin
@@ -1605,7 +1609,7 @@ begin
       end
       else
         Text := LocalizedText('FormMods.ProblemsInfoSharedName2');
-      ReplaceTextToken(Text, '<Mods>', '<color=255,240,100>' + Value + '</color>', '');
+      ReplaceTextToken(Text, '<Mods>', TextHighlightColorTag + Value + EndColorTag, '');
       Body := Body + Text + #13#10 + ' ' + #13#10;
     end;
     if Selected and (Info.ConflictCount > 0) then
@@ -1631,7 +1635,7 @@ begin
       if Text <> '' then
       begin
         Value := LocalizedText('FormMods.ProblemsInfoConflicts');
-        ReplaceTextToken(Value, '<Mods>', '<color=255,240,100>' + Text + '</color>', '');
+        ReplaceTextToken(Value, '<Mods>', TextHighlightColorTag + Text + EndColorTag, '');
         Body := Body + Value + #13#10 + ' ' + #13#10;
         Critical := True;
       end;
@@ -1648,9 +1652,9 @@ begin
           ReplaceTextToken(
               Value,
               '<Mod>',
-              '<color=255,240,100>'
+              TextHighlightColorTag
                   + TrimWideString(ExtractDelimitedPartW(Info.DependencyNames, J, ','))
-                  + '</color>',
+                  + EndColorTag,
               ''
           );
           Body := Body + Value + #13#10 + ' ' + #13#10;
@@ -1682,7 +1686,7 @@ begin
       if Text <> '' then
       begin
         Value := LocalizedText('FormMods.ProblemsInfoDependencies');
-        ReplaceTextToken(Value, '<Mods>', '<color=255,240,100>' + Text + '</color>', '');
+        ReplaceTextToken(Value, '<Mods>', TextHighlightColorTag + Text + EndColorTag, '');
         Body := Body + Value + #13#10 + ' ' + #13#10;
         Critical := True;
       end;
@@ -1716,7 +1720,7 @@ begin
     Result := 0;
     Exit;
   end;
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -1738,14 +1742,7 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-end;
 end.

@@ -1,25 +1,40 @@
-{$EXCESSPRECISION OFF}
 unit GlobalsV;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes;
+
+const
+
+  gerDefault = 0;
+
+  gerPlayerDeath = 2;
+
+  gerTerronConversion = 4;
+
+  MinSpaceZoomPercent = 50;
+
+  MaxSpaceZoomPercent = 200;
+
 type
+
   TSpaceImageTemplate = record
     Kind: Integer;
     Weight: Integer;
     CacheControl: TObject;
     CachedData: TObject;
   end;
+
   TStarFieldImageTemplate = record
     Reserved: Integer;
     Weight: Integer;
     CacheControl: TObject;
     CachedData: TObject;
   end;
+
   {$Z1}
   TGameScreenId = (
       screenNone = 0,
@@ -60,6 +75,7 @@ type
       screenLoadArcade = 40,
       screenAchievements = 41
   );
+
   {$Z4}
   TGalaxyMapFontChoice = (
       gmfRanger = 1,
@@ -69,162 +85,314 @@ type
       gmfNormal = 5,
       gmfNormalBold = 6
   );
-  TGameScreenTable = array[0..41] of TObject;
+
+  TGameScreenTable = array[TGameScreenId] of TObject;
+
 var
   OnScreenKeyboardEnabled: Boolean = False;
+
   DumpLoadedConfig: Boolean = False;
+
   HalfGovAnim: Boolean = False;
+
   QuestStyleIndex: Integer = 0;
+
   QuestPageAnimationEnabled: Boolean = True;
+
   DefaultOrder: Integer = 0;
+
   RightClickOnShip: Integer = 0;
+
   EstOptionEnabled: Boolean = False;
+
   SendRecordOff: Boolean = False;
+
   ChangeAutoPilot: Integer = 4;
+
   DisableAutoPilot: Boolean = False;
+
   SkipGiper: Boolean = False;
+
   Wind: Integer = 2;
+
   PendingQuestName: WideString = 'Prison';
+
   RegisteredScreens: TGameScreenTable;
+
   SkipSavedPixelRestore: Boolean;
+
   HardwareRenderingRequested: Boolean;
+
   HardwareRenderingEnabled: Boolean;
+
   RunningUnderWine: Boolean;
+
   ScaleViewportToWindow: Boolean;
+
   UseTablesForGov: Boolean;
+
   RangerFontName: WideString;
+
   MiniFontName: WideString;
+
   SmallFontName: WideString;
+
   SmallBoldFontName: WideString;
+
   NormalFontName: WideString;
+
   NormalBoldFontName: WideString;
+
   BigFontName: WideString;
+
   HugeFontName: WideString;
+
   IntroFontName: WideString;
+
   AuthorsFontName: WideString;
+
   SmoothSmallFontName: WideString;
+
   SmoothSmallBoldFontName: WideString;
+
   SmoothNormalFontName: WideString;
+
   SmoothNormalBoldFontName: WideString;
+
   SmoothBigFontName: WideString;
+
   SmoothHugeFontName: WideString;
+
   SmoothIntroFontName: WideString;
+
   PendingLoadFileName: AnsiString;
+
   LoadedFilmCount: Integer;
+
   GameEndReason: Integer;
+
   ShipTail: Integer = 0;
+
   ThreeDimensionalModeEnabled: Boolean = False;
+
   AnimCaptain: Boolean = False;
+
   AnimItem: Boolean = False;
+
   Comet: Integer = 1;
+
   BGImage: Boolean = False;
+
   AnimShipFull: Boolean = False;
+
   AnimCity: Boolean = False;
+
   AnimMenuShip: Boolean = True;
+
   AnimGov: Integer = 2;
+
   AnimStar: Boolean = True;
+
   AnimHangar: Boolean = True;
+
   CircleAction: Boolean = True;
+
   StaticBackground: Boolean = True;
+
   ScrollTime: Integer = 20;
+
   ScrollStep: Integer = 5;
+
   ScrollSense: Integer = 1;
+
+  SpaceZoomPercent: Integer = 100;
+
+  SpacePinchZoom: Boolean = True;
+
   FilmSpeed: Integer = 1;
+
   BGOCount: Integer = 50;
+
   BGOTime: Integer = 300;
+
   SpaceImage: Integer = 0;
+
   SoundEnabled: Boolean = False;
+
   SoundInSpaceEnabled: Boolean = False;
+
   SoundVolume: Single = 1.0;
+
   RobotSoundVolume: Single = 1.0;
+
   MusicEnabled: Boolean = False;
+
   MusicInSpaceEnabled: Boolean = False;
+
   MusicInHyperEnabled: Boolean = True;
+
   MusicInPlanetEnabled: Boolean = True;
+
   MusicVolume: Single = 0.75;
+
   MusicVolumeScale: Single = 1.0;
+
   RobotMusicVolume: Single = 0.75;
+
   MaxFilmStepSkip: Integer = 3;
+
   FilmHistoryLimit: Integer = 1;
+
   BeginCalcNextTurn: Single = 1.0;
+
   DoNotChangeMusicInBattle: Boolean = False;
+
   ViewFollowShip: Boolean = True;
+
   ActionDoubleClick: Boolean = True;
+
   GalaxyMapFontChoice: TGalaxyMapFontChoice = gmfNormalBold;
+
   FontQuest: Integer = 0;
+
   FontDialog: Integer = 0;
+
   FontSmoothingEnabled: Boolean = False;
+
   ScreenshotFormat: Integer = 1;
+
   ScreenshotJpegQuality: Integer = 85;
+
   DynamicTipsPos: Boolean = True;
+
   ViewPathLength: Boolean = False;
+
   AfterburnerStopCondition: Integer = 35;
+
   TurnSaveStep: Integer = 0;
+
   QuickSaveExtraSlots: Integer = 0;
+
   MaxPlayerNews: Integer = 30;
+
   MaxSearchResult: Integer = 100;
+
   ClickAutoCloseForm: Boolean = True;
-  UiRuntimeFlag: Boolean = False;
+
+  AwardDialogsEnabled: Boolean = False;
+
   MultiThreadEnabled: Boolean = False;
+
   ShowWineWarning: Boolean = False;
+
   XonarSoundDevice: Boolean = False;
+
   ShowXonarWarning: Boolean = False;
+
   PlanetDepth: Single = 0;
+
   ShipPathDepth: Single = 15.0;
+
   ShipPathEndDepth: Single = 14.0;
+
   UnitPathDepth: Single = 13.0;
+
   UnitPathEndDepth: Single = 12.0;
+
   ActionButtonDepth: Single = 9.0;
+
   GalaxyStarDepth: Single = 20.0;
+
   GalaxyStarNameDepth: Single = 19.0;
+
   GalaxyWarDepth: Single = 18.0;
+
   ConstellationLineDepth: Single = 21.0;
+
   ConstellationColorDepth: Single = 22.0;
+
   MemorySnapshotActive: Boolean = False;
+
   PreviousScreenId: TGameScreenId = screenNone;
+
   CurrentScreenId: TGameScreenId = screenNone;
+
   RequestedScreenId: TGameScreenId = screenNone;
+
   PostLoadScreenId: TGameScreenId = screenNone;
+
   ShipReturnScreenId: TGameScreenId = screenNone;
+
   TalkReturnScreenId: TGameScreenId = screenNone;
+
   ScannerReturnScreenId: TGameScreenId = screenNone;
+
   QuestReturnScreenId: TGameScreenId = screenNone;
+
   Screen13ReturnScreenId: TGameScreenId = screenNone;
+
   GalaxyReturnScreenId: TGameScreenId = screenNone;
+
   SaveManagerReturnScreenId: TGameScreenId = screenNone;
+
   GameMenuReturnScreenId: TGameScreenId = screenNone;
+
   SettingsReturnScreenId: TGameScreenId = screenNone;
+
   AchievementsReturnScreenId: TGameScreenId = screenNone;
+
   LoadedSaveVersion: Integer = 0;
+
   LoadingFilmCount: Integer = -1;
+
   BackgroundShade: Boolean = False;
+
   BackgroundBlur: Boolean = False;
+
   BackgroundGrayscale: Boolean = False;
+
   PlanetClouds: Boolean = True;
+
   PlanetAtm: Boolean = True;
+
   AnimChangeForm: Boolean = True;
+
   AnimMainFon: Boolean = True;
+
   SputnikShow: Boolean = True;
+
   SatelliteLightMapPath: WideString = 'Bm.Planet.S.Light094';
+
   SatelliteTemplateParameter1: Integer = 128;
+
   SatelliteTemplateParameter2: Integer = 60;
+
   MinimumSatelliteTemplateRadius: Integer = 10;
+
   GeneratedSatelliteBaseRadius: Integer = 13;
+
   MaximumSatelliteTemplateRadius: Integer = 60;
+
   SatelliteRenderTemplates: TList = nil;
+
   SpaceImageTemplates: array of TSpaceImageTemplate = nil;
+
   StarFieldImageTemplates: array of TStarFieldImageTemplate = nil;
+
   ForcedPlanetQuestId: Integer = -1;
+
 function FormToId(Screen: TObject): TGameScreenId;
+
 function GetRegisteredScreenLoop(ScreenId: TGameScreenId): TObject;
+
 function IsSpaceBackdropScreen(ScreenId: TGameScreenId): Boolean;
+
 function ScreenUsesCompositeLoadAssets(ScreenId: TGameScreenId): Boolean;
+
 implementation
+
 uses
-  Math,
   SysUtils;
-// @unit-initialization $87671C
-// @unit-finalization $45EA2C
 
 function FormToId(Screen: TObject): TGameScreenId;
 var
@@ -232,7 +400,7 @@ var
 begin
   Id := screenNone;
   repeat
-    if RegisteredScreens[Ord(Id)] = Screen then
+    if RegisteredScreens[Id] = Screen then
     begin
       Result := Id;
       Exit;
@@ -244,7 +412,7 @@ end;
 
 function GetRegisteredScreenLoop(ScreenId: TGameScreenId): TObject;
 begin
-  Result := RegisteredScreens[Ord(ScreenId)];
+  Result := RegisteredScreens[ScreenId];
 end;
 
 function IsSpaceBackdropScreen(ScreenId: TGameScreenId): Boolean;

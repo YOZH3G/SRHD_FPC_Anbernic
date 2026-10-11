@@ -1,20 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit SE_Process;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_MessageLoop,
   GI_Panel,
-  SE_Space,
-  Types;
+  SE_Space;
+
 type
+
   TProcessSE = class;
+
   TProcessSE = class(TObject)
     Space: TSpaceSE;
     FirstObject: TObjectSE;
@@ -44,16 +46,18 @@ type
     procedure UpdateViewRect;
     function SelectBackgroundAnimation: WideString;
   end;
+
 function CreateSpaceObjectByName(
     const ClassName: WideString;
     const GraphKey: WideString;
     UnusedPosition: TPoint
 ): TObjectSE;
+
 function ClassSEtoName(Obj: TObjectSE): WideString;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Windows,
   SysUtils,
   Math,
   GR_Main,
@@ -478,26 +482,4 @@ begin
     raise Exception.Create('Error in ClassSEtoName');
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TAngelSE.ClassName;
-  TAnimSE.ClassName;
-  TAsteroidSE.ClassName;
-  TBGObjSE.ClassName;
-  TCometSE.ClassName;
-  TContainerSE.ClassName;
-  TGAIEffectSE.ClassName;
-  TGateEffectSE.ClassName;
-  TGateSE.ClassName;
-  THoleSE.ClassName;
-  TLaserSE.ClassName;
-  TMeteoriteSE.ClassName;
-  TMissileSE.ClassName;
-  TPlanetSE.ClassName;
-  TRuinsSE.ClassName;
-  TShip2SE.ClassName;
-  TSputnikSE.ClassName;
-  TStarSE.ClassName;
-  TWeaponSE.ClassName;
-end;
 end.

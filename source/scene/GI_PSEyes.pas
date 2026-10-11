@@ -1,19 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSEyes;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTEyesLine = ^TEyesLine;
+
   PointerToTEyesParticle = ^TEyesParticle;
+
   PEyesParticle = PointerToTEyesParticle;
+
   TEyesParticle = record
     Prev: PEyesParticle;
     Next: PEyesParticle;
@@ -21,13 +25,13 @@ type
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap1B: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap25: array[0..2] of Byte;
     Countdown: Integer;
   end;
+
   PEyesLine = PointerToTEyesLine;
+
   TEyesLine = packed record
     Next: PEyesLine;
     Gap4: array[0..3] of Byte;
@@ -37,15 +41,25 @@ type
     Gap1A: array[0..0] of Byte;
     Alpha: Byte;
   end;
+
   TEyesPalette = array[0..1] of Word;
+
 var
+
   EyesPalettes: array of TEyesPalette;
+
   EyesWidths: array of Integer;
+
   EyesSegmentLengths: array of Integer;
+
   EyesDispersions: array of Integer;
+
   EyesStartingAlphas: array of Integer;
+
 type
+
   TPSEyesGI = class;
+
   TPSEyesGI = class(TPSWeaponGI)
     HalfWidth: Integer;
     SegmentLength: Integer;
@@ -75,10 +89,12 @@ type
     procedure ClearLines;
     procedure EmitBurst(Point: TPoint; Radius: Integer);
   end;
+
 procedure LoadEyesPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Classes,
@@ -90,8 +106,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877964
-// @unit-finalization $69A6E8
 
 constructor TPSEyesGI.Create(Owner: TObjectGI; PaletteIndex: Integer);
 begin
@@ -264,13 +278,13 @@ begin
       Particle.Countdown := 7;
       Particle.Velocity := MakePointF(X / Radius * 1.1, Y / Radius * 1.1);
       if Particle.Velocity.X < 0 then
-        Particle.Velocity.X := Particle.Velocity.X - PresentationRandom(11) / 16.0
+        Particle.Velocity.X := Particle.Velocity.X - Random(11) / 16.0
       else
-        Particle.Velocity.X := Particle.Velocity.X + PresentationRandom(11) / 16.0;
+        Particle.Velocity.X := Particle.Velocity.X + Random(11) / 16.0;
       if Particle.Velocity.Y < 0 then
-        Particle.Velocity.Y := Particle.Velocity.Y - PresentationRandom(11) / 16.0
+        Particle.Velocity.Y := Particle.Velocity.Y - Random(11) / 16.0
       else
-        Particle.Velocity.Y := Particle.Velocity.Y + PresentationRandom(11) / 16.0;
+        Particle.Velocity.Y := Particle.Velocity.Y + Random(11) / 16.0;
     end;
 end;
 

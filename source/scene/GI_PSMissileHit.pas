@@ -1,16 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSMissileHit;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 type
+
   TGAISet = array[0..0] of WideString;
+
 var
+
   MissileHitAnimationPaths: array of TGAISet;
+
 procedure LoadMissileHitAnimationPaths;
+
 implementation
+
 uses
   GR_Main,
   SysUtils,
@@ -18,8 +23,6 @@ uses
   EC_BlockPar,
   EC_Str,
   Globals;
-// @unit-initialization $87796C
-// @unit-finalization $69B23C
 
 procedure LoadMissileHitAnimationPaths;
 var

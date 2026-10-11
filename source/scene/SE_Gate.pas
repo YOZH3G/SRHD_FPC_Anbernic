@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit SE_Gate;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   SE_Space,
   Types,
@@ -13,12 +12,15 @@ uses
   GI_MessageLoop,
   GI_RotateImageGAI,
   GI_Label;
+
 type
+
   TGateEffectSE = class;
+
   TGateSE = class;
+
   TGateSE = class(TObjectSE)
     Angle: Byte;
-    Gap4D: array[0..2] of Byte;
     State: Integer;
     StateStep: Integer;
     LabelText: WideString;
@@ -47,9 +49,9 @@ type
     procedure RebuildStateGraphics;
     procedure AdvanceAnimation(UnusedTimer: Pointer; UnusedData: Integer);
   end;
+
   TGateEffectSE = class(TObjectSE)
     Angle: Byte;
-    Gap4D: array[0..2] of Byte;
     StateStep: Integer;
     Image: TRotateImageGaiGI;
     TickCount: Integer;
@@ -67,7 +69,9 @@ type
     procedure RebuildStateGraphics;
     procedure AdvanceAnimation(UnusedTimer: Pointer; UnusedData: Integer);
   end;
+
 implementation
+
 uses
   GI_Main,
   Math,
@@ -334,6 +338,7 @@ end;
 
 procedure TGateSE.QueueImageLoad(PendingLoads: TList; Owner: TObjectGI);
 begin
+
 end;
 
 constructor TGateEffectSE.Create(GraphKey: WideString; UnusedPosition: TPoint);
@@ -443,6 +448,7 @@ end;
 
 procedure TGateEffectSE.QueueImageLoad(PendingLoads: TList; Owner: TObjectGI);
 begin
+
 end;
 
 end.

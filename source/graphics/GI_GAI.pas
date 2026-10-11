@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit GI_GAI;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  GameHeap,
   Types,
   GR_GraphBuf,
   GI_Main,
@@ -14,43 +14,44 @@ uses
   EC_BlockPar,
   Classes,
   GI_MessageLoop;
-type
-  PointerToInteger = ^Integer;
-type
-  TgaiGI = class;
-  TgaiGI = class(TObjectGI)
 
+type
+
+  PointerToInteger = ^Integer;
+
+const
+
+  SingleFrameAnimationSpec = '[50,0-0]';
+
+type
+
+  TgaiGI = class;
+
+  TgaiGI = class(TObjectGI)
     MainImageCache: TCGaiControlEC;
     FirstFrameImageCache: TCGiControlEC;
     AutoFrameTimer: PCallbackTimerGI;
     ImageKindX: TImageKindXGI;
     ImageKindY: TImageKindYGI;
     Alpha: Byte;
-    Gap12F: array[0..0] of Byte;
     SequenceFrame: Integer;
     SequenceFrameCount: Integer;
     SequenceFrameIndexTable: PointerToInteger;
     SequenceFrameDelayTable: PointerToInteger;
     SequenceIndex: Integer;
     UsesPlaybackBuffer: Boolean;
-    Gap145: array[0..2] of Byte;
     CachedPlaybackGraphBuf: TGraphBufGR;
     LastCachedFrameIndex: Integer;
     TransparentColor: Cardinal;
-    Gap154: array[0..3] of Byte;
     CycleCompleteCallback: TObjectNotifyEventGI;
     FrameAdvancedCallback: TObjectNotifyEventGI;
     SkipImageUpdateRect: Boolean;
     StopPlaybackRequested: Boolean;
     StopAfterOneCycle: Boolean;
-    Gap16B: array[0..0] of Byte;
     StartSoundName: WideString;
     FirstFrameOnly: Boolean;
-    Gap171: array[0..2] of Byte;
     AutoUpdateFlags: Cardinal;
     HardwareMirrorHorizontal: Boolean;
-    Gap179: array[0..2] of Byte;
-
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
     procedure SetActive(Value: Boolean); override;
@@ -90,13 +91,16 @@ type
     procedure SetHardwareMirrorHorizontal(Value: Boolean);
     procedure PrimeImageCaches;
   end;
+
 var
-  GaiFrameHeap: Cardinal = 0;
+
+  GaiFrameHeap: TGameHeapHandle = 0;
+
 procedure LoadGaiFrameToGraphBuf(const Path: WideString; GraphBuf: TGraphBufGR; Seed: Cardinal);
+
 implementation
 
 uses
-  Math,
   GR_Sound,
   EC_Struct,
   Direct3D9,
@@ -107,7 +111,6 @@ uses
   EC_Str,
   EC_Mem,
   SysUtils,
-  Windows,
   aMyFunction,
   GlobalsV;
 
@@ -116,7 +119,7 @@ begin
   inherited Create(Owner);
   if GaiFrameHeap = 0 then
   begin
-    GaiFrameHeap := HeapCreate(0, $8000, 0);
+    GaiFrameHeap := GameHeap.HeapCreate(0, $8000, 0);
     if GaiFrameHeap = 0 then
       raise Exception.Create('TgaiGI.HeapCreate');
   end;
@@ -131,9 +134,9 @@ begin
   TransparentColor := 0;
   SkipImageUpdateRect := False;
 end;
+
 destructor TgaiGI.Destroy;
 begin
-
   if CachedPlaybackGraphBuf <> nil then
   begin
     CachedPlaybackGraphBuf.Free;
@@ -154,10 +157,12 @@ begin
   ClearFrameSequence;
   inherited Destroy;
 end;
+
 procedure TgaiGI.Clear;
 begin
   inherited Clear;
 end;
+
 procedure TgaiGI.SetImagePath(const ImagePath: WideString);
 begin
   SequenceFrame := 0;
@@ -169,14 +174,15 @@ begin
   if MainImageCache.CacheKey <> ImagePath then
   begin
     Invalidate;
-
     MainImageCache.SetCacheKey(ImagePath);
   end;
 end;
+
 function TgaiGI.GetImagePath: WideString;
 begin
   Result := MainImageCache.CacheKey;
 end;
+
 procedure TgaiGI.SetFirstFrameImagePath(const ImagePath: WideString);
 begin
   SequenceFrame := 0;
@@ -196,6 +202,7 @@ begin
     FirstFrameImageCache.SetCacheKey(ImagePath);
   end;
 end;
+
 function TgaiGI.GetFirstFrameImagePath: WideString;
 begin
   if FirstFrameImageCache = nil then
@@ -203,6 +210,7 @@ begin
   else
     Result := FirstFrameImageCache.CacheKey;
 end;
+
 procedure TgaiGI.SetSequenceFrame(FrameInSequence: Integer);
 begin
   SequenceFrame := FrameInSequence;
@@ -213,6 +221,7 @@ begin
   end;
   Invalidate;
 end;
+
 procedure TgaiGI.SetFramePosition(FrameInSequence: Integer; ForwardOnly: Boolean);
 begin
   if SequenceFrame = FrameInSequence then
@@ -224,6 +233,7 @@ begin
     SequenceFrame := 0;
   Invalidate;
 end;
+
 function TgaiGI.GetMainImageFrameCount: Integer;
 var
   Image: TCGaiEC;
@@ -240,6 +250,7 @@ begin
     MainImageCache.Release;
   end;
 end;
+
 procedure TgaiGI.StopAutoPlayback;
 begin
   StopPlaybackRequested := True;
@@ -249,6 +260,7 @@ begin
     AutoFrameTimer := nil;
   end;
 end;
+
 procedure TgaiGI.RestartPlayback;
 var
   Delay: Integer;
@@ -267,6 +279,7 @@ begin
   if (StartSoundName <> '') and (SequenceFrame = 0) then
     SoundManager.PlaySound(StartSoundName);
 end;
+
 function TgaiGI.GetContentSize: TPoint;
 var
   Image: TCGaiEC;
@@ -298,6 +311,7 @@ begin
   else
     Result := Classes.Point(0, 0);
 end;
+
 function TgaiGI.GetContentOrigin: TPoint;
 var
   Image: TCGaiEC;
@@ -329,6 +343,7 @@ begin
   else
     Result := Classes.Point(0, 0);
 end;
+
 procedure TgaiGI.SetImageKindX(Value: TImageKindXGI);
 begin
   if ImageKindX <> Value then
@@ -337,6 +352,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TgaiGI.SetImageKindY(Value: TImageKindYGI);
 begin
   if ImageKindY <> Value then
@@ -345,6 +361,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TgaiGI.SetAlpha(Value: Byte);
 begin
   if Alpha <> Value then
@@ -353,10 +370,12 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TgaiGI.SetSize(Size: TPoint);
 begin
   inherited SetSize(Size);
 end;
+
 procedure TgaiGI.ClearFrameSequence;
 begin
   if SequenceFrameIndexTable <> nil then
@@ -372,6 +391,7 @@ begin
   SequenceFrame := 0;
   SequenceFrameCount := 0;
 end;
+
 procedure TgaiGI.LoadFrameSequenceFromText(const FrameSpec: WideString);
 var
   Part: WideString;
@@ -432,6 +452,7 @@ begin
     AutoFrameTimer := MessageLoop.ScheduleCallbackTimer(TimerDelay, TimerDelay, AdvanceAutoFrame);
   end;
 end;
+
 function TgaiGI.GetSequenceCount: Integer;
 var
   Image: TCGaiEC;
@@ -448,11 +469,13 @@ begin
     MainImageCache.Release;
   end;
 end;
+
 function TgaiGI.GetSequenceFrameSourceIndex(FrameInSequence: Integer): Integer;
 begin
   Result :=
       ReadIntegerEC(AddPointerOffset(SequenceFrameIndexTable, FrameInSequence * SizeOf(Integer)));
 end;
+
 procedure TgaiGI.SetFrameDelay(FrameInSequence, DelayMs: Integer);
 begin
   WriteInt32EC(
@@ -460,11 +483,13 @@ begin
       DelayMs
   );
 end;
+
 function TgaiGI.GetFrameDelay(FrameInSequence: Integer): Integer;
 begin
   Result :=
       ReadIntegerEC(AddPointerOffset(SequenceFrameDelayTable, FrameInSequence * SizeOf(Integer)));
 end;
+
 function TgaiGI.HitTestPixel(Point: TPoint): Boolean;
 var
   Image: TCGaiEC;
@@ -476,6 +501,7 @@ var
   Frame: TgiGR;
   Clip, Bounds, FirstBounds: TRect;
 begin
+  Point := ScreenToLogicalPoint(Point);
   Result := False;
   Pixel := 0;
   Clip.TopLeft := Point;
@@ -646,6 +672,7 @@ begin
   end;
   Result := Pixel <> 0;
 end;
+
 procedure TgaiGI.SetActive(Value: Boolean);
 begin
   if Active <> Value then
@@ -653,7 +680,6 @@ begin
     inherited SetActive(Value);
     if not Value then
     begin
-
       if AutoFrameTimer <> nil then
       begin
         MessageLoop.CancelCallbackTimer(AutoFrameTimer);
@@ -676,9 +702,9 @@ begin
     end;
   end;
 end;
+
 procedure TgaiGI.OnDeactivate;
 begin
-
   if AutoFrameTimer <> nil then
   begin
     MessageLoop.CancelCallbackTimer(AutoFrameTimer);
@@ -691,23 +717,25 @@ begin
   end;
   inherited OnDeactivate;
 end;
+
 procedure TgaiGI.LoadFromConfigPath(const Path: WideString);
 begin
   inherited LoadFromConfigPath(Path);
   LoadAnimationProperties(UiStyleConfig.GetBlockByPath(Path));
 end;
+
 procedure TgaiGI.LoadFromBlock(Block: TBlockParEC);
 begin
   inherited LoadFromBlock(Block);
   LoadAnimationProperties(Block);
 end;
+
 procedure TgaiGI.LoadAnimationProperties(Block: TBlockParEC);
 begin
   if Block.CountParams('Image') > 0 then
     MainImageCache.SetCacheKey(Block.GetParam('Image'));
   if Block.CountParams('ImageFirst') > 0 then
     SetFirstFrameImagePath(Block.GetParam('ImageFirst'));
-
   if Block.CountParams('KindX') > 0 then
     SetImageKindX(ParseImageKindXName(Block.GetParam('KindX')));
   if Block.CountParams('KindY') > 0 then
@@ -742,13 +770,14 @@ begin
     end;
   end;
 end;
+
 procedure TgaiGI.UpdateAutoGeometry;
 var
   Image: TCGaiEC;
 begin
   inherited UpdateAutoGeometry;
   if (AutoUpdateFlags and agfPosition) = agfPosition then
-    SetPosition(Parent.ToLocalPoint(GetContentOrigin));
+    SetPosition(Parent.LogicalToLocalPoint(GetContentOrigin));
   if (AutoUpdateFlags and agfSize) = agfSize then
     SetSize(GetContentSize);
   if SequenceIndex >= 0 then
@@ -786,6 +815,7 @@ begin
     end;
   end;
 end;
+
 procedure TgaiGI.SetOneCycleDuration(DurationMs: Integer);
 var
   Index, Delay: Integer;
@@ -800,6 +830,7 @@ begin
       WriteInt32EC(AddPointerOffset(SequenceFrameDelayTable, Index * SizeOf(Integer)), Delay);
   end;
 end;
+
 procedure TgaiGI.AdvanceAutoFrame(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Wrapped: Boolean;
@@ -846,6 +877,7 @@ begin
       CycleCompleteCallback(Self);
   end;
 end;
+
 procedure TgaiGI.Invalidate;
 var
   Image: TCGaiEC;
@@ -994,10 +1026,12 @@ begin
   else
     inherited Invalidate;
 end;
+
 procedure TgaiGI.SetHardwareMirrorHorizontal(Value: Boolean);
 begin
   HardwareMirrorHorizontal := Value;
 end;
+
 procedure TgaiGI.Draw(ClipRect: TRect);
 var
   Image: TCGaiEC;
@@ -1121,7 +1155,6 @@ begin
       Bounds := Image.GetBoundsRect
     else if First <> nil then
       Bounds := First.Image.GetBoundsRect;
-
     if (Image <> nil) and (not Image.HasPlaybackFlags) then
     begin
       if HardwareRenderingEnabled then
@@ -1141,7 +1174,7 @@ begin
                   FrameOrigin.X + X,
                   FrameOrigin.Y + Y,
                   Alpha,
-                  $FFFFFF,
+                  RgbWhite,
                   @ClipRect,
                   False,
                   HardwareMirrorHorizontal
@@ -1196,7 +1229,7 @@ begin
                   FrameOrigin.X + X,
                   FrameOrigin.Y + Y,
                   Alpha,
-                  $FFFFFF,
+                  RgbWhite,
                   @ClipRect,
                   False,
                   HardwareMirrorHorizontal
@@ -1253,9 +1286,9 @@ begin
           if FrameIndex > SequenceFrame then
             FrameIndex := 0;
           if FrameIndex = 0 then
-            CopyMemory(
-                CachedPlaybackGraphBuf.GetPixels,
-                AddPointerOffset(First.Image.Data, First.Image.GetPlane(0).DataOffset),
+            System.Move(
+                Pointer(AddPointerOffset(First.Image.Data, First.Image.GetPlane(0).DataOffset))^,
+                Pointer(CachedPlaybackGraphBuf.GetPixels)^,
                 CachedPlaybackGraphBuf.PitchBytes * CachedPlaybackGraphBuf.Height
             );
           if Image <> nil then
@@ -1293,7 +1326,7 @@ begin
                   X,
                   Y,
                   Alpha,
-                  $FFFFFF,
+                  RgbWhite,
                   @ClipRect,
                   False,
                   HardwareMirrorHorizontal
@@ -1390,7 +1423,7 @@ begin
                   X,
                   Y,
                   Alpha,
-                  $FFFFFF,
+                  RgbWhite,
                   @ClipRect,
                   False,
                   HardwareMirrorHorizontal
@@ -1430,6 +1463,7 @@ begin
       FirstFrameImageCache.Release;
   end;
 end;
+
 procedure TgaiGI.PrimeImageCaches;
 begin
   if (MainImageCache <> nil) and (not FirstFrameOnly) and (MainImageCache.CacheKey <> '') then
@@ -1443,12 +1477,12 @@ begin
     FirstFrameImageCache.Release;
   end;
 end;
+
 procedure TgaiGI.QueueImageLoad(PendingLoads: TList);
 begin
-
   MainImageCache.QueueLoadIfMissing(PendingLoads);
-
 end;
+
 procedure LoadGaiFrameToGraphBuf(const Path: WideString; GraphBuf: TGraphBufGR; Seed: Cardinal);
 var
   Control: TCacheControlEC;
@@ -1469,4 +1503,5 @@ begin
   end;
   Control.Free;
 end;
+
 end.

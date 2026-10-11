@@ -1,37 +1,41 @@
-{$EXCESSPRECISION OFF}
 unit GI_CountBar;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_GraphButton,
   GI_Image,
   GI_MessageLoop,
   Types;
+
 type
+
   TCountBarGI = class;
+
   TCountBarGI = class(TObjectGI)
     Minimum: Integer;
     Maximum: Integer;
     Position: Integer;
     Orientation: Integer;
     Step: Integer;
+    // Keep artwork-width end buttons, but use the complete padded slider row.
+    FullHeightEndButtons: Boolean;
     DecreaseButton: TGraphButtonGI;
     IncreaseButton: TGraphButtonGI;
     AfterThumbImage: TImageGI;
     BeforeThumbImage: TImageGI;
     ThumbButton: TGraphButtonGI;
     MarkerImage: TImageGI;
-    Gap14C: array[0..3] of Byte;
     PositionChangedCallback: TObjectNotifyEventGI;
     RepeatTimer: PCallbackTimerGI;
     procedure LoadFromConfigPath(const Path: WideString); override;
     procedure ProcessMouseMove(KeyState: Cardinal; Point: TPoint); override;
     procedure OnMouseEnter; override;
     procedure OnMouseLeave; override;
+    procedure CancelPointerInput; override;
     procedure ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint); override;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); override;
     procedure LoadFromBlock(Block: TBlockParEC); override;
@@ -46,9 +50,10 @@ type
     procedure IncreasePressed(Sender: TObjectGI);
     procedure LoadCountBarProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   Classes,
   EC_Struct,
@@ -57,6 +62,7 @@ uses
 constructor TCountBarGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiDrag;
   Orientation := 1;
   Minimum := 0;
   Maximum := 100;
@@ -194,8 +200,13 @@ begin
               + ThumbSize.X div 2;
     ThumbRight := ThumbLeft + ThumbSize.X;
     DecreaseButton.SetPosition(Classes.Point(0, 0));
-    DecreaseButton.SetSize(DecreaseSize);
     IncreaseButton.SetPosition(Classes.Point(ClientSize.X - IncreaseSize.X, 0));
+    if FullHeightEndButtons then
+    begin
+      DecreaseSize.Y := ClientSize.Y;
+      IncreaseSize.Y := ClientSize.Y;
+    end;
+    DecreaseButton.SetSize(DecreaseSize);
     IncreaseButton.SetSize(IncreaseSize);
     BeforeThumbImage.SetPosition(Classes.Point(DecreaseSize.X, 0));
     BeforeThumbImage
@@ -319,6 +330,17 @@ procedure TCountBarGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 begin
   inherited ProcessLeftButtonUp(KeyState, Point);
   ThumbButton.SetDown(False);
+  if MessageLoop.FocusedControl = Self then
+    MessageLoop.SetFocusedControl(nil);
+end;
+
+procedure TCountBarGI.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  ThumbButton.SetDown(False);
+  if RepeatTimer <> nil then
+    MessageLoop.CancelCallbackTimer(RepeatTimer);
+  RepeatTimer := nil;
   if MessageLoop.FocusedControl = Self then
     MessageLoop.SetFocusedControl(nil);
 end;

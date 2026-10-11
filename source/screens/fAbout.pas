@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit fAbout;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   GI_Panel,
   Types;
+
 type
+
   TfAbout = class;
+
   TfAbout = class(TMessageLoopGI)
     ScrollTimer: PCallbackTimerGI;
     ViewportPanel: TPanelGI;
@@ -18,7 +20,6 @@ type
     CreditsHeight: Integer;
     FirstMusicSelection: Boolean;
     ReturnToScores: Boolean;
-    GapE2: array[0..1] of Byte;
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure SelectMusic; override;
@@ -31,10 +32,10 @@ type
     procedure CloseMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure CloseKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GI_Main,
   Classes,
   EC_BlockPar,
@@ -247,8 +248,4 @@ begin
     MusicManager.PlayCategory('Base');
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TPanelGI.ClassName;
-end;
 end.

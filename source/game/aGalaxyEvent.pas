@@ -1,17 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit aGalaxyEvent;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
   EC_Struct,
   aGalaxy;
+
 type
+
   TGalaxyEvent = class;
+
   TGalaxyEvent = class(TObjectEx)
     EventType: WideString;
     Turn: Integer;
@@ -28,10 +30,10 @@ type
     procedure LoadFromBuffer(Buffer: TBufEC);
     procedure SaveToBuffer(Buffer: TBufEC);
   end;
+
 function AddGalaxyEvent(EventType: WideString; Galaxy: TGalaxy = nil): TGalaxyEvent;
+
 implementation
-uses
-  Math;
 
 constructor TGalaxyEvent.Create(EventType: WideString);
 begin

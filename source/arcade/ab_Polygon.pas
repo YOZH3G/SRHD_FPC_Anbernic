@@ -1,23 +1,29 @@
-{$EXCESSPRECISION OFF}
 unit ab_Polygon;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   ab_StopLine;
+
 type
+
   PointerToTabPolygon = ^TabPolygon;
+
   PointerToTabOptGroup = ^TabOptGroup;
+
   PointerToTabOptUnit = ^TabOptUnit;
+
   TabPolygonVertex = record
     Point: PabStopPoint;
     Color: PCardinal;
   end;
+
   PabPolygon = PointerToTabPolygon;
+
   TabPolygon = record
     Prev: PabPolygon;
     Next: PabPolygon;
@@ -25,38 +31,60 @@ type
     Gap20: array[0..15] of Byte;
     MapValue30: Integer;
   end;
+
   PabPolygonGroup = PointerToTabOptGroup;
+
   TabOptGroup = record
     Polygons: array of PabPolygon;
-    Gap4: array[0..3] of Byte;
     Corners: array[0..3] of TVector3D;
   end;
+
   PabPolygonCell = PointerToTabOptUnit;
+
   TabOptUnit = record
     Points: array of PabStopPoint;
     Groups: array of PabPolygonGroup;
   end;
+
 var
+
   FirstPolygon: PabPolygon = nil;
+
   LastPolygon: PabPolygon = nil;
+
   PolygonStorage: PabPolygon;
+
   PolygonGroups: array of TabOptGroup;
+
   PolygonCells: array of TabOptUnit;
+
   LongitudeCellCount: Integer;
+
   PolarCellCount: Integer;
+
   CurrentPolygonCell: PabPolygonCell;
+
 procedure ab_Polygon_Clear;
+
 function ab_Polygon_Count: Integer;
+
 procedure ab_Polygon_ClearVisibility;
+
 procedure ab_Polygon_LoadVisibility(Buffer: TBufEC);
+
 procedure ab_Polygon_SelectVisibilityCell;
+
 procedure ab_Polygon_ProjectVisiblePoints;
+
 procedure ab_Polygon_QueueUpdateRects;
+
 procedure ab_Polygon_Draw;
+
 procedure ab_Polygon_Load(Buffer: TBufEC);
+
 implementation
+
 uses
-  Math,
   Classes,
   EC_Mem,
   GI_Tail,
@@ -65,8 +93,6 @@ uses
   GR_DX,
   Globals,
   GlobalsV;
-// @unit-initialization $877860
-// @unit-finalization $53B500
 
 procedure ab_Polygon_Clear;
 begin
@@ -138,36 +164,36 @@ begin
     Group := @PolygonGroups[Index];
     Count := Buffer.GetWord;
     SetLength(Group.Polygons, Count);
-    Cursor := Pointer(PtrInt(Buffer.Data) + Buffer.Position);
+    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
     for ItemIndex := 0 to High(Group.Polygons) do
     begin
       Group.Polygons[ItemIndex] := Polygons[PWord(Cursor)^];
-      Cursor := Pointer(PtrInt(Cursor) + 2);
+      Cursor := Pointer(PAnsiChar(Cursor) + 2);
     end;
     Buffer.SetPosition(Buffer.Position + Count * 2);
-    Cursor := Pointer(PtrInt(Buffer.Data) + Buffer.Position);
+    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
     Group.Corners[0].X := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[0].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[0].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[1].X := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[1].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[1].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[2].X := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[2].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[2].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[3].X := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[3].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PtrInt(Cursor) + 4);
+    Cursor := Pointer(PAnsiChar(Cursor) + 4);
     Group.Corners[3].Z := PSingle(Cursor)^;
     Buffer.SetPosition(Buffer.Position + 48);
   end;
@@ -176,21 +202,21 @@ begin
     CurrentPolygonCell := @PolygonCells[Index];
     Count := Buffer.GetWord;
     SetLength(CurrentPolygonCell.Points, Count);
-    Cursor := Pointer(PtrInt(Buffer.Data) + Buffer.Position);
+    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
     for ItemIndex := 0 to Count - 1 do
     begin
       PointIndex := PWord(Cursor)^;
       CurrentPolygonCell.Points[ItemIndex] := StopPointIndex[PointIndex];
-      Cursor := Pointer(PtrInt(Cursor) + 2);
+      Cursor := Pointer(PAnsiChar(Cursor) + 2);
     end;
     Buffer.SetPosition(Buffer.Position + Count * 2);
     Count := Buffer.GetWord;
     SetLength(CurrentPolygonCell.Groups, Count);
-    Cursor := Pointer(PtrInt(Buffer.Data) + Buffer.Position);
+    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
     for ItemIndex := 0 to Count - 1 do
     begin
       CurrentPolygonCell.Groups[ItemIndex] := @PolygonGroups[PWord(Cursor)^];
-      Cursor := Pointer(PtrInt(Cursor) + 2);
+      Cursor := Pointer(PAnsiChar(Cursor) + 2);
     end;
     Buffer.SetPosition(Buffer.Position + Count * 2);
   end;
@@ -369,9 +395,9 @@ begin
     begin
       Polygon.Vertices[Vertex].Point := StopPointIndex[Buffer.GetInt32];
       Polygon.Vertices[Vertex].Color :=
-          Pointer(PtrInt(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
+          Pointer(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
     end;
-    Polygon := Pointer(PtrInt(Polygon) + SizeOf(TabPolygon));
+    Polygon := Pointer(PAnsiChar(Polygon) + SizeOf(TabPolygon));
   end;
 end;
 

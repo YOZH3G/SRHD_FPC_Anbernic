@@ -1,24 +1,29 @@
-{$EXCESSPRECISION OFF}
 unit EC_Str;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 type
+
   TStringsEC = class;
+
   TStringsElEC = class;
+
   THexDigits = array[0..15] of WideChar;
+
   TWideCasePair = packed record
     LowerChar: WideChar;
     UpperChar: WideChar;
   end;
+
   TStringsElEC = class(TObject)
     Prev: TStringsElEC;
     Next: TStringsElEC;
     Text: WideString;
     Data: Pointer;
   end;
+
   TStringsEC = class(TObject)
     FirstElement: TStringsElEC;
     LastElement: TStringsElEC;
@@ -49,98 +54,133 @@ type
     procedure SetText(const Text: WideString);
     function GetText: WideString;
   end;
+
 const
+
   HexDigits: THexDigits =
       ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+
 function CountDelimitedPartsW(const Text: WideString; const Delimiters: WideString): Integer;
+
 function GetDelimitedPartStartIndexW(
     const Text: WideString;
     PartIndex: Integer;
     const Delimiters: WideString
 ): Integer;
+
 function GetCharDelimitedPartStartIndexW(
     const Text: WideString;
     PartIndex: Integer;
     Delimiter: WideChar
 ): Integer;
+
 function GetDelimitedPartLengthW(
     const Text: WideString;
     StartIndex: Integer;
     const Delimiters: WideString
 ): Integer;
+
 function ExtractDelimitedPartW(
     const Text: WideString;
     PartIndex: Integer;
     const Delimiters: WideString
 ): WideString;
+
 function ExtractDelimitedRangeW(
     const Text: WideString;
     FirstPart: Integer;
     LastPart: Integer;
     const Delimiters: WideString
 ): WideString;
+
 function ExtractNextDelimitedPartW(var Text: WideString; Delimiter: WideChar): WideString;
+
 function ExtractLineCommentW(const Text: WideString): WideString;
+
 function RemoveLineCommentW(const Text: WideString): WideString;
+
 function IsIntegerTextW(const Text: WideString): Boolean;
+
 function ExtractDigitsToIntW(const Text: WideString): Integer;
+
 function ExtractSignedDigitsToIntW(const Text: WideString): Integer;
+
 function ExtractDecimalToSingleW(const Text: WideString): Single;
+
 function ParseDecimalToSingleW(const Text: WideString): Single;
+
 function FloatToWideString(Value: Double): WideString;
+
 function ReplaceAllWideString(
     const Text: WideString;
     const Search: WideString;
     const Replacement: WideString
 ): WideString;
+
 function CardinalToHexWideString(Value: Cardinal): WideString;
+
 function IntToFixedWidthWideString(Value: Integer; Width: Integer): WideString;
+
 function IntToWideString(Value: Integer): WideString;
+
 function BoolToWideString(Value: Boolean): WideString;
+
 function TrimWideString(const Text: WideString): WideString;
+
 function UpperCaseWideString(const Text: WideString): WideString;
+
 function LowerCaseWideString(const Text: WideString): WideString;
+
 function RemoveWideStringChars(const Text: WideString; Chars: WideString): WideString;
+
 function GetTextTagLengthW(Text: PWideChar; CharCount: Integer): Integer;
+
 function MatchTextTagPrefixW(
     Text: PWideChar;
     CharCount: Integer;
     const Pattern: WideString;
     const AlternatePattern: WideString
 ): Boolean;
+
 function RemoveTextTagsW(const Text: WideString): WideString;
+
 function RemoveMatchingTextTagsW(
     Text: WideString;
     const Pattern: WideString;
     const AlternatePattern: WideString
 ): WideString;
+
 function CompareWideChars(Left: PWideChar; Right: PWideChar): Integer; cdecl;
+
 function FindTextOffsetW(
     const Text: WideString;
     const Search: WideString;
     StartIndex: Integer = 0
 ): Integer;
+
 function FindTextPosW(const Search: WideString; const Text: WideString): Integer;
+
 function ExtractFileNameNoExtW(const Path: WideString): WideString;
+
 function ExtractFileExtNoDotW(const Path: WideString): WideString;
+
 function ExtractFileDirW(const Path: WideString): WideString;
-procedure WriteRegistryStringLegacy(
-    RootKey: Cardinal;
-    KeyPath: WideString;
-    ValueName: WideString;
-    Value: WideString
-);
-function DecodeLegacySaveLabel(Text: WideString): WideString;
-function EncodeLegacySaveLabel(Text: WideString): WideString;
+
+function DecodeTextW(Text: WideString): WideString;
+
+function EncodeTextW(Text: WideString): WideString;
+
 function TransliterateCyrillicToLatin(Text: WideString): WideString;
+
 function CopyWideStringUnchecked(Text: WideString; Index: Integer; Count: Integer): WideString;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   GR_Main,
   SysUtils,
-  Windows;
+  Types;
 
 constructor TStringsEC.Create;
 begin
@@ -297,7 +337,7 @@ begin
   if CharCount > 0 then
   begin
     SetLength(Item.Text, CharCount);
-    CopyMemory(PWideChar(Item.Text), Text, CharCount * 2);
+    System.Move(Pointer(Text)^, Pointer(PWideChar(Item.Text))^, CharCount * 2);
   end;
 end;
 
@@ -372,7 +412,7 @@ begin
       Start := Cursor;
       while (Cursor^ <> #0) and (Cursor^ <> #10) and (Cursor^ <> #13) do
         Inc(Cursor);
-      AddSlice(Start, (PtrUInt(Cursor) - PtrUInt(Start)) div 2);
+      AddSlice(Start, Integer(PAnsiChar(Cursor) - PAnsiChar(Start)) div SizeOf(WideChar));
       if Cursor^ = #13 then
         Inc(Cursor);
       if Cursor^ = #10 then
@@ -642,13 +682,17 @@ begin
     Exit
   end;
   Value := 0;
-  for i := 0 to TextLength - 1 do
+  // Native $86FF12 exhausts to TextLength; Break retains the separator index.
+  // The extra increment at $86FF1A below also runs when no separator was found.
+  i := 0;
+  while i < TextLength do
   begin
     Code := Integer(PWideChar(Pointer(Text))[i]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
       Value := Value * 10 + (Code - Ord('0'))
     else if (Code = Ord('.')) or (Code = Ord(',')) then
       Break;
+    Inc(i);
   end;
   Inc(i);
   Divisor := 10;
@@ -684,13 +728,17 @@ begin
     Exit
   end;
   Value := 0;
-  for i := 0 to TextLength - 1 do
+  // Native $87003A exhausts to TextLength; Break retains the separator index.
+  // The extra increment at $870042 below also runs when no separator was found.
+  i := 0;
+  while i < TextLength do
   begin
     Code := Integer(PWideChar(Pointer(Text))[i]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
       Value := Value * 10 + (Code - Ord('0'))
     else if (Code = Ord('.')) or (Code = Ord(',')) then
       Break;
+    Inc(i);
   end;
   Inc(i);
   Divisor := 10;
@@ -792,32 +840,21 @@ begin
     Result := Copy(Result, 0, Width);
 end;
 
-// CHANGE: PERFORMANCE - Write UTF-16 digits directly instead of allocating and
-// converting one ANSI character for every digit. Preserve the legacy Abs edge case.
 function IntToWideString(Value: Integer): WideString;
 var
-  Magnitude, Index: Integer;
-  Digits: array[0..11] of WideChar;
+  Magnitude: Integer;
 begin
+  Result := '';
   Magnitude := Abs(Value);
-  Index := High(Digits);
-  if Magnitude <= 0 then
-  begin
-    Digits[Index] := '0';
-    Dec(Index);
-  end;
   while Magnitude > 0 do
   begin
-    Digits[Index] := WideChar(Magnitude mod 10 + Ord('0'));
-    Dec(Index);
+    Result := Chr(Magnitude mod 10 + Ord('0')) + Result;
     Magnitude := Magnitude div 10;
   end;
+  if Result = '' then
+    Result := '0';
   if Value < 0 then
-  begin
-    Digits[Index] := '-';
-    Dec(Index);
-  end;
-  SetString(Result, PWideChar(@Digits[Index + 1]), High(Digits) - Index);
+    Result := '-' + Result;
 end;
 
 function BoolToWideString(Value: Boolean): WideString;
@@ -860,9 +897,9 @@ begin
     Exit
   end;
   SetLength(Result, LastIndex - FirstIndex + 1);
-  CopyMemory(
-      PWideChar(Result),
-      AddPointerOffset(PWideChar(Text), FirstIndex * 2),
+  System.Move(
+      Pointer(AddPointerOffset(PWideChar(Text), FirstIndex * 2))^,
+      Pointer(PWideChar(Result))^,
       (LastIndex - FirstIndex + 1) * 2
   );
 end;
@@ -872,7 +909,8 @@ var
   TextLength, PairCount, i, j: Integer;
 begin
   Result := Text;
-  // FPC/macOS shares WideString storage; pointer writes bypass copy-on-write.
+  // Unix WideStrings can share storage, including read-only string literals.
+  // Detach before writing through a pointer, which bypasses copy-on-write.
   UniqueString(Result);
   TextLength := Length(Result);
   PairCount := High(WideCaseTable) + 1;
@@ -890,7 +928,6 @@ var
   TextLength, PairCount, i, j: Integer;
 begin
   Result := Text;
-  // Tag searches must not lowercase the original quest text or its aliases.
   UniqueString(Result);
   TextLength := Length(Result);
   PairCount := High(WideCaseTable) + 1;
@@ -1038,25 +1075,32 @@ end;
 
 function CompareWideChars(Left, Right: PWideChar): Integer; cdecl;
 begin
+  // Nil sorts before a non-nil string, including a non-nil empty string.
+  // Compare unsigned UTF-16 code units and return exactly -1, 0 or 1.
   if Left = nil then
   begin
     if Right = nil then
       Result := 0
     else
       Result := -1;
-    Exit
+    Exit;
   end;
   if Right = nil then
   begin
     Result := 1;
-    Exit
+    Exit;
   end;
-  while (Left^ <> #0) and (Left^ = Right^) do
+  while (Left^ = Right^) and (Left^ <> #0) do
   begin
     Inc(Left);
-    Inc(Right)
+    Inc(Right);
   end;
-  Result := Ord(Left^) - Ord(Right^);
+  if Left^ < Right^ then
+    Result := -1
+  else if Left^ > Right^ then
+    Result := 1
+  else
+    Result := 0;
 end;
 
 function FindTextOffsetW(const Text, Search: WideString; StartIndex: Integer): Integer;
@@ -1082,7 +1126,7 @@ begin
   begin
     while StartIndex <= TextLength - SearchLength do
     begin
-      if PWideChar(StartIndex * 2 + PtrUInt(TextPtr))^ = SearchPtr^ then
+      if PWideChar(StartIndex * SizeOf(WideChar) + PAnsiChar(TextPtr))^ = SearchPtr^ then
       begin
         Result := StartIndex;
         Exit
@@ -1093,8 +1137,10 @@ begin
   else
     while StartIndex <= TextLength - SearchLength do
     begin
-      if SysUtils
-          .CompareMem(Pointer(StartIndex * 2 + PtrUInt(TextPtr)), SearchPtr, SearchLength * 2) then
+      if SysUtils.CompareMem(
+          Pointer(StartIndex * SizeOf(WideChar) + PAnsiChar(TextPtr)),
+          SearchPtr,
+          SearchLength * 2) then
       begin
         Result := StartIndex;
         Exit
@@ -1146,12 +1192,7 @@ begin
   Result := ExtractDelimitedRangeW(Path, 0, Count - 2, '\/');
 end;
 
-procedure WriteRegistryStringLegacy(RootKey: Cardinal; KeyPath, ValueName, Value: WideString);
-begin
-  raise Exception.Create('Windows registry writes are unavailable in the native host')
-end;
-
-function DecodeLegacySaveLabel(Text: WideString): WideString;
+function DecodeTextW(Text: WideString): WideString;
 var
   i, TextLength: Integer;
 begin
@@ -1165,16 +1206,22 @@ begin
   end;
 end;
 
-// CHANGE: CLEANUP - Retain legacy label padding without consuming gameplay randomness.
-function EncodeLegacySaveLabel(Text: WideString): WideString;
+function EncodeTextW(Text: WideString): WideString;
 var
-  I: Integer;
+  i, TextLength, LastPair: Integer;
 begin
-  SetLength(Result, Length(Text) * 2);
-  for I := 1 to Length(Text) do
+  TextLength := Length(Text);
+  LastPair := High(WideCaseTable);
+  Result := '';
+  i := 0;
+  while i < TextLength do
   begin
-    Result[I * 2 - 1] := Text[I];
-    Result[I * 2] := ' ';
+    Result := Result + PWideChar(Pointer(Text))[i];
+    if Random(10) >= 8 then
+      Result := Result + WideCaseTable[Random(LastPair + 1)].UpperChar
+    else
+      Result := Result + WideCaseTable[Random(LastPair + 1)].LowerChar;
+    Inc(i);
   end;
 end;
 
@@ -1252,7 +1299,11 @@ end;
 function CopyWideStringUnchecked(Text: WideString; Index, Count: Integer): WideString;
 begin
   SetLength(Result, Count);
-  CopyMemory(PWideChar(Result), AddPointerOffset(PWideChar(Text), Index * 2 - 2), Count * 2);
+  System.Move(
+      Pointer(AddPointerOffset(PWideChar(Text), Index * 2 - 2))^,
+      Pointer(PWideChar(Result))^,
+      Count * 2
+  );
 end;
 
 end.

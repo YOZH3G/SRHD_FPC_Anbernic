@@ -1,20 +1,25 @@
-{$EXCESSPRECISION OFF}
 unit SE_Garbage;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 var
+
   PreviousVirtualUsageMB: Int64 = 0;
+
   PreviousPhysicalUsageMB: Int64 = 0;
+
   CheckingMemoryUsage: Boolean = False;
+
   LowMemoryWarningShown: Boolean = False;
+
 procedure CheckMemoryUsage;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  GameSystem,
   GR_Main,
   SysUtils,
   aGalaxy;
@@ -25,9 +30,10 @@ var
   Changed: Boolean;
   Reserved: array[0..6] of Byte; // Native local storage between the flag and the status record.
   Status: TMemoryStatusEx;
+
   procedure ShowLowMemoryWarning(
       TextKey: WideString
-  ); // @addr $86E0F0 @ida "void __usercall $name(unsigned __int16 *TextKey@<eax>, void *ParentFrame@<^0>);" @note "Nested in CheckMemoryUsage; unused caller-popped static link."
+  ); { Nested in CheckMemoryUsage; unused caller-popped static link. }
   begin
     if (not LowMemoryWarningShown) and (Galaxy <> nil) then
     begin
@@ -41,7 +47,7 @@ begin
     CheckingMemoryUsage := True;
     Changed := False;
     Status.Length := SizeOf(Status);
-    GlobalMemoryStatusEx(Status);
+    QueryGameMemory(Status);
     Usage := (Status.TotalVirtual - Status.AvailVirtual) shr 20;
     if (Usage > 512) and (Abs(Usage - PreviousVirtualUsageMB) > 256) then
     begin

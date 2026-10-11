@@ -1,36 +1,45 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon17Kafacitor;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   GI_PSWeapon,
   GI_MessageLoop,
-  EC_Struct,
-  Types;
+  EC_Struct;
+
 type
+
   PointerToTKafacitorParticle = ^TKafacitorParticle;
+
   PKafacitorParticle = PointerToTKafacitorParticle;
+
   TKafacitorParticle = record
     Prev: PKafacitorParticle;
     Next: PKafacitorParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..2] of Byte;
   end;
+
   TKafacitorPalette = array[0..1] of Word;
+
   TGAISet = array[0..0] of WideString;
+
 var
+
   KafacitorPalettes: array of TKafacitorPalette;
+
   KafacitorAnimationPaths: array of TGAISet;
+
 type
+
   TPSWeapon17Kafacitor = class;
+
   TPSWeapon17Kafacitor = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PKafacitorParticle;
@@ -53,10 +62,12 @@ type
     procedure UpdateProjectionBounds;
     function AddParticle: PKafacitorParticle;
   end;
+
 procedure LoadKafacitorPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GR_Rect,
   EC_Mem,
   GR_DX,
@@ -69,8 +80,6 @@ uses
   GR_GraphBuf,
   Math,
   SysUtils;
-// @unit-initialization $87795C
-// @unit-finalization $6989A4
 
 constructor TPSWeapon17Kafacitor.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -276,10 +285,9 @@ begin
             and (NextControl.Position.X * NextControl.Velocity.X > 0.0) then
           NextControl.Velocity.X := NextControl.Velocity.X * -1.0
         else if (NextControl.Position.X * NextControl.Velocity.X > 0.0)
-            and (PresentationRandom(101)
-                < (Abs(NextControl.Position.X) / (0.05 * Distance) - 1.0) * 100.0) then
+            and (Random(101) < (Abs(NextControl.Position.X) / (0.05 * Distance) - 1.0) * 100.0) then
           NextControl.Velocity.X := NextControl.Velocity.X * -1.0
-        else if PresentationRandom(101) < 15 then
+        else if Random(101) < 15 then
           NextControl.Velocity.X := NextControl.Velocity.X * -1.0;
       end
       else

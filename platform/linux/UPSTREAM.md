@@ -1,25 +1,27 @@
 # Upstream base for the Anbernic port
 
-This fork's `main` extends the author's enhanced `personal` branch. On
-2026-10-11 it was merged through
-[`8d40393`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/8d40393dd64f4823924b4fbc7b32691cb6893b3c),
-the current tip of that branch. Its updates include timer/rendering optimizations,
-native script utilities, pointer-width fixes, mod manuals and incremental builds.
+This fork now uses the author's reference `main`, through
+[`e7a7bdc`](https://github.com/pakompom/SpaceRangersHD_FPC/commit/e7a7bdce89d75f64868c438da7464783933d6406),
+fetched on 2026-10-11. Upstream source, platform adapters, native code, build
+scripts, tests and dependency pins are retained. The migration merge keeps the
+old enhanced/personal history reachable without using that implementation as
+its source base.
 
-The author's newer reference `main` is a separate port with different history
-and behavior. It is not a drop-in replacement for the enhanced branch. Likewise,
-the Delphi decompilation is an upstream source project, not the FPC build tree.
+Upstream pins: FPC `681c8811ac0ff8a4450ac50735ab7e74e0c740bb`,
+OKGF `7f41bc64cc87a8d77afab69b5e7be91126390dd9`.
 
-OKGF is updated to
-[`7f41bc6`](https://github.com/pakompom/okgf/commit/7f41bc64cc87a8d77afab69b5e7be91126390dd9),
-also used by the author's current reference port. This includes overlapping-copy
-fixes, converter bounds checks and configurable library builds.
+Adapted local additions: ARMHF/AArch64 cross builds, PortMaster packages,
+separate user profiles, RU/EN on-screen keyboard and the native ARM narrow
+argument ABI fix. Case-insensitive loose asset paths and compression now use
+upstream's GameSystem and OKGF implementations.
 
-The FPC submodule retains the enhanced branch's pin
-`1cecb27cfbc11df80bad8dda5cf10bf04ea95e0d`. Linux cross builds accept an
-already bootstrapped compiler and target RTL via `--fpc-source`; see `BUILDING.md`.
-Release runtime checks must be repeated after changes to game code or OKGF.
+Linux defaults to `--renderer=sdl`. SDL acceleration is attempted first,
+including an early render-target and geometry capability check. Failed acceleration falls
+back to SDL software and the game's CPU drawing path. `--renderer=software`
+forces software. Selected renderer and fallback reason are written to the
+profile's `########.log`; no persistent configuration is rewritten to disable
+acceleration after a temporary failure.
 
-Preserved local additions: ARMHF/AArch64 Linux builds, resource-path handling,
-zlib and ARM C ABI fixes, PortMaster packages, RU/EN keyboard and resource-backed
-regression helpers. Release assets exclude proprietary game files and saves.
+The older keyboard release, screenshots and video used the enhanced branch.
+They remain historical artifacts, not evidence for the new main-based build.
+Release assets exclude proprietary game files and saves.

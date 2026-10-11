@@ -2,7 +2,7 @@ program ZlibRoundtrip;
 {$MODE delphi}
 uses
   SysUtils,
-  ZLib;
+  EC_OKGF;
 var
   Source, PackedData, Restored: array[0..4095] of Byte;
   I, Mode, PackedSize, RestoredSize: Integer;

@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit fGalaxy2;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   GI_PolyLine,
   Classes,
   EC_BlockPar,
@@ -17,16 +17,28 @@ uses
   GI_Label,
   GI_MessageLoop,
   GI_Panel,
-  Types,
+  GI_PanelScrollBar,
   aGalaxy,
   aShip,
   fPanelMain;
+
 type
+
   TfGalaxy2 = class;
+
   TfGalaxy2 = class(TMessageLoopGIWithMainPanel)
+  private
+    TouchStar, TouchOrigin: TStar;
+    TouchStarId: Cardinal;
+    TouchTurn: Integer;
+    StarInfoScroll: TPanelScrollBarGI;
+    function TouchInspectionEnabled: Boolean;
+    function StarAtPoint(Point: TPoint): TStar;
+    procedure ClearTouchSelection;
+    procedure MapLeftButtonUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
+  public
     MapPanel: TPanelGI;
     ViewMode: Byte;
-    GapD9: array[0..2] of Byte;
     HideBuffer: TGraphBufGI;
     MapPixelBounds: TRect;
     GalaxyOrigin: TPointF;
@@ -36,25 +48,26 @@ type
     StarLinks: TPolyLineGI;
     StarInfoHideTimer: PCallbackTimerGI;
     JumpAnimationTimer: PCallbackTimerGI;
-    JumpHintAnimationState: PtrInt;
+    JumpHintAnimationState: Integer;
     JumpLightTick: Integer;
     JumpButton: TGraphButtonGI;
     JumpDestinationLabel: TLabelGI;
     JumpAnimation: TgaiGI;
     JumpLightImages: array[0..2] of TImageGI;
     CapturePreviewOnOpen: Boolean;
-    Gap135: array[0..2] of Byte;
     CreateMarkerButton: TGraphButtonGI;
     CreateMarkerImagePath: WideString;
     CreateMarkerActiveImagePath: WideString;
     CreateMarkerMode: Boolean;
-    Gap145: array[0..2] of Byte;
     procedure OnOpen; override;
     procedure OnClose; override;
+    procedure CancelPointerInput; override;
+    procedure ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer); override;
     procedure ProcessCallbackTimers; override;
     procedure SelectMusic; override;
     procedure InitializeLayout; override;
     procedure ExecuteUiCode(Block: TBlockParEC; Key: Cardinal); override;
+    function DeferTouchDrag(Point: TPoint): Boolean; override;
     constructor Create;
     destructor Destroy; override;
     procedure CloseClicked(Sender: TObjectGI);
@@ -88,20 +101,26 @@ type
     procedure UndoMarkerClicked(Sender: TObjectGI);
     procedure ClearMarkersClicked(Sender: TObjectGI);
   end;
+
 const
+
   GalaxyMapFriendlyShipOrder: array[1..7] of Byte = (0, 1, 10, 2, 3, 4, 5);
+
 function RunGalaxyMap(ParentLoop: TMessageLoopGI): Boolean;
+
 procedure CaptureGalaxyPreview(ParentLoop: TMessageLoopGI);
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_GI,
   ThreadCalc,
   aCalc,
+  EC_CacheBitmap,
   Globals,
   GR_Main,
   GR_GraphBuf,
-  Windows,
+  GameInput,
   SysUtils,
   Math,
   aPlayer,
@@ -113,6 +132,8 @@ uses
   EC_Str,
   GR_Music,
   GI_Main,
+  GI_Inspection,
+  GameWindow,
   GlobalsV,
   aPlanet,
   fStarMap,
@@ -135,6 +156,9 @@ uses
   SE_Ship2,
   aRuins;
 
+const
+  GalaxySummaryWhiteColorTag = '<color=255,255,254>';
+
 constructor TfGalaxy2.Create;
 begin
   inherited Create;
@@ -155,6 +179,8 @@ end;
 procedure TfGalaxy2.InitializeLayout;
 begin
   inherited InitializeLayout;
+  TouchStar := nil;
+  StarInfoScroll := nil;
   MainPanel.InitializeLayout(Self);
   AppendLogTextThreadSafe('fGalaxy2... ');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
@@ -166,7 +192,7 @@ begin
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
   end;
@@ -215,7 +241,7 @@ var
   NameLabel, ForceLabel: TLabelGI;
   Text, ColoredName: WideString;
   Planet: TPlanet;
-  OwnerId: Byte;
+  OwnerId: TOwnerId;
   HoleImage: TImageGI;
   BufferOffset: TPoint;
   Hole, SelectedHole: THole;
@@ -453,7 +479,7 @@ begin
       for J := 0 to Star.Planets.Count - 1 do
       begin
         Planet := Star.Planets[J];
-        if Planet.OwnerId <> Byte(oiUninhabited) then
+        if Planet.OwnerId <> oiUninhabited then
           Break;
       end;
       Text := Star.Name;
@@ -468,8 +494,8 @@ begin
             ColoredName + WrapTextInColor(Copy(Text, 1, K), OwnerInfo[Planet.OwnerId].ColorTag);
         Delete(Text, 1, K);
         if Text <> '' then
-          for OwnerId := Byte(oiMaloc) to 7 do
-            if (OwnerId <> Byte(oiUninhabited))
+          for OwnerId := oiMaloc to oiPirate do
+            if (OwnerId <> oiUninhabited)
                 and (Star.CountPlanetsByOwner(OwnerId) > 0)
                 and (Planet.OwnerId <> OwnerId) then
             begin
@@ -509,7 +535,7 @@ begin
             if Length(BossText) > 0 then
               BossText := BossText + '-';
             BossText :=
-                BossText + WrapTextInColor(LocalizedText('FormGalaxy.Boss1')[1], '<color=255,0,0>');
+                BossText + WrapTextInColor(LocalizedText('FormGalaxy.Boss1')[1], RedColorTag);
           end
           else
             Inc(BlazerCount);
@@ -522,8 +548,7 @@ begin
             if Length(BossText) > 0 then
               BossText := BossText + '-';
             BossText :=
-                BossText
-                    + WrapTextInColor(LocalizedText('FormGalaxy.Boss2')[1], '<color=0,128,255>');
+                BossText + WrapTextInColor(LocalizedText('FormGalaxy.Boss2')[1], AzureColorTag);
           end
           else
             Inc(KellerCount);
@@ -536,7 +561,7 @@ begin
             if Length(BossText) > 0 then
               BossText := BossText + '-';
             BossText :=
-                BossText + WrapTextInColor(LocalizedText('FormGalaxy.Boss3')[1], '<color=0,255,0>');
+                BossText + WrapTextInColor(LocalizedText('FormGalaxy.Boss3')[1], GreenColorTag);
           end
           else
             Inc(TerronCount);
@@ -545,31 +570,32 @@ begin
         begin
           if Length(ForceText) > 0 then
             ForceText := ForceText + '-';
-          ForceText := ForceText + WrapTextInColor(IntToStr(CoalitionCount), '<color=255,240,100>');
+          ForceText := ForceText + WrapTextInColor(IntToStr(CoalitionCount), TextHighlightColorTag);
         end;
         if BlazerCount > 0 then
         begin
           if Length(ForceText) > 0 then
             ForceText := ForceText + '-';
-          ForceText := ForceText + WrapTextInColor(IntToStr(BlazerCount), '<color=255,0,0>');
+          ForceText := ForceText + WrapTextInColor(IntToStr(BlazerCount), RedColorTag);
         end;
         if KellerCount > 0 then
         begin
           if Length(ForceText) > 0 then
             ForceText := ForceText + '-';
-          ForceText := ForceText + WrapTextInColor(IntToStr(KellerCount), '<color=0,128,255>');
+          ForceText := ForceText + WrapTextInColor(IntToStr(KellerCount), AzureColorTag);
         end;
         if TerronCount > 0 then
         begin
           if Length(ForceText) > 0 then
             ForceText := ForceText + '-';
-          ForceText := ForceText + WrapTextInColor(IntToStr(TerronCount), '<color=0,255,0>');
+          ForceText := ForceText + WrapTextInColor(IntToStr(TerronCount), GreenColorTag);
         end;
         if PirateCount > 0 then
         begin
           if Length(ForceText) > 0 then
             ForceText := ForceText + '-';
-          ForceText := ForceText + WrapTextInColor(IntToStr(PirateCount), '<color=255,255,254>');
+          ForceText :=
+              ForceText + WrapTextInColor(IntToStr(PirateCount), GalaxySummaryWhiteColorTag);
         end;
         if CustomCount > 0 then
         begin
@@ -587,7 +613,7 @@ begin
             ForceText :=
                 ForceText + WrapTextInColor(IntToStr(OtherCount), LookupNamedColorTag(OtherFaction))
           else
-            ForceText := ForceText + WrapTextInColor(IntToStr(OtherCount), '<color=127,127,127>');
+            ForceText := ForceText + WrapTextInColor(IntToStr(OtherCount), GrayColorTag);
         end;
         if Length(BossText) > 0 then
         begin
@@ -717,8 +743,7 @@ begin
   end;
   with GetByName('RadarDetect') as TCircleGI do
   begin
-    if (GetPlayer.GetRadar <> nil)
-        and (GetPlayer.CountActiveArtefacts(Ord(t_ArtefactRadar)) > 0) then
+    if (GetPlayer.GetRadar <> nil) and (GetPlayer.CountActiveArtefacts(t_ArtefactRadar) > 0) then
     begin
       SetActive(True);
       SetCenter(ToAbsolutePoint(GalaxyPointToMapPoint(GetPlayer.CurrentStar.Position)));
@@ -793,14 +818,51 @@ begin
       );
     RequestClose(1);
   end;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(1111);
   MainPanel.RebuildMessageButtons(False);
+end;
+
+procedure TfGalaxy2.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  // Inspection ends on cancellation too, without a synthetic button release.
+  TouchStar := nil;
+  ShowStarInfo(nil);
+end;
+
+procedure TfGalaxy2.ClearTouchSelection;
+begin
+  if TouchStar = nil then
+    Exit;
+  TouchStar := nil;
+  ShowStarInfo(nil);
+end;
+
+procedure TfGalaxy2.ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer);
+begin
+  if TouchStar <> nil then
+  begin
+    if not GamePointerInputIsTouch
+        and ((Message = WM_LBUTTONDOWN)
+            or (Message = WM_RBUTTONDOWN)
+            or (Message = WM_LBUTTONDBLCLK)
+            or (Message = WM_MOUSEWHEEL)) then
+      ClearTouchSelection
+    else if (Message = WM_GAME_PAN_BEGIN)
+        or ((Message = WM_GAME_TOUCH_BEGIN) and (WParam = MK_RBUTTON)) then
+      ClearTouchSelection;
+  end;
+  inherited ProcessWindowMessage(Message, WParam, LParam);
+  if (TouchStar <> nil)
+      and (Message = WM_GAME_TOUCH_DRAG_BEGIN)
+      and not GetByName('InfoStar').ContainsPoint(TouchAnchor) then
+    ClearTouchSelection;
 end;
 
 procedure TfGalaxy2.OnClose;
 begin
   inherited OnClose;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(1112);
   if (GetPlayer <> nil) and not CapturePreviewOnOpen then
     GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
   CapturePreviewOnOpen := False;
@@ -835,6 +897,11 @@ end;
 
 procedure TfGalaxy2.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
+  if (Key = VK_ESCAPE) and (TouchStar <> nil) then
+  begin
+    ClearTouchSelection;
+    BreakUiMessage;
+  end;
   if not IsVirtualKeyDown(VK_CONTROL)
       and not IsVirtualKeyDown(VK_SHIFT)
       and not IsVirtualKeyDown(VK_MENU) then
@@ -856,6 +923,16 @@ end;
 
 procedure TfGalaxy2.MainPanelMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
+  if GamePointerInputIsTouch and (TouchStar <> nil) then
+  begin
+    if GetByName('InfoStar').ContainsPoint(Point) then
+      Exit;
+    if not MapPanel.ContainsPoint(Point) then
+    begin
+      ClearTouchSelection;
+      Exit;
+    end;
+  end;
   if ClickAutoCloseForm then
     if not (GetByName('ImagePanel') as TImageGI).HitTestPixel(Point)
         and not GetByName('HideBuf').ContainsPoint(Point)
@@ -870,7 +947,7 @@ var
   First, Second: TPointF;
 begin
   Result := False;
-  if (GetPlayer.GetRadar <> nil) and (GetPlayer.CountActiveArtefacts(Ord(t_ArtefactRadar)) > 0) then
+  if (GetPlayer.GetRadar <> nil) and (GetPlayer.CountActiveArtefacts(t_ArtefactRadar) > 0) then
   begin
     First := Star.Position;
     Second := GetPlayer.CurrentStar.Position;
@@ -997,6 +1074,7 @@ begin
       DotImage.SetSize(ImageSize);
       Distance := Distance + 10;
     end;
+
     First := PointToPointF(GalaxyPointToMapPoint(SelectedJumpStar.Position));
     for I := 0 to RouteStars.Count - 1 do
     begin
@@ -1126,7 +1204,7 @@ begin
     MouseLeaveCallback := nil;
   end;
   MapPanel.LeftButtonDownCallback := MapLeftButtonDown;
-  MapPanel.LeftButtonUpCallback := MapButtonUp;
+  MapPanel.LeftButtonUpCallback := MapLeftButtonUp;
   MapPanel.MouseMoveCallback := MapMouseMove;
   MapPanel.RightButtonDownCallback := MapRightButtonDown;
   MapPanel.RightButtonUpCallback := MapButtonUp;
@@ -1143,7 +1221,7 @@ end;
 procedure TfGalaxy2.ConfigureJumpSelection;
 begin
   MapPanel.LeftButtonDownCallback := MapLeftButtonDown;
-  MapPanel.LeftButtonUpCallback := MapButtonUp;
+  MapPanel.LeftButtonUpCallback := MapLeftButtonUp;
   MapPanel.MouseMoveCallback := MapMouseMove;
   MapPanel.RightButtonDownCallback := MapRightButtonDown;
   MapPanel.RightButtonUpCallback := MapButtonUp;
@@ -1183,35 +1261,109 @@ begin
     Exit;
 end;
 
-procedure TfGalaxy2.MapLeftButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
+function TfGalaxy2.DeferTouchDrag(Point: TPoint): Boolean;
+begin
+  // The fitted galaxy is a destination selector, not a scrolling camera.
+  // Let a finger inspect/adjust the destination until release; never run route
+  // or jump selection callbacks merely because touch slop was crossed.
+  Result :=
+      (ChildLoop = nil)
+          and (MapPanel <> nil)
+          and MapPanel.Active
+          and MapPanel.ContainsPoint(Point)
+          and not MapPanel.IsOccludedAtPoint(Point);
+end;
+
+function TfGalaxy2.TouchInspectionEnabled: Boolean;
+begin
+  // Teleport/black-hole selectors and marker editing retain their own actions.
+  Result :=
+      (ViewMode in [1, 2])
+          and not CreateMarkerMode
+          and not IsVirtualKeyDown(VK_CONTROL)
+          and not IsVirtualKeyDown(VK_SHIFT)
+          and not IsVirtualKeyDown(VK_MENU);
+end;
+
+function TfGalaxy2.StarAtPoint(Point: TPoint): TStar;
 var
-  Selected, Star: TStar;
+  Star: TStar;
   GalaxyPoint: TPointF;
   BestDistance, Distance: Double;
   I: Integer;
 begin
-  if not IsVirtualKeyDown(VK_MENU) then
-    MapRightButtonDown(Sender, KeyState, Point);
-  if Sender.IsOccludedAtPoint(Point) then
-    Exit;
-  Point := MapPanel.ToLocalPoint(Point);
-  GalaxyPoint := MapPointToGalaxyPoint(Point);
-  Selected := nil;
-  BestDistance := 1.0e20;
+  GalaxyPoint := MapPointToGalaxyPoint(MapPanel.ToLocalPoint(Point));
+  BestDistance := Sqr(GalaxySizeY * 0.1);
+  Result := nil;
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
     Star := Galaxy.Stars[I];
     if not Star.IsConstellationVisible then
       Continue;
-    Distance :=
-        (Star.Position.X - GalaxyPoint.X) * (Star.Position.X - GalaxyPoint.X)
-            + (Star.Position.Y - GalaxyPoint.Y) * (Star.Position.Y - GalaxyPoint.Y);
+    Distance := Sqr(Star.Position.X - GalaxyPoint.X) + Sqr(Star.Position.Y - GalaxyPoint.Y);
     if Distance < BestDistance then
     begin
-      Selected := Star;
+      Result := Star;
       BestDistance := Distance;
     end;
   end;
+end;
+
+procedure TfGalaxy2.MapLeftButtonUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
+var
+  Star: TStar;
+begin
+  if not GamePointerInputIsTouch or not TouchInspectionEnabled then
+  begin
+    MapButtonUp(Sender, KeyState, Point);
+    Exit;
+  end;
+  if Sender.IsOccludedAtPoint(Point) then
+    Exit;
+  Star := StarAtPoint(Point);
+  if Star = nil then
+  begin
+    ClearTouchSelection;
+    Exit;
+  end;
+  if (Star = TouchStar)
+      and (Star.Id = TouchStarId)
+      and (TouchOrigin = GetPlayer.CurrentStar)
+      and (Galaxy.CurrentTurn = TouchTurn)
+      and (SelectedJumpStar = Star)
+      and (ViewMode = 2)
+      and (TouchDragKind = tdNone)
+      and not GetPlayer.NoJump
+      and not JumpButton.Disabled then
+  begin
+    ClearTouchSelection;
+    JumpClicked(nil);
+    Exit;
+  end;
+  ClearTouchSelection;
+  TouchStar := Star;
+  TouchStarId := Star.Id;
+  TouchOrigin := GetPlayer.CurrentStar;
+  TouchTurn := Galaxy.CurrentTurn;
+  SelectedJumpStar := Star;
+  RouteStars.Clear;
+  RebuildJumpPath;
+  JumpButton.SetDisabled((Star = GetPlayer.CurrentStar) or (ViewMode = 1) or GetPlayer.NoJump);
+  ShowStarInfo(Star);
+end;
+
+procedure TfGalaxy2.MapLeftButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
+var
+  Selected: TStar;
+begin
+  if GamePointerInputIsTouch and TouchInspectionEnabled then
+    Exit;
+  ClearTouchSelection;
+  if not IsVirtualKeyDown(VK_MENU) then
+    MapRightButtonDown(Sender, KeyState, Point);
+  if Sender.IsOccludedAtPoint(Point) then
+    Exit;
+  Selected := StarAtPoint(Point);
   if (SelectedJumpStar <> nil)
       and (GetPlayer.CurrentStar <> SelectedJumpStar)
       and (CreateMarkerMode
@@ -1219,7 +1371,7 @@ begin
           or IsVirtualKeyDown(VK_SHIFT)
           or IsVirtualKeyDown(VK_MENU)) then
   begin
-    if BestDistance < (GalaxySizeY * 0.1) * (GalaxySizeY * 0.1) then
+    if Selected <> nil then
     begin
       if (RouteStars.Count < 1) or (RouteStars[RouteStars.Count - 1] <> Selected) then
       begin
@@ -1236,7 +1388,7 @@ begin
   else
   begin
     RouteStars.Clear;
-    if BestDistance < (GalaxySizeY * 0.1) * (GalaxySizeY * 0.1) then
+    if Selected <> nil then
       SelectedJumpStar := Selected
     else
       SelectedJumpStar := GetPlayer.CurrentStar;
@@ -1251,39 +1403,17 @@ begin
 end;
 
 procedure TfGalaxy2.MapRightButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
-var
-  Selected, Star: TStar;
-  GalaxyPoint: TPointF;
-  BestDistance, Distance: Double;
-  I: Integer;
 begin
   if Sender.IsOccludedAtPoint(Point) then
     Exit;
-  Point := MapPanel.ToLocalPoint(Point);
-  GalaxyPoint := MapPointToGalaxyPoint(Point);
-  BestDistance := 1.0e20;
-  Selected := nil;
-  for I := 0 to Galaxy.Stars.Count - 1 do
-  begin
-    Star := Galaxy.Stars[I];
-    if not Star.IsConstellationVisible then
-      Continue;
-    Distance :=
-        (Star.Position.X - GalaxyPoint.X) * (Star.Position.X - GalaxyPoint.X)
-            + (Star.Position.Y - GalaxyPoint.Y) * (Star.Position.Y - GalaxyPoint.Y);
-    if Distance < BestDistance then
-    begin
-      Selected := Star;
-      BestDistance := Distance;
-    end;
-  end;
-  if BestDistance >= (GalaxySizeY * 0.1) * (GalaxySizeY * 0.1) then
-    Selected := nil;
-  ShowStarInfo(Selected);
+  ClearTouchSelection;
+  ShowStarInfo(StarAtPoint(Point));
 end;
 
 procedure TfGalaxy2.MapButtonUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
+  if TouchStar <> nil then
+    Exit;
   if StarInfoHideTimer <> nil then
   begin
     CancelCallbackTimer(StarInfoHideTimer);
@@ -1294,6 +1424,8 @@ end;
 
 procedure TfGalaxy2.MapDoubleClick(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
+  if GamePointerInputIsTouch and TouchInspectionEnabled then
+    Exit;
   if ViewMode in [0, 2, 3] then
     if not GetPlayer.NoJump then
       JumpClicked(nil);
@@ -1311,6 +1443,7 @@ var
   Angle, Radius: Double;
   Event: TGalaxyEvent;
 begin
+  ClearTouchSelection;
   if (GetPlayer.CurrentStar = SelectedJumpStar) or (SelectedJumpStar = nil) then
     Exit;
   if ViewMode = 2 then
@@ -1324,16 +1457,16 @@ begin
       Exit;
     First := SelectedJumpStar.Position;
     Second := GetPlayer.CurrentStar.Position;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(149);
     if GetPlayer.JumpRange < Round(Sqrt(Sqr(First.X - Second.X) + Sqr(First.Y - Second.Y))) then
     begin
       GetPlayer.OrderNone(False);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(152);
       ShowMessageBoxGI(
           Self,
           FormatText1(
               LocalizedText('FormGalaxy.NeedFuelOrEngine'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Star>',
               SelectedJumpStar.Name
           ),
@@ -1348,7 +1481,7 @@ begin
   end
   else if ViewMode = 3 then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(153);
     Hole := THole.Create;
     Hole.InitializeGraphic('');
     THoleSE(Hole.Graphic).SetState(1);
@@ -1377,13 +1510,13 @@ begin
   end
   else if ViewMode = 0 then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(153);
     GetPlayer.OrderTeleport(SelectedJumpStar, GetPlayer.Position, 10, False);
   end
   else
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(152);
   PendingPlayerFollowTarget := nil;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(154);
   SpaceViewPosition := GetPlayer.Position;
   RequestedScreenId := screenStarMap;
   RequestClose(1);
@@ -1437,11 +1570,13 @@ var
   IconInset: Cardinal;
   NameWidth, DetailWidth, RowCount, SummaryLines: Integer;
   ObjectDistance: Single;
-  OwnerId: Byte;
+  OwnerId: TOwnerId;
   CurrentChild: TObjectGI;
   Planet: TPlanet;
   CustomInfo: TCustomSystemInfo;
   Value: WideString;
+  Target: TRect;
+  Position, Radius: TPoint;
 begin
   if (Star <> nil) and (GetPlayer <> nil) then
     GetPlayer.ScriptItemsAct(satOnShowingStarInfo, Star, nil, 0);
@@ -1666,7 +1801,7 @@ begin
     else if TObject(Objects[I]) is TRuins then
       OwnerId := TRuins(Objects[I]).OwnerId
     else
-      OwnerId := Byte(oiUninhabited);
+      OwnerId := oiUninhabited;
     if TObject(Objects[I]) is TRuins then
     begin
       with TLabelGI.Create(Owner) do
@@ -1711,7 +1846,7 @@ begin
           with TGraphBufGI.Create(Owner, False) do
           begin
             SourceHasPerPixelAlpha := True;
-            LoadBitmapPathAsRgba(ExtractDelimitedPartW(Value, J, ',') + '?RGBA');
+            LoadBitmapPathAsRgba(ExtractDelimitedPartW(Value, J, ',') + RgbaImagePathSuffix);
             SetPosition(Classes.Point(IconX, RowHeight * I + 1));
             SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
@@ -1751,7 +1886,7 @@ begin
           DetailWidth := Max(DetailWidth, ClientSize.X + GiScalePixels(35));
         end;
     end
-    else if OwnerId <> Byte(oiUninhabited) then
+    else if OwnerId <> oiUninhabited then
       if not (TObject(Objects[I]) is TPlanet)
           or not (TObject(Objects[I]) as TPlanet).IsMainPiratePlanet then
         with TGraphBufGI.Create(Owner, False) do
@@ -1762,7 +1897,7 @@ begin
                       GetFactionEmblemPath((TObject(Objects[I]) as TPlanet).GetFactionResourceName),
                       1,
                       ',')
-                  + '?RGBA'
+                  + RgbaImagePathSuffix
           );
           SetPosition(Classes.Point(NameWidth + 5 + RowHeight + 5 + 1, RowHeight * I + 1));
           SetSize(Classes.Point(RowHeight - 2, RowHeight - 2));
@@ -1784,15 +1919,14 @@ begin
     if TObject(Objects[I]) is TPlanet then
     begin
       Planet := TPlanet(Objects[I]);
-      if (Planet.OwnerId in [Ord(oiMaloc)..Ord(oiGaal), Ord(oiPirate)])
+      if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate])
           and not Planet.IsMainPiratePlanet
           and (Planet.CurrentStar.Status.CustomFaction = '') then
       begin
         IconX := NameWidth + 5 + RowHeight + 5 + 1;
         with TImageGI.Create(Owner) do
         begin
-          case Integer((TObject(Objects[I]) as TPlanet).GetRelationLevelToShip(GetPlayer))
-              and $7F of
+          case Ord((TObject(Objects[I]) as TPlanet).GetRelationLevelToShip(GetPlayer)) of
             0: SetImagePath('GI,Bm.FormGalaxy2.Face4');
             1: SetImagePath('GI,Bm.FormGalaxy2.Face3');
             2: SetImagePath('GI,Bm.FormGalaxy2.Face2');
@@ -1832,8 +1966,7 @@ begin
           SetText(LowerCaseWideString(LocalizedText('ShipType.TypeName.PB')));
           DetailWidth := Max(DetailWidth, ClientSize.X + GiScalePixels(35));
         end
-      else if (Planet.OwnerId = Byte(oiUninhabited))
-          and (Planet.GetUnexploredSurfaceTileCount = 0) then
+      else if (Planet.OwnerId = oiUninhabited) and (Planet.GetUnexploredSurfaceTileCount = 0) then
         with TLabelGI.Create(Owner) do
         begin
           if GiResourceVariant = 2 then
@@ -1862,6 +1995,16 @@ begin
       SetWordWrapEnabled(False);
       SetTextAlignX(taxCenter);
       SetTextAlignY(tayCenterEx);
+      // Preserve Rangers.exe 2026-08-11's stack initialization: ShowStarInfo
+      // ($676DB8) executes MOV ECX,$24 followed by two PUSH 0 instructions
+      // per iteration at $676DBB..$676DC5. The $120-byte zeroed block includes
+      // SummaryLines at [EBP-$3C], whose address is passed at $678A0A.
+      // AppendLine increments the supplied count at $6798CD; it does not reset
+      // it. The caller multiplies that count by RowHeight at $678A32. FPC does
+      // not guarantee this local is zero, so Prolonger's extended radar popup
+      // can otherwise acquire an arbitrary height. Initialize it here to keep
+      // BuildStarShipSummary's original accumulating var-parameter behavior.
+      SummaryLines := 0;
       SetText(BuildStarShipSummary(Star, SummaryLines));
       SetSize(Classes.Point(NameWidth + DetailWidth, RowHeight * SummaryLines));
     end;
@@ -1887,6 +2030,29 @@ begin
     );
   end;
   Objects.Free;
+  if GameMobileUiEnabled then
+  begin
+    Position := GalaxyPointToMapPoint(Star.Position);
+    // Keep the whole StarAtPoint selection radius clear, not just the sprite.
+    // Otherwise a second tap near the star can land on its new info window.
+    Radius.X :=
+        Ceil(GalaxySizeY * 0.1 / GalaxyExtent.X * (MapPixelBounds.Right - MapPixelBounds.Left + 1));
+    Radius.Y :=
+        Ceil(GalaxySizeY * 0.1 / GalaxyExtent.Y * (MapPixelBounds.Bottom - MapPixelBounds.Top + 1));
+    Target.TopLeft :=
+        MapPanel.ToAbsolutePoint(Classes.Point(Position.X - Radius.X, Position.Y - Radius.Y));
+    Target.BottomRight :=
+        MapPanel.ToAbsolutePoint(Classes.Point(Position.X + Radius.X, Position.Y + Radius.Y));
+    FitInspectionWindow(InfoPanel, Owner, StarInfoScroll, MainPanel.ContentBounds, Target, False);
+    with GetByName('InfoStarName') as TLabelGI do
+      SetSize(
+          Classes.Point(
+              InfoPanel.ClientSize.X - InfoPanel.WorkSubRect.Right - LocalPosition.X - 15,
+              ClientSize.Y
+          )
+      );
+    Exit;
+  end;
   for I := 0 to 3 do
   begin
     if I = 0 then
@@ -1971,7 +2137,7 @@ end;
 function TfGalaxy2.BuildStarShipSummary(Star: TStar; var LineCount: Integer): WideString;
 var
   Ship: TShip;
-  UnknownCount, OtherFactionCount: Integer;
+  UndetectedShipCount, OtherFactionCount: Integer;
   OtherFaction, StarFaction: WideString;
   StarFactionCount: Integer;
   Kling: TKling;
@@ -1986,12 +2152,13 @@ var
   Summary, Line: WideString;
   I, J, GroupIndex: Integer;
   Planet: TPlanet;
-  Kind: TKlingType;
+  DominatorIndex: TDominatorDisplayIndex;
   Role: Byte;
   PirateRole: Integer;
   ColorTag: WideString;
   HasSeparator: Boolean;
-  procedure AccumulateShip; cdecl; // @addr $6791E4 @ida "void __cdecl $name(void *ParentFrame);"
+
+  procedure AccumulateShip; cdecl;
   var
     Faction: WideString;
   begin
@@ -1999,7 +2166,7 @@ var
       Exit;
     if not GetPlayer.CanResolveObjectWithScanner(Ship) or not CanRevealBossPresence(Ship) then
     begin
-      Inc(UnknownCount);
+      Inc(UndetectedShipCount);
       Exit;
     end;
     if Ship.CurrentStanding = ssCustom then
@@ -2035,25 +2202,25 @@ var
           if TRanger(Ship).ExcludedFromRating or Ship.HasScriptStateText then
           begin
             if ((GetPlayer = Ship) or (GetPlayer = Ship.PartnerShip))
-                and (GetPlayer.OwnerId = Byte(oiPirate)) then
+                and (GetPlayer.OwnerId = oiPirate) then
               Inc(ScriptedPirates)
             else
               Inc(ScriptedCoalition);
           end
           else if ((GetPlayer = Ship) or (GetPlayer = Ship.PartnerShip))
-              and (GetPlayer.OwnerId = Byte(oiPirate)) then
+              and (GetPlayer.OwnerId = oiPirate) then
             Inc(RoleCounts[11])
           else
             Inc(RoleCounts[0]);
         stPirate:
           if Ship.HasScriptStateText then
           begin
-            if Ship.OwnerId = Byte(oiPirate) then
+            if Ship.OwnerId = oiPirate then
               Inc(ScriptedPirates)
             else
               Inc(ScriptedCoalition);
           end
-          else if Ship.OwnerId <> Byte(oiPirate) then
+          else if Ship.OwnerId <> oiPirate then
             Inc(RoleCounts[2])
           else
           begin
@@ -2088,11 +2255,9 @@ var
               Inc(ScriptedCoalition)
             else
             begin
-              if (Ship as TTranclucator).OwnerShip.OwnerId
-                  in TOwnerMask(PlanetOwnerMasks.Coalition) then
+              if (Ship as TTranclucator).OwnerShip.OwnerId in PlanetOwnerMasks.Coalition then
                 Inc(ScriptedCoalition)
-              else if (Ship as TTranclucator).OwnerShip.OwnerId
-                  in TOwnerMask(PlanetOwnerMasks.PirateClan) then
+              else if (Ship as TTranclucator).OwnerShip.OwnerId in PlanetOwnerMasks.PirateClan then
                 Inc(ScriptedPirates);
             end;
           end
@@ -2100,15 +2265,13 @@ var
             Inc(CoalitionTranclucators)
           else
           begin
-            if (Ship as TTranclucator).OwnerShip.OwnerId
-                in TOwnerMask(PlanetOwnerMasks.Coalition) then
+            if (Ship as TTranclucator).OwnerShip.OwnerId in PlanetOwnerMasks.Coalition then
               Inc(CoalitionTranclucators)
-            else if (Ship as TTranclucator).OwnerShip.OwnerId
-                in TOwnerMask(PlanetOwnerMasks.PirateClan) then
+            else if (Ship as TTranclucator).OwnerShip.OwnerId in PlanetOwnerMasks.PirateClan then
               Inc(PirateTranclucators);
           end;
       else
-        if Ship.TypeId in [Ord(rstRangerCenter)..Ord(rstCustomStation)] then
+        if Ship.TypeId in [rstRangerCenter..rstCustomStation] then
           case Star.ControlFaction of
             sfCoalition:
               if Ship.CurrentStanding in [ssCoalitionMilitary..ssPiratePassive] then
@@ -2128,16 +2291,18 @@ var
           end;
       end;
   end;
-  function SeriesColor: WideString; // @addr $6797C8 @ida "void __usercall $name(unsigned __int16 **Result@<eax>, void *ParentFrame@<^0>);"
+
+  function SeriesColor: WideString;
   begin
     Result := '';
     case Series of
-      dsBlazer: Result := '<color=255,0,0>';
-      dsKeller: Result := '<color=0,128,255>';
-      dsTerron: Result := '<color=0,255,0>';
+      dsBlazer: Result := RedColorTag;
+      dsKeller: Result := AzureColorTag;
+      dsTerron: Result := GreenColorTag;
     end;
   end;
-  procedure AppendLine; cdecl; // @addr $67988C @ida "void __cdecl $name(void *ParentFrame);"
+
+  procedure AppendLine; cdecl;
   begin
     if LineActive then
     begin
@@ -2145,8 +2310,9 @@ var
       Inc(LineCount);
     end;
   end;
+
 begin
-  UnknownCount := 0;
+  UndetectedShipCount := 0;
   OtherFactionCount := 0;
   StarFactionCount := 0;
   CoalitionTranclucators := 0;
@@ -2159,14 +2325,21 @@ begin
   OtherFaction := '';
   Summary := '';
   for Series := dsBlazer to dsTerron do
-    for Kind := Low(TKlingType) to High(TKlingType) do
-      DominatorCounts[Series, Kind] := 0;
-  for Role := 0 to 10 do
+    for DominatorIndex := Ord(Low(TKlingType)) to Ord(High(TKlingType)) do
+      DominatorCounts[Series, TKlingType(DominatorIndex)] := 0;
+  // In the same original binary, BuildStarShipSummary ($6798E0) first saves
+  // ECX at $6798E3, then pushes $4C pairs of zero dwords at $6798E4..$6798EE.
+  // This clears [EBP-$264] through [EBP-$05], including RoleCounts[0..13]
+  // at [EBP-$C0]..[EBP-$89]. The explicit loop at $6799BC..$6799E1 only clears
+  // 0..10 again; pirate counters 11, 12 and 13 at [EBP-$94], [EBP-$90] and
+  // [EBP-$8C] are already zero from the prologue. Initialize the whole array
+  // explicitly in FPC to preserve those counts instead of reading stack data.
+  for Role := Low(RoleCounts) to High(RoleCounts) do
     RoleCounts[Role] := 0;
   for I := 0 to Star.Ships.Count - 1 do
   begin
     Ship := Star.Ships[I];
-    if (Ship.CurrentPlanet = nil) or (Ship.CurrentPlanet.OwnerId <> Byte(oiUninhabited)) then
+    if (Ship.CurrentPlanet = nil) or (Ship.CurrentPlanet.OwnerId <> oiUninhabited) then
       AccumulateShip;
   end;
   for I := 0 to Star.Planets.Count - 1 do
@@ -2188,39 +2361,39 @@ begin
     if RoleCounts[Role] > 0 then
     begin
       if HasSeparator then
-        Line := Line + WrapTextInColor('-', '<color=127,127,127>');
+        Line := Line + WrapTextInColor('-', GrayColorTag);
       HasSeparator := True;
       LineActive := True;
       Line :=
           Line
               + WrapTextInColor(
                   LocalizedText('FormGalaxy.FriendShip' + IntToStr(GroupIndex)),
-                  '<color=254,217,7>');
-      Line := Line + WrapTextInColor(IntToStr(RoleCounts[Role]), '<color=255,255,254>');
+                  GoldColorTag);
+      Line := Line + WrapTextInColor(IntToStr(RoleCounts[Role]), GalaxySummaryWhiteColorTag);
     end;
   end;
   if ScriptedCoalition > 0 then
   begin
     if HasSeparator then
-      Line := Line + WrapTextInColor('-', '<color=127,127,127>');
-    Line := Line + WrapTextInColor('?', '<color=254,217,7>');
-    Line := Line + WrapTextInColor(IntToStr(ScriptedCoalition), '<color=255,255,254>');
+      Line := Line + WrapTextInColor('-', GrayColorTag);
+    Line := Line + WrapTextInColor('?', GoldColorTag);
+    Line := Line + WrapTextInColor(IntToStr(ScriptedCoalition), GalaxySummaryWhiteColorTag);
     LineActive := True;
   end;
   if (CoalitionStations > 0) or (CoalitionTranclucators > 0) then
     Line := Line + '     ';
   if CoalitionStations > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
-    Line := Line + WrapTextInColor(IntToStr(CoalitionStations), '<color=255,0,255>');
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
+    Line := Line + WrapTextInColor(IntToStr(CoalitionStations), MagentaColorTag);
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   if CoalitionTranclucators > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
-    Line := Line + WrapTextInColor(IntToStr(CoalitionTranclucators), '<color=0,255,255>');
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
+    Line := Line + WrapTextInColor(IntToStr(CoalitionTranclucators), CyanColorTag);
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   AppendLine;
@@ -2231,57 +2404,58 @@ begin
     if RoleCounts[PirateRole + 10] > 0 then
     begin
       if HasSeparator then
-        Line := Line + WrapTextInColor('-', '<color=127,127,127>');
+        Line := Line + WrapTextInColor('-', GrayColorTag);
       HasSeparator := True;
       LineActive := True;
       Line :=
           Line
               + WrapTextInColor(
                   LocalizedText('FormGalaxy.PirateClanShip' + IntToStr(PirateRole)),
-                  '<color=255,255,254>');
-      Line := Line + WrapTextInColor(IntToStr(RoleCounts[PirateRole + 10]), '<color=255,255,254>');
+                  GalaxySummaryWhiteColorTag);
+      Line :=
+          Line + WrapTextInColor(IntToStr(RoleCounts[PirateRole + 10]), GalaxySummaryWhiteColorTag);
     end;
   if ScriptedPirates > 0 then
   begin
     if HasSeparator then
-      Line := Line + WrapTextInColor('-', '<color=127,127,127>');
-    Line := Line + WrapTextInColor('?', '<color=255,255,254>');
-    Line := Line + WrapTextInColor(IntToStr(ScriptedPirates), '<color=255,255,254>');
+      Line := Line + WrapTextInColor('-', GrayColorTag);
+    Line := Line + WrapTextInColor('?', GalaxySummaryWhiteColorTag);
+    Line := Line + WrapTextInColor(IntToStr(ScriptedPirates), GalaxySummaryWhiteColorTag);
     LineActive := True;
   end;
   if (PirateStations > 0) or (PirateTranclucators > 0) then
     Line := Line + '     ';
   if PirateStations > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
-    Line := Line + WrapTextInColor(IntToStr(PirateStations), '<color=255,0,255>');
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
+    Line := Line + WrapTextInColor(IntToStr(PirateStations), MagentaColorTag);
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   if PirateTranclucators > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
-    Line := Line + WrapTextInColor(IntToStr(PirateTranclucators), '<color=0,255,255>');
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
+    Line := Line + WrapTextInColor(IntToStr(PirateTranclucators), CyanColorTag);
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   AppendLine;
   Line := '';
   if StarFactionCount > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
     Line := Line + WrapTextInColor(IntToStr(StarFactionCount), LookupNamedColorTag(StarFaction));
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   if OtherFactionCount > 0 then
   begin
-    Line := Line + WrapTextInColor('(', '<color=127,127,127>');
+    Line := Line + WrapTextInColor('(', GrayColorTag);
     if OtherFaction <> '' then
       Line := Line + WrapTextInColor(IntToStr(OtherFactionCount), LookupNamedColorTag(OtherFaction))
     else
-      Line := Line + WrapTextInColor(IntToStr(OtherFactionCount), '<color=127,127,127>');
-    Line := Line + WrapTextInColor(')', '<color=127,127,127>');
+      Line := Line + WrapTextInColor(IntToStr(OtherFactionCount), GrayColorTag);
+    Line := Line + WrapTextInColor(')', GrayColorTag);
     LineActive := True;
   end;
   AppendLine;
@@ -2291,26 +2465,27 @@ begin
     LineActive := False;
     HasSeparator := False;
     ColorTag := SeriesColor;
-    for Kind := Low(TKlingType) to High(TKlingType) do
-      if (DominatorDisplayOrder[Ord(Kind)] <> ktBoss)
-          and (DominatorCounts[Series, DominatorDisplayOrder[Ord(Kind)]] > 0) then
+    for DominatorIndex := Low(DominatorDisplayOrder) to High(DominatorDisplayOrder) do
+      if (DominatorDisplayOrder[DominatorIndex] <> ktBoss)
+          and (DominatorCounts[Series, DominatorDisplayOrder[DominatorIndex]] > 0) then
       begin
         if HasSeparator then
-          Line := Line + WrapTextInColor('-', '<color=127,127,127>');
+          Line := Line + WrapTextInColor('-', GrayColorTag);
         HasSeparator := True;
         LineActive := True;
         Line :=
             Line
                 + WrapTextInColor(
                     LocalizedText(
-                        'FormGalaxy.DomikShip' + IntToStr(Ord(DominatorDisplayOrder[Ord(Kind)]))
+                        'FormGalaxy.DomikShip'
+                            + IntToStr(Ord(DominatorDisplayOrder[DominatorIndex]))
                     ),
                     ColorTag);
         Line :=
             Line
                 + WrapTextInColor(
-                    IntToStr(DominatorCounts[Series, DominatorDisplayOrder[Ord(Kind)]]),
-                    '<color=255,255,254>');
+                    IntToStr(DominatorCounts[Series, DominatorDisplayOrder[DominatorIndex]]),
+                    GalaxySummaryWhiteColorTag);
       end;
     AppendLine;
   end;
@@ -2323,7 +2498,7 @@ begin
     if DominatorCounts[Series, ktBoss] > 0 then
     begin
       if LineActive then
-        Line := Line + WrapTextInColor(', ', '<color=127,127,127>');
+        Line := Line + WrapTextInColor(', ', GrayColorTag);
       Line :=
           Line + WrapTextInColor(LocalizedText('FormGalaxy.Boss' + IntToStr(GroupIndex)), ColorTag);
       LineActive := True;
@@ -2333,12 +2508,10 @@ begin
   AppendLine;
   Line := '';
   LineActive := False;
-  if UnknownCount > 0 then
+  if UndetectedShipCount > 0 then
   begin
-    Line :=
-        Line
-            + WrapTextInColor(LocalizedText('FormGalaxy.UnknowShip') + ': ', '<color=127,127,127>');
-    Line := Line + WrapTextInColor(IntToStr(UnknownCount), '<color=255,255,254>');
+    Line := Line + WrapTextInColor(LocalizedText('FormGalaxy.UnknowShip') + ': ', GrayColorTag);
+    Line := Line + WrapTextInColor(IntToStr(UndetectedShipCount), GalaxySummaryWhiteColorTag);
     LineActive := True;
   end;
   AppendLine;
@@ -2431,13 +2604,12 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
         MusicManager.PlayCategory(
             'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                    .InternalName
+                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                 + 'Pirate'
         )
       else
@@ -2451,16 +2623,13 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+    else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
-              + 'Pirate'
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
       )
     else
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
       );
   end
   else if GetPlayer.InNormalSpace then
@@ -2495,7 +2664,7 @@ var
   CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
-  ParentLoop.RootUiObject.NativeHook50;
+  ParentLoop.RootUiObject.OnModalSuspend;
   ParentLoop.CaptureCursorState(@State);
   ParentLoop.SetCursorActive(False);
   ParentLoop.DrawQueuedUpdateRects;
@@ -2510,7 +2679,7 @@ begin
   ParentLoop.InvalidateViewport;
   ParentLoop.RestoreCursorState(@State);
   ParentLoop.UpdateCursorPosition;
-  ParentLoop.RootUiObject.NativeHook48;
+  ParentLoop.RootUiObject.OnModalResume;
   PostMouseMoveMessage;
 end;
 
@@ -2528,6 +2697,7 @@ end;
 
 procedure TfGalaxy2.CreateMarkerClicked(Sender: TObjectGI);
 begin
+  ClearTouchSelection;
   CreateMarkerMode := not CreateMarkerMode;
   if CreateMarkerMode then
   begin
@@ -2543,6 +2713,7 @@ end;
 
 procedure TfGalaxy2.UndoMarkerClicked(Sender: TObjectGI);
 begin
+  ClearTouchSelection;
   if RouteStars.Count > 0 then
   begin
     RouteStars.Delete(RouteStars.Count - 1);
@@ -2552,6 +2723,7 @@ end;
 
 procedure TfGalaxy2.ClearMarkersClicked(Sender: TObjectGI);
 begin
+  ClearTouchSelection;
   if RouteStars.Count > 0 then
   begin
     RouteStars.Clear;
@@ -2565,31 +2737,10 @@ begin
       and (TurnCalculationPhase
           in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10005);
     ExecuteGameplayUiCode(Block, Key);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20005);
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCircleGI.ClassName;
-  TCustomSystemInfo.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TKling.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-  TPlanet.ClassName;
-  TRuins.ClassName;
-  TRuinsSE.ClassName;
-  TShip.ClassName;
-  TShip2SE.ClassName;
-  TStar.ClassName;
-  TTranclucator.ClassName;
-  TTransport.ClassName;
-  TWarrior.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

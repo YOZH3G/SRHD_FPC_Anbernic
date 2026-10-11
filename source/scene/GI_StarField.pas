@@ -1,38 +1,46 @@
-{$EXCESSPRECISION OFF}
 unit GI_StarField;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_Panel,
   GI_MessageLoop,
   EC_CacheGAI,
-  EC_BlockPar,
-  Types;
+  EC_BlockPar;
+
 type
+
   TStarFieldGI = class;
+
   TStarFieldList = class;
+
   PointerToTStarFieldPoint = ^TStarFieldPoint;
+
   PointerToTStarFieldPixel = ^TStarFieldPixel;
+
   TStarFieldPoint = record
     X: Single;
     Y: Single;
     Depth: Single;
     InverseDepth: Single;
     Color: Word;
-    Gap12: array[0..1] of Byte;
   end;
+
   PStarFieldPoint = PointerToTStarFieldPoint;
+
   TStarFieldPixel = record
     ByteOffset: Integer;
     Position: TPoint;
     Color: Word;
     SavedPixel: Word;
   end;
+
   PStarFieldPixel = PointerToTStarFieldPixel;
+
   TStarFieldList = class(TObject)
     Points: PStarFieldPoint;
     Count: Integer;
@@ -43,13 +51,13 @@ type
     function AllocatePoint: PStarFieldPoint;
     procedure AddPoint(X: Single; Y: Single; Depth: Single; Color: Integer);
   end;
+
   TStarFieldGI = class(TPanelGI)
     BackgroundCache: TCGaiControlEC;
     Stars: TStarFieldList;
     ViewPosition: TPointF;
     Unknown150: Integer;
     ViewDirty: Boolean;
-    Gap155: array[0..2] of Byte;
     Pixels: PStarFieldPixel;
     PixelCapacity: Integer;
     PixelCount: Integer;
@@ -79,9 +87,10 @@ type
     procedure UpdateBackgroundBounds;
     procedure DrawBackground(ClipRect: TRect);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Mem,
   EC_Cache,
   GR_Main,
@@ -90,8 +99,7 @@ uses
   GR_GraphBuf,
   GlobalsV,
   Classes,
-  SysUtils,
-  Windows;
+  SysUtils;
 
 constructor TStarFieldList.Create;
 begin
@@ -309,8 +317,6 @@ begin
       SkipSavedPixelRestore :=
           not CompareMem(@BackgroundBounds, @PreviousBackgroundBounds, SizeOf(TRect));
     end;
-  if HardwareRenderingEnabled then
-    SkipSavedPixelRestore := True;
 end;
 
 procedure TStarFieldGI.ErasePreviousFrame;
@@ -490,7 +496,7 @@ begin
                 Bounds.Left,
                 Bounds.Top,
                 255,
-                $FFFFFF,
+                RgbWhite,
                 @Intersection,
                 False,
                 False
@@ -565,7 +571,11 @@ begin
   if not HardwareRenderingEnabled then
   begin
     PreviousPixelCount := PixelCount;
-    CopyMemory(PreviousPixels, Pixels, PreviousPixelCount * SizeOf(TStarFieldPixel));
+    System.Move(
+        Pointer(Pixels)^,
+        Pointer(PreviousPixels)^,
+        PreviousPixelCount * SizeOf(TStarFieldPixel)
+    );
     PreviousBackgroundBounds := BackgroundBounds;
   end;
 end;

@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit ab_Ship;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   GI_MessageLoop,
@@ -14,8 +13,11 @@ uses
   ab_Object,
   ab_Hit,
   ab_W;
+
 type
+
   TabShip = class;
+
   TabShip = class(TabHit)
     Visual: TObjectSE;
     VisualDiameter: Integer;
@@ -24,11 +26,9 @@ type
     Enemies: TList;
     InitialEnemies: TList;
     TrackedShips: TList;
-    GapEC: array[0..3] of Byte;
     TurnSpeed: Double;
     TurnInput: Double;
     WeaponCount: Integer;
-    Gap104: array[0..3] of Byte;
     Weapons: array[0..4] of TabWeapon;
     PrimaryWeapon: Integer;
     SecondaryWeapon: Integer;
@@ -38,28 +38,23 @@ type
     LastSecondaryFireTick: Integer;
     BonusTicks: array[0..7] of Integer;
     RevealTicks: Integer;
-    Gap234: array[0..3] of Byte;
     OuterAvoidanceDistance: Double;
     MiddleAvoidanceDistance: Double;
     InnerAvoidanceDistance: Double;
     NextObstacleScanTick: Integer;
-    Gap254: array[0..3] of Byte;
     ObstacleDistances: array[0..7] of Double;
     ObstacleLevels: array[0..7] of Integer;
     EncounterTag: Integer;
     TickCounter: Integer;
     ConvertedFromGameShip: Boolean;
     RandomRewardsDisabled: Boolean;
-    Gap2C2: array[0..1] of Byte;
     SpawnGraphKey: WideString;
     ScriptLabel: WideString;
     RewardObject: TObject;
     Team: Byte;
-    Gap2D1: array[0..2] of Byte;
     HealthScalePercent: Integer;
     DamageScalePercent: Integer;
     HasFiredWeapon: Boolean;
-    Gap2DD: array[0..2] of Byte;
     procedure ApplyDamage(Amount: Integer; Source: TabObject; Disrupt: Boolean); override;
     procedure UpdateState; override;
     procedure Advance; override;
@@ -95,15 +90,23 @@ type
     procedure UpdateAvoidanceDistances;
     procedure UpdateObstacleSensors;
   end;
+
 var
+
   PlayerArcadeShip: TabShip = nil;
+
   KellerArcadeShip: TabShip = nil;
+
   KellerAuxiliaryShip: TabShip = nil;
+
   ArcadePaused: Boolean;
+
   ArcadePauseWithShift: Boolean;
+
 procedure ab_Ship_RepelOverlaps;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   Globals,
   Types,
@@ -415,11 +418,11 @@ begin
   if (Health > 0) and (WeaponCount > 0) and (BonusTicks[abkWeaponLock] <= 0) then
     if (Self <> PlayerArcadeShip)
         or (LastPrimaryWeapon = PrimaryWeapon)
-        or (WeaponSwitchDelayMs div 20 <= ArcadeTickCount - LastPrimaryFireTick) then
+        or (WeaponSwitchDelayMs div ArcadeTickMs <= ArcadeTickCount - LastPrimaryFireTick) then
       if CanFireWeapon(PrimaryWeapon) then
       begin
         if BonusTicks[abkInvisibility] > 0 then
-          RevealTicks := RevealAfterFiringMs div 20;
+          RevealTicks := RevealAfterFiringMs div ArcadeTickMs;
         LastPrimaryWeapon := PrimaryWeapon;
         LastPrimaryFireTick := ArcadeTickCount;
         Weapons[PrimaryWeapon].LastFireTick := ArcadeTickCount;
@@ -468,11 +471,11 @@ begin
   if (Health > 0) and (WeaponCount > 0) and (BonusTicks[abkWeaponLock] <= 0) then
     if (Self <> PlayerArcadeShip)
         or (LastSecondaryWeapon = SecondaryWeapon)
-        or (WeaponSwitchDelayMs div 20 <= ArcadeTickCount - LastSecondaryFireTick) then
+        or (WeaponSwitchDelayMs div ArcadeTickMs <= ArcadeTickCount - LastSecondaryFireTick) then
       if CanFireWeapon(SecondaryWeapon) then
       begin
         if BonusTicks[abkInvisibility] > 0 then
-          RevealTicks := RevealAfterFiringMs div 20;
+          RevealTicks := RevealAfterFiringMs div ArcadeTickMs;
         LastSecondaryWeapon := SecondaryWeapon;
         LastSecondaryFireTick := ArcadeTickCount;
         Weapons[SecondaryWeapon].LastFireTick := ArcadeTickCount;
@@ -671,13 +674,12 @@ begin
     end;
     if (Self = PlayerArcadeShip) and (TickCounter mod 10 = 0) then
       if GetPlayer <> nil then
-        if GetPlayer.CountActiveArtefacts(Ord(t_ArtefactDroid)) > 0 then
+        if GetPlayer.CountActiveArtefacts(t_ArtefactDroid) > 0 then
           Health :=
               Min(
                   MaxHealth,
                   Health
-                      + RegenerationHealthPerTick
-                          * GetPlayer.CountActiveArtefacts(Ord(t_ArtefactDroid))
+                      + RegenerationHealthPerTick * GetPlayer.CountActiveArtefacts(t_ArtefactDroid)
               );
     if (BonusTicks[abkInvisibility] > 0) and (RevealTicks > 0) then
       Dec(RevealTicks);
@@ -999,12 +1001,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TShip2SE.ClassName;
-  TabHit.ClassName;
-  TabShip.ClassName;
-  TabShipAI.ClassName;
-  TabWall.ClassName;
-end;
 end.

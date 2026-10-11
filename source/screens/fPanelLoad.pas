@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fPanelLoad;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_GAI,
@@ -12,13 +11,15 @@ uses
   GI_Label,
   GI_MessageLoop,
   GI_Panel;
+
 type
+
   TfPanelLoad = class;
+
   TfPanelLoad = class(TObjectEx)
     Screen: TMessageLoopGI;
     ProgressSegments: array[0..16] of TImageGI;
     LayoutAdjusted: Boolean;
-    Gap4D: array[0..2] of Byte;
     BackgroundImage: TObjectGI;
     ShipPanelImage: TObjectGI;
     LoadAnimation: TObjectGI;
@@ -38,7 +39,6 @@ type
     TopShutter: TPanelGI;
     BottomShutter: TPanelGI;
     HasShutters: Boolean;
-    Gap99: array[0..2] of Byte;
     ShutterDirection: Integer;
     constructor Create;
     destructor Destroy; override;
@@ -59,12 +59,14 @@ type
     function IsAnimatingShutters: Boolean;
     function GetShutterDirection: Integer;
   end;
+
 var
+
   ActiveLoadPanel: TfPanelLoad;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   Classes,
   GR_Main,
   Globals,
@@ -176,24 +178,8 @@ end;
 procedure TfPanelLoad.OnOpen;
 begin
   Hide;
-  if Screen.DeferScreenPresentation then
-  begin
-    ActiveLoadPanel := Self;
-    Exit;
-  end;
   if LoadScreen.BackgroundStyle <= 0 then
     SelectBackgroundStyle(0);
-  if FastTravelTransitions
-      and (CurrentScreenId = screenStarMap)
-      and ((PreviousScreenId = screenJump)
-          or ((PreviousScreenId = screenLoad) and (ScreenLoadMode = 2))) then
-  begin
-    ShutterOpenFraction := 1;
-    SetShutterOpenFraction(1);
-    PreviousScreenId := screenNone;
-    ActiveLoadPanel := Self;
-    Exit;
-  end;
   RefreshBackgroundImages;
   SetProgress(1);
   ShutterOpenFraction := 0;
@@ -281,13 +267,6 @@ procedure TfPanelLoad.RefreshBackgroundImages;
 var
   Style: WideString;
 begin
-  if Screen.DeferScreenPresentation
-      or (FastTravelTransitions
-          and (((RequestedScreenId = screenLoad) and (ScreenLoadMode = 2))
-              or ((RequestedScreenId = screenJump)
-                  and (GetPlayer <> nil)
-                  and not GetPlayer.IsDockedToShip))) then
-    Exit;
   if not HasShutters then
     (BackgroundImage as TImageGI)
         .SetImagePath('GI,Bm.FormLoad2.Style' + IntToStr(LoadScreen.BackgroundStyle))
@@ -311,8 +290,6 @@ procedure TfPanelLoad.SetProgress(Fraction: Single);
 var
   I, LastActive: Integer;
 begin
-  if Screen.DeferScreenPresentation then
-    Exit;
   LastActive := Round(GetProgressSegmentCount * Fraction) - 1;
   for I := 0 to LastActive do
     ProgressSegments[I].SetActive(True);
@@ -351,7 +328,6 @@ procedure TfPanelLoad.StartOpeningShutters;
 begin
   if AnimChangeForm and HasShutters then
   begin
-
     Show;
     if ShutterTimer <> nil then
     begin
@@ -367,18 +343,8 @@ end;
 
 procedure TfPanelLoad.StartClosingShutters;
 begin
-  if FastTravelTransitions
-      and (((RequestedScreenId = screenLoad) and (ScreenLoadMode = 2))
-          or ((RequestedScreenId = screenJump)
-              and (GetPlayer <> nil)
-              and not GetPlayer.IsDockedToShip)) then
-  begin
-    Screen.RequestClose(1);
-    Exit;
-  end;
   if AnimChangeForm and HasShutters then
   begin
-
     Show;
     SetProgress(0);
     ShutterOpenFraction := 1;
@@ -406,7 +372,6 @@ begin
       Screen.CancelCallbackTimer(ShutterTimer);
       ShutterTimer := nil;
     end;
-
     Hide;
     SetShutterOpenFraction(ShutterOpenFraction);
     Screen.Present;
@@ -428,7 +393,6 @@ begin
     end;
     SetShutterOpenFraction(ShutterOpenFraction);
     Screen.Present;
-
     Screen.RequestClose(1);
   end
   else if ShutterOpenFraction <= 0 then
@@ -450,11 +414,4 @@ begin
     Result := ShutterDirection;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

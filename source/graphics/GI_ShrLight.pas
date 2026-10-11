@@ -1,22 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit GI_ShrLight;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   GR_GraphBuf,
   Types;
+
 type
+
   TShrLightGI = class;
+
   {$Z1}
   TShrLightKindGI = (slkAll = 0, slkBuffer = 1);
+
   TShrLightGI = class(TObjectGI)
     Kind: TShrLightKindGI;
-    Gap121: array[0..2] of Byte;
     LightShift: Integer;
     LightBuffer: TGraphBufGR;
     Gap12C: array[0..11] of Byte;
@@ -31,9 +33,10 @@ type
     procedure SetLightShift(Value: Integer);
     procedure LoadLightProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   EC_Mem,
   GR_DX,

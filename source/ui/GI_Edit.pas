@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_Edit;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
@@ -13,9 +12,13 @@ uses
   GI_Main,
   GI_MessageLoop,
   Types;
+
 type
+
   TEditGI = class;
+
   TEditAcceptCharEventGI = function(Sender: TObjectGI; Character: WideChar): Boolean of object;
+
   TEditGI = class(TObjectGI)
     FontCache: TCFontControlEC;
     BackgroundCache: TCBitmapControlEC;
@@ -23,21 +26,17 @@ type
     TextColor: Cardinal;
     CaretColor: Cardinal;
     BorderEnabled: Boolean;
-    Gap135: array[0..2] of Byte;
     BorderLightColor: Cardinal;
     BorderDarkColor: Cardinal;
     MaxLength: Integer;
     HasFocus: Boolean;
-    Gap145: array[0..2] of Byte;
     CaretPosition: Integer;
     AutoScrollText: Boolean;
     TextAlignX: TTextAlignXGI;
-    Gap14E: array[0..1] of Byte;
     ChangedCallback: TObjectNotifyEventGI;
     FocusLostCallback: TObjectNotifyEventGI;
     AcceptCharCallback: TEditAcceptCharEventGI;
     ClearFocusOnEnter: Boolean;
-    Gap169: array[0..2] of Byte;
     procedure Clear; override;
     procedure QueueImageLoad(PendingLoads: TList); override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -61,13 +60,13 @@ type
     procedure SetTextAlignX(Value: TTextAlignXGI);
     procedure SetCaretPosition(Value: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   SysUtils,
-  Windows,
+  GameInput,
   EC_Cache,
   GR_Main,
   GR_GraphBuf,
@@ -77,6 +76,7 @@ uses
 constructor TEditGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiDrag;
   FontCache := TCFontControlEC.Create;
   GlobalCache.ResetControl(FontCache);
   BackgroundCache := nil;
@@ -546,7 +546,7 @@ begin
             HitTestBounds.Left,
             HitTestBounds.Top,
             255,
-            $FFFFFF,
+            RgbWhite,
             @ClipRect,
             False,
             False
@@ -629,7 +629,7 @@ begin
               HitTestBounds.Left,
               HitTestBounds.Top,
               255,
-              $FFFFFF,
+              RgbWhite,
               @ClipRect,
               False,
               False
@@ -778,8 +778,4 @@ begin
     BackgroundCache.QueueLoadIfMissing(PendingLoads);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TEditGI.ClassName;
-end;
 end.

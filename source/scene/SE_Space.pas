@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit SE_Space;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_BlockPar,
   EC_Buf,
@@ -20,13 +20,18 @@ uses
   GI_StarField,
   GI_StarFieldM,
   GI_StarFieldImg,
-  GI_SpaceImg,
-  Types;
+  GI_SpaceImg;
+
 type
+
   TObjectSE = class;
+
   TSpaceSE = class;
+
   PointerToTSpaceTimerSE = ^TSpaceTimerSE;
+
   TSpaceScrollEventSE = procedure of object;
+
   TObjectSE = class(TObjectEx)
     Prev: TObjectSE;
     Next: TObjectSE;
@@ -74,17 +79,20 @@ type
     procedure ConfigureLoopSound(const Name: WideString);
     procedure ConfigureRandomSound(const Name: WideString);
   end;
+
   PSpaceTimerSE = PointerToTSpaceTimerSE;
+
   TSpaceTimerEventSE = procedure(Timer: PSpaceTimerSE; UserData: Integer) of object;
-  TSpaceTimerSE = packed record
+
+  TSpaceTimerSE = record
     Prev: PSpaceTimerSE;
     Next: PSpaceTimerSE;
     TicksRemaining: Integer;
     RepeatTicks: Integer;
     Callback: TSpaceTimerEventSE;
     UserData: Integer;
-    Gap1C: array[0..3] of Byte;
   end;
+
   TSpaceSE = class(TObject)
     FirstObject: TObjectSE;
     LastObject: TObjectSE;
@@ -104,9 +112,7 @@ type
     SpaceImages: TSpaceImgGI;
     StarFieldImages: TStarFieldImgGI;
     MinimapDragging: Boolean;
-    Gap4D: array[0..2] of Byte;
     Process: TObject;
-    Gap54: array[0..3] of Byte;
     ScrollChangedCallback: TSpaceScrollEventSE;
     PathPoints: PPointF;
     PathPointCount: Integer;
@@ -135,15 +141,17 @@ type
     procedure MinimapMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     function ContainsMapPoint(Point: TPointF): Boolean;
   end;
+
 procedure RetainSpaceObject(var Dest: TObjectSE; Source: TObjectSE);
+
 procedure ReleaseSpaceObject(var Obj: TObjectSE);
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  GameInput,
   SysUtils,
-  MMSystem,
+  GameSystem,
   EC_Str,
   GR_Main,
   Globals,
@@ -271,6 +279,7 @@ end;
 
 procedure TObjectSE.SetDepth(Value: Single);
 begin
+
 end;
 
 function TObjectSE.GetDepth: Single;
@@ -280,6 +289,7 @@ end;
 
 procedure TObjectSE.SetOrbitCenter(Center: TPointF);
 begin
+
 end;
 
 function TObjectSE.GetOrbitCenter: TPointF;
@@ -294,6 +304,7 @@ end;
 
 procedure TObjectSE.SetAlpha(Value: Byte);
 begin
+
 end;
 
 function TObjectSE.GetAngle: Byte;
@@ -303,6 +314,7 @@ end;
 
 procedure TObjectSE.SetAngle(Value: Byte);
 begin
+
 end;
 
 function TObjectSE.GetText: WideString;
@@ -312,6 +324,7 @@ end;
 
 procedure TObjectSE.SetText(const Value: WideString);
 begin
+
 end;
 
 function TObjectSE.BuildStateBuffer: TBufEC;
@@ -321,6 +334,7 @@ end;
 
 procedure TObjectSE.LoadStateBuffer(Buffer: TBufEC);
 begin
+
 end;
 
 procedure TObjectSE.Advance;
@@ -343,7 +357,7 @@ begin
       if RandomSound <> nil then
         if RandomSoundGroup >= 0 then
         begin
-          Now := timeGetTime;
+          Now := GameTickCount;
           if NextSoundTime < Now then
           begin
             Delay :=
@@ -380,6 +394,7 @@ end;
 
 procedure TObjectSE.DrawMap;
 begin
+
 end;
 
 procedure TObjectSE.ConfigureLoopSound(const Name: WideString);
@@ -416,7 +431,7 @@ begin
   RandomSound := FindRandomSound(Name, RandomSoundGroup);
   if RandomSoundGroup >= 0 then
     NextSoundTime :=
-        timeGetTime
+        GameTickCount
             + RandomIntRange(
                 RandomSound.Groups[RandomSoundGroup].NextTimeMin,
                 RandomSound.Groups[RandomSoundGroup].NextTimeMax);
@@ -450,6 +465,7 @@ end;
 
 procedure TObjectSE.QueueImageLoad(PendingLoads: TList; Owner: TObjectGI);
 begin
+
 end;
 
 constructor TSpaceSE.Create(AMapPanel: TPanelGI; AScreen: TMessageLoopGI);
@@ -623,7 +639,7 @@ begin
     Exit;
   PathPointCount := Count;
   PathPoints := AllocEC(Count * SizeOf(TPointF));
-  CopyMemory(PathPoints, Points, Count * SizeOf(TPointF));
+  System.Move(Pointer(Points)^, Pointer(PathPoints)^, Count * SizeOf(TPointF));
 end;
 
 procedure TSpaceSE.DrawMinimap;
@@ -673,15 +689,15 @@ begin
     CenterY := RenderScratchBuffer.Height shr 1;
     Coordinate := Pointer(PathPoints);
     X1 := CenterX + Round(Coordinate^ * MinimapScale);
-    Coordinate := Pointer(PtrUInt(Coordinate) + SizeOf(Single));
+    Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
     Y1 := CenterY + Round(Coordinate^ * MinimapScale);
-    Coordinate := Pointer(PtrUInt(Coordinate) + SizeOf(Single));
+    Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
     for Index := 1 to PathPointCount - 1 do
     begin
       X2 := CenterX + Round(Coordinate^ * MinimapScale);
-      Coordinate := Pointer(PtrUInt(Coordinate) + SizeOf(Single));
+      Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
       Y2 := CenterY + Round(Coordinate^ * MinimapScale);
-      Coordinate := Pointer(PtrUInt(Coordinate) + SizeOf(Single));
+      Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
       if not Odd(Index div 199) then
         Color := CurrentPixelFormat.PackRgbBytes($C3, $31, 0)
       else
@@ -733,18 +749,12 @@ begin
 end;
 
 procedure TSpaceSE.CreateMinimapViewport;
-var
-  Width, Height: Integer;
 begin
   FreeMinimapViewport;
   MinimapViewportFrame := TFrameGI.Create(SpaceObjectUiLoop.ContentPanel);
   MinimapViewportFrame.SetDepth(-99999);
   MinimapViewportFrame.SetKind(fkRect);
   MinimapViewportFrame.SetColor(CurrentPixelFormat.PackRgbBytes(255, 255, 255));
-  Width := Round(MapPanel.ClientSize.X * MinimapScale);
-  Height := Round(MapPanel.ClientSize.Y * MinimapScale);
-  MinimapViewportFrame.SetSize(Classes.Point(Width, Height));
-  MinimapViewportFrame.SetOrigin(Classes.Point(Width div 2, Height div 2));
   MapPanel.ScrollChangedCallback := MapScrollChanged;
   MapScrollChanged(nil);
 end;
@@ -759,16 +769,27 @@ begin
 end;
 
 procedure TSpaceSE.MapScrollChanged(Sender: TObjectGI);
+var
+  ViewSize: TPoint;
 begin
   if Sender = MapPanel then
     FilmCameraFollow := False;
   if MinimapViewportFrame <> nil then
+  begin
+    ViewSize :=
+        Classes.Point(
+            Round(MapPanel.ClientSize.X * MinimapScale / MapPanel.ChildWorldScale),
+            Round(MapPanel.ClientSize.Y * MinimapScale / MapPanel.ChildWorldScale)
+        );
+    MinimapViewportFrame.SetSize(ViewSize);
+    MinimapViewportFrame.SetOrigin(Classes.Point(ViewSize.X div 2, ViewSize.Y div 2));
     MinimapViewportFrame.SetPosition(
         Classes.Point(
             Round(MapPanel.ScrollOffset.X * MinimapScale),
             Round(MapPanel.ScrollOffset.Y * MinimapScale)
         )
     );
+  end;
   if StarField <> nil then
     StarField.SetViewPosition(PointToPointF(MapPanel.ScrollOffset));
   if Wind >= 1 then
@@ -855,12 +876,4 @@ begin
     Result := MapPanel.ContainsPoint(MapPanel.ToAbsolutePoint(TruncatePointF(Point)));
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphButtonGI.ClassName;
-  TPlanetSE.ClassName;
-  TProcessSE.ClassName;
-  TStarSE.ClassName;
-  TWeaponSE.ClassName;
-end;
 end.

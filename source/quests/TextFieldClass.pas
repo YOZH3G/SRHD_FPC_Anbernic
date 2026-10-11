@@ -1,23 +1,26 @@
-{$EXCESSPRECISION OFF}
 unit TextFieldClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct;
+
 type
+
   TTextField = class;
+
   TTextField = class(TObjectEx)
     Text: WideString;
     procedure ClearText;
     procedure LoadTextLinesFromReader(Reader: TBufEC);
   end;
+
 implementation
+
 uses
-  Math,
   EC_Str;
 
 procedure TTextField.ClearText;

@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit aModsInfo;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  RTLFileSystem,
+  GameSystem,
   Classes,
   EC_BlockPar,
   EC_Struct,
   GI_Image;
+
 type
+
   TModInfo = class;
+
   TModInfo = class(TObjectEx)
     Folder: WideString;
     SwitchImage: TImageGI;
@@ -43,22 +45,35 @@ type
     function GetConflict(Index: Integer; VariantIndex: Integer): TModInfo;
     function GetDependency(Index: Integer; VariantIndex: Integer): TModInfo;
   end;
+
 var
+
   ModInfos: TList = nil;
+
   SelectedModInfos: TList = nil;
+
   ModIdCounts: TBlockParEC = nil;
+
   ModConflictIndex: TBlockParEC = nil;
+
   ModDependencyIndex: TBlockParEC = nil;
+
   ModInfosInitialized: Boolean = False;
+
 function FindOrInsertModFolder(Folder: WideString): Integer;
+
 function LoadModInfo(Folder: WideString; Info: TModInfo): Boolean;
+
 procedure ScanModFolders(Folder: WideString; Prefix: WideString);
+
 procedure InitializeModInfos;
+
 procedure ClearModInfoState;
+
 implementation
+
 uses
-  Math,
-  Windows,
+  Types,
   SysUtils,
   EC_Str,
   EC_Expression,
@@ -225,65 +240,68 @@ var
   Block: TBlockParEC;
   Language, Languages: WideString;
   I, Count: Integer;
-  function HasOtherLanguageResources: Boolean; // @addr $5F03FC @ida "bool __usercall $name@<al>(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x5F090A,0x5F0955,0x5F0FFD,0x5F1126"
+
+  function HasOtherLanguageResources: Boolean;
   var
     FileName: WideString;
-    Handle: Windows.THandle;
-    FindData: TWin32FindDataA;
+
+    FindData: TSearchRec;
   begin
     Result := False;
-    FindData.dwFileAttributes := FILE_ATTRIBUTE_NORMAL;
-    Handle := Windows.FindFirstFile('*.txt', FindData);
-    if Handle <> INVALID_HANDLE_VALUE then
+
+    // Preserve Windows' case-insensitive extension matching on Unix too.
+    if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
     begin
       repeat
-        if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then
+        if ((FindData.Attr and faDirectory) = 0)
+            and SameText(ExtractFileExt(FindData.Name), '.txt') then
         begin
-          FileName := WideString(FindData.cFileName);
+          FileName := WideString(FindData.Name);
           FileName := LowerCaseWideString(FileName);
           if (FileName <> LowerCaseWideString('install_' + SelectedLanguage + '.txt'))
               and (Length(FileName) > 12)
               and (FindTextOffsetW(FileName, 'install_') = 0) then
           begin
             Result := True;
-            Windows.FindClose(Handle);
+            SysUtils.FindClose(FindData);
             Exit;
           end;
         end;
-      until not Windows.FindNextFile(Handle, FindData);
-      Windows.FindClose(Handle);
+      until SysUtils.FindNext(FindData) <> 0;
+      SysUtils.FindClose(FindData);
     end;
-    if DirectoryExists(NativePath(UTF8Encode(Folder + '\CFG'))) then
+    if DirectoryExists(NativeGamePath(AnsiString(Folder + '\CFG'))) then
     begin
       try
-        SetCurrentDir(NativePath(UTF8Encode(Folder + '\CFG')));
-        FindData.dwFileAttributes := FILE_ATTRIBUTE_NORMAL;
-        Handle := Windows.FindFirstFile('*.*', FindData);
-        if Handle <> INVALID_HANDLE_VALUE then
+        if not SetCurrentDir(NativeGamePath(AnsiString(Folder + '\CFG'))) then
+          Exit;
+
+        if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
         begin
           repeat
-            if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            if (FindData.Attr and faDirectory) <> 0 then
             begin
-              FileName := WideString(FindData.cFileName);
+              FileName := WideString(FindData.Name);
               if (FileName <> '.')
                   and (FileName <> '..')
                   and (LowerCaseWideString(FileName)
                       <> LowerCaseWideString(LanguageInstallConfig.GetParam('Lang')))
-                  and RTLFileSystem.FileExists(AnsiString(FileName + '\Lang.dat')) then
+                  and SysUtils.FileExists(NativeGamePath(AnsiString(FileName + '\Lang.dat'))) then
               begin
                 Result := True;
-                Windows.FindClose(Handle);
+                SysUtils.FindClose(FindData);
                 Exit;
               end;
             end;
-          until not Windows.FindNextFile(Handle, FindData);
-          Windows.FindClose(Handle);
+          until SysUtils.FindNext(FindData) <> 0;
+          SysUtils.FindClose(FindData);
         end;
       finally
-        SetCurrentDir(NativePath(UTF8Encode(Folder)));
+        SetCurrentDir(NativeGamePath(AnsiString(Folder)));
       end;
     end;
   end;
+
 begin
   HasForeignResources := False;
   HasLanguageResources := False;
@@ -291,21 +309,20 @@ begin
   Block := nil;
   SavedDir := GetCurrentDir;
   try
-    // CHANGE: PORTABILITY - Inspect mod resources in their native filesystem directory.
-    if not SetCurrentDir(NativePath(UTF8Encode(Folder))) then
+    if not SetCurrentDir(NativeGamePath(AnsiString(Folder))) then
       Exit(False);
-    if RTLFileSystem.FileExists('install.txt')
-        or RTLFileSystem.FileExists('CFG\Main.dat')
-        or RTLFileSystem.FileExists('CFG\CacheData.dat') then
+    if SysUtils.FileExists('install.txt')
+        or SysUtils.FileExists(NativeGamePath('CFG\Main.dat'))
+        or SysUtils.FileExists(NativeGamePath('CFG\CacheData.dat')) then
       HasCommonResources := True;
     Language := LanguageInstallConfig.GetParam('Lang');
-    if RTLFileSystem.FileExists(AnsiString('install_' + SelectedLanguage + '.txt'))
-        or RTLFileSystem.FileExists(AnsiString('CFG\' + Language + '\Lang.dat')) then
+    if SysUtils.FileExists(NativeGamePath(AnsiString('install_' + SelectedLanguage + '.txt')))
+        or SysUtils.FileExists(NativeGamePath(AnsiString('CFG\' + Language + '\Lang.dat'))) then
       HasLanguageResources := True;
     if not HasCommonResources and not HasLanguageResources then
       HasForeignResources := HasOtherLanguageResources;
     Result := (HasCommonResources or HasLanguageResources) or HasForeignResources;
-    if not RTLFileSystem.FileExists('ModuleInfo.txt') then
+    if not SysUtils.FileExists('ModuleInfo.txt') then
     begin
       if not Result then
         Exit;
@@ -427,7 +444,7 @@ begin
       Info.Priority := 0;
     end;
   finally
-    SetCurrentDir(SavedDir);
+    SetCurrentDir(NativeGamePath(SavedDir));
     if Block <> nil then
       Block.Free;
   end;
@@ -435,28 +452,24 @@ end;
 
 procedure ScanModFolders(Folder, Prefix: WideString);
 var
-  SavedDir: AnsiString;
   FileName: WideString;
   Path, ChildPrefix: WideString;
-  Handle: Windows.THandle;
+
   Info: TModInfo;
   Index: Integer;
-  FindData: TWin32FindDataA;
+  FindData: TSearchRec;
 begin
-  SavedDir := GetCurrentDir;
-  // CHANGE: PORTABILITY - Resolve Windows paths and stop when the mod folder is absent.
-  if not SetCurrentDir(NativePath(UTF8Encode(Folder))) then
-    Exit;
-  Info := TModInfo.Create;
-  try
-    FindData.dwFileAttributes := FILE_ATTRIBUTE_NORMAL;
-    Handle := Windows.FindFirstFile('*.*', FindData);
-    if Handle <> INVALID_HANDLE_VALUE then
-    begin
+  // Searching an explicit path cannot fall back to the current directory when
+  // Mods is missing or unreadable. Recursive scans leave the caller's CWD alone.
+  if SysUtils.FindFirst(NativeGamePath(Folder + '\*'), faAnyFile, FindData) = 0 then
+  begin
+    Info := nil;
+    try
+      Info := TModInfo.Create;
       repeat
-        if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+        if (FindData.Attr and faDirectory) <> 0 then
         begin
-          FileName := WideString(FindData.cFileName);
+          FileName := WideString(FindData.Name);
           if (FileName <> '.') and (FileName <> '..') then
           begin
             Path := Folder + '\' + FileName;
@@ -464,7 +477,6 @@ begin
             begin
               Info.Folder := Prefix + FileName;
               Index := FindOrInsertModFolder(Info.Folder);
-              ModInfos[Index] := Info;
               if Info.Name <> '' then
               begin
                 if ModIdCounts.CountParams(Info.Name) <= 0 then
@@ -472,6 +484,8 @@ begin
                 else
                   ModIdCounts.SetOrAddParam(Info.Name, '0');
               end;
+              ModInfos[Index] := Info;
+              Info := nil;
               Info := TModInfo.Create;
             end
             else
@@ -481,18 +495,16 @@ begin
             end;
           end;
         end;
-      until not Windows.FindNextFile(Handle, FindData);
-      Windows.FindClose(Handle);
+      until SysUtils.FindNext(FindData) <> 0;
+    finally
+      Info.Free;
+      SysUtils.FindClose(FindData);
     end;
-  finally
-    Info.Free;
-    SetCurrentDir(SavedDir);
   end;
 end;
 
 procedure InitializeModInfos;
 var
-  SavedDir: AnsiString;
   Folder, Name, Names, Indices: WideString;
   I, J, Index, Count: Integer;
   Info: TModInfo;
@@ -509,11 +521,8 @@ begin
     ModConflictIndex := TBlockParEC.Create;
   if ModDependencyIndex = nil then
     ModDependencyIndex := TBlockParEC.Create;
-  SavedDir := GetCurrentDir;
-  Folder := WideString(SavedDir);
-  Folder := Folder + '\Mods';
+  Folder := WideString(GetCurrentDir) + '\Mods';
   ScanModFolders(Folder, '');
-  SetCurrentDir(SavedDir);
   if SelectedMods <> '' then
   begin
     Names := SelectedMods;
@@ -536,7 +545,7 @@ begin
           Info := TModInfo.Create;
           ModInfos[Index] := Info;
           SelectedModInfos.Add(Info);
-          if DirectoryExists(NativePath(UTF8Encode(Folder + '\' + Name)))
+          if DirectoryExists(NativeGamePath(AnsiString(Folder + '\' + Name)))
               and LoadModInfo(Folder + '\' + Name, Info) then
           begin
             Info.Folder := Name;

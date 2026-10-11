@@ -1,16 +1,22 @@
-{$EXCESSPRECISION OFF}
 unit GR_DX;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Direct3D9,
   Classes,
   Types;
+
+const
+
+  RgbWhite = $FFFFFF;
+
 type
+
   TTextureGR = class;
+
   TScreenVertexGR = packed record
     X: Single;
     Y: Single;
@@ -20,9 +26,13 @@ type
     U: Single;
     V: Single;
   end;
+
   TScreenVerticesGR = array[0..15] of TScreenVertexGR;
+
   TCircleTableGR = array[0..360] of Single;
+
   TLineAlphaTableGR = array[0..359] of Byte;
+
   TTextureGR = class(TObject)
     LastUseTick: Cardinal;
     SurfaceCount: Integer;
@@ -35,32 +45,54 @@ type
     function GetSurface(Index: Integer): IDirect3DTexture9;
     procedure SetSurface(Value: IDirect3DTexture9; Index: Integer);
   end;
+
 var
+
   TextureManagerDisabled: Boolean = False;
+
   MaxTextureSize: TPoint;
+
   DrawVertices: TScreenVerticesGR;
+
   PendingPoints: array of TScreenVertexGR;
+
   TextureCaches: TList = nil;
+
   AvailableTextureBytes: Cardinal = 0;
+
   CircleCos: TCircleTableGR;
+
   CircleSin: TCircleTableGR;
+
   LineAlphaTable: TLineAlphaTableGR;
+
   ReservedTextureBytes: Cardinal = 0;
+
   TextureIdleSeconds: Integer = 120;
+
   LastTextureEvictionTick: Cardinal = 0;
+
   PendingPointCount: Integer = 0;
+
   PendingPointCapacity: Integer = 0;
+
   ResidentTextureBytes: Cardinal = 0;
+
 function CreateTextureCache: TTextureGR;
+
 procedure FreeTextureCache(Cache: TTextureGR);
+
 procedure ReleaseAllTextureSurfaces;
+
 procedure EvictTextureCaches(Force: Boolean);
+
 function GR_CreateTexture(
     Width: Integer;
     Height: Integer;
     Format: Cardinal;
     Pool: Cardinal
 ): IDirect3DTexture9;
+
 function CreateTextureFromPixels(
     Width: Integer;
     Height: Integer;
@@ -69,9 +101,13 @@ function CreateTextureFromPixels(
     PitchBytes: Integer;
     Pool: Cardinal
 ): IDirect3DTexture9;
+
 procedure ClearTexturePixels(Texture: IDirect3DTexture9);
+
 procedure QueueDrawPoint(X: Integer; Y: Integer; Color: Cardinal; Alpha: Integer);
+
 procedure FlushDrawPoints(ClipRect: PRect);
+
 procedure DrawAlphaLine(
     X1: Integer;
     Y1: Integer;
@@ -81,6 +117,7 @@ procedure DrawAlphaLine(
     Alpha: Integer;
     ClipRect: PRect
 );
+
 procedure DrawGradientLine(
     X1: Integer;
     Y1: Integer;
@@ -90,6 +127,7 @@ procedure DrawGradientLine(
     Color2: Cardinal;
     ClipRect: PRect
 );
+
 procedure DrawAntialiasedLineDX(
     StartX: Integer;
     StartY: Integer;
@@ -99,6 +137,7 @@ procedure DrawAntialiasedLineDX(
     Alpha: Integer;
     UnusedClipRect: PRect
 );
+
 procedure DrawAnimatedLineDX(
     StartX: Integer;
     StartY: Integer;
@@ -108,6 +147,7 @@ procedure DrawAnimatedLineDX(
     Phase: Integer;
     UnusedClipRect: PRect
 );
+
 procedure DrawColoredTriangle(
     X1: Integer;
     Y1: Integer;
@@ -121,6 +161,7 @@ procedure DrawColoredTriangle(
     Filled: Boolean;
     ClipRect: PRect
 );
+
 procedure DrawColoredRect(
     X: Integer;
     Y: Integer;
@@ -131,6 +172,7 @@ procedure DrawColoredRect(
     Filled: Boolean;
     ClipRect: PRect
 );
+
 procedure DrawAntialiasedCircle(
     X: Integer;
     Y: Integer;
@@ -139,6 +181,7 @@ procedure DrawAntialiasedCircle(
     Alpha: Integer;
     ClipRect: PRect
 );
+
 procedure DrawCircle(
     X: Integer;
     Y: Integer;
@@ -148,6 +191,7 @@ procedure DrawCircle(
     Mode: Integer;
     ClipRect: PRect
 );
+
 procedure DrawTexture(
     Texture: IDirect3DTexture9;
     X: Integer;
@@ -158,6 +202,7 @@ procedure DrawTexture(
     UsePreparedVertices: Boolean;
     MirrorHorizontal: Boolean
 );
+
 procedure DrawTextureSized(
     Texture: IDirect3DTexture9;
     X: Integer;
@@ -170,22 +215,25 @@ procedure DrawTextureSized(
     UsePreparedVertices: Boolean;
     MirrorHorizontal: Boolean
 );
+
 function Color565ToArgb(Color: Cardinal): Cardinal;
+
 function ColorWithAlpha(Color: Cardinal; Alpha: Cardinal): Cardinal;
+
 function GetTextureByteSize(Texture: IDirect3DTexture9): Cardinal;
+
 procedure AddResidentTextureBytes(ByteCount: Cardinal);
+
 procedure SubtractResidentTextureBytes(ByteCount: Cardinal);
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  MMSystem,
+  GameSystem,
   EC_Mem,
   GR_Main,
   EC_Str,
-  Math,
-  Windows;
-// @unit-initialization $8779F0
-// @unit-finalization $851D10
+  Math;
 
 function CreateTextureCache: TTextureGR;
 var
@@ -229,7 +277,6 @@ begin
       Inc(Index);
     end;
   end;
-
 end;
 
 procedure EvictTextureCaches(Force: Boolean);
@@ -243,7 +290,7 @@ begin
     Exit;
   if Direct3DDevice = nil then
     Exit;
-  NowTick := timeGetTime;
+  NowTick := GameTickCount;
   if (NowTick - LastTextureEvictionTick < 10) and not Force then
     Exit;
   LastTextureEvictionTick := NowTick;
@@ -280,10 +327,11 @@ begin
     Result := nil;
     Exit;
   end;
-  if Width < 16 then
-    Width := 16;
-  if Height < 16 then
-    Height := 16;
+  // SDL accepts small textures on every platform. Padding a repeated border
+  // tile changes its drawn extent and makes linear filtering sample transparent
+  // padding between copies, especially in scaled windows and mobile previews.
+  Width := Max(Width, 1);
+  Height := Max(Height, 1);
   ErrorCode := Direct3DDevice.CreateTexture(Width, Height, 1, 0, Format, Pool, Texture, nil);
   if ErrorCode = LongInt($8007000E) then
   begin
@@ -334,9 +382,9 @@ begin
     Staging.LockRect(0, Locked, nil, 0);
     BytesPerPixel := PitchBytes div Width;
     for Y := 0 to Height - 1 do
-      CopyMemory(
-          AddPointerOffset(Locked.Bits, Locked.Pitch * Y),
-          AddPointerOffset(Pixels, PitchBytes * Y),
+      System.Move(
+          Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+          Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
           Width * BytesPerPixel
       );
     Staging.UnlockRect(0);
@@ -350,9 +398,9 @@ begin
     Texture.LockRect(0, Locked, nil, 0);
     BytesPerPixel := PitchBytes div Width;
     for Y := 0 to Height - 1 do
-      CopyMemory(
-          AddPointerOffset(Locked.Bits, Locked.Pitch * Y),
-          AddPointerOffset(Pixels, PitchBytes * Y),
+      System.Move(
+          Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+          Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
           Width * BytesPerPixel
       );
     Texture.UnlockRect(0);
@@ -372,7 +420,11 @@ begin
     Texture.LockRect(0, Locked, nil, 0);
     if Locked.Bits <> nil then
       for Y := 0 to Desc.Height - 1 do
-        FillMemory(Pointer(Integer(Y) * Locked.Pitch + PtrUInt(Locked.Bits)), Locked.Pitch, 0);
+        System.FillChar(
+            Pointer(Pointer(Integer(Y) * Locked.Pitch + PAnsiChar(Locked.Bits)))^,
+            Locked.Pitch,
+            0
+        );
     Texture.UnlockRect(0);
   end;
 end;
@@ -430,7 +482,7 @@ begin
   Result := nil;
   if (Index < 0) or (Index >= SurfaceCount) then
     Exit;
-  LastUseTick := timeGetTime;
+  LastUseTick := GameTickCount;
   Result := Surfaces[Index];
 end;
 
@@ -564,12 +616,12 @@ var
   X, FirstX, LastX, FirstY, LastY: Integer;
   Steep: Boolean;
   Temp, X1, Y1, X2, Y2: Double;
-  function LineFractionDX(
-      Value: Double
-  ): Double; // @addr $850398 @ida "double __userpurge $name@<st0>(double Value@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x008505E5 0x00850626 0x00850640 0x0085073E 0x00850787 0x0085079E 0x0085088B 0x008508A5"
+
+  function LineFractionDX(Value: Double): Double;
   begin
     Result := Value - Floor(Value);
   end;
+
 begin
   X1 := StartX;
   Y1 := StartY;
@@ -673,18 +725,19 @@ var
   X, FirstX, LastX, FirstY, LastY: Integer;
   Steep: Boolean;
   Temp, X1, Y1, X2, Y2: Double;
-  function AnimatedLineFractionDX(
-      Value: Double
-  ): Double; // @addr $85095C @ida "double __userpurge $name@<st0>(double Value@<^0>, void *ParentFrame@<^8>);" @stackpop 8 @calls "0x00850BCD 0x00850C0E 0x00850C28 0x00850D79 0x00850DC2 0x00850DD9 0x00850F20 0x00850F3A"
+
+  function AnimatedLineFractionDX(Value: Double): Double;
   begin
     Result := Value - Floor(Value);
   end;
-  procedure AdvanceLinePhase; // @addr $850988 @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x00850D10 0x00850EF9"
+
+  procedure AdvanceLinePhase;
   begin
     Inc(Phase, 20);
     if Phase >= 360 then
       Dec(Phase, 360);
   end;
+
 begin
   X1 := StartX;
   Y1 := StartY;
@@ -1104,8 +1157,4 @@ begin
   ResidentTextureBytes := 0;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TTextureGR.ClassName;
-end;
 end.

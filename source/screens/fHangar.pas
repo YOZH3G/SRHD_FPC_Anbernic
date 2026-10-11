@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit fHangar;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  aGalaxyStruct,
   Types,
   EC_BlockPar,
   GI_GraphBuf,
@@ -17,8 +17,11 @@ uses
   fPanelMain,
   fPanelPlanet,
   fPanelRuins;
+
 type
+
   TfHangar = class;
+
   THangarShipSlot = record
     AnimationState: Integer;
     ShipId: Integer;
@@ -26,6 +29,7 @@ type
     Opacity: Integer;
     ImageControl: TGraphBufGI;
   end;
+
   TfHangar = class(TMessageLoopGIWithMainPanel)
     PlanetPanel: TfPanelPlanet;
     StationPanel: TfPanelRuins;
@@ -34,7 +38,6 @@ type
     HoveredShip: TShip;
     ShipInfoHideTimer: PCallbackTimerGI;
     TakeOffPending: Boolean;
-    GapED: array[0..2] of Byte;
     AmbientAnimationTimer: PCallbackTimerGI;
     DockedShipsTimer: PCallbackTimerGI;
     ShipSlots: array[0..8] of THangarShipSlot;
@@ -77,19 +80,20 @@ type
     procedure HideShipInfo(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure ShowShipInfo(Ship: TShip);
   end;
+
 const
-  HangarDominatorPortraitScales: array[0..2] of array[0..7] of Single = (
+
+  HangarDominatorPortraitScales: array[TDominatorSeries] of array[TKlingType] of Single = (
       (1.0, 1.1, 1.1, 0.7, 0.7, 0.3, 1.0, 0.5),
       (1.0, 1.2, 0.9, 0.9, 0.8, 0.7, 1.0, 0.5),
       (1.0, 1.1, 0.9, 0.7, 0.6, 0.5, 1.0, 0.5)
   );
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  fLoad,
-  WorkerErrors,
   fEquipmentShop,
-  Windows,
+  GameInput,
   Math,
   aRanger,
   aPirate,
@@ -113,6 +117,7 @@ uses
   aSaveLoad,
   aScript,
   GI_Main,
+  GI_Inspection,
   GI_MessageBox,
   EC_Cache,
   GR_DX,
@@ -128,7 +133,6 @@ uses
   GI_GraphButton,
   GR_Sound,
   aGalaxy,
-  aGalaxyStruct,
   aPlayer,
   aMyFunction,
   EC_Struct,
@@ -194,91 +198,91 @@ begin
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('AnimRnd') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('AnimRepair') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('AnimFuel') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship0') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship1') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship2') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship3') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship4') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship5') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship6') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship7') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('Ship8') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     FindByNameRecursive('BGCity2').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -287,21 +291,21 @@ begin
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('PanelUp') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
     with FindByNameRecursive('PanelDown') do
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
   end;
@@ -364,11 +368,11 @@ begin
   GetByName('MainPanel').KeyDownCallback := MainKeyDown;
   with GetByName('BGCity2') as TImageGI do
   begin
-    SetActive(GetPlayer.IsDockedToShip and (GetPlayer.DockedTo.TypeId = Byte(rstMilitaryBase)));
+    SetActive(GetPlayer.IsDockedToShip and (GetPlayer.DockedTo.TypeId = rstMilitaryBase));
     if Active then
     begin
       SetImagePath('GAI,' + GetPlayer.CurrentStar.GetBackgroundImagePath(I));
-      GaiImageControl.LoadFrameSequenceFromText('[50,0-0]');
+      GaiImageControl.LoadFrameSequenceFromText(SingleFrameAnimationSpec);
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
     end;
@@ -487,7 +491,7 @@ begin
   RefreshDockedShips;
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnEnteringForm, nil, nil, 0);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(210);
   RefreshServiceButtons;
   MainPanel.RebuildMessageButtons(False);
 end;
@@ -496,7 +500,7 @@ procedure TfHangar.OnClose;
 var
   I: Integer;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(211);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
   ShipInfoWindow.SetActive(False);
@@ -617,16 +621,16 @@ function TfHangar.TryTakeOff: Boolean;
 var
   I: Integer;
 begin
-
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(212);
   PruneExpiredPersistentPlayerMessages;
   GetPlayer.OrderTakeoff;
   if GetPlayer.Order <> soTakeoff then
   begin
     Result := False;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(212);
     Exit;
   end;
+
   Result := True;
   for I := 0 to Galaxy.Scripts.Count - 1 do
     TScript(Galaxy.Scripts[I]).RunTurnCode;
@@ -635,7 +639,7 @@ begin
   PlayerStar.RefreshSpaceObjectPositions;
   RestoreTemporaryShopStock;
   RunGlobalScriptsForContext(GetPlayer.CurrentStar, 1);
-  if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(3) then
+  if (GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heHolyFanaticism) then
     Galaxy.EnableDominatorSurfaces
   else
     Galaxy.DisableDominatorSurfaces;
@@ -644,11 +648,12 @@ begin
     Exit;
   if GetPlayer = nil then
   begin
-    GameEndReason := 2;
+    GameEndReason := gerPlayerDeath;
     RequestedScreenId := screenGameEnd;
-    TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RequestClose(1);
+    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
     Exit;
   end;
+
   CalculateGalaxyTurnAndWait;
   StarMapScreen.ResumeMode := smrTurnFilm;
   ScreenLoadMode := 2;
@@ -661,7 +666,7 @@ begin
   if (GetPlayer = nil) or (GetPlayer.QueuedTravelTarget <> nil) then
     Exit;
   if GetPlayer.IsDockedToShip
-      and (GetPlayer.DockedTo.TypeId = Byte(rstDominion))
+      and (GetPlayer.DockedTo.TypeId = rstDominion)
       and (GetPlayer.DockedTo.Order = soTeleport)
       and (Cardinal(GetPlayer.DockedTo.OrderStateData) > 0)
       and not GetPlayer.DockedTo.InHyperspace then
@@ -670,7 +675,7 @@ begin
     Exit;
   end;
   if GetPlayer.IsDockedToShip
-      and (GetPlayer.DockedTo.TypeId = Byte(rstDominion))
+      and (GetPlayer.DockedTo.TypeId = rstDominion)
       and ((GetPlayer.DockedTo as TRuins).FlyToStar <> nil)
       and ((GetPlayer.DockedTo as TRuins).FlyToStar <> GetPlayer.CurrentStar)
       and ((GetPlayer.DockedTo as TRuins).FlyDate <= Galaxy.CurrentTurn) then
@@ -679,7 +684,7 @@ begin
     Exit;
   end;
   if GetPlayer.IsDockedToShip
-      and (GetPlayer.DockedTo.TypeId = Byte(rstMilitaryBase))
+      and (GetPlayer.DockedTo.TypeId = rstMilitaryBase)
       and ((GetPlayer.DockedTo as TRuins).FlyToStar <> nil)
       and ((GetPlayer.DockedTo as TRuins).FlyToStar <> GetPlayer.CurrentStar)
       and ((GetPlayer.DockedTo as TRuins).FlyDate <= Galaxy.CurrentTurn) then
@@ -692,16 +697,16 @@ begin
   end;
   if LoadPanel.IsAnimatingShutters then
     Exit;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(213);
   RestoreTemporaryShopStock;
   MainPanel.EndTurnClicked(Sender);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(227);
   RefreshServiceButtons;
   MainPanel.RebuildMessageButtons(False);
   if ExitCode = 0 then
   begin
     BuildTemporaryShopSlotGrid;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(214);
     RefreshDockedShips;
   end;
 end;
@@ -717,7 +722,7 @@ begin
   SelectedShip := nil;
   MainPanel.RebuildMessageButtons(False);
   MainPanel.RefreshMoneyAndCargo;
-  if ShipScreen.Flag3BC then
+  if ShipScreen.ShipStateChanged then
   begin
     ShipSlots[0].AnimationState := 0;
     ShipSlots[0].Opacity := 0;
@@ -796,13 +801,12 @@ begin
   end;
   if GetPlayer.IsOnPlanet then
   begin
-    if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
         MusicManager.PlayCategory(
             'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                    .InternalName
+                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                 + 'Pirate'
         )
       else
@@ -819,16 +823,13 @@ begin
       MusicManager.RequestFadeOut;
       Exit;
     end;
-    if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+    if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
-              + 'Pirate'
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
       )
     else
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
       );
   end;
 end;
@@ -856,7 +857,7 @@ begin
               + ' '
               + FormatText1(
                   LocalizedColorText('FormHangar.HullStatus.Cost'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Money>',
                   IntToStr(GetPlayer.GetHull.CalculateRepairCost));
   end;
@@ -871,7 +872,7 @@ begin
               + ' '
               + FormatText1(
                   LocalizedColorText('FormHangar.FuelTankStatus.Cost'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Money>',
                   IntToStr(GetPlayer.GetFullRefuelCost));
   end;
@@ -884,14 +885,14 @@ begin
     Exit;
   if GetPlayer.Money <= 0 then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(215);
     GetPlayer.SetMoney(0);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(216);
     ShowMessageBoxGI(
         Self,
         FormatText1(
             LocalizedColorText('FormHangar.HullStatus.NotMoney'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Money>',
             IntToStr(GetPlayer.GetHull.CalculateRepairCost)
         ),
@@ -902,7 +903,7 @@ begin
   end;
   if GetPlayer.GetHull.CalculateRepairCost > GetPlayer.Money then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(217);
     Inc(
         GetPlayer.GetHull.HullPoints,
         Round(
@@ -912,15 +913,15 @@ begin
         )
     );
     GetPlayer.SetMoney(0);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(218);
     SoundManager.PlaySound('Sound.Repair');
   end
   else
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(219);
     GetPlayer.SetMoney(GetPlayer.Money - GetPlayer.GetHull.CalculateRepairCost);
     GetPlayer.GetHull.HullPoints := GetPlayer.GetHull.Weight;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(220);
     SoundManager.PlaySound('Sound.Repair');
   end;
   with GetByName('AnimRepair') as TgaiGI do
@@ -945,7 +946,7 @@ begin
         Self,
         FormatText1(
             LocalizedColorText('FormHangar.FuelTankStatus.NotMoney'),
-            '<color=255,240,100>',
+            TextHighlightColorTag,
             '<Money>',
             IntToStr(GetPlayer.GetFullRefuelCost)
         ),
@@ -954,11 +955,11 @@ begin
     MainPanel.FlashMoneyWarning;
     Exit;
   end;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(221);
   GetPlayer.SetMoney(GetPlayer.Money - GetPlayer.GetFullRefuelCost);
   GetPlayer.GetFuelTanks.Fuel := GetPlayer.GetFuelTanks.Capacity;
   GetPlayer.RefreshDerivedStats(True);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(222);
   SoundManager.PlaySound('Sound.Sell');
   with GetByName('AnimFuel') as TgaiGI do
   begin
@@ -973,10 +974,6 @@ begin
 end;
 
 procedure TfHangar.TakeOffClicked(Sender: TObjectGI);
-var
-  Loads: TList;
-  Preloading: Boolean;
-  I: Integer;
 begin
   if LoadPanel.IsAnimatingShutters
       or MainPanel.NavigationLocked
@@ -984,46 +981,12 @@ begin
       or (TurnCalculationPhase = tcpGalaxyRunning)
       or (TurnCalculationPhase = tcpPlayerStarRunning) then
     Exit;
-
-  // Start read-only cache loads while the main thread captures and saves the
-  // pre-takeoff state. Join before any gameplay/script mutation or screen exit.
-  Preloading := False;
-  if FastTravelTransitions and not CacheLoader.IsRunning then
-  begin
-    Loads := TList.Create;
-    try
-      QueueSpaceLoadingAssets(Loads, RootUiObject);
-      if Loads.Count > 0 then
-      begin
-        CacheLoader.SetPendingLoads(Loads, True);
-        Loads := nil; // CacheLoader owns the queued controls.
-        Preloading := True;
-      end;
-    finally
-      if Loads <> nil then
-      begin
-        for I := 0 to Loads.Count - 1 do
-          TObject(Loads[I]).Free;
-        Loads.Free;
-      end;
-    end;
-  end;
-  try
-    CaptureSavePreview;
-    aCalc.WaitForTurnCalculationUI;
-    CaptureGalaxyPreview(Self);
-    SaveManagerReturnScreenId := FormToId(Self);
-    SaveGameToFile(SaveManagerScreen.GetAutoSavePath, 'as');
-  finally
-    if Preloading then
-    begin
-
-      CacheLoader.WaitForIdle(INFINITE);
-
-      RaisePendingWorkerError;
-    end;
-  end;
-  aCalc.WaitForTurnCalculationUI;
+  CaptureSavePreview;
+  Galaxy.CheckIntegrityChecksum(223);
+  CaptureGalaxyPreview(Self);
+  SaveManagerReturnScreenId := FormToId(Self);
+  SaveGameToFile(SaveManagerScreen.GetAutoSavePath, 'as');
+  Galaxy.PrimeIntegrityChecksum(223);
   PlayerAutomaticControl := False;
   (GetByName('ButRepair') as TGraphButtonGI).SetDisabled(True);
   (GetByName('ButRefuel') as TGraphButtonGI).SetDisabled(True);
@@ -1055,9 +1018,9 @@ begin
     Result := False;
     Exit;
   end;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(225);
   GetPlayer.RefreshDerivedStats(True);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(226);
   Result := True;
   TotalText := LocalizedColorText('FormHangar.TotalStatus.Good');
   with GetPlayer do
@@ -1229,13 +1192,10 @@ end;
 function TfHangar.GetShipPortraitScale(Ship: TShip): Single;
 begin
   if Ship.ChameleonActive then
-    Result := HangarDominatorPortraitScales[Ord(Ship.ChameleonSeries), Ship.ChameleonVisualType]
+    Result := HangarDominatorPortraitScales[Ship.ChameleonSeries, Ship.ChameleonVisualType]
   else if Ship is TKling then
     Result :=
-        HangarDominatorPortraitScales[
-            Ord((Ship as TKling).DominatorSeries),
-            Ord((Ship as TKling).KlingType)
-        ]
+        HangarDominatorPortraitScales[(Ship as TKling).DominatorSeries, (Ship as TKling).KlingType]
   else
     Result := 1.0;
 end;
@@ -1518,6 +1478,7 @@ begin
       end
       else
         ShipInfoWindow.SetPosition(Classes.Point(10, 10));
+      FitMobileTooltip(ShipInfoWindow, MainPanel.ContentBounds, CursorPoint);
       Exit;
     end;
   end;
@@ -1554,9 +1515,9 @@ begin
       begin
         if IsVirtualKeyDown(VK_CONTROL) then
         begin
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.CheckIntegrityChecksum(227);
           (Ship as TTranclucator).ConvertToStoredArtefact;
-          aCalc.WaitForTurnCalculationUI;
+          Galaxy.PrimeIntegrityChecksum(228);
           RefreshDockedShips;
         end
         else
@@ -1620,10 +1581,10 @@ begin
                   + #13#10
                   + WrapTextInColor(
                       LookupLocalizedTextByKey('FormInfo.Partner'),
-                      '<color=255,240,100>'));
+                      TextHighlightColorTag));
     if (Ship is TKling)
         and ((Ship as TKling).ActiveProgramAppliedTurn > 0)
-        and ((Ship as TKling).ActiveProgramId in [6..11]) then
+        and ((Ship as TKling).ActiveProgramId in [prgShipwreck..prgDisconnection]) then
       (GetByName('InfoShipName') as TLabelGI)
           .SetText(
               (GetByName('InfoShipName') as TLabelGI).GetText
@@ -1634,19 +1595,19 @@ begin
                               + ProgramNames[(Ship as TKling).ActiveProgramId]
                               + '.AddToShipInfo'
                       ),
-                      '<color=255,0,0>'));
+                      RedColorTag));
     if (Ship is TRanger) and (Cardinal((Ship as TRanger).PrisonTermRemaining) > 0) then
       (GetByName('InfoShipName') as TLabelGI)
           .SetText(
               (GetByName('InfoShipName') as TLabelGI).GetText
                   + #13#10
-                  + WrapTextInColor(LocalizedColorText('FormHangar.Prison'), '<color=255,0,0>'))
+                  + WrapTextInColor(LocalizedColorText('FormHangar.Prison'), RedColorTag))
     else if (Ship is TPirate) and (Cardinal((Ship as TPirate).PrisonTermRemaining) > 0) then
       (GetByName('InfoShipName') as TLabelGI)
           .SetText(
               (GetByName('InfoShipName') as TLabelGI).GetText
                   + #13#10
-                  + WrapTextInColor(LocalizedColorText('FormHangar.Prison'), '<color=255,0,0>'));
+                  + WrapTextInColor(LocalizedColorText('FormHangar.Prison'), RedColorTag));
   end
   else
     (GetByName('InfoShipName') as TLabelGI)
@@ -1698,7 +1659,7 @@ begin
     begin
       SetActive(True);
       SourceHasPerPixelAlpha := True;
-      if (TerronShip = Ship) and (Galaxy.TerronToStarTurn >= $40000000) then
+      if (TerronShip = Ship) and (Galaxy.TerronToStarTurn >= TerronTransformationFlag) then
         LoadGiByPathIntoGraphBuf(
             ExtractDelimitedPartW(TStarSE(TerronShip.CurrentStar.Graphic).StaticImagePath, 1, ','),
             GraphBuf
@@ -1741,7 +1702,7 @@ begin
   (GetByName('InfoShipSpeed') as TLabelGI).SetText(IntToStr(Ship.CalculateSpeed));
   (GetByName('InfoShipDamage') as TLabelGI).SetText(WrapTextInColor('???', ''));
   if Ship.GetHull.HullPoints <= Ship.GetHull.Weight / 2 then
-    ColorTag := '<color=255,166,0>'
+    ColorTag := OrangeColorTag
   else
     ColorTag := '';
   if GetPlayer.CanResolveObjectWithScanner(Ship)
@@ -1762,7 +1723,7 @@ begin
   end
   else
     (GetByName('InfoShipSize') as TLabelGI).SetText(WrapTextInColor('???', ColorTag));
-  Text := IntToStr(Integer(Ship.GetDefensePercent) and $7F) + '%';
+  Text := IntToStr(Ship.GetDefensePercent) + '%';
   if GetPlayer.CanResolveObjectWithScanner(Ship)
       or (GetPlayer = Ship)
       or (GetPlayer = Ship.PartnerShip)
@@ -1776,13 +1737,13 @@ begin
   (GetByName('InfoShipRel') as TLabelGI).SetText(Ship.GetRelationLevelTextToShip(GetPlayer));
   if (GetPlayer <> Ship)
       and not (Ship is TRuins)
-      and (GetPlayer.CountActiveArtefacts(Ord(t_ArtefactAnalyzer)) > 0)
+      and (GetPlayer.CountActiveArtefacts(t_ArtefactAnalyzer) > 0)
       and GetPlayer.CanResolveObjectWithScanner(Ship) then
   begin
     (GetByName('ISWin') as TLabelGI).SetActive(True);
     (GetByName('InfoShipWin') as TLabelGI).SetActive(True);
     (GetByName('InfoShipWin') as TLabelGI)
-        .SetText(IntToStr(Integer(GetPlayer.GetWinChancePercent(Ship)) and $7F) + '%');
+        .SetText(IntToStr(GetPlayer.GetWinChancePercent(Ship)) + '%');
   end
   else
   begin
@@ -1887,26 +1848,10 @@ begin
       and (TurnCalculationPhase
           in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(10000);
     ExecuteGameplayUiCode(Block, Key);
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(20000);
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TKling.ClassName;
-  TLabelGI.ClassName;
-  TPirate.ClassName;
-  TRanger.ClassName;
-  TRuins.ClassName;
-  TRuinsSE.ClassName;
-  TShip2SE.ClassName;
-  TTranclucator.ClassName;
-  TWindowGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

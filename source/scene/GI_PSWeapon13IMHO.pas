@@ -1,34 +1,41 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon13IMHO;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTIMHOParticle = ^TIMHOParticle;
+
   PIMHOParticle = PointerToTIMHOParticle;
+
   TIMHOParticle = record
     Kind: Integer;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    GapF: array[0..0] of Byte;
     Velocity: TPointF;
     Gap18: array[0..1] of Byte;
     Unknown1A: Byte;
-    Gap1B: array[0..0] of Byte;
   end;
+
   TIMHOPalette = array[0..7] of Word;
+
 var
+
   IMHOPalettes: array of TIMHOPalette;
+
 type
+
   TPSWeapon13IMHO = class;
+
   TPSWeapon13IMHO = class(TPSWeaponGI)
     Particles: PIMHOParticle;
     ParticleCount: Integer;
@@ -47,9 +54,13 @@ type
     procedure GrowParticles;
     function AddParticle: PIMHOParticle;
   end;
+
 procedure LoadIMHOPalettes;
+
 implementation
+
 uses
+  GI_Main,
   GlobalsV,
   SysUtils,
   Math,
@@ -60,8 +71,6 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $877944
-// @unit-finalization $695C40
 
 constructor TPSWeapon13IMHO.Create(Owner: TObjectGI; APaletteIndex: Integer);
 begin
@@ -102,10 +111,7 @@ end;
 
 procedure TPSWeapon13IMHO.UpdateHitTestBounds;
 begin
-  if MessageLoop <> nil then
-    HitTestBounds := MessageLoop.ViewportRect
-  else
-    HitTestBounds := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
+  HitTestBounds := ControlViewportBounds(Self);
 end;
 
 procedure TPSWeapon13IMHO.ClearParticles;

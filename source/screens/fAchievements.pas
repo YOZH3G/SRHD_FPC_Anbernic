@@ -1,22 +1,25 @@
-{$EXCESSPRECISION OFF}
 unit fAchievements;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   GI_Image,
   SimpleSteamApi,
   Types;
+
 type
+
   TfAchievements = class;
+
   TfAchievementsSlot = record
     Key: WideString;
     Data: PAchievementData;
     Background: TImageGI;
   end;
+
   TfAchievements = class(TMessageLoopGI)
     Rows: array of TfAchievementsSlot;
     procedure OnOpen; override;
@@ -40,11 +43,12 @@ type
         CurrentValue: Integer
     );
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_Main,
-  Windows,
+  GameInput,
   Classes,
   SysUtils,
   Math,
@@ -135,6 +139,7 @@ begin
     with GetByName('PanelSlot') as TPanelScrollBarGI do
       if VerticalScrollBar.Active then
         VerticalScrollBar.SetPosition(VerticalScrollBar.Position + VerticalScrollBar.LargeChange);
+
 end;
 
 procedure TfAchievements.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
@@ -357,10 +362,4 @@ begin
   Bar.Invalidate;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-end;
 end.

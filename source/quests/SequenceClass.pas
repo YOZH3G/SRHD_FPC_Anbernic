@@ -1,18 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit SequenceClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Struct;
+
 type
+
   TSequence = class;
+
   TSequence = class(TObjectEx)
     UnknownFlag: Byte;
-    Gap5: array[0..2] of Byte;
     TraversalLimit: Integer;
     Locations: TList;
     Paths: TList;
@@ -24,9 +25,10 @@ type
     procedure AddPath(Path: Pointer);
     procedure PrependPath(Path: Pointer);
   end;
+
 implementation
+
 uses
-  Math,
   LocationClass,
   PathClass;
 

@@ -1,27 +1,36 @@
-{$EXCESSPRECISION OFF}
 unit fSaveManager;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  RTLFileSystem,
+  GameSystem,
+  DateUtils,
   Classes,
   GI_MessageLoop,
   GI_Panel,
   GR_Sound,
   Types,
-  Windows;
+  GameInput;
+
 var
+
   AutoSaveFileName: WideString = 'AutoSave.sav';
+
   QuickSaveFileNames: array[1..3] of WideString =
       ('QuickSave.sav', 'QuickSave2.sav', 'QuickSave3.sav');
+
   TurnSaveFileName: WideString = 'TurnSave.sav';
+
 type
+
   TfSaveManager = class;
+
   PointerToTSMSlot = ^TSMSlot;
+
   PSMSlot = PointerToTSMSlot;
+
   TSMSlot = packed record
     FileName: WideString;
     DisplayName: WideString;
@@ -29,17 +38,18 @@ type
     Money: Integer;
     PilotName: WideString;
     RaceName: WideString;
-    LocalWriteTime: TFileTime;
+    LocalWriteTime: TDateTime;
   end;
+
   {$Z1}
   TSaveManagerMode = (smmLoad = 0, smmSave = 1);
+
   TfSaveManager = class(TMessageLoopGI)
     SelectedSlot: Integer;
     Slots: TList;
     PreviewTimer: PCallbackTimerGI;
     PreviewSound: TSoundBufferControl;
     Closing: Boolean;
-    GapE1: array[0..2] of Byte;
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure SelectMusic; override;
@@ -78,8 +88,9 @@ type
     procedure LoadSavePreviews(FileName: WideString);
     procedure FinishPreviewDelay(Timer: PCallbackTimerGI; UserData: PtrInt);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_MessageBox,
   GR_DX,
@@ -108,13 +119,12 @@ uses
   aSaveLoad,
   fMainForm,
   fShip2;
-// @unit-initialization $8778D8
-// @unit-finalization $667F54
+
 var
-  NewSaveNormalColor: Cardinal; // @addr $88AA58
-  NewSaveSelectedColor: Cardinal; // @addr $88AA5C
-  SaveSlotNormalColor: Cardinal; // @addr $88AA60
-  SaveSlotSelectedColor: Cardinal; // @addr $88AA64
+  NewSaveNormalColor: Cardinal;
+  NewSaveSelectedColor: Cardinal;
+  SaveSlotNormalColor: Cardinal;
+  SaveSlotSelectedColor: Cardinal;
 
 constructor TfSaveManager.Create;
 begin
@@ -159,8 +169,8 @@ var
 begin
   inherited;
   Directory := GetGameUserDirectory + 'Save';
-  if not DirectoryExists(Directory) then
-    CreateDir(Directory);
+  if not DirectoryExists(NativeGamePath(Directory)) then
+    CreateDir(NativeGamePath(Directory));
   if AuxRenderBuffer.GetPixels = nil then
     CaptureScreenBackground(True, 0);
   (GetByName('BGBuf') as TGraphBufGI).BindExternalGraphBuf(AuxRenderBuffer);
@@ -200,7 +210,7 @@ begin
   GetByName('CaptionLoad').SetActive(SaveManagerMode = smmLoad);
   GetByName('CaptionSave').SetActive(SaveManagerMode = smmSave);
   if (SaveWriter <> nil) and SaveWriter.IsRunning then
-    SaveWriter.WaitForIdle($FFFFFFFF);
+    SaveWriter.WaitForIdle(INFINITE);
   RebuildSlotControls;
   if Slots.Count <= 0 then
     PreviewSound.SetVolume(1);
@@ -434,13 +444,13 @@ begin
     SetTextAlignY(tayCenterEx);
     SetName('Slot' + IntToStr(Cardinal(Panel.UserValue)) + 'Date');
   end;
+
 end;
 
 procedure TfSaveManager.RefreshSlot(SlotIndex: Integer; UnusedEditingFlag: Boolean);
 var
   State: WideString;
   Color: Cardinal;
-  Time: Windows.TSystemTime;
 begin
   try
     if SelectedSlot = SlotIndex then
@@ -462,11 +472,10 @@ begin
         SetText(LocalizedText('FormSaveManager.New'))
       else
       begin
-        FileTimeToSystemTime(PSMSlot(Slots[SlotIndex]).LocalWriteTime, Time);
         SetText(
             FormatDateTime(
                 AnsiString(LocalizedText('FormSaveManager.DateFormatStr')),
-                SystemTimeToDateTime(Time)
+                PSMSlot(Slots[SlotIndex]).LocalWriteTime
             )
         );
       end;
@@ -570,7 +579,7 @@ begin
     begin
       PendingLoadFileName := PSMSlot(Slots[SelectedSlot]).FileName;
       EditableSaveFileName := GetSaveConfigPath(PendingLoadFileName);
-      if RTLFileSystem.FileExists(EditableSaveFileName) then
+      if SysUtils.FileExists(NativeGamePath(EditableSaveFileName)) then
         if ShowMessageBoxGI(
                 Self,
                 LocalizedColorText('FormSaveManager.LoadDumpConfirm'),
@@ -593,14 +602,16 @@ end;
 procedure TfSaveManager.SaveClicked(Sender: TObjectGI);
 var
   Saved: Boolean;
-  FileName, Description, ExistingFile: WideString;
+  FileName, Description: WideString;
   SuffixIndex: Integer;
 begin
   if SelectedSlot >= 0 then
   begin
-    ExistingFile := '';
     if not IsSlotEmpty(SelectedSlot) then
-      ExistingFile := PSMSlot(Slots[SelectedSlot]).FileName;
+    begin
+      SysUtils.DeleteFile(NativeGamePath(AnsiString(PSMSlot(Slots[SelectedSlot]).FileName)));
+      PSMSlot(Slots[SelectedSlot]).FileName := '';
+    end;
     FileName :=
         TrimWideString((GetByName('Slot' + IntToStr(SelectedSlot) + 'Edit') as TEditGI).Text);
     if FileName = '' then
@@ -616,25 +627,18 @@ begin
                       UserSettingsConfig.GetParamByPathOrMarker('TransliterateSaveNames')
                   ))) then
         FileName := TransliterateCyrillicToLatin(FileName);
-      SuffixIndex := 0;
-      if ExistingFile <> '' then
-        FileName := ExistingFile
-      else
-        FileName :=
-            BuildUniqueSavePath(GetGameUserDirectory + 'Save\' + FileName + '.sav', SuffixIndex);
+      FileName :=
+          BuildUniqueSavePath(GetGameUserDirectory + 'Save\' + FileName + '.sav', SuffixIndex);
       if SuffixIndex > 0 then
         Description := Description + ' (' + IntToStr(SuffixIndex) + ')';
       Saved := SaveGameToFile(FileName, Description);
       if not Saved then
         ShowMessageBoxGI(
             Self,
-            LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.SaveError')
-                + #13#10
-                + LastSaveLoadError,
+            LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.SaveError'),
             mbgOK or mbgError
-        )
-      else
-        CloseClicked(Sender);
+        );
+      CloseClicked(Sender);
     end;
   end;
 end;
@@ -654,10 +658,11 @@ begin
         WasAutoSave := True
       else
         WasAutoSave := False;
-      SysUtils.DeleteFile(NativePath(UTF8Encode(PSMSlot(Slots[SelectedSlot]).FileName)));
-      if RTLFileSystem.FileExists(GetSaveConfigPath(PSMSlot(Slots[SelectedSlot]).FileName)) then
+      SysUtils.DeleteFile(NativeGamePath(AnsiString(PSMSlot(Slots[SelectedSlot]).FileName)));
+      if SysUtils.FileExists(
+          NativeGamePath(GetSaveConfigPath(PSMSlot(Slots[SelectedSlot]).FileName))) then
         SysUtils.DeleteFile(
-            NativePath(UTF8Encode(GetSaveConfigPath(PSMSlot(Slots[SelectedSlot]).FileName)))
+            NativeGamePath(AnsiString(GetSaveConfigPath(PSMSlot(Slots[SelectedSlot]).FileName)))
         );
       if WasAutoSave then
         SelectedSlot := 0;
@@ -810,9 +815,9 @@ begin
             SavePreviewGraph.Height,
             SavePreviewGraph.PitchBytes
         );
-        Windows.CopyMemory(
-            GraphBuf.GetPixels,
-            SavePreviewGraph.GetPixels,
+        System.Move(
+            Pointer(SavePreviewGraph.GetPixels)^,
+            Pointer(GraphBuf.GetPixels)^,
             GraphBuf.Height * GraphBuf.PitchBytes
         );
         GraphBuf.RescaleRgb(ClientSize.X, ClientSize.Y);
@@ -828,9 +833,9 @@ begin
             SecondarySavePreviewGraph.Height,
             SecondarySavePreviewGraph.PitchBytes
         );
-        Windows.CopyMemory(
-            GraphBuf.GetPixels,
-            SecondarySavePreviewGraph.GetPixels,
+        System.Move(
+            Pointer(SecondarySavePreviewGraph.GetPixels)^,
+            Pointer(GraphBuf.GetPixels)^,
             GraphBuf.Height * GraphBuf.PitchBytes
         );
         GraphBuf.RescaleRgb(ClientSize.X, ClientSize.Y);
@@ -888,7 +893,7 @@ end;
 
 function TfSaveManager.AutoSaveExists: Boolean;
 begin
-  Result := RTLFileSystem.FileExists(GetAutoSavePath);
+  Result := SysUtils.FileExists(NativeGamePath(GetAutoSavePath));
 end;
 
 function TfSaveManager.GetAutoSavePath: WideString;
@@ -969,7 +974,7 @@ var
 begin
   Directory := TrimWideString(ExtractFileDirW(FileName));
   if Directory = '' then
-    Directory := GetGameUserDirectory + 'Save';
+    Directory := GetGameUserDirectory + 'save';
   BaseName := TrimWideString(ExtractFileNameNoExtW(FileName));
   Extension := TrimWideString(ExtractFileExtNoDotW(FileName));
   if Extension = '' then
@@ -1039,7 +1044,7 @@ end;
 
 function TfSaveManager.QuickSaveExists(SlotIndex: Integer): Boolean;
 begin
-  Result := RTLFileSystem.FileExists(GetQuickSavePath(SlotIndex));
+  Result := SysUtils.FileExists(NativeGamePath(GetQuickSavePath(SlotIndex)));
 end;
 
 function TfSaveManager.GetQuickSavePath(SlotIndex: Integer): WideString;
@@ -1069,17 +1074,18 @@ procedure TfSaveManager.ScanSaveFiles;
 var
   Slot: PSMSlot;
   PreviousDirectory: AnsiString;
-  Search: Windows.THandle;
+
   I: Integer;
   AutoSlot, NewSlot: PSMSlot;
   FileObject: TFileEC;
   AutoPath: WideString;
-  FindData: TWin32FindData;
-  procedure InsertScannedSaveSlotByTime; // @addr 0x667220 @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x66783A" @note "Nested helper of TfSaveManager.ScanSaveFiles; requires its parent stack frame."
+  FindData: TSearchRec;
+
+  procedure InsertScannedSaveSlotByTime; { Nested helper of TfSaveManager.ScanSaveFiles; requires its parent stack frame. }
   var
     Low, High, Middle, Comparison: Integer;
     OtherSlot: PSMSlot;
-    Time: TFileTime;
+    Time: TDateTime;
   begin
     if Slots.Count < 1 then
     begin
@@ -1089,7 +1095,7 @@ var
     Time := Slot.LocalWriteTime;
     Low := 0;
     OtherSlot := PSMSlot(Slots[0]);
-    Comparison := CompareFileTime(OtherSlot.LocalWriteTime, Time);
+    Comparison := CompareDateTime(OtherSlot.LocalWriteTime, Time);
     if Comparison <= 0 then
     begin
       Slots.Insert(0, Slot);
@@ -1097,7 +1103,7 @@ var
     end;
     High := Slots.Count - 1;
     OtherSlot := PSMSlot(Slots[High]);
-    Comparison := CompareFileTime(OtherSlot.LocalWriteTime, Time);
+    Comparison := CompareDateTime(OtherSlot.LocalWriteTime, Time);
     if Comparison >= 0 then
     begin
       Slots.Add(Slot);
@@ -1112,7 +1118,7 @@ var
       end;
       Middle := (Low + High) div 2;
       OtherSlot := PSMSlot(Slots[Middle]);
-      Comparison := CompareFileTime(OtherSlot.LocalWriteTime, Time);
+      Comparison := CompareDateTime(OtherSlot.LocalWriteTime, Time);
       if Comparison = 0 then
       begin
         Slots.Insert(Middle, Slot);
@@ -1128,7 +1134,7 @@ begin
   FileObject := TFileEC.Create;
   AutoPath := GetAutoSavePath;
   PreviousDirectory := GetCurrentDir;
-  SetCurrentDir(GetGameUserDirectory + 'Save');
+  SetCurrentDir(NativeGamePath(GetGameUserDirectory + 'Save'));
   AutoSlot := nil;
   NewSlot := nil;
   for I := 0 to Slots.Count - 1 do
@@ -1141,44 +1147,42 @@ begin
   if SaveManagerMode = smmSave then
   begin
     New(NewSlot);
-    if GetPlayer.OwnerId = Byte(oiPirate) then
+    if GetPlayer.OwnerId = oiPirate then
       NewSlot.RaceName :=
-          OwnerInfo[Ord(oiPirate)].InternalName
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.PilotRace)) and $7F].InternalName
+          OwnerInfo[oiPirate].InternalName
+              + OwnerInfo[RaceToOwner(GetPlayer.PilotRace)].InternalName
     else
       NewSlot.RaceName := OwnerInfo[GetPlayer.OwnerId].InternalName;
   end;
   try
-    FindData.dwFileAttributes := FILE_ATTRIBUTE_NORMAL;
-    Search := Windows.FindFirstFile('*.sav', FindData);
-    if Search <> INVALID_HANDLE_VALUE then
+
+    // Windows also found .SAV files; Unix wildcard matching would omit them.
+    if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
     begin
       repeat
-        if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then
+        if ((FindData.Attr and faDirectory) = 0)
+            and SameText(ExtractFileExt(FindData.Name), '.sav') then
         begin
           New(Slot);
           Slot.FileName :=
-              GetGameUserDirectory + 'Save\' + TrimWideString(WideString(FindData.cFileName));
+              GetGameUserDirectory + 'Save\' + TrimWideString(WideString(FindData.Name));
           if LowerCaseWideString(Slot.FileName) = LowerCaseWideString(GetAutoSavePath) then
             Slot.FileName := AutoPath;
           Slot.DisplayName := ExtractFileNameNoExtW(Slot.FileName);
-          FileTimeToLocalFileTime(FindData.ftLastWriteTime, Slot.LocalWriteTime);
+          Slot.LocalWriteTime := FindData.TimeStamp;
           try
             FileObject.SetFileName(Slot.FileName);
             if not FileObject.TryAcquireReadHandle(True) then
             begin
-              SuppressExceptionLogCopy := True;
               raise EAbort.Create('Err');
             end;
             if FileObject.ReadWideString <> 'RSG' then
             begin
-              SuppressExceptionLogCopy := True;
               raise EAbort.Create('Err');
             end;
             I := ExtractDigitsToIntW(FileObject.ReadWideString);
             if (I < 13) or (I > CurrentSaveVersion) then
             begin
-              SuppressExceptionLogCopy := True;
               raise EAbort.Create('Err');
             end;
             if (Slot.FileName = AutoPath) or RunningUnderWine then
@@ -1191,7 +1195,6 @@ begin
             Slot.RaceName := FileObject.ReadWideString;
             if FileObject.ReadWideString <> 'EZ' then
             begin
-              SuppressExceptionLogCopy := True;
               raise EAbort.Create('Err');
             end;
             FileObject.ReleaseHandle;
@@ -1203,12 +1206,12 @@ begin
             Dispose(Slot);
           end;
         end;
-      until not Boolean(Windows.FindNextFile(Search, FindData));
-      Windows.FindClose(Search);
+      until SysUtils.FindNext(FindData) <> 0;
+      SysUtils.FindClose(FindData);
     end;
   finally
     FileObject.Free;
-    SetCurrentDir(PreviousDirectory);
+    SetCurrentDir(NativeGamePath(PreviousDirectory));
   end;
   if NewSlot <> nil then
     Slots.Insert(0, NewSlot);
@@ -1227,13 +1230,12 @@ end;
 function TfSaveManager.FindNewestSlot: Integer;
 var
   I: Integer;
-  Latest: TFileTime;
+  Latest: TDateTime;
 begin
   Result := -1;
-  Latest.dwLowDateTime := 0;
-  Latest.dwHighDateTime := 0;
+  Latest := 0;
   for I := 0 to Slots.Count - 1 do
-    if CompareFileTime(PSMSlot(Slots[I]).LocalWriteTime, Latest) > 0 then
+    if CompareDateTime(PSMSlot(Slots[I]).LocalWriteTime, Latest) > 0 then
     begin
       Latest := PSMSlot(Slots[I]).LocalWriteTime;
       Result := I;
@@ -1346,17 +1348,7 @@ end;
 
 procedure TfSaveManager.SelectMusic;
 begin
+
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TEditGI.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

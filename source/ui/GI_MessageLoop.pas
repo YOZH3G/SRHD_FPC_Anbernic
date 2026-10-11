@@ -1,36 +1,53 @@
-{$EXCESSPRECISION OFF}
 unit GI_MessageLoop;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  RTLFileSystem,
+  Types,
+  GameHeap,
   GR_Rect,
   Classes,
   EC_BlockPar,
   EC_Str,
-  EC_Struct,
-  Types;
+  EC_Struct;
+
 type
+
   TFormSoundGroup = class;
+
   TMessageLoopGI = class;
+
   TObjectGI = class;
+
   PointerToTCallbackTimerGI = ^TCallbackTimerGI;
+
   PointerToTCursorStateGI = ^TCursorStateGI;
+
   TDialogChoiceEventGI = procedure(Value: PtrInt) of object;
+
   TObjectNotifyEventGI = procedure(Sender: TObjectGI) of object;
+
   TObjectMouseEventGI = procedure(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint) of object;
+
   TObjectHelpEventGI = procedure(Sender: TObjectGI; Visible: Boolean) of object;
+
   TObjectKeyEventGI = procedure(Sender: TObjectGI; Key: Cardinal) of object;
-  TCursorStateGI = packed record
+
+  TCursorStateGI = record
     ImagePath: WideString;
     Active: Boolean;
     HotSpot: TPoint;
     Position: TPoint;
-    Gap15: array[0..2] of Byte;
   end;
+
+  TTouchDragKindGI = (tdNone, tdControl, tdPan, tdDeferred, tdScroll, tdPress);
+
+  // Tap controls defer actions until release. Held controls explicitly opt into
+  // an early reversible press; drag controls retain their legacy mouse capture.
+  TTouchInteractionGI = (tiNone, tiTap, tiHold, tiDrag, tiScroll);
+
   TObjectGI = class(TObjectEx)
     FirstChild: TObjectGI;
     LastChild: TObjectGI;
@@ -46,27 +63,30 @@ type
     PositionModeW: Boolean;
     Active: Boolean;
     HitTestDisabled: Boolean;
-    Gap43: array[0..0] of Byte;
     ConfigPath: WideString;
     AutoOffsetEnabled: Boolean;
-    Gap49: array[0..2] of Byte;
     AutoOffsetScale: TPointF;
     ScrollOffset: TPoint;
     SkipOwnQueuedDraw: Integer;
     HitTestBounds: TRect;
     AbsolutePosition: TPoint;
+    // Uniform display scaling belongs to a UI subtree; layout coordinates stay unchanged.
+    DisplayScale: Single;
+    // Applies only across a PositionModeW child link; fixed UI keeps its scale.
+    ChildWorldScale: Single;
     ControlName: WideString;
     HelpText: WideString;
     HelpCallback: TObjectHelpEventGI;
     MouseInside: Boolean;
     MouseBlocking: Boolean;
     MouseBlockingTest: Boolean;
+    TouchInteraction: TTouchInteractionGI;
     ScrollUpdate: Boolean;
+    // Untyped runtime payloads: callers store both numbers and object addresses.
     UserValue: PtrInt;
     UserIndex: PtrInt;
     UserData: PtrInt;
     UserState: PtrInt;
-    Gap9C: array[0..3] of Byte;
     MouseMoveCallback: TObjectMouseEventGI;
     LeftButtonDownCallback: TObjectMouseEventGI;
     LeftButtonUpCallback: TObjectMouseEventGI;
@@ -103,9 +123,16 @@ type
     procedure OnMouseEnter; virtual;
     procedure OnMouseLeave; virtual;
     procedure OnActivate; virtual;
-    procedure NativeHook48; virtual;
+    procedure OnModalResume; virtual;
     procedure OnDeactivate; virtual;
-    procedure NativeHook50; virtual;
+    procedure OnModalSuspend; virtual;
+    procedure CancelPointerInput; virtual;
+    function GetTouchInteraction: TTouchInteractionGI; virtual;
+    function AllowsTouchActivation: Boolean;
+    function TouchPressContains(Point: TPoint): Boolean; virtual;
+    function BeginTouchPress(Point: TPoint): Boolean; virtual;
+    procedure CancelTouchPress; virtual;
+    procedure ScrollByTouch(DX, DY: Double; var RemainderX, RemainderY: Double); virtual;
     procedure ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint); virtual;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); virtual;
     procedure ProcessRightButtonDown(KeyState: Cardinal; Point: TPoint); virtual;
@@ -123,6 +150,10 @@ type
     procedure OnCaretBlink; virtual;
     function ToLocalPoint(Point: TPoint): TPoint; virtual;
     function ToAbsolutePoint(Point: TPoint): TPoint; virtual;
+    function LogicalToLocalPoint(Point: TPoint): TPoint; virtual;
+    function GetDisplayScale: Single;
+    function ScreenToLogicalPoint(Point: TPoint): TPoint;
+    function LogicalToScreenPoint(Point: TPoint): TPoint;
     procedure InvalidateRect(Rect: TRect); virtual;
     procedure Invalidate; virtual;
     procedure Draw(ClipRect: TRect); virtual;
@@ -165,7 +196,9 @@ type
     ): TObjectGI;
     procedure ReloadFromBlock;
   end;
+
   PCursorStateGI = PointerToTCursorStateGI;
+
   TFormSoundGroup = class(TObjectEx)
     Section: Integer;
     MinDelayMs: Integer;
@@ -180,25 +213,28 @@ type
     procedure ScheduleNextPlayback;
     procedure PlayIfDue;
   end;
+
   PCallbackTimerGI = PointerToTCallbackTimerGI;
-  // Timer payloads and control UserValue slots can carry live object pointers.
+
+  // Callback payloads follow pointer width; delays and ticks remain 32-bit.
   TCallbackTimerEventGI = procedure(Timer: PCallbackTimerGI; UserData: PtrInt) of object;
-  TCallbackTimerGI = packed record
+
+  TCallbackTimerGI = record
     Callback: TCallbackTimerEventGI;
     UserData: PtrInt;
     RepeatMs: Integer;
     DueTick: Cardinal;
     Prev: PCallbackTimerGI;
     Next: PCallbackTimerGI;
-    // CHANGE: PERFORMANCE - Remember the deadline used by the lookup cache.
-    CachedDueTick: Cardinal;
   end;
+
   TSavedLineGI = record
     First: TPoint;
     Last: TPoint;
     Pixels: Pointer;
-    Heap: Cardinal;
+    Heap: TGameHeapHandle;
   end;
+
   TMessageLoopGI = class(TObjectEx)
     RegisteredLoopName: WideString;
     ParentLoop: TMessageLoopGI;
@@ -217,21 +253,15 @@ type
     RegionDrawControl: TObjectGI;
     MouseViewUpdateControls: TList;
     RegionDrawPending: Boolean;
-    Gap41: array[0..2] of Byte;
     CursorImagePath: WideString;
     ViewportRect: TRect;
     UpdateRectsEnabled: Boolean;
-    Gap59: array[0..2] of Byte;
     UpdateRects: TArrayRectGR;
     ExitCode: Integer;
     CaretBlinkOn: Boolean;
-    Gap65: array[0..2] of Byte;
     TimerTick: Cardinal;
     FirstTimer: PCallbackTimerGI;
     LastTimer: PCallbackTimerGI;
-    // CHANGE: PERFORMANCE - First timer at each cached deadline; collisions fall back to the list.
-    TimerDeadlineHeads: array[0..255] of PCallbackTimerGI;
-    TimerDeadlineCacheDisabled: Boolean;
     NextTimerToProcess: PCallbackTimerGI;
     LastObservedTimerTick: Cardinal;
     SavedPixels16: Pointer;
@@ -244,10 +274,8 @@ type
     SavedLineCount: Integer;
     PendingRedraw: Boolean;
     ContinuousLoop: Boolean;
-    Gap9E: array[0..1] of Byte;
     FramesPerSecond: Integer;
     PlayTransitionSounds: Boolean;
-    GapA5: array[0..2] of Byte;
     OpenSoundName: WideString;
     CloseSoundName: WideString;
     SoundSection: Integer;
@@ -255,14 +283,24 @@ type
     TransientControl: TObjectGI;
     TransientData: TObject;
     IsOpen: Boolean;
-    GapC1: array[0..2] of Byte;
     SavedBackgroundControl: TObjectGI;
     DeferredCodeBlocks: TList;
     RefreshMouseAfterCode: Boolean;
-    GapCD: array[0..2] of Byte;
-    // Host travel loops retain the previous frame while servicing events.
-    DeferScreenPresentation: Boolean;
-
+    TouchDragKind: TTouchDragKindGI;
+    TouchButton: Cardinal;
+    TouchAnchor: TPoint;
+    // Borrowed controls owned by the UI tree; their destructors clear these references.
+    TouchScrollControl: TObjectGI;
+    // Retained after physical release so the synthesized click validates the same owner.
+    TouchPressControl: TObjectGI;
+    // Suppresses the queued click after a hold, drag or cancellation, until the next touch.
+    TouchPressConsumed: Boolean;
+    TouchScrollX, TouchScrollY: Double;
+    PanWheelRemainder: Double;
+    GesturePanValid: Boolean;
+    TouchPinchAllowed: Boolean;
+    GesturePanX, GesturePanY: Double;
+    GesturePanPosition: TPoint;
     function Run: Integer; virtual;
     procedure ProcessWindowMessage(Message: Cardinal; WParam: Cardinal; LParam: Integer); virtual;
     function RunContinuous: Integer; virtual;
@@ -280,7 +318,14 @@ type
     procedure ProcessCallbackTimers; virtual;
     procedure SelectMusic; virtual;
     procedure ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer); virtual;
-
+    function CanPanGesture(Point: TPoint): Boolean; virtual;
+    function DeferTouchDrag(Point: TPoint): Boolean; virtual;
+    procedure ProcessPanGesture(DX, DY: Double; Point: TPoint); virtual;
+    procedure ProcessPinchGesture(Factor: Double; Point: TPoint); virtual;
+    procedure EndPinchGesture; virtual;
+    function AccumulatePanGesture(DX, DY: Double; Position: TPoint): TPoint;
+    procedure CancelTouchPress;
+    procedure CancelPointerInput; virtual;
     procedure InitializeLayout; virtual;
     procedure UpdateActionCursor(CanTake: Boolean); virtual;
     function GetActionParentLoop: TMessageLoopGI; virtual;
@@ -319,7 +364,6 @@ type
     procedure CancelCallbackTimer(Timer: PCallbackTimerGI);
     procedure UpdateCallbackTimer(Timer: PCallbackTimerGI; DelayMs: Integer; RepeatMs: Integer);
     procedure ReinsertCallbackTimer(Timer: PCallbackTimerGI);
-    procedure UncacheCallbackTimer(Timer: PCallbackTimerGI);
     procedure RefreshTimerTick;
     procedure SetCursorImage(const ImagePath: WideString; HotSpot: TPoint);
     procedure SetCursorByName(const Name: WideString);
@@ -330,6 +374,7 @@ type
     procedure RestoreCursorState(State: PCursorStateGI);
     procedure UpdateCursorPosition;
     function GetCursorPoint: TPoint;
+    function GetScrollMousePoint(out Point: TPoint): Boolean;
     procedure SetSystemCursorPosition(Point: TPoint);
     function ConsumeTimerTickChange: Boolean;
     function QueryPointOcclusionState(
@@ -356,25 +401,32 @@ type
     procedure QueueUiCode(Block: TBlockParEC; RefreshMouse: Boolean);
     procedure RefreshMouseDispatch;
   end;
+
 var
+
   MessageLoopStack: TList = nil;
+
   IgnoreWarpMouseMove: Boolean = False;
+
   LastMousePosition: TPoint;
+
 procedure PushMessageLoop(Loop: TMessageLoopGI);
+
 procedure PopMessageLoop(Loop: TMessageLoopGI);
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_Edit,
   GI_OnScreenKeyboard,
   Math,
-  GameNative,
+  GameGraphics,
+  GameWindow,
   PopUp,
   BreakMessageGIException,
   EC_Mem,
-  MMSystem,
-  Windows,
-  Messages,
+  GameSystem,
+  GameInput,
   GI_Cursor,
   GI_Label,
   GI_Main,
@@ -393,20 +445,31 @@ procedure PushMessageLoop(Loop: TMessageLoopGI);
 begin
   if MessageLoopStack = nil then
     MessageLoopStack := TList.Create;
+  if MessageLoopStack.Count > 0 then
+    TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).CancelPointerInput;
+  // A touch tap queues down and up together. If down opens a modal, discard
+  // the remaining gesture instead of releasing it into the new screen.
+  CancelGamePointerInput;
   MessageLoopStack.Add(Loop);
 end;
+
 procedure PopMessageLoop(Loop: TMessageLoopGI);
 begin
   if (MessageLoopStack = nil) or (MessageLoopStack.Count < 1) then
     RaiseWideMessage('ML 1');
   if MessageLoopStack[MessageLoopStack.Count - 1] <> Loop then
     RaiseWideMessage('ML 2');
+  // Screen-owned state is cancelled before teardown in Run/RunContinuous.
+  // This also runs while unwinding exceptions, when controls may be gone.
+  CancelGamePointerInput;
   MessageLoopStack.Delete(MessageLoopStack.Count - 1);
-
 end;
+
 constructor TObjectGI.Create(Owner: TObjectGI);
 begin
   inherited Create;
+  DisplayScale := 1;
+  ChildWorldScale := 1;
   Active := True;
   HitTestDisabled := False;
   MouseBlocking := False;
@@ -422,6 +485,7 @@ begin
   OnMouseLeaveCode := nil;
   OnRightButtonDownCode := nil;
 end;
+
 destructor TObjectGI.Destroy;
 begin
   if MessageLoop <> nil then
@@ -431,6 +495,16 @@ begin
       MessageLoop.SetFocusedControl(nil);
     if MessageLoop.HoveredControl = Self then
       MessageLoop.HoveredControl := nil;
+    if MessageLoop.TouchScrollControl = Self then
+    begin
+      MessageLoop.TouchScrollControl := nil;
+      MessageLoop.TouchDragKind := tdNone;
+    end;
+    if MessageLoop.TouchPressControl = Self then
+    begin
+      MessageLoop.TouchPressControl := nil;
+      MessageLoop.TouchPressConsumed := True;
+    end;
   end;
   Clear;
   FreeOwnedChildren;
@@ -440,13 +514,17 @@ begin
     DestroyNotify(Self);
   inherited Destroy;
 end;
+
 procedure TObjectGI.FreeOwnedChildren;
 begin
   while LastChild <> nil do
     FreeOwnedChild(FirstChild);
 end;
+
 procedure TObjectGI.Clear;
 begin
+  DisplayScale := 1;
+  ChildWorldScale := 1;
   LocalPosition.X := 0;
   LocalPosition.Y := 0;
   ClientSize.X := 0;
@@ -462,6 +540,7 @@ begin
   MouseBlockingTest := True;
   ScrollUpdate := False;
 end;
+
 procedure TObjectGI.AttachOwnedChild(Child: TObjectGI);
 begin
   if LastChild <> nil then
@@ -474,6 +553,7 @@ begin
   Child.Parent := Self;
   Child.MessageLoop := MessageLoop;
 end;
+
 procedure TObjectGI.InsertOwnedChildBefore(BeforeChild, Child: TObjectGI);
 begin
   if BeforeChild <> nil then
@@ -491,6 +571,7 @@ begin
   else
     AttachOwnedChild(Child);
 end;
+
 procedure TObjectGI.InsertOwnedChildByDepth(Child: TObjectGI; NewDepth: Double);
 var
   BeforeChild: TObjectGI;
@@ -509,11 +590,13 @@ begin
   if BeforeChild = nil then
     AttachOwnedChild(Child);
 end;
+
 procedure TObjectGI.FreeOwnedChild(Child: TObjectGI);
 begin
   UnlinkOwnedChild(Child);
   Child.Free;
 end;
+
 procedure TObjectGI.UnlinkOwnedChild(Child: TObjectGI);
 begin
   if Child.PrevSibling <> nil then
@@ -526,11 +609,13 @@ begin
     FirstChild := Child.NextSibling;
   Child.Parent := nil;
 end;
+
 procedure TObjectGI.Reparent(NewParent: TObjectGI);
 begin
   Parent.UnlinkOwnedChild(Self);
   NewParent.InsertOwnedChildByDepth(Self, Depth);
 end;
+
 procedure TObjectGI.SetMouseViewUpdates(Enabled: Boolean);
 begin
   if Enabled = True then
@@ -538,6 +623,7 @@ begin
   else
     MessageLoop.RemoveMouseViewUpdateControl(Self);
 end;
+
 procedure TObjectGI.UpdateAbsolutePosition;
 var
   Child: TObjectGI;
@@ -557,11 +643,13 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 function TObjectGI.GetChildAbsolutePosition(LocalPosition: TPoint; ModeW: Boolean): TPoint;
 begin
   Result.X := AbsolutePosition.X + LocalPosition.X;
   Result.Y := AbsolutePosition.Y + LocalPosition.Y;
 end;
+
 procedure TObjectGI.UpdateHitTestBounds;
 begin
   HitTestBounds :=
@@ -572,6 +660,7 @@ begin
           AbsolutePosition.Y - OriginPoint.Y + ClientSize.Y
       );
 end;
+
 procedure TObjectGI.UpdateSubtreeHitBounds;
 var
   Child: TObjectGI;
@@ -585,6 +674,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.SetHelpCallbackRecursive(Callback: TObjectHelpEventGI);
 var
   Child: TObjectGI;
@@ -598,6 +688,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 function TObjectGI.OffsetChildRect(Rect: TRect; ModeW: Boolean): TRect;
 begin
   if not ModeW then
@@ -615,6 +706,7 @@ begin
     Result.Bottom := LocalPosition.Y + Rect.Bottom - ScrollOffset.Y;
   end;
 end;
+
 procedure TObjectGI.SetPosition(Position: TPoint);
 begin
   if (LocalPosition.X = Position.X) and (LocalPosition.Y = Position.Y) then
@@ -630,6 +722,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TObjectGI.SetDepth(NewDepth: Double);
 begin
   if Depth = NewDepth then
@@ -647,6 +740,7 @@ begin
   Parent.InsertOwnedChildByDepth(Self, NewDepth);
   Invalidate;
 end;
+
 procedure TObjectGI.SetDepthByName(const Name: WideString);
 var
   Value: WideString;
@@ -657,6 +751,7 @@ begin
   else
     SetDepth(ExtractDecimalToSingleW(Name));
 end;
+
 procedure TObjectGI.SetSize(Size: TPoint);
 begin
   if (ClientSize.X = Size.X) and (ClientSize.Y = Size.Y) then
@@ -672,6 +767,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TObjectGI.SetOrigin(Origin: TPoint);
 begin
   if (OriginPoint.X = Origin.X) and (OriginPoint.Y = Origin.Y) then
@@ -687,6 +783,7 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TObjectGI.SetPositionModeW(Enabled: Boolean);
 begin
   if PositionModeW = Enabled then
@@ -702,11 +799,13 @@ begin
     Invalidate;
   end;
 end;
+
 procedure TObjectGI.SetConfigPath(const Path: WideString);
 begin
   LoadFromConfigPath(Path);
   ConfigPath := Path;
 end;
+
 function TObjectGI.GetLocalBounds: TRect;
 begin
   Result.Left := LocalPosition.X - OriginPoint.X;
@@ -714,10 +813,12 @@ begin
   Result.Right := LocalPosition.X - OriginPoint.X + ClientSize.X;
   Result.Bottom := LocalPosition.Y - OriginPoint.Y + ClientSize.Y;
 end;
+
 procedure TObjectGI.SetName(const Name: WideString);
 begin
   ControlName := Name;
 end;
+
 procedure TObjectGI.SetActive(Enabled: Boolean);
 begin
   if Active = Enabled then
@@ -737,6 +838,7 @@ begin
     OnDeactivate;
   end;
 end;
+
 procedure TObjectGI.SetHitTestDisabled(Disabled: Boolean);
 begin
   if HitTestDisabled = Disabled then
@@ -756,6 +858,7 @@ begin
     OnDeactivate;
   end;
 end;
+
 function TObjectGI.FindDeepestChildAtPoint(Point: TPoint): TObjectGI;
 var
   Child: TObjectGI;
@@ -772,6 +875,7 @@ begin
   end;
   Result := Self;
 end;
+
 function TObjectGI.IsOccludedAtPoint(Point: TPoint): Boolean;
 begin
   if MessageLoop.QueryPointOcclusionState(Point, Self, nil) = 1 then
@@ -779,9 +883,11 @@ begin
   else
     Result := False;
 end;
+
 procedure TObjectGI.QueueImageLoad(PendingLoads: TList);
 begin
 end;
+
 procedure TObjectGI.ProcessMouseMove(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
@@ -808,6 +914,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.OnMouseEnter;
 begin
   if Assigned(MouseEnterCallback) then
@@ -819,6 +926,7 @@ begin
     if MessageLoop.HelpLabel <> nil then
       (MessageLoop.HelpLabel as TLabelGI).SetText(HelpText);
 end;
+
 procedure TObjectGI.OnMouseLeave;
 var
   Child: TObjectGI;
@@ -839,6 +947,7 @@ begin
     if MessageLoop.HelpLabel <> nil then
       (MessageLoop.HelpLabel as TLabelGI).SetText('');
 end;
+
 procedure TObjectGI.OnActivate;
 var
   Child: TObjectGI;
@@ -853,7 +962,8 @@ begin
     Child := Child.NextSibling;
   end;
 end;
-procedure TObjectGI.NativeHook48;
+
+procedure TObjectGI.OnModalResume;
 var
   Child: TObjectGI;
 begin
@@ -861,10 +971,11 @@ begin
   while Child <> nil do
   begin
     if Child.Active = True then
-      Child.NativeHook48;
+      Child.OnModalResume;
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.OnDeactivate;
 var
   Child: TObjectGI;
@@ -878,7 +989,8 @@ begin
     Child := Child.NextSibling;
   end;
 end;
-procedure TObjectGI.NativeHook50;
+
+procedure TObjectGI.OnModalSuspend;
 var
   Child: TObjectGI;
 begin
@@ -886,15 +998,79 @@ begin
   while Child <> nil do
   begin
     if Child.Active = True then
-      Child.NativeHook50;
+      Child.OnModalSuspend;
     Child := Child.NextSibling;
   end;
 end;
+
+procedure TObjectGI.CancelPointerInput;
+var
+  Child: TObjectGI;
+begin
+  // Cancellation must never call release/hover callbacks: those can activate
+  // buttons or issue orders. Controls reset only their transient press state.
+  Child := FirstChild;
+  while Child <> nil do
+  begin
+    Child.CancelPointerInput;
+    Child := Child.NextSibling;
+  end;
+end;
+
+function TObjectGI.GetTouchInteraction: TTouchInteractionGI;
+begin
+  Result := TouchInteraction;
+end;
+
+function FindTouchPressOwner(Control: TObjectGI): TObjectGI;
+begin
+  Result := nil;
+  while Control <> nil do
+  begin
+    // State images use their stable parent as the tap owner. Buttons embedded
+    // in sliders instead participate in the slider's captured drag.
+    if Control.GetTouchInteraction = tiDrag then
+      Exit(nil);
+    if (Result = nil) and (Control.GetTouchInteraction in [tiTap, tiHold]) then
+      Result := Control;
+    Control := Control.Parent;
+  end;
+end;
+
+function TObjectGI.AllowsTouchActivation: Boolean;
+var
+  Owner: TObjectGI;
+begin
+  Result := True;
+  if not GamePointerInputIsTouch then
+    Exit;
+  Owner := FindTouchPressOwner(Self);
+  Result := (Owner = nil) or (MessageLoop.TouchPressControl = Owner);
+end;
+
+function TObjectGI.TouchPressContains(Point: TPoint): Boolean;
+begin
+  Result := ContainsPoint(Point) and not IsOccludedAtPoint(Point);
+end;
+
+function TObjectGI.BeginTouchPress(Point: TPoint): Boolean;
+begin
+  Result := TouchPressContains(Point);
+end;
+
+procedure TObjectGI.CancelTouchPress;
+begin
+end;
+
+procedure TObjectGI.ScrollByTouch(DX, DY: Double; var RemainderX, RemainderY: Double);
+begin
+end;
+
 procedure TObjectGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
 begin
-  if Assigned(LeftButtonDownCallback) then
+  if AllowsTouchActivation and Assigned(LeftButtonDownCallback) then
     LeftButtonDownCallback(Self, KeyState, Point);
   Child := FirstChild;
   while Child <> nil do
@@ -904,11 +1080,12 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
 begin
-  if Assigned(LeftButtonUpCallback) then
+  if AllowsTouchActivation and Assigned(LeftButtonUpCallback) then
     LeftButtonUpCallback(Self, KeyState, Point);
   Child := FirstChild;
   while Child <> nil do
@@ -918,6 +1095,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.ProcessRightButtonDown(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
@@ -934,6 +1112,7 @@ begin
   if OnRightButtonDownCode <> nil then
     MessageLoop.QueueUiCode(OnRightButtonDownCode, False);
 end;
+
 procedure TObjectGI.ProcessRightButtonUp(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
@@ -948,11 +1127,12 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.ProcessLeftButtonDoubleClick(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
 begin
-  if Assigned(LeftButtonDoubleClickCallback) then
+  if AllowsTouchActivation and Assigned(LeftButtonDoubleClickCallback) then
     LeftButtonDoubleClickCallback(Self, KeyState, Point);
   Child := FirstChild;
   while Child <> nil do
@@ -962,6 +1142,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.ProcessRightButtonDoubleClick(KeyState: Cardinal; Point: TPoint);
 var
   Child: TObjectGI;
@@ -976,6 +1157,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.BroadcastKeyDown(Key: Cardinal);
 var
   Child: TObjectGI;
@@ -991,6 +1173,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.BroadcastKeyUp(Key: Cardinal);
 var
   Child: TObjectGI;
@@ -1004,27 +1187,35 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.OnHoverGained;
 begin
 end;
+
 procedure TObjectGI.OnHoverLost;
 begin
 end;
+
 procedure TObjectGI.OnFocusGained;
 begin
 end;
+
 procedure TObjectGI.OnFocusLost;
 begin
 end;
+
 procedure TObjectGI.ProcessKeyDown(Key: Integer);
 begin
 end;
+
 procedure TObjectGI.ProcessCharacter(Character: WideChar);
 begin
 end;
+
 procedure TObjectGI.OnCaretBlink;
 begin
 end;
+
 function TObjectGI.ContainsPoint(Point: TPoint): Boolean;
 begin
   if (Active = False) or (HitTestDisabled = True) then
@@ -1032,6 +1223,7 @@ begin
     Result := False;
     Exit;
   end;
+  Point := ScreenToLogicalPoint(Point);
   if (Point.X >= HitTestBounds.Left)
       and (Point.Y >= HitTestBounds.Top)
       and (Point.X < HitTestBounds.Right)
@@ -1040,10 +1232,12 @@ begin
   else
     Result := False;
 end;
+
 function TObjectGI.HitTestCursor: Boolean;
 begin
   Result := ContainsPoint(MessageLoop.GetCursorPoint);
 end;
+
 function TObjectGI.FindByNameRecursive(const Name: WideString): TObjectGI;
 var
   Child, Found: TObjectGI;
@@ -1066,27 +1260,81 @@ begin
   end;
   Result := nil;
 end;
+
 function TObjectGI.ToLocalPoint(Point: TPoint): TPoint;
+begin
+  Result := LogicalToLocalPoint(ScreenToLogicalPoint(Point));
+end;
+
+function TObjectGI.LogicalToLocalPoint(Point: TPoint): TPoint;
 begin
   Result.X := Point.X - AbsolutePosition.X;
   Result.Y := Point.Y - AbsolutePosition.Y;
 end;
+
 function TObjectGI.ToAbsolutePoint(Point: TPoint): TPoint;
 begin
   Result.X := Point.X + AbsolutePosition.X;
   Result.Y := Point.Y + AbsolutePosition.Y;
+  Result := LogicalToScreenPoint(Result);
 end;
+
+function TObjectGI.GetDisplayScale: Single;
+var
+  Control: TObjectGI;
+begin
+  Result := 1;
+  Control := Self;
+  while Control <> nil do
+  begin
+    Result := Result * Control.DisplayScale;
+    if Control.PositionModeW and (Control.Parent <> nil) then
+      Result := Result * Control.Parent.ChildWorldScale;
+    Control := Control.Parent;
+  end;
+end;
+
+function TObjectGI.ScreenToLogicalPoint(Point: TPoint): TPoint;
+var
+  Scale: Single;
+begin
+  Scale := GetDisplayScale;
+  if Scale = 1 then
+    Exit(Point);
+  Result.X := Floor(Point.X / Scale);
+  Result.Y := Floor(Point.Y / Scale);
+end;
+
+function TObjectGI.LogicalToScreenPoint(Point: TPoint): TPoint;
+var
+  Scale: Single;
+begin
+  Scale := GetDisplayScale;
+  if Scale = 1 then
+    Exit(Point);
+  Result.X := Round(Point.X * Scale);
+  Result.Y := Round(Point.Y * Scale);
+end;
+
 procedure TObjectGI.DispatchNamedEvent(EventKind, Param1, Param2: Integer);
 begin
   if Length(ControlName) > 0 then
     MessageLoop.ProcessNamedControlEvent(ControlName, EventKind, Param1, Param2);
 end;
+
 procedure TObjectGI.InvalidateRect(Rect: TRect);
 var
   Intersection, First, Second: TRect;
 begin
   if Active <> True then
     Exit;
+  if GetDisplayScale <> 1 then
+  begin
+    // Parent dirty rectangles use normal coordinates and would clip enlarged
+    // pixels. Redraw the complete normal viewport for scaled subtrees.
+    MessageLoop.InvalidateViewport;
+    Exit;
+  end;
   if Parent = nil then
     MessageLoop.QueueUpdateRect(Rect)
   else
@@ -1097,11 +1345,13 @@ begin
       Parent.InvalidateRect(Intersection);
   end;
 end;
+
 procedure TObjectGI.Invalidate;
 begin
   if MessageLoop.UpdateRectsEnabled and (Parent <> nil) and (Active = True) then
     InvalidateRect(GetLocalBounds);
 end;
+
 procedure TObjectGI.InvalidateChildren(IncludePanels: Boolean);
 var
   Child: TObjectGI;
@@ -1119,6 +1369,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 function TObjectGI.InvalidateScrollOverlap(
     Rect: TRect;
     Delta: TPoint;
@@ -1146,21 +1397,60 @@ begin
   end;
   Result := StartControl;
 end;
+
+function ScaleClipRect(const Rect: TRect; Scale: Single): TRect;
+begin
+  if Scale = 1 then
+    Exit(Rect);
+  Result.Left := Floor(Rect.Left * Scale);
+  Result.Top := Floor(Rect.Top * Scale);
+  Result.Right := Ceil(Rect.Right * Scale);
+  Result.Bottom := Ceil(Rect.Bottom * Scale);
+end;
+
+procedure DrawControl(Control: TObjectGI; ClipRect: TRect; Queued: Boolean);
+var
+  Saved: TGameGraphicsTransform;
+  Scale: Single;
+  Intersection: TRect;
+begin
+  Saved := GameGraphicsTransform;
+  Scale := Control.GetDisplayScale;
+  // Parent clipping is expressed in its logical coordinates. Change domains
+  // before intersecting a child whose complete subtree has a display scale.
+  ClipRect := ScaleClipRect(ClipRect, Saved.ScaleX / Scale);
+  Intersection := ClipRect;
+  if not Queued and not IntersectRects(Intersection, ClipRect, Control.HitTestBounds) then
+    Exit;
+  GameGraphicsTransform := GameGraphicsIdentityTransform;
+  GameGraphicsTransform.ScaleX := Scale;
+  GameGraphicsTransform.ScaleY := Scale;
+  GameGraphicsTransform.PixelAligned := Scale <> 1;
+  try
+    if Queued then
+      Control.DrawUpdateRects(Intersection)
+    else
+      Control.Draw(Intersection);
+  finally
+    GameGraphicsTransform := Saved;
+  end;
+end;
+
 procedure TObjectGI.Draw(ClipRect: TRect);
 var
   Child: TObjectGI;
-  Intersection: TRect;
 begin
   if MessageLoop.PendingRedraw then
     Exit;
   Child := FirstChild;
   while Child <> nil do
   begin
-    if Child.Active and IntersectRects(Intersection, ClipRect, Child.HitTestBounds) then
-      Child.Draw(Intersection);
+    if Child.Active then
+      DrawControl(Child, ClipRect, False);
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.DrawUpdateRects(ClipRect: TRect);
 var
   RectNode: TRectGR;
@@ -1179,7 +1469,7 @@ begin
       begin
         Stage := 2;
         if Child.Active then
-          Child.DrawUpdateRects(Intersection);
+          DrawControl(Child, Intersection, True);
         Child := Child.NextSibling;
       end;
       Stage := 3;
@@ -1190,8 +1480,11 @@ begin
         while RectNode <> nil do
         begin
           Stage := 5;
-          if IntersectRects(DrawRect, RectNode.Bounds, Intersection) then
-            Draw(DrawRect);
+          if IntersectRects(
+              DrawRect,
+              ScaleClipRect(RectNode.Bounds, 1 / GetDisplayScale),
+              Intersection) then
+            DrawControl(Self, DrawRect, False);
           RectNode := RectNode.Next;
         end;
       end;
@@ -1200,18 +1493,18 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
       if Child <> nil then
       begin
         AppendLogLineThreadSafe('Error in TObjectGI.DrawEx, label = ' + IntToStr(Stage));
-        AppendLogLineThreadSafe('obj - ' + Child.ControlName + ' ' + Child.ClassName);
+        E.Message := 'obj - ' + Child.ControlName + ' ' + Child.ClassName + ': ' + E.Message;
       end
       else
-        AppendLogLineThreadSafe('TObjectGI.DrawEx, label = ' + IntToStr(Stage));
+        E.Message := 'TObjectGI.DrawEx, label = ' + IntToStr(Stage) + ': ' + E.Message;
       raise;
     end;
   end;
 end;
+
 procedure TObjectGI.CommitFrameDraw;
 var
   Child: TObjectGI;
@@ -1224,6 +1517,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.ErasePreviousFrame;
 var
   Child: TObjectGI;
@@ -1236,6 +1530,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.NativeHookB0;
 var
   Child: TObjectGI;
@@ -1248,6 +1543,7 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.PrepareFrameDraw;
 var
   Child: TObjectGI;
@@ -1260,12 +1556,15 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 procedure TObjectGI.PrepareRegionDraw(ClipRect: TRect);
 begin
 end;
+
 procedure TObjectGI.NativeHookBC(Rect: TRect);
 begin
 end;
+
 procedure TObjectGI.LoadFromConfigPath(const Path: WideString);
 var
   Block: TBlockParEC;
@@ -1316,13 +1615,15 @@ begin
   if Block.CountParams('MVUpdate') > 0 then
     SetMouseViewUpdates(ParseEnabledNameGI(TrimWideString(Block.GetParam('MVUpdate'))));
 end;
+
 procedure TObjectGI.LoadFromBlock(Block: TBlockParEC);
 var
   Count: Integer;
   Text: WideString;
+
   procedure LoadConfiguredChildren(
       Block: TBlockParEC
-  ); // @addr $4BD50C @ida "void __usercall $name(TBlockParEC *Block@<eax>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4BD6CA 0x4BD5F8" @note "Nested helper of TObjectGI.LoadFromBlock; creates recognized controls and descends through other blocks."
+  ); { Nested helper of TObjectGI.LoadFromBlock; creates recognized controls and descends through other blocks. }
   var
     Index, Count: Integer;
     Child: TObjectGI;
@@ -1339,6 +1640,7 @@ var
         LoadConfiguredChildren(Block.GetBlockByIndex(Index));
     end;
   end;
+
 begin
   Clear;
   LoadConfiguredChildren(Block);
@@ -1402,11 +1704,13 @@ begin
   if Block.CountBlocks('OnMouseRightClick') > 0 then
     OnRightButtonDownCode := Block.GetBlock('OnMouseRightClick');
 end;
+
 procedure TObjectGI.ReloadFromBlock;
 begin
   FreeOwnedChildren;
   LoadFromBlock(SourceBlock);
 end;
+
 procedure TObjectGI.UpdateAutoGeometry;
 var
   Child: TObjectGI;
@@ -1423,11 +1727,13 @@ begin
     Child := Child.NextSibling;
   end;
 end;
+
 constructor TFormSoundGroup.Create;
 begin
   inherited Create;
   Sounds := TStringsEC.Create;
 end;
+
 destructor TFormSoundGroup.Destroy;
 begin
   Clear;
@@ -1435,11 +1741,13 @@ begin
   Sounds := nil;
   inherited Destroy;
 end;
+
 procedure TFormSoundGroup.Clear;
 begin
   Sounds.Clear;
   Section := 0;
 end;
+
 procedure TFormSoundGroup.LoadFromBlock(Block: TBlockParEC);
 var
   Text: WideString;
@@ -1464,15 +1772,17 @@ begin
     end;
   end;
 end;
+
 procedure TFormSoundGroup.ScheduleNextPlayback;
 begin
-  NextPlayTick := Cardinal(RandomIntRange(MinDelayMs, MaxDelayMs)) + timeGetTime;
+  NextPlayTick := Cardinal(RandomIntRange(MinDelayMs, MaxDelayMs)) + GameTickCount;
 end;
+
 procedure TFormSoundGroup.PlayIfDue;
 var
   Weight: Integer;
 begin
-  if timeGetTime > NextPlayTick then
+  if GameTickCount > NextPlayTick then
   begin
     ScheduleNextPlayback;
     Weight := RandomIntRange(0, TotalWeight - 1);
@@ -1487,6 +1797,7 @@ begin
     SoundManager.PlaySound(Sounds.GetCurrentText);
   end;
 end;
+
 constructor TMessageLoopGI.Create;
 begin
   inherited Create;
@@ -1500,6 +1811,7 @@ begin
   DeferredCodeBlocks := TList.Create;
   RefreshMouseAfterCode := False;
 end;
+
 destructor TMessageLoopGI.Destroy;
 begin
   ResetRuntime;
@@ -1511,6 +1823,7 @@ begin
   DeferredCodeBlocks := nil;
   inherited Destroy;
 end;
+
 procedure TMessageLoopGI.ResetRuntime;
 var
   Index: Integer;
@@ -1539,6 +1852,7 @@ begin
   while FirstTimer <> nil do
     CancelCallbackTimer(LastTimer);
 end;
+
 procedure TMessageLoopGI.QueueUpdateRect(Rect: TRect);
 var
   Intersection: TRect;
@@ -1547,10 +1861,12 @@ begin
     if IntersectRects(Intersection, Rect, GameScreenRect) then
       UpdateRects.AddRect(Intersection);
 end;
+
 procedure TMessageLoopGI.InvalidateViewport;
 begin
   QueueUpdateRect(Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight));
 end;
+
 function TMessageLoopGI.FindMouseViewUpdateControl(Control: TObjectGI): Integer;
 var
   Index, Count: Integer;
@@ -1564,11 +1880,13 @@ begin
     end;
   Result := -1;
 end;
+
 procedure TMessageLoopGI.AddMouseViewUpdateControl(Control: TObjectGI);
 begin
   if FindMouseViewUpdateControl(Control) < 0 then
     MouseViewUpdateControls.Add(Control);
 end;
+
 procedure TMessageLoopGI.RemoveMouseViewUpdateControl(Control: TObjectGI);
 var
   Index: Integer;
@@ -1577,6 +1895,7 @@ begin
   if Index >= 0 then
     MouseViewUpdateControls.Delete(Index);
 end;
+
 procedure TMessageLoopGI.InvalidateMouseViewControls;
 var
   Count, Index: Integer;
@@ -1589,6 +1908,7 @@ begin
     Control.Invalidate;
   end;
 end;
+
 procedure TMessageLoopGI.DrawQueuedUpdateRects;
 var
   RectNode: TRectGR;
@@ -1608,6 +1928,7 @@ begin
     if CursorControl.Active then CursorControl.Draw(GameScreenRect);
   end;
 end;
+
 procedure TMessageLoopGI.DrawQueuedControlRects;
 begin
   if UpdateRects.FirstRect <> nil then
@@ -1621,22 +1942,27 @@ begin
     end;
   end;
 end;
+
 procedure TMessageLoopGI.FinishQueuedDraw;
 begin
   RegionDrawPending := False;
 end;
+
 procedure TMessageLoopGI.CommitFrameDraw;
 begin
   RootUiObject.CommitFrameDraw;
 end;
+
 procedure TMessageLoopGI.ErasePreviousFrame;
 begin
   RootUiObject.ErasePreviousFrame;
 end;
+
 procedure TMessageLoopGI.PrepareFrameDraw;
 begin
   RootUiObject.PrepareFrameDraw;
 end;
+
 function TMessageLoopGI.Run: Integer;
 var
   LastCaretTick, Tick: Cardinal;
@@ -1645,81 +1971,76 @@ var
   RecordingTime: Cardinal;
   Stage: Integer;
   Background: TGraphBufGI;
-
 begin
   Stage := 0;
   try
-
+    AppendLogLineThreadSafe('Rangers: run ' + UTF8Encode(RegisteredLoopName));
     PushMessageLoop(Self);
-    ExitCode := 0;
-    ContinuousLoop := False;
-    DeferScreenPresentation := False;
-    Stage := 1;
-    FreeSecondaryPixelBuffer;
-    FreeSavedLines;
-    FreeSavedPixels16;
-    Stage := 2;
-    SetCursorByName('Main');
-    Stage := 3;
-    GetCursorPos(Point);
-    if Direct3DPresentParameters.Windowed then
-      ScreenToClient(MainWindowHandle, Point);
-    CursorControl.SetPosition(Point);
-    if CustomCursorEnabled then
-      SetCursorActive(True);
-    TimerTick := timeGetTime;
-    Stage := 4;
-
-    OnOpen;
-
-    Stage := 5;
-    RootUiObject.UpdateAbsolutePosition;
-    RootUiObject.UpdateSubtreeHitBounds;
-    QueueUpdateRect(ViewportRect);
-    LastCaretTick := 0;
-    CaretBlinkOn := False;
-    Stage := 6;
-    RootUiObject.OnActivate;
-    if (ViewportRect.Right - ViewportRect.Left < GameScreenWidth)
-        or (ViewportRect.Bottom - ViewportRect.Top < GameScreenHeight) then
-    begin
-      Stage := 7;
-      if SavedBackgroundControl = nil then
-        SavedBackgroundControl := TGraphBufGI.Create(BackgroundPanel, HardwareRenderingEnabled);
-      Stage := 8;
-      Background := SavedBackgroundControl as TGraphBufGI;
-      Background.SetDepth(1E30);
-      Background.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-      Background.AllocateBuffer(GameScreenWidth, GameScreenHeight, False);
-      Background.CopyScreenRectToBuffer(
-          Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight),
-          Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight)
-      );
-    end;
-    Stage := 9;
-    for Index := 0 to SoundGroupList.Count - 1 do
-      TFormSoundGroup(SoundGroupList[Index]).ScheduleNextPlayback;
-    if PlayTransitionSounds and (OpenSoundName <> '') then
-      SoundManager.PlaySound(OpenSoundName);
-    Stage := 10;
-    while (GR_WinMessage(ProcessWindowMessage) <> 0) and (ExitCode = 0) do
-    begin
-      Stage := 11;
-      Tick := timeGetTime;
-      if Tick - LastCaretTick > 200 then
+    try
+      ExitCode := 0;
+      ContinuousLoop := False;
+      Stage := 1;
+      FreeSecondaryPixelBuffer;
+      FreeSavedLines;
+      FreeSavedPixels16;
+      Stage := 2;
+      SetCursorByName('Main');
+      Stage := 3;
+      GetGameMouse(Point);
+      CursorControl.SetPosition(Point);
+      if CustomCursorEnabled then
+        SetCursorActive(True);
+      TimerTick := GameTickCount;
+      Stage := 4;
+      OnOpen;
+      Stage := 5;
+      RootUiObject.UpdateAbsolutePosition;
+      RootUiObject.UpdateSubtreeHitBounds;
+      QueueUpdateRect(ViewportRect);
+      LastCaretTick := 0;
+      CaretBlinkOn := False;
+      Stage := 6;
+      RootUiObject.OnActivate;
+      if (ViewportRect.Right - ViewportRect.Left < GameScreenWidth)
+          or (ViewportRect.Bottom - ViewportRect.Top < GameScreenHeight) then
       begin
-        Stage := 12;
-        LastCaretTick := Tick;
-        if CaretBlinkOn = True then
-          CaretBlinkOn := False
-        else
-          CaretBlinkOn := True;
-        if FocusedControl <> nil then
-          FocusedControl.OnCaretBlink;
+        Stage := 7;
+        if SavedBackgroundControl = nil then
+          SavedBackgroundControl := TGraphBufGI.Create(BackgroundPanel, HardwareRenderingEnabled);
+        Stage := 8;
+        Background := SavedBackgroundControl as TGraphBufGI;
+        Background.SetDepth(1E30);
+        Background.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+        Background.AllocateBuffer(GameScreenWidth, GameScreenHeight, False);
+        Background.CopyScreenRectToBuffer(
+            Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight),
+            Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight)
+        );
       end;
-      if not MemorySnapshotActive then
+      Stage := 9;
+      for Index := 0 to SoundGroupList.Count - 1 do
+        TFormSoundGroup(SoundGroupList[Index]).ScheduleNextPlayback;
+      if PlayTransitionSounds and (OpenSoundName <> '') then
+        SoundManager.PlaySound(OpenSoundName);
+      Stage := 10;
+      while (GR_WinMessage(ProcessWindowMessage) <> 0) and (ExitCode = 0) do
       begin
-        if not DeferScreenPresentation then
+        if ApplyPendingDisplayChange then
+          Break;
+        Stage := 11;
+        Tick := GameTickCount;
+        if Tick - LastCaretTick > 200 then
+        begin
+          Stage := 12;
+          LastCaretTick := Tick;
+          if CaretBlinkOn = True then
+            CaretBlinkOn := False
+          else
+            CaretBlinkOn := True;
+          if FocusedControl <> nil then
+            FocusedControl.OnCaretBlink;
+        end;
+        if not MemorySnapshotActive then
         begin
           Stage := 13;
           if OffscreenTexture <> nil then
@@ -1749,308 +2070,266 @@ begin
           FinishQueuedDraw;
           Stage := 17;
           EndFramePresentation;
-
           if RecordingFrames then
           begin
             Stage := 18;
-            RecordingTime := timeGetTime;
+            RecordingTime := GameTickCount;
             CaptureRecordingFrame;
-            RecordingTime := timeGetTime - RecordingTime;
+            RecordingTime := GameTickCount - RecordingTime;
             Inc(TimerTick, RecordingTime);
-            // CHANGE: PERFORMANCE - Recording shifts all deadlines without reordering.
-            FillChar(TimerDeadlineHeads, SizeOf(TimerDeadlineHeads), 0);
             NextTimerToProcess := FirstTimer;
             while NextTimerToProcess <> nil do
             begin
-              // A bulk shift can wrap the queue out of numeric order. Retain
-              // the original list search until the queue becomes empty again.
-              if Cardinal(NextTimerToProcess.DueTick + RecordingTime)
-                  < NextTimerToProcess.DueTick then
-                TimerDeadlineCacheDisabled := True;
               Inc(NextTimerToProcess.DueTick, RecordingTime);
-              NextTimerToProcess.CachedDueTick := NextTimerToProcess.DueTick;
               NextTimerToProcess := NextTimerToProcess.Next;
             end;
           end;
+          Stage := 19;
+          if MusicEnabled and not MusicManager.HasSelectedMusic then
+          begin
+            Stage := 20;
+            MusicManager.HasSelectedMusic;
+            SelectMusic;
+          end;
+          Stage := 21;
+          ProcessCallbackTimers;
+          if PopupController <> nil then
+            PopupController.AdvancePopups(TimerTick);
+          Stage := 22;
+          for Index := 0 to SoundGroupList.Count - 1 do
+            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
+                or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
+              TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
         end;
-        Stage := 19;
-        if MusicEnabled and not MusicManager.HasSelectedMusic then
-        begin
-          Stage := 20;
-          MusicManager.HasSelectedMusic;
-          SelectMusic;
-        end;
-        Stage := 21;
-        ProcessCallbackTimers;
-        if PopupController <> nil then
-          PopupController.AdvancePopups(TimerTick);
-        Stage := 22;
-        for Index := 0 to SoundGroupList.Count - 1 do
-          if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
-              or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
-            TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
       end;
+      Stage := 23;
+      CancelPointerInput;
+      try
+        RootUiObject.OnMouseLeave;
+        RefreshMouseAfterCode := False;
+        for Index := 0 to DeferredCodeBlocks.Count - 1 do
+          ExecuteUiCode(TBlockParEC(DeferredCodeBlocks[Index]), 0);
+        DeferredCodeBlocks.Clear;
+      except
+        on E: EBreakMessageGI do
+          ;
+      end;
+      RootUiObject.OnDeactivate;
+      if CustomCursorEnabled then
+        SetCursorActive(False);
+      Stage := 24;
+      if PlayTransitionSounds and (CloseSoundName <> '') then
+        SoundManager.PlaySound(CloseSoundName);
+      Stage := 25;
+      ClearTransientControl;
+      Stage := 26;
+      OnClose;
+      Stage := 27;
+      FreeSavedPixels16;
+      FreeSecondaryPixelBuffer;
+      FreeSavedLines;
+      Result := ExitCode;
+      Stage := 28;
+    finally
+      PopMessageLoop(Self);
     end;
-    Stage := 23;
-    try
-      RootUiObject.OnMouseLeave;
-      RefreshMouseAfterCode := False;
-      for Index := 0 to DeferredCodeBlocks.Count - 1 do
-        ExecuteUiCode(TBlockParEC(DeferredCodeBlocks[Index]), 0);
-      DeferredCodeBlocks.Clear;
-    except
-      on E: EBreakMessageGI do
-        ;
-    end;
-    RootUiObject.OnDeactivate;
-    if CustomCursorEnabled then
-      SetCursorActive(False);
-    Stage := 24;
-    if PlayTransitionSounds and (CloseSoundName <> '') then
-      SoundManager.PlaySound(CloseSoundName);
-    Stage := 25;
-    ClearTransientControl;
-    Stage := 26;
-
-    OnClose;
-
-    DeferScreenPresentation := False;
-    Stage := 27;
-    FreeSavedPixels16;
-    FreeSecondaryPixelBuffer;
-    FreeSavedLines;
-    Result := ExitCode;
-    Stage := 28;
-    PopMessageLoop(Self);
   except
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
-      raise Exception.Create(
+      E.Message :=
           'Error in procedure TMessageLoopGI.Run, '
               + RegisteredLoopName
               + ', label = '
-              + IntToStr(Stage));
-    end;
-  end;
-end;
-function TMessageLoopGI.RunContinuous: Integer;
-var
-  Point: TPoint;
-
-  NowTick, LastUpdateTick, ElapsedTicks, LastFpsTick: Cardinal;
-  LastPresentCount, BeforeDrawCount, PresentCount: QWord;
-
-  RecordingTime: Cardinal;
-  Index, Stage: Integer;
-begin
-  Stage := 0;
-  try
-
-    PushMessageLoop(Self);
-    ExitCode := 0;
-    ContinuousLoop := True;
-    Stage := 1;
-    FreeSecondaryPixelBuffer;
-    Stage := 2;
-    FreeSavedPixels16;
-    Stage := 3;
-    FreeSavedLines;
-    Stage := 4;
-    SetCursorByName('Main');
-    GetCursorPos(Point);
-    if Direct3DPresentParameters.Windowed then
-      ScreenToClient(MainWindowHandle, Point);
-    Stage := 5;
-    CursorControl.SetPosition(Point);
-    if CustomCursorEnabled then
-      SetCursorActive(True);
-    TimerTick := timeGetTime;
-    Stage := 6;
-
-    OnOpen;
-
-    Stage := 7;
-    RootUiObject.UpdateAbsolutePosition;
-    Stage := 8;
-    RootUiObject.UpdateSubtreeHitBounds;
-    Stage := 9;
-    QueueUpdateRect(ViewportRect);
-    Stage := 10;
-    CaretBlinkOn := False;
-    RootUiObject.OnActivate;
-    Stage := 11;
-    LastUpdateTick := timeGetTime;
-    if ExitCode = 0 then
-    begin
-      DrawFrame;
-
-    end;
-    LastFpsTick := timeGetTime;
-
-    LastPresentCount := sr_present_count;
-    FramesPerSecond := 0;
-
-    Stage := 12;
-    for Index := 0 to SoundGroupList.Count - 1 do
-      TFormSoundGroup(SoundGroupList[Index]).ScheduleNextPlayback;
-    if PlayTransitionSounds and (OpenSoundName <> '') then
-      SoundManager.PlaySound(OpenSoundName);
-    while (GR_WinMessage(ProcessWindowMessage) <> 0) and (ExitCode = 0) do
-    begin
-      Stage := 13;
-      if not MemorySnapshotActive then
-      begin
-        Stage := 14;
-
-        // Include event processing and presentation waits in elapsed time.
-        // Keep native one-millisecond simulation ticks, applying them before
-        // rendering so the submitted image contains the latest film state.
-        NowTick := timeGetTime;
-        ElapsedTicks := NowTick - LastUpdateTick;
-        LastUpdateTick := NowTick;
-        if ElapsedTicks > 200 then
-          ElapsedTicks := 200;
-        for Index := 1 to ElapsedTicks do
-        begin
-          Stage := 23;
-          AdvanceTimerTick;
-          if PopupController <> nil then
-            PopupController.AdvancePopups(TimerTick);
-          if (ExitCode <> 0) or ExitScreenLoop or MemorySnapshotActive then
-            Break;
-        end;
-        if (ExitCode <> 0) or ExitScreenLoop or MemorySnapshotActive then
-          Continue;
-        BeforeDrawCount := sr_present_count;
-
-        if PopupController = nil then
-        begin
-          Stage := 15;
-          DrawFrame;
-        end
-        else
-        begin
-          Stage := 16;
-          RootUiObject.AttachOwnedChild(PopupController);
-          Stage := 17;
-          DrawFrame;
-          Stage := 18;
-          RootUiObject.UnlinkOwnedChild(PopupController);
-        end;
-        Stage := 19;
-
-        // A submitted frame is paced by SDL. Yield only when nothing was
-        // submitted (including headless checks), not after each refresh.
-        if sr_present_count = BeforeDrawCount then
-          Sleep(1);
-
-        Stage := 20;
-        if RecordingFrames then
-        begin
-          Stage := 21;
-          RecordingTime := timeGetTime;
-          CaptureRecordingFrame;
-          RecordingTime := timeGetTime - RecordingTime;
-
-          Inc(LastUpdateTick, RecordingTime);
-
-        end;
-
-        NowTick := timeGetTime;
-        if NowTick - LastFpsTick >= 500 then
-
-        begin
-          Stage := 22;
-
-          PresentCount := sr_present_count;
-          FramesPerSecond :=
-              Round((PresentCount - LastPresentCount) * 1000.0 / (NowTick - LastFpsTick));
-          LastFpsTick := NowTick;
-          LastPresentCount := PresentCount;
-
-          if ShowFrameRate then
-            (GetByName('FPS') as TLabelGI).SetText('FPS: ' + IntToStr(FramesPerSecond));
-
-        end;
-        Stage := 24;
-        for Index := 0 to SoundGroupList.Count - 1 do
-          if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
-              or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
-            TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
-        if MusicEnabled and not MusicManager.HasSelectedMusic then
-        begin
-          Stage := 25;
-          MusicManager.HasSelectedMusic;
-          SelectMusic;
-        end;
-        Stage := 26;
-      end
-      else
-      begin
-        LastUpdateTick := timeGetTime;
-        Sleep(1);
-      end;
-
-    end;
-    Stage := 27;
-    try
-      RootUiObject.OnMouseLeave;
-      RefreshMouseAfterCode := False;
-      for Index := 0 to DeferredCodeBlocks.Count - 1 do
-        ExecuteUiCode(TBlockParEC(DeferredCodeBlocks[Index]), 0);
-      DeferredCodeBlocks.Clear;
-    except
-      on E: EBreakMessageGI do
-        ;
-    end;
-    RootUiObject.OnDeactivate;
-    if CustomCursorEnabled then
-      SetCursorActive(False);
-    Stage := 28;
-    if PlayTransitionSounds and (CloseSoundName <> '') then
-      SoundManager.PlaySound(CloseSoundName);
-    Stage := 29;
-    ClearTransientControl;
-    Stage := 30;
-
-    OnClose;
-
-    Stage := 31;
-    FreeSavedPixels16;
-    Stage := 32;
-    FreeSecondaryPixelBuffer;
-    Stage := 33;
-    FreeSavedLines;
-    Result := ExitCode;
-    Stage := 34;
-    PopMessageLoop(Self);
-  except
-    on E: Exception do
-    begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
-      AppendLogLineThreadSafe(
-          'Error in procedure TMessageLoopGI.Run2, '
-              + RegisteredLoopName
-              + ', label = '
               + IntToStr(Stage)
-      );
-      // Keep the failing instruction and stack for the host's exception log.
+              + ': '
+              + E.Message;
       raise;
     end;
   end;
 end;
+
+function TMessageLoopGI.RunContinuous: Integer;
+var
+  Point: TPoint;
+  FrameTime, ProcessingTime: Cardinal;
+  CarryTicks: Cardinal;
+  LastFpsTick, FpsTick: Cardinal;
+  LastPresentedFrames: QWord;
+  Index, Stage: Integer;
+begin
+  Stage := 0;
+  try
+    AppendLogLineThreadSafe('Rangers: run ' + UTF8Encode(RegisteredLoopName));
+    PushMessageLoop(Self);
+    try
+      ExitCode := 0;
+      ContinuousLoop := True;
+      Stage := 1;
+      FreeSecondaryPixelBuffer;
+      Stage := 2;
+      FreeSavedPixels16;
+      Stage := 3;
+      FreeSavedLines;
+      Stage := 4;
+      SetCursorByName('Main');
+      GetGameMouse(Point);
+      Stage := 5;
+      CursorControl.SetPosition(Point);
+      if CustomCursorEnabled then
+        SetCursorActive(True);
+      TimerTick := GameTickCount;
+      Stage := 6;
+      OnOpen;
+      Stage := 7;
+      RootUiObject.UpdateAbsolutePosition;
+      Stage := 8;
+      RootUiObject.UpdateSubtreeHitBounds;
+      Stage := 9;
+      QueueUpdateRect(ViewportRect);
+      Stage := 10;
+      CaretBlinkOn := False;
+      RootUiObject.OnActivate;
+      Stage := 11;
+      if ExitCode = 0 then
+        DrawFrame;
+      LastFpsTick := GameTickCount;
+      LastPresentedFrames := GamePresentedFrames;
+      CarryTicks := 0;
+      Stage := 12;
+      for Index := 0 to SoundGroupList.Count - 1 do
+        TFormSoundGroup(SoundGroupList[Index]).ScheduleNextPlayback;
+      if PlayTransitionSounds and (OpenSoundName <> '') then
+        SoundManager.PlaySound(OpenSoundName);
+      while (GR_WinMessage(ProcessWindowMessage) <> 0) and (ExitCode = 0) do
+      begin
+        if ApplyPendingDisplayChange then
+          Break;
+        Stage := 13;
+        if not MemorySnapshotActive then
+        begin
+          Stage := 14;
+          FrameTime := GameTickCount;
+          if PopupController = nil then
+          begin
+            Stage := 15;
+            DrawFrame;
+          end
+          else
+          begin
+            Stage := 16;
+            RootUiObject.AttachOwnedChild(PopupController);
+            Stage := 17;
+            DrawFrame;
+            Stage := 18;
+            RootUiObject.UnlinkOwnedChild(PopupController);
+          end;
+          Stage := 19;
+          if not (VSyncEnabled or GameWindowUsesCanvas) then
+            SysUtils.Sleep(1);
+          FrameTime := GameTickCount - FrameTime;
+          if FrameTime > 200 then
+            FrameTime := 200;
+          Stage := 20;
+          if RecordingFrames then
+          begin
+            Stage := 21;
+            CaptureRecordingFrame;
+          end;
+          ProcessingTime := GameTickCount;
+          FpsTick := GameTickCount;
+          if FpsTick - LastFpsTick > 500 then
+          begin
+            Stage := 22;
+            // Drawing/update iterations may be discarded by the presentation
+            // limiter. Count submitted frames over real elapsed time instead.
+            FramesPerSecond :=
+                (GamePresentedFrames - LastPresentedFrames) * 1000 div (FpsTick - LastFpsTick);
+            LastFpsTick := FpsTick;
+            LastPresentedFrames := GamePresentedFrames;
+            if ShowFrameRate then
+              (GetByName('FPS') as TLabelGI).SetText('FPS: ' + IntToStr(FramesPerSecond));
+          end;
+          for Index := 0 to FrameTime + CarryTicks - 1 do
+          begin
+            Stage := 23;
+            AdvanceTimerTick;
+            if PopupController <> nil then
+              PopupController.AdvancePopups(TimerTick);
+          end;
+          Stage := 24;
+          for Index := 0 to SoundGroupList.Count - 1 do
+            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
+                or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
+              TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
+          if MusicEnabled and not MusicManager.HasSelectedMusic then
+          begin
+            Stage := 25;
+            MusicManager.HasSelectedMusic;
+            SelectMusic;
+          end;
+          ProcessingTime := GameTickCount - ProcessingTime;
+          CarryTicks := ProcessingTime;
+          if CarryTicks > 200 then
+            CarryTicks := 0;
+          Stage := 26;
+        end;
+      end;
+      Stage := 27;
+      CancelPointerInput;
+      try
+        RootUiObject.OnMouseLeave;
+        RefreshMouseAfterCode := False;
+        for Index := 0 to DeferredCodeBlocks.Count - 1 do
+          ExecuteUiCode(TBlockParEC(DeferredCodeBlocks[Index]), 0);
+        DeferredCodeBlocks.Clear;
+      except
+        on E: EBreakMessageGI do
+          ;
+      end;
+      RootUiObject.OnDeactivate;
+      if CustomCursorEnabled then
+        SetCursorActive(False);
+      Stage := 28;
+      if PlayTransitionSounds and (CloseSoundName <> '') then
+        SoundManager.PlaySound(CloseSoundName);
+      Stage := 29;
+      ClearTransientControl;
+      Stage := 30;
+      OnClose;
+      Stage := 31;
+      FreeSavedPixels16;
+      Stage := 32;
+      FreeSecondaryPixelBuffer;
+      Stage := 33;
+      FreeSavedLines;
+      Result := ExitCode;
+      Stage := 34;
+    finally
+      PopMessageLoop(Self);
+    end;
+  except
+    on E: Exception do
+    begin
+      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+      E.Message :=
+          'Error in procedure TMessageLoopGI.Run2, '
+              + RegisteredLoopName
+              + ', label = '
+              + IntToStr(Stage)
+              + ': '
+              + E.Message;
+      raise;
+    end;
+  end;
+end;
+
 procedure TMessageLoopGI.AdvanceTimerTick;
 var
   Timer: PCallbackTimerGI;
   Stage: Integer;
-  CallbackMethod: TMethod;
 begin
   Stage := 0;
-  CallbackMethod.Code := nil;
-  CallbackMethod.Data := nil;
   try
     Inc(TimerTick);
     Stage := 1;
@@ -2067,8 +2346,6 @@ begin
       Stage := 4;
       ReinsertCallbackTimer(Timer);
       Stage := 5;
-      // A callback may cancel its own timer; retain diagnostic data separately.
-      CallbackMethod := TMethod(Timer.Callback);
       Timer.Callback(Timer, Timer.UserData);
       Stage := 6;
     end;
@@ -2077,24 +2354,18 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
-      AppendLogLineThreadSafe(
+      E.Message :=
           'Error in procedure TMessageLoopGI.Takt2, '
               + RegisteredLoopName
               + ', label = '
               + IntToStr(Stage)
-      );
-      if Stage = 5 then
-        AppendLogLineThreadSafe(
-            'Timer callback: '
-                + BackTraceStrFunc(CallbackMethod.Code)
-                + ', owner=$'
-                + IntToHex(PtrUInt(CallbackMethod.Data), SizeOf(Pointer) * 2)
-        );
+              + ': '
+              + E.Message;
       raise;
     end;
   end;
 end;
+
 procedure TMessageLoopGI.DrawFrame;
 begin
   if UpdateRects.FirstRect <> nil then
@@ -2103,11 +2374,9 @@ begin
     FinishQueuedDraw;
   end;
 end;
+
 procedure TMessageLoopGI.Present;
 begin
-  if DeferScreenPresentation then
-    Exit;
-  UnknownPresentState := 0;
   if ContinuousLoop then
   begin
     FullFrameRedrawRequested := True;
@@ -2126,6 +2395,52 @@ begin
     EndFramePresentation;
   end;
 end;
+
+function FindTouchControl(Control: TObjectGI; Point: TPoint): TObjectGI;
+var
+  Child: TObjectGI;
+begin
+  Result := nil;
+  if not Control.ContainsPoint(Point) then
+    Exit;
+  Child := Control.LastChild;
+  while Child <> nil do
+  begin
+    Result := FindTouchControl(Child, Point);
+    if Result <> nil then
+      Exit;
+    Child := Child.PrevSibling;
+  end;
+  // Decorative images and the cursor overlay must not hide the interactive
+  // control underneath. Widgets declare gesture ownership, without class tests.
+  if Control.MouseBlocking
+      or Assigned(Control.LeftButtonDownCallback)
+      or Assigned(Control.LeftButtonUpCallback)
+      or (Control.GetTouchInteraction <> tiNone) then
+    Result := Control;
+end;
+
+function FindTouchScrollControl(Root: TObjectGI; Point: TPoint): TObjectGI;
+var
+  Control: TObjectGI;
+begin
+  Result := nil;
+  Control := FindTouchControl(Root, Point);
+  while Control <> nil do
+  begin
+    case Control.GetTouchInteraction of
+      tiDrag: Exit;
+      tiScroll: Exit(Control);
+    end;
+    Control := Control.Parent;
+  end;
+end;
+
+function FindTouchPressControl(Root: TObjectGI; Point: TPoint): TObjectGI;
+begin
+  Result := FindTouchPressOwner(FindTouchControl(Root, Point));
+end;
+
 procedure TMessageLoopGI.ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer);
 var
   Point: TPoint;
@@ -2133,10 +2448,13 @@ var
   BreakAfterDoubleClick: Boolean;
   Stage, Index: Integer;
   NewOffset: TPoint;
+  DX, DY, Scale: Double;
+  TouchControl: TObjectGI;
   // Native reserves twelve unreferenced bytes at EBP-$4C..EBP-$41.
   // DCC32 O- allocates unused locals after live ones; original types are unknown.
   UnusedLocals: array[0..11] of Byte;
-  procedure ConvertMousePointToViewport; // @addr $4BFB04 @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4BFD6E 0x4BFED2 0x4BFF1C 0x4BFF7B 0x4BFFFF 0x4C0183 0x4C01E6 0x4C02A9" @note "Nested ProcessWindowMessage helper; scales or offsets its captured mouse point."
+
+  procedure ConvertMousePointToViewport; { Nested ProcessWindowMessage helper; scales or offsets its captured mouse point. }
   begin
     if AlternateViewportEnabled then
       if ScaleViewportToWindow then
@@ -2150,6 +2468,28 @@ var
         Dec(Point.Y, ViewportOffset.Y);
       end;
   end;
+
+  procedure GetViewportPan(out DX, DY: Double);
+  begin
+    DX := SmallInt(WParam) / 64;
+    DY := SmallInt(WParam shr 16) / 64;
+    // SDL and GameTouch supply presentation pixels. Match the point conversion
+    // while keeping fractional movement; translation never changes a vector.
+    if AlternateViewportEnabled and ScaleViewportToWindow then
+    begin
+      DX := DX * GameScreenWidth / PresentationWidth;
+      DY := DY * GameScreenHeight / PresentationHeight;
+    end;
+  end;
+
+  procedure ProcessViewportPan(Anchor: TPoint);
+  var
+    DX, DY: Double;
+  begin
+    GetViewportPan(DX, DY);
+    ProcessPanGesture(DX, DY, Anchor);
+  end;
+
 begin
   if MemorySnapshotActive then
     Exit;
@@ -2157,7 +2497,7 @@ begin
     Exit;
   Stage := 0;
   try
-    if (OnScreenKeyboard <> nil) then
+    if OnScreenKeyboard <> nil then
     begin
       Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
       ConvertMousePointToViewport;
@@ -2176,7 +2516,185 @@ begin
       OpenOnScreenKeyboard(FocusedControl);
       Exit;
     end;
-    if Message = WM_MOUSEMOVE then
+    // WM_GAME_CANCEL_INPUT is broadcast to every loop by MainWindowProc.
+    if GamePointerInputIsTouch
+        and TouchPressConsumed
+        and ((Message = WM_LBUTTONDOWN)
+            or (Message = WM_LBUTTONUP)
+            or (Message = WM_LBUTTONDBLCLK)) then
+      Exit;
+    if Message = WM_GAME_TOUCH_BEGIN then
+    begin
+      CancelTouchPress;
+      TouchPressConsumed := False;
+      TouchPinchAllowed := False;
+      Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+      ConvertMousePointToViewport;
+      TouchAnchor := Point;
+      if WParam = MK_LBUTTON then
+      begin
+        TouchControl := FindTouchPressControl(RootUiObject, Point);
+        if TouchControl <> nil then
+        begin
+          TouchPressControl := TouchControl;
+          TouchPressConsumed := (TouchControl.GetTouchInteraction = tiHold);
+          if not TouchControl.BeginTouchPress(Point) then
+          begin
+            TouchPressControl := nil;
+            TouchPressConsumed := False;
+          end;
+        end;
+      end;
+    end
+    else if Message = WM_GAME_TOUCH_MOVE then
+    begin
+      if TouchPressControl <> nil then
+      begin
+        Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+        ConvertMousePointToViewport;
+        if not TouchPressControl.TouchPressContains(Point)
+            or (FindTouchPressControl(RootUiObject, Point) <> TouchPressControl) then
+        begin
+          TouchPressConsumed := True;
+          CancelTouchPress;
+        end;
+      end;
+    end
+    else if Message = WM_GAME_TOUCH_END then
+    begin
+      // Physical release precedes the recognizer's synthesized down/up events.
+      // Clear only the preview: AllowsTouchActivation still needs the borrowed owner.
+      if TouchPressControl <> nil then
+        TouchPressControl.CancelTouchPress;
+    end
+    else if Message = WM_GAME_TOUCH_DRAG_BEGIN then
+    begin
+      Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+      ConvertMousePointToViewport;
+      TouchButton := WParam;
+      TouchAnchor := Point;
+      TouchScrollControl := nil;
+      if TouchButton = MK_LBUTTON then
+        TouchScrollControl := FindTouchScrollControl(RootUiObject, Point);
+      if (TouchPressControl <> nil) and (TouchPressControl.GetTouchInteraction = tiHold) then
+        TouchDragKind := tdPress
+      else if TouchScrollControl <> nil then
+      begin
+        CancelTouchPress;
+        TouchPressConsumed := True;
+        TouchDragKind := tdScroll;
+        TouchScrollX := 0;
+        TouchScrollY := 0;
+      end
+      else if (TouchPressControl <> nil) or TouchPressConsumed then
+      begin
+        CancelTouchPress;
+        TouchPressConsumed := True;
+        TouchDragKind := tdPress;
+      end
+      else if (TouchButton = MK_LBUTTON) and CanPanGesture(Point) then
+        TouchDragKind := tdPan
+      else if DeferTouchDrag(Point) then
+        TouchDragKind := tdDeferred
+      else
+        TouchDragKind := tdControl;
+      PanWheelRemainder := 0;
+      GesturePanValid := False;
+      if TouchDragKind = tdControl then
+      begin
+        if TouchButton = MK_RBUTTON then
+          ProcessWindowMessage(WM_RBUTTONDOWN, MK_RBUTTON, LParam)
+        else
+          ProcessWindowMessage(WM_LBUTTONDOWN, MK_LBUTTON, LParam);
+      end;
+    end
+    else if Message = WM_GAME_TOUCH_DRAG_MOVE then
+    begin
+      if TouchDragKind = tdNone then
+        Exit;
+      if TouchDragKind = tdScroll then
+      begin
+        ProcessWindowMessage(WM_MOUSEMOVE, 0, LParam);
+        if TouchScrollControl <> nil then
+        begin
+          GetViewportPan(DX, DY);
+          Scale := TouchScrollControl.GetDisplayScale;
+          TouchScrollControl.ScrollByTouch(DX / Scale, DY / Scale, TouchScrollX, TouchScrollY);
+        end;
+      end
+      else if TouchDragKind = tdPan then
+      begin
+        ProcessWindowMessage(WM_MOUSEMOVE, 0, LParam);
+        ProcessViewportPan(TouchAnchor)
+      end
+      else if TouchDragKind in [tdDeferred, tdPress] then
+        ProcessWindowMessage(WM_MOUSEMOVE, 0, LParam)
+      else
+        ProcessWindowMessage(WM_MOUSEMOVE, TouchButton, LParam);
+    end
+    else if Message = WM_GAME_TOUCH_DRAG_END then
+    begin
+      if TouchDragKind = tdNone then
+        Exit;
+      if TouchDragKind = tdDeferred then
+      begin
+        Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+        ConvertMousePointToViewport;
+        if not DeferTouchDrag(Point) then
+        begin
+          CancelPointerInput;
+          Exit;
+        end;
+        if TouchButton = MK_RBUTTON then
+          ProcessWindowMessage(WM_RBUTTONDOWN, MK_RBUTTON, LParam)
+        else
+          ProcessWindowMessage(WM_LBUTTONDOWN, MK_LBUTTON, LParam);
+        // A nested modal may cancel the gesture inside the down callback.
+        // Respect that cancellation just as we do for queued tap releases.
+        if TouchDragKind = tdNone then
+          Exit;
+      end;
+      if not (TouchDragKind in [tdPan, tdScroll, tdPress]) then
+        if TouchButton = MK_RBUTTON then
+          ProcessWindowMessage(WM_RBUTTONUP, 0, LParam)
+        else
+          ProcessWindowMessage(WM_LBUTTONUP, 0, LParam);
+      TouchDragKind := tdNone;
+      TouchScrollControl := nil;
+    end
+    else if Message = WM_GAME_PAN_BEGIN then
+    begin
+      // A second finger may arrive after an ordinary drag has already begun.
+      // Cancel the control, without discarding the recognizer's finger state.
+      CancelPointerInput;
+      Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+      ConvertMousePointToViewport;
+      // Hover mode has no touch-down notification or button capture.
+      TouchPinchAllowed :=
+          (GamePointerInputIsTouchHover or CanPanGesture(TouchAnchor)) and CanPanGesture(Point);
+    end
+    else if Message = WM_GAME_PAN then
+    begin
+      Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+      ConvertMousePointToViewport;
+      ProcessViewportPan(Point);
+    end
+    else if Message = WM_GAME_PINCH then
+    begin
+      if TouchPinchAllowed then
+      begin
+        Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
+        ConvertMousePointToViewport;
+        ProcessPinchGesture(WParam / 65536.0, Point);
+      end;
+    end
+    else if Message = WM_GAME_PAN_END then
+    begin
+      if TouchPinchAllowed then
+        EndPinchGesture;
+      TouchPinchAllowed := False;
+    end
+    else if Message = WM_MOUSEMOVE then
     begin
       Point.X := SmallInt(LParam);
       Point.Y := SmallInt(LParam shr 16);
@@ -2208,9 +2726,9 @@ begin
         if (ViewportOffset.X <> NewOffset.X) or (ViewportOffset.Y <> NewOffset.Y) then
         begin
           IgnoreWarpMouseMove := True;
-          ClientToScreen(MainWindowHandle, Point);
-          SetCursorPos(Point.X, Point.Y);
-          ScreenToClient(MainWindowHandle, Point);
+
+          WarpGameMouse(Point.X, Point.Y);
+
         end;
         ViewportOffset := NewOffset;
       end;
@@ -2240,18 +2758,18 @@ begin
     else if Message = WM_MOUSELEAVE then
     begin
       Stage := 8;
-      GetCursorPos(Point);
-      ScreenToClient(MainWindowHandle, Point);
+      GetGameMouse(Point);
+
       Stage := 9;
       ProcessWindowMessage(WM_MOUSEMOVE, 0, Word(Point.X) or (Word(Point.Y) shl 16));
       Stage := 10;
-      LastMouseMessageTick := timeGetTime;
+      LastMouseMessageTick := GameTickCount;
     end
     else if Message = WM_MOUSEWHEEL then
     begin
       Stage := 11;
       Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
-      ScreenToClient(MainWindowHandle, Point);
+
       ConvertMousePointToViewport;
       ProcessMouseWheel(Word(WParam), Point, SmallInt(WParam shr 16));
     end
@@ -2404,7 +2922,7 @@ begin
       if StatusLabel.Active and (DebugControl <> nil) then
       begin
         Stage := 37;
-        if GetAsyncKeyState(VK_CONTROL) and $8000 = $8000 then
+        if GameKeyState(VK_CONTROL) and $8000 = $8000 then
           MoveStep := 10
         else
           MoveStep := 1;
@@ -2470,23 +2988,27 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogExceptionBackTrace;
       if Stage in [31, 32] then
         AppendLogLineThreadSafe('key=' + IntToWideString(WParam));
-      raise Exception.Create(
-          'Error in procedure TMessageLoopGI.SysMessage, label = ' + IntToStr(Stage));
+      E.Message :=
+          'Error in procedure TMessageLoopGI.SysMessage, label = '
+              + IntToStr(Stage)
+              + ': '
+              + E.Message;
+      raise;
     end;
   end;
 end;
+
 procedure TMessageLoopGI.CaptureScreenshot;
 var
-
   Digits: AnsiString;
-
   DigitCount: Integer;
   Extension, BaseName, FileName: AnsiString;
   Buffer: TGraphBufGR;
-  function FindFreeScreenshotName: Boolean; // @addr $4C0A14 @ida "bool __usercall $name@<al>(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x4C0C40" @note "Nested CaptureScreenshot helper; updates the captured filename strings."
+
+  function FindFreeScreenshotName:
+      Boolean; { Nested CaptureScreenshot helper; updates the captured filename strings. }
   var
     Index: Integer;
   begin
@@ -2494,22 +3016,21 @@ var
     Index := 0;
     while Index < 1000 do
     begin
-
       Digits := IntToStr(Index);
       while Length(Digits) < DigitCount do
         Digits := '0' + Digits;
       BaseName := 'Shot' + Digits + Extension;
-
       FileName := GetGameUserDirectory + 'Screenshots' + '\' + BaseName;
-      if not RTLFileSystem.FileExists(FileName) then
+      if not SysUtils.FileExists(NativeGamePath(FileName)) then
         Break;
       Inc(Index);
     end;
     if Index < 1000 then
       Result := True;
   end;
+
 begin
-  CreateDir(GetGameUserDirectory + 'Screenshots');
+  CreateDir(NativeGamePath(GetGameUserDirectory + 'Screenshots'));
   DigitCount := Length(IntToStr(999));
   case ScreenshotFormat of
     0: Extension := '.bmp';
@@ -2522,7 +3043,7 @@ begin
     Buffer := TGraphBufGR.Create(False);
     try
       if HardwareRenderingEnabled then
-        Buffer.LoadFromScreen(0)
+        Buffer.LoadFromScreen(0, True)
       else
       begin
         Buffer.AllocateRgbaTight(GameScreenWidth, GameScreenHeight);
@@ -2545,21 +3066,24 @@ begin
     end;
   end;
 end;
+
 procedure TMessageLoopGI.RequestClose(ResultCode: Integer);
 begin
   ExitCode := ResultCode;
 end;
+
 procedure TMessageLoopGI.SetHelpCallback(Callback: TObjectHelpEventGI);
 begin
   ContentPanel.SetHelpCallbackRecursive(Callback);
 end;
+
 function TMessageLoopGI.GetByName(const Name: WideString): TObjectGI;
 begin
-
   Result := ContentPanel.FindByNameRecursive(Name);
   if Result = nil then
     raise Exception.Create('TMessageLoopGI.GetByName. Name=' + Name);
 end;
+
 function TMessageLoopGI.FindControlByPath(const Path: WideString): TObjectGI;
 var
   Index, Count: Integer;
@@ -2578,6 +3102,7 @@ begin
     end;
   end;
 end;
+
 procedure TMessageLoopGI.SetFocusedControl(Control: TObjectGI);
 begin
   if FocusedControl = Control then
@@ -2636,43 +3161,40 @@ begin
   if HoveredControl <> nil then
     HoveredControl.OnHoverGained;
 end;
+
 procedure TMessageLoopGI.ProcessNamedControlEvent(
     ControlName: WideString;
     EventKind, Param1, Param2: Integer
 );
 begin
 end;
+
 procedure TMessageLoopGI.OnOpen;
 begin
   IsOpen := True;
 end;
+
 procedure TMessageLoopGI.OnClose;
 begin
   IsOpen := False;
 end;
+
 procedure TMessageLoopGI.ProcessCallbackTimers;
 var
   NowTick: Cardinal;
   Timer: PCallbackTimerGI;
-
-  WaitMs: PtrInt;
-  Handle: Windows.THandle;
-
+  WaitMs: Integer;
 begin
-
-  NowTick := timeGetTime;
-
+  NowTick := GameTickCount;
   if FirstTimer <> nil then
   begin
     WaitMs := Integer(FirstTimer.DueTick - NowTick);
     if WaitMs > 0 then
     begin
-      Handle := 0;
-      MsgWaitForMultipleObjects(0, Handle, False, WaitMs, $1FF);
-      NowTick := timeGetTime;
+      WaitGameMessages(WaitMs);
+      NowTick := GameTickCount;
     end;
   end;
-
   NextTimerToProcess := FirstTimer;
   while NextTimerToProcess <> nil do
   begin
@@ -2687,9 +3209,11 @@ begin
   NextTimerToProcess := nil;
   TimerTick := NowTick;
 end;
+
 procedure TMessageLoopGI.SelectMusic;
 begin
 end;
+
 function TMessageLoopGI.ScheduleCallbackTimer(
     DelayMs, RepeatMs: Integer;
     Callback: TCallbackTimerEventGI;
@@ -2707,19 +3231,18 @@ begin
   if FirstTimer = nil then
     FirstTimer := Timer;
   Timer.DueTick := TimerTick + Cardinal(DelayMs);
-  Timer.CachedDueTick := Timer.DueTick;
   Timer.RepeatMs := RepeatMs;
   Timer.UserData := UserData;
   Timer.Callback := Callback;
   ReinsertCallbackTimer(Timer);
   Result := Timer;
 end;
+
 procedure TMessageLoopGI.CancelCallbackTimer(Timer: PCallbackTimerGI);
 var
   Current: PCallbackTimerGI;
 begin
   Current := Timer;
-  UncacheCallbackTimer(Current);
   if NextTimerToProcess = Current then
     NextTimerToProcess := NextTimerToProcess.Next;
   if Current.Prev <> nil then
@@ -2732,6 +3255,7 @@ begin
     FirstTimer := Current.Next;
   FreeEC(Current);
 end;
+
 procedure TMessageLoopGI.UpdateCallbackTimer(Timer: PCallbackTimerGI; DelayMs, RepeatMs: Integer);
 var
   Current: PCallbackTimerGI;
@@ -2743,32 +3267,12 @@ begin
   Current.RepeatMs := RepeatMs;
   ReinsertCallbackTimer(Current);
 end;
-// CHANGE: PERFORMANCE - Never retain a timer after it moves or is cancelled.
-procedure TMessageLoopGI.UncacheCallbackTimer(Timer: PCallbackTimerGI);
-var
-  Slot: Cardinal;
-begin
-  Slot := Timer.CachedDueTick and High(TimerDeadlineHeads);
-  if TimerDeadlineHeads[Slot] <> Timer then
-    Exit;
-  if (Timer.Next <> nil) and (Timer.Next.DueTick = Timer.CachedDueTick) then
-    TimerDeadlineHeads[Slot] := Timer.Next
-  else
-    TimerDeadlineHeads[Slot] := nil;
-end;
+
 procedure TMessageLoopGI.ReinsertCallbackTimer(Timer: PCallbackTimerGI);
 var
-  Current, Before, DeadlineHead: PCallbackTimerGI;
-  Slot: Cardinal;
+  Current, Before: PCallbackTimerGI;
 begin
   Current := Timer;
-  UncacheCallbackTimer(Current);
-  Slot := Current.DueTick and High(TimerDeadlineHeads);
-  DeadlineHead := TimerDeadlineHeads[Slot];
-  Current.CachedDueTick := Current.DueTick;
-  // Insertion is always before equal deadlines, retaining the original tie order.
-  if not TimerDeadlineCacheDisabled then
-    TimerDeadlineHeads[Slot] := Current;
   if Current.Prev <> nil then
     Current.Prev.Next := Current.Next;
   if Current.Next <> nil then
@@ -2779,25 +3283,10 @@ begin
     FirstTimer := Current.Next;
   if FirstTimer = nil then
   begin
-    TimerDeadlineCacheDisabled := False;
-    TimerDeadlineHeads[Slot] := Current;
     FirstTimer := Current;
     LastTimer := Current;
     Current.Prev := nil;
     Current.Next := nil;
-    Exit;
-  end;
-  // CHANGE: PERFORMANCE - Animation timers commonly share a deadline. Avoid
-  // walking thousands of later timers to find the same insertion point again.
-  if (DeadlineHead <> nil) and (DeadlineHead.DueTick = Current.DueTick) then
-  begin
-    Current.Prev := DeadlineHead.Prev;
-    Current.Next := DeadlineHead;
-    if DeadlineHead.Prev <> nil then
-      DeadlineHead.Prev.Next := Current
-    else
-      FirstTimer := Current;
-    DeadlineHead.Prev := Current;
     Exit;
   end;
   if LastTimer.DueTick < Current.DueTick then
@@ -2826,19 +3315,21 @@ begin
     Before.Next := Current;
   end;
 end;
+
 procedure TMessageLoopGI.RefreshTimerTick;
 begin
-  TimerTick := timeGetTime;
+  TimerTick := GameTickCount;
 end;
+
 procedure TMessageLoopGI.SetCursorImage(const ImagePath: WideString; HotSpot: TPoint);
 begin
   if CustomCursorEnabled then
   begin
-    (CursorControl as TCursorGI).SetImagePath(ImagePath);
-    CursorControl.SetOrigin(HotSpot);
+    (CursorControl as TCursorGI).SetImage(ImagePath, HotSpot);
     CursorImagePath := ImagePath;
   end;
 end;
+
 procedure TMessageLoopGI.SetCursorByName(const Name: WideString);
 var
   Cursor: TCursorUnit;
@@ -2849,6 +3340,7 @@ begin
     SetCursorImage(Cursor.ImagePath, Cursor.HotSpot);
   end;
 end;
+
 function TMessageLoopGI.IsCursorImageSelected(const RegisteredName: WideString): Boolean;
 var
   Cursor: TCursorUnit;
@@ -2856,15 +3348,18 @@ begin
   Cursor := FindCursorByName(RegisteredName);
   Result := Cursor.ImagePath = CursorImagePath;
 end;
+
 function TMessageLoopGI.IsCursorActive: Boolean;
 begin
   Result := CursorControl.Active;
 end;
+
 procedure TMessageLoopGI.SetCursorActive(Enabled: Boolean);
 begin
   if CursorControl.Active <> Enabled then
     CursorControl.SetActive(Enabled);
 end;
+
 procedure TMessageLoopGI.CaptureCursorState(State: PCursorStateGI);
 begin
   State^.ImagePath := CursorImagePath;
@@ -2872,6 +3367,7 @@ begin
   State^.HotSpot := CursorControl.OriginPoint;
   State^.Position := CursorControl.LocalPosition;
 end;
+
 procedure TMessageLoopGI.RestoreCursorState(State: PCursorStateGI);
 begin
   if CustomCursorEnabled then
@@ -2881,23 +3377,42 @@ begin
     CursorControl.SetPosition(State^.Position);
   end;
 end;
+
 procedure TMessageLoopGI.UpdateCursorPosition;
 var
   Point: TPoint;
 begin
-  GetCursorPos(Point);
-  if Direct3DPresentParameters.Windowed then
-    ScreenToClient(MainWindowHandle, Point);
+  GetGameMouse(Point);
   CursorControl.SetPosition(Point);
 end;
+
 function TMessageLoopGI.GetCursorPoint: TPoint;
 begin
   Result := CursorControl.LocalPosition;
 end;
+
+function TMessageLoopGI.GetScrollMousePoint(out Point: TPoint): Boolean;
+begin
+  Result :=
+      GameMouseInWindow
+          and GamePointerAllowsEdgeScroll
+          and (GameScreenWidth > 0)
+          and (GameScreenHeight > 0);
+  if not Result then
+    Exit;
+  // Cursor positions already include the alternate viewport's scale or offset.
+  Point := GetCursorPoint;
+  // Letterbox bars are inside the window/canvas too. Clamp only the scrolling
+  // sample, leaving the actual cursor and hit testing untouched.
+  Point.X := Math.EnsureRange(Point.X, 0, GameScreenWidth - 1);
+  Point.Y := Math.EnsureRange(Point.Y, 0, GameScreenHeight - 1);
+end;
+
 procedure TMessageLoopGI.SetSystemCursorPosition(Point: TPoint);
 begin
-  SetCursorPos(Point.X, Point.Y);
+  WarpGameMouse(Point.X, Point.Y);
 end;
+
 function TMessageLoopGI.ConsumeTimerTickChange: Boolean;
 begin
   if LastObservedTimerTick = TimerTick then
@@ -2908,6 +3423,7 @@ begin
   LastObservedTimerTick := TimerTick;
   Result := True;
 end;
+
 function TMessageLoopGI.QueryPointOcclusionState(
     Point: TPoint;
     IgnoreControl, StartControl: TObjectGI
@@ -2939,6 +3455,7 @@ begin
   else
     Result := 0;
 end;
+
 procedure TMessageLoopGI.FreeSavedPixels16;
 begin
   if SavedPixels16 <> nil then
@@ -2949,25 +3466,27 @@ begin
   SavedPixelCount16 := 0;
   SavedPixelCapacity16 := 0;
 end;
+
 procedure TMessageLoopGI.RestoreSavedPixels16;
 var
-  I: Integer;
-  P, Pixels: PByte;
+  Entry, Pixels: PByte;
+  Index, Offset: Integer;
 begin
-  if HardwareRenderingEnabled or (SavedPixelCount16 = 0) then
-  begin
-    SavedPixelCount16 := 0;
-    Exit
-  end;
+  if SavedPixelCount16 < 1 then
+    Exit;
   Pixels := ScreenRenderBuffer.GetPixels;
-  P := SavedPixels16;
-  for I := 0 to SavedPixelCount16 - 1 do
+  Entry := SavedPixels16;
+  for Index := 0 to SavedPixelCount16 - 1 do
   begin
-    PWord(Pixels + PInteger(P)^)^ := PWord(P + 4)^;
-    Inc(P, 8)
+    // Each entry retains its 32-bit byte offset, 16-bit pixel and two padding bytes.
+    // Only Pixels is an address; widening the entry would break its other users.
+    Move(Entry^, Offset, SizeOf(Offset));
+    Move((Entry + 4)^, (Pixels + Offset)^, SizeOf(Word));
+    Inc(Entry, 8);
   end;
-  SavedPixelCount16 := 0
+  SavedPixelCount16 := 0;
 end;
+
 procedure TMessageLoopGI.FreeSecondaryPixelBuffer;
 begin
   if SecondaryPixelBuffer <> nil then
@@ -2978,12 +3497,14 @@ begin
   SecondaryPixelCount := 0;
   SecondaryPixelCapacity := 0;
 end;
+
 procedure TMessageLoopGI.ResetSecondaryPixelCount;
 begin
   if SecondaryPixelCount < 1 then
     Exit;
   SecondaryPixelCount := 0;
 end;
+
 procedure TMessageLoopGI.FreeSavedLines;
 var
   Index: Integer;
@@ -2993,6 +3514,7 @@ begin
   SavedLines := nil;
   SavedLineCount := 0;
 end;
+
 procedure TMessageLoopGI.AddSavedLine(First, Last: TPoint; Pixels: Pointer);
 begin
   if High(SavedLines) + 1 = SavedLineCount then
@@ -3000,9 +3522,10 @@ begin
   SavedLines[SavedLineCount].First := First;
   SavedLines[SavedLineCount].Last := Last;
   SavedLines[SavedLineCount].Pixels := Pixels;
-  SavedLines[SavedLineCount].Heap := GetProcessHeap;
+  SavedLines[SavedLineCount].Heap := GameHeap.GetProcessHeap;
   Inc(SavedLineCount);
 end;
+
 procedure TMessageLoopGI.RestoreSavedLines;
 var
   Index: Integer;
@@ -3019,13 +3542,98 @@ begin
           SavedLines[Index].Last.Y
       );
 end;
+
 procedure TMessageLoopGI.ResetSavedLineCount;
 begin
   SavedLineCount := 0;
 end;
+
 procedure TMessageLoopGI.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 begin
 end;
+
+function TMessageLoopGI.CanPanGesture(Point: TPoint): Boolean;
+begin
+  Result := False;
+end;
+
+function TMessageLoopGI.DeferTouchDrag(Point: TPoint): Boolean;
+begin
+  Result := False;
+end;
+
+function TMessageLoopGI.AccumulatePanGesture(DX, DY: Double; Position: TPoint): TPoint;
+begin
+  // Preserve fractional motion until a new gesture or another camera control
+  // changes the position. Touch supplies explicit gesture boundaries.
+  if not GesturePanValid
+      or (Position.X <> GesturePanPosition.X)
+      or (Position.Y <> GesturePanPosition.Y) then
+  begin
+    GesturePanX := Position.X;
+    GesturePanY := Position.Y;
+  end;
+  GesturePanValid := True;
+  GesturePanX := GesturePanX + DX;
+  GesturePanY := GesturePanY + DY;
+  GesturePanPosition := Classes.Point(Round(GesturePanX), Round(GesturePanY));
+  Result := GesturePanPosition;
+end;
+
+procedure TMessageLoopGI.ProcessPanGesture(DX, DY: Double; Point: TPoint);
+var
+  Steps, Index: Integer;
+begin
+  if ChildLoop <> nil then
+    Exit;
+  // Preserve existing per-screen wheel routing and retain slow fractional
+  // gestures. Horizontal gestures have no action on non-map screens.
+  PanWheelRemainder := PanWheelRemainder - DY / 10;
+  Steps := Trunc(PanWheelRemainder);
+  PanWheelRemainder := PanWheelRemainder - Steps;
+  for Index := 1 to Abs(Steps) do
+  begin
+    ProcessMouseWheel(0, Point, Sign(Steps) * WHEEL_DELTA);
+    if (ExitCode <> 0) or (ChildLoop <> nil) then
+      Break;
+  end;
+end;
+
+procedure TMessageLoopGI.CancelTouchPress;
+var
+  Control: TObjectGI;
+begin
+  Control := TouchPressControl;
+  // Drop the borrowed reference before callbacks can change the control tree.
+  TouchPressControl := nil;
+  if Control <> nil then
+    Control.CancelTouchPress;
+end;
+
+procedure TMessageLoopGI.ProcessPinchGesture(Factor: Double; Point: TPoint);
+begin
+  // Only screens with an explicit zoom implementation consume pinches.
+end;
+
+procedure TMessageLoopGI.EndPinchGesture;
+begin
+end;
+
+procedure TMessageLoopGI.CancelPointerInput;
+begin
+  if TouchPinchAllowed then
+    EndPinchGesture;
+  CancelTouchPress;
+  TouchPressConsumed := True;
+  TouchDragKind := tdNone;
+  TouchScrollControl := nil;
+  PanWheelRemainder := 0;
+  GesturePanValid := False;
+  TouchPinchAllowed := False;
+  if RootUiObject <> nil then
+    RootUiObject.CancelPointerInput;
+end;
+
 procedure TMessageLoopGI.ClearTransientControl;
 begin
   InvalidateTransientControl;
@@ -3041,6 +3649,7 @@ begin
     TransientControl := nil;
   end;
 end;
+
 procedure TMessageLoopGI.InvalidateTransientControl;
 var
   WasEnabled: Boolean;
@@ -3053,6 +3662,7 @@ begin
     UpdateRectsEnabled := WasEnabled;
   end;
 end;
+
 procedure TMessageLoopGI.InitializeDefaults;
 var
   LabelControl: TLabelGI;
@@ -3081,6 +3691,7 @@ begin
   CursorControl := TCursorGI.Create(OverlayPanel);
   CursorControl.SetDepth(-1E30);
 end;
+
 procedure TMessageLoopGI.InitializeFromConfig(
     ConfigRoot: TBlockParEC;
     const ScreenName: WideString;
@@ -3116,30 +3727,33 @@ begin
       Group.LoadFromBlock(SoundBlock.GetBlockByIndex(Index));
     end;
   end;
-
   ContentPanel.LoadFromBlock(ScreenBlock.GetBlockByPath('Panel'));
   RootUiObject.UpdateAbsolutePosition;
   RootUiObject.UpdateSubtreeHitBounds;
   QueueUpdateRect(ViewportRect);
-
 end;
+
 procedure TMessageLoopGI.InitializeLayout;
 begin
   RootUiObject.UpdateAutoGeometry;
 end;
+
 procedure TMessageLoopGI.UpdateActionCursor(CanTake: Boolean);
 begin
 end;
+
 function TMessageLoopGI.GetActionParentLoop: TMessageLoopGI;
 begin
   Result := nil;
 end;
+
 procedure TMessageLoopGI.QueueUiCode(Block: TBlockParEC; RefreshMouse: Boolean);
 begin
   DeferredCodeBlocks.Add(Block);
   if RefreshMouse then
     RefreshMouseAfterCode := True;
 end;
+
 procedure TMessageLoopGI.RefreshMouseDispatch;
 var
   Point: TPoint;
@@ -3148,14 +3762,9 @@ begin
   Point.Y := LastMousePosition.Y;
   RootUiObject.ProcessMouseMove(0, Point);
 end;
+
 procedure TMessageLoopGI.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCursorGI.ClassName;
-  TGraphBufGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-end;
+
 end.

@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheGI;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -14,19 +13,23 @@ uses
   GR_gi,
   Types,
   Direct3D9;
+
 type
+
   TCGiControlEC = class;
+
   TCGiEC = class;
+
   TCGiControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCGiEC = class(TCacheDataEC)
     Image: TgiGR;
     SurfaceCache: TTextureGR;
     UsesTiledSurfaces: Boolean;
-    Gap29: array[0..2] of Byte;
     TileOrigins: array of TPoint;
     TileCount: Integer;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
@@ -36,16 +39,19 @@ type
     function GetOrCreateSurface(SurfaceIndex: Integer): IDirect3DTexture9;
     procedure ApplyWideScreenLayoutFixups(SourceBuffer: TBufEC; const ResourceKey: WideString);
   end;
+
 function AcquireCachedGi(Control: TCacheControlEC): TCGiEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  SysUtils,
   EC_Mem,
   EC_Str,
+  GI_LayoutMetrics,
   GR_Main,
-  Windows,
-  Math;
+  Math,
+  SysUtils;
+
 procedure TCGiControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
   Control: TCGiControlEC;
@@ -64,18 +70,22 @@ begin
     PendingLoads.Add(Control);
   end;
 end;
+
 function TCGiControlEC.CreateData: TCacheDataEC;
 begin
   Result := TCGiEC.Create;
 end;
+
 function AcquireCachedGi(Control: TCacheControlEC): TCGiEC;
 begin
   Result := Control.AcquireDataFromConfig(TCGiEC) as TCGiEC;
 end;
+
 function TCGiControlEC.AcquireData: TCacheDataEC;
 begin
   Result := AcquireCachedGi(Self);
 end;
+
 constructor TCGiEC.Create;
 begin
   inherited Create;
@@ -84,6 +94,7 @@ begin
   UsesTiledSurfaces := False;
   TileCount := 0;
 end;
+
 destructor TCGiEC.Destroy;
 begin
   Image.Free;
@@ -97,10 +108,12 @@ begin
   end;
   inherited Destroy;
 end;
+
 function TCGiEC.GetTileOrigin(TileIndex: Integer): TPoint;
 begin
   Result := TileOrigins[TileIndex];
 end;
+
 function TCGiEC.GetOrCreateSurface(SurfaceIndex: Integer): IDirect3DTexture9;
 var
   Texture: IDirect3DTexture9;
@@ -108,10 +121,8 @@ var
   Locked: TD3DLockedRect;
   TileIndex, Columns, Rows, TileWidth, TileHeight, Column, Row: Integer;
   Origin: TPoint;
-  function GiTileDivideRoundUp(
-      Value,
-      Divisor: Integer
-  ): Integer; // @addr 0x478B00 @ida "int __usercall $name@<eax>(int Value@<eax>, int Divisor@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x00478BE7 0x00478BFD"
+
+  function GiTileDivideRoundUp(Value, Divisor: Integer): Integer;
   begin
     Result := (Divisor - 1 + Value) div Divisor;
   end;
@@ -146,7 +157,7 @@ begin
           TileHeight := MaxTextureSize.Y;
         while Column < Columns do
         begin
-          TileIndex := Row * Rows + Column;
+          TileIndex := Row * Columns + Column;
           if MaxTextureSize.X >= ImageSize.X then
             TileWidth := ImageSize.X
           else if (Column + 1) * MaxTextureSize.X > ImageSize.X then
@@ -203,28 +214,33 @@ begin
   end;
   Result := Texture;
 end;
+
 procedure TCGiEC.LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString);
-
 begin
-
   ApplyWideScreenLayoutFixups(SourceBuffer, CacheKey);
   Image.LoadRawGiFromBuffer(SourceBuffer);
   ResidentBytes := Image.DataSize;
 end;
+
 procedure TCGiEC.ApplyWideScreenLayoutFixups(SourceBuffer: TBufEC; const ResourceKey: WideString);
 var
   WorkingImage: TgiGR;
+  LayoutSize: TPoint;
+  LayoutWidth, LayoutHeight, ExtraWidth, LayoutExtraHeight: Integer;
   Quiet: Boolean;
   SourceGraph, DestGraph: TGraphBufGR;
   VerticalAlign, ImageWidth, ImageHeight: Integer;
   Header: PgiHeaderGR;
   HeaderBytes: Pointer;
   Delta, Remainder, ExtraHeight: Integer;
+  HudWidth, HudHeight, Separator: Integer;
+  HudKey, HudPrefix, HudDimensions: WideString;
+  ContentKey: WideString;
+  ContentExtraHeight, ContentHeight: Integer;
   PreserveAlpha: Boolean;
-  procedure RenderGiBufferToGraphBuf(
-      SourceBuffer: TBufEC;
-      DestGraphBuf: TGraphBufGR
-  ); // @addr 0x478F10 @ida "void __usercall $name(TBufEC *SourceBuffer@<eax>, TGraphBufGR *DestGraphBuf@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x004791E8 0x00479309 0x0047952D 0x00479727 0x004798A2 0x00479A24 0x00479D07 0x00479E70 0x0047A074 0x0047A24C 0x0047A33B 0x0047A494 0x0047A58C 0x0047A794 0x0047A9BB 0x0047AD3F"
+  DialogueExpansion: TDialogueExpansion;
+
+  procedure RenderGiBufferToGraphBuf(SourceBuffer: TBufEC; DestGraphBuf: TGraphBufGR);
   begin
     WorkingImage := TgiGR.Create;
     WorkingImage.LoadRawGiFromBuffer(SourceBuffer);
@@ -233,11 +249,12 @@ var
     WorkingImage.ClearData;
     WorkingImage.Free;
   end;
+
   procedure StoreGraphBufAsRawGiBuffer(
       DestBuffer: TBufEC;
       SourceGraphBuf: TGraphBufGR;
       StorageMode: Integer
-  ); // @addr 0x478F94 @ida "void __usercall $name(TBufEC *DestBuffer@<eax>, TGraphBufGR *SourceGraphBuf@<edx>, int StorageMode@<ecx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x0047A2D9 0x0047A440 0x0047A524 0x0047ADC3"
+  );
   begin
     WorkingImage := TgiGR.Create;
     WorkingImage.CreateFromGraphBuf(SourceGraphBuf, StorageMode);
@@ -246,11 +263,12 @@ var
     WorkingImage.ClearData;
     WorkingImage.Free;
   end;
+
   procedure StoreGraphBufAsGiBuffer(
       DestBuffer: TBufEC;
       SourceGraphBuf: TGraphBufGR;
       TopLeft: TPoint
-  ); // @addr 0x479004 @ida "void __usercall $name(TBufEC *DestBuffer@<eax>, TGraphBufGR *SourceGraphBuf@<edx>, TPoint *TopLeft@<ecx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x004792A1 0x004794A3 0x0047969D 0x00479818 0x00479990 0x00479C46 0x00479DAB 0x00479FE6 0x0047A1E9 0x0047A6CE 0x0047A8C5 0x0047A9FB 0x0047ADAF"
+  );
   begin
     WorkingImage := TgiGR.Create;
     WorkingImage.CreateFormat2FromGraphBuf(SourceGraphBuf, TopLeft);
@@ -259,28 +277,69 @@ var
     WorkingImage.ClearData;
     WorkingImage.Free;
   end;
-  procedure LogWideScreenGiRescaleStart; // @addr 0x47907C @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x004791CA 0x004792EB 0x0047950F 0x00479709 0x00479884 0x00479A06 0x00479CE9 0x00479E52 0x0047A056 0x0047A22E 0x0047A31D 0x0047A476 0x0047A56E 0x0047A776 0x0047A99D 0x0047AD21"
+
+  procedure LogWideScreenGiRescaleStart;
   begin
     if not Quiet then
       AppendLogTextThreadSafe('Rescaling ' + ResourceKey + '... ');
   end;
-  procedure LogWideScreenGiRescaleDone; // @addr 0x479120 @ida "void __usercall $name(void *ParentFrame@<^0>);" @stackpop 0 @calls "0x004792B8 0x004794BA 0x004796B4 0x0047982F 0x004799A7 0x00479C5D 0x00479DC2 0x00479FFD 0x0047A200 0x0047A2F0 0x0047A457 0x0047A53B 0x0047A6E5 0x0047A8DC 0x0047AA12 0x0047ADDA"
+
+  procedure LogWideScreenGiRescaleDone;
   begin
     if not Quiet then
       AppendLogLineThreadSafe('ok');
   end;
 begin
-  ExtraHeight := ExtraScreenHeight;
+  LayoutSize := GetNormalGameLayoutSize;
+  LayoutWidth := LayoutSize.X;
+  LayoutHeight := LayoutSize.Y;
+  ExtraWidth := LayoutWidth - 1024;
+  LayoutExtraHeight := LayoutHeight - 768;
+  ExtraHeight := LayoutExtraHeight;
   if ExtraHeight < 0 then
     ExtraHeight := 0;
   Quiet := False;
-  if (ExtraScreenWidth > 0) and (ResourceKey = 'Bm.PanelMain2.' + GiResourceSuffix + 'BG') then
+  ContentKey := ResourceKey;
+  ContentExtraHeight := LayoutExtraHeight;
+  Separator := Pos('?content-height=', ContentKey);
+  if (Separator > 0)
+      and TryStrToInt(
+          Copy(ContentKey, Separator + Length('?content-height='), MaxInt),
+          ContentHeight)
+      and (ContentHeight > 0) then
+  begin
+    // The same dialogue artwork can be cached for different content heights.
+    // Its frame and controls must reserve exactly the same HUD space.
+    ContentKey := Copy(ContentKey, 1, Separator - 1);
+    ContentExtraHeight := ContentHeight - 768;
+  end;
+  DialogueExpansion := MeasureDialogueExpansion(ContentExtraHeight + 768);
+  HudWidth := LayoutWidth;
+  HudHeight := LayoutHeight;
+  HudKey := 'Bm.PanelMain2.' + GiResourceSuffix + 'BG';
+  HudPrefix := HudKey + '?mobile-hud=';
+  if Pos(HudPrefix, ResourceKey) = 1 then
+  begin
+    // Keep the compact HUD independent of whichever screen is active when it loads.
+    HudDimensions := Copy(ResourceKey, Length(HudPrefix) + 1, MaxInt);
+    Separator := Pos(',', HudDimensions);
+    if (Separator > 0)
+        and TryStrToInt(Copy(HudDimensions, 1, Separator - 1), HudWidth)
+        and TryStrToInt(Copy(HudDimensions, Separator + 1, MaxInt), HudHeight)
+        and (HudWidth >= 1024)
+        and (HudWidth <= LayoutWidth)
+        and (HudHeight >= 480)
+        and (HudHeight <= LayoutHeight) then
+      HudKey := ResourceKey;
+  end;
+  // Auto-positioned HUD images need a new bottom origin even at 1024px wide.
+  if ((HudWidth <> 1024) or (HudHeight <> 768)) and (ResourceKey = HudKey) then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(HudWidth, SourceGraph.Height);
     DestGraph.DrawNinePatch(
         0,
         0,
@@ -295,22 +354,21 @@ begin
     StoreGraphBufAsGiBuffer(
         SourceBuffer,
         DestGraph,
-        Classes.Point(0, GameScreenHeight - DestGraph.Height - 1)
+        Classes.Point(0, HudHeight - DestGraph.Height - 1)
     );
     DestGraph.Clear;
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if ((ExtraScreenWidth > 0) or (ExtraHeight > 0))
-      and (ResourceKey = 'Bm.FormMain2.2AnimMain') then
+  else if ((ExtraWidth > 0) or (ExtraHeight > 0)) and (ResourceKey = 'Bm.FormMain2.2AnimMain') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, Max(Cardinal(GameScreenHeight), 768));
-    Delta := (ExtraScreenWidth div 2 div 3) * 3;
-    if Cardinal(GameScreenWidth) >= 1600 then
+    DestGraph.AllocateRgbaTight(LayoutWidth, Max(Cardinal(LayoutHeight), 768));
+    Delta := (ExtraWidth div 2 div 3) * 3;
+    if Cardinal(LayoutWidth) >= 1600 then
       Delta := Delta - 249;
     Remainder := ExtraHeight mod 3;
     if Remainder <> 0 then
@@ -340,17 +398,16 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraHeight > 0) and (ResourceKey = 'Bm.FormGov2.' + GiResourceSuffix + 'TWin') then
+  else if (ContentExtraHeight <> 0)
+      and (ContentKey = 'Bm.FormGov2.' + GiResourceSuffix + 'TWin') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    Delta := 3;
-    Delta := (Min(ExtraScreenHeight, 250) div Delta) * Delta;
-    DestGraph.AllocateRgbaTight(SourceGraph.Width, SourceGraph.Height + Delta);
-    Remainder := (Delta div 3 div 4) * 3;
-    Delta := Delta - Remainder;
+    Delta := DialogueExpansion.Text;
+    Remainder := DialogueExpansion.Choices;
+    DestGraph.AllocateRgbaTight(SourceGraph.Width, SourceGraph.Height + Delta + Remainder);
     DestGraph.DrawNinePatch(
         0,
         0,
@@ -376,13 +433,14 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraHeight > 0) and (ResourceKey = 'Bm.FormGov2.' + GiResourceSuffix + 'TWinB') then
+  else if (ContentExtraHeight <> 0)
+      and (ContentKey = 'Bm.FormGov2.' + GiResourceSuffix + 'TWinB') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    Delta := (Min(ExtraScreenHeight, 250) div 3 div 4) * 3;
+    Delta := DialogueExpansion.Choices;
     DestGraph.AllocateRgbaTight(SourceGraph.Width, SourceGraph.Height + Delta);
     DestGraph.DrawNinePatch(
         0,
@@ -400,14 +458,15 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraHeight > 0) and (ResourceKey = 'Bm.FormInfo3.' + GiResourceSuffix + 'BG') then
+  else if (ContentExtraHeight <> 0)
+      and (ContentKey = 'Bm.FormInfo3.' + GiResourceSuffix + 'BG') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
     Delta := 3;
-    Delta := (Min(ExtraScreenHeight, 432) div Delta) * Delta;
+    Delta := (EnsureRange(ContentExtraHeight, 449 - SourceGraph.Height, 432) div Delta) * Delta;
     DestGraph.AllocateRgbaTight(SourceGraph.Width, SourceGraph.Height + Delta);
     DestGraph.DrawNinePatch(
         0,
@@ -425,11 +484,9 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraScreenWidth > 0) and (ResourceKey = 'Bm.FormShop2.2bg') then
+  else if (ExtraWidth > 0) and (ResourceKey = 'Bm.FormShop2.2bg') then
   begin
-    Delta := (ExtraScreenWidth div 198) * 198;
-    if Delta > 198 then
-      Delta := 198;
+    Delta := MeasureShopExpansion(LayoutWidth).Width;
     if Delta <> 0 then
     begin
       LogWideScreenGiRescaleStart;
@@ -490,15 +547,13 @@ begin
       LogWideScreenGiRescaleDone;
     end;
   end
-  else if (ExtraScreenWidth > 0)
+  else if (ExtraWidth > 0)
       and ((ResourceKey = 'Bm.FormShop2.2Fei')
           or (ResourceKey = 'Bm.FormShop2.2Gaal')
           or (ResourceKey = 'Bm.FormShop2.2Peleng')
           or (ResourceKey = 'Bm.FormShop2.2People')) then
   begin
-    Delta := (ExtraScreenWidth div 198) * 198;
-    if Delta > 198 then
-      Delta := 198;
+    Delta := MeasureShopExpansion(LayoutWidth).Width;
     if Delta <> 0 then
     begin
       LogWideScreenGiRescaleStart;
@@ -531,7 +586,7 @@ begin
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(SourceGraph.Width, ExtraScreenHeight + SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(SourceGraph.Width, LayoutExtraHeight + SourceGraph.Height);
     DestGraph.DrawNinePatch(
         0,
         0,
@@ -566,32 +621,31 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraScreenWidth > 0)
-      and (ResourceKey = 'Bm.FormGameSet2.' + GiResourceSuffix + 'Footer') then
+  else if (ExtraWidth > 0) and (ResourceKey = 'Bm.FormGameSet2.' + GiResourceSuffix + 'Footer') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(LayoutWidth, SourceGraph.Height);
     DestGraph.DrawNinePatch(
         0,
         0,
-        ExtraScreenWidth div 2 + 342,
+        ExtraWidth div 2 + 342,
         0,
         SourceGraph,
         Classes.Rect(0, 0, 342, 0),
         Classes.Rect(341, 0, 0, 0)
     );
     DestGraph.CopyRect32(
-        Classes.Point(ExtraScreenWidth div 2 + 342, 0),
+        Classes.Point(ExtraWidth div 2 + 342, 0),
         SourceGraph,
         Classes.Rect(342, 0, 682, SourceGraph.Height)
     );
     DestGraph.DrawNinePatch(
-        ExtraScreenWidth div 2 + 682,
+        ExtraWidth div 2 + 682,
         0,
-        ExtraScreenWidth div 2 + 342,
+        ExtraWidth div 2 + 342,
         0,
         SourceGraph,
         Classes.Rect(682, 0, 0, 0),
@@ -610,7 +664,7 @@ begin
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(LayoutWidth, SourceGraph.Height);
     DestGraph
         .DrawNinePatch(0, 0, 0, 0, SourceGraph, Classes.Rect(0, 0, 0, 0), Classes.Rect(0, 0, 0, 0));
     SourceGraph.Clear;
@@ -620,24 +674,24 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if (ExtraScreenWidth > 0) and (ResourceKey = 'Bm.FormIntro2.PanelBottom') then
+  else if (ExtraWidth > 0) and (ResourceKey = 'Bm.FormIntro2.PanelBottom') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(LayoutWidth, SourceGraph.Height);
     DestGraph.DrawNinePatch(
         0,
         0,
-        ExtraScreenWidth div 2 + 302,
+        ExtraWidth div 2 + 302,
         0,
         SourceGraph,
         Classes.Rect(0, 0, 302, 0),
         Classes.Rect(301, 0, 0, 0)
     );
     DestGraph.DrawNinePatch(
-        ExtraScreenWidth div 2 + 302,
+        ExtraWidth div 2 + 302,
         0,
         0,
         0,
@@ -658,7 +712,7 @@ begin
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, SourceGraph.Height);
+    DestGraph.AllocateRgbaTight(LayoutWidth, SourceGraph.Height);
     DestGraph.DrawNinePatch(
         0,
         0,
@@ -675,20 +729,19 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if ((ExtraScreenWidth > 0) or (ExtraHeight > 0))
-      and (ResourceKey = 'Bm.FormPQuest2.2Panel') then
+  else if ((ExtraWidth > 0) or (ExtraHeight > 0)) and (ResourceKey = 'Bm.FormPQuest2.2Panel') then
   begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    DestGraph.AllocateRgbaTight(GameScreenWidth, GameScreenHeight);
-    Delta := 39 - ExtraScreenWidth;
+    DestGraph.AllocateRgbaTight(LayoutWidth, LayoutHeight);
+    Delta := 39 - ExtraWidth;
     if Delta < 0 then
       Delta := 0;
     DestGraph.DrawNinePatch(
         0,
-        ExtraScreenHeight div 2 + 492,
+        LayoutExtraHeight div 2 + 492,
         0,
         0,
         SourceGraph,
@@ -699,7 +752,7 @@ begin
         0,
         0,
         0,
-        ExtraScreenHeight div 2 + 492,
+        LayoutExtraHeight div 2 + 492,
         SourceGraph,
         Classes.Rect(Delta, 0, 0, 492),
         Classes.Rect(345 - Delta, 410, 717, 81)
@@ -711,7 +764,7 @@ begin
     DestGraph.Free;
     LogWideScreenGiRescaleDone;
   end
-  else if ((ExtraScreenWidth > 0) or (ExtraHeight > 0))
+  else if ((ExtraWidth > 0) or (ExtraHeight > 0))
       and (((FindTextOffsetW(ResourceKey, 'Bm.FormPQuest2.2S') = 0)
               and IsIntegerTextW(
                   CopyWideStringUnchecked(ResourceKey, 18, Length(ResourceKey) - 17)))
@@ -722,7 +775,7 @@ begin
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     DestGraph := TGraphBufGR.Create(False);
-    Delta := ExtraScreenWidth - 39;
+    Delta := ExtraWidth - 39;
     if Delta < 0 then
       Delta := 0;
     DestGraph.AllocateRgbaTight(SourceGraph.Width + Delta, SourceGraph.Height + ExtraHeight);
@@ -758,7 +811,7 @@ begin
     LogWideScreenGiRescaleStart;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
-    SourceGraph.RescaleRGBA_HW(GameScreenWidth, GameScreenHeight, True, 1, 1);
+    SourceGraph.RescaleRgbaLinear(LayoutWidth, LayoutHeight, True, 1, 1);
     StoreGraphBufAsGiBuffer(SourceBuffer, SourceGraph, Classes.Point(0, 0));
     SourceGraph.Clear;
     SourceGraph.Free;
@@ -808,7 +861,7 @@ begin
         if SourceBuffer.DataSize < SizeOf(TgiHeaderGR) then
           Exit;
         HeaderBytes := AllocEC(SizeOf(TgiHeaderGR));
-        CopyMemory(HeaderBytes, SourceBuffer.Data, SizeOf(TgiHeaderGR));
+        System.Move(Pointer(SourceBuffer.Data)^, Pointer(HeaderBytes)^, SizeOf(TgiHeaderGR));
         Header := HeaderBytes;
         ImageWidth := Header.Bounds.Right - Header.Bounds.Left;
         ImageHeight := Header.Bounds.Bottom - Header.Bounds.Top;
@@ -826,7 +879,7 @@ begin
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     Delta := SourceGraph.Width;
     Remainder := SourceGraph.Height;
-    SourceGraph.RescaleRGBA_HW(GameScreenWidth, GameScreenHeight, True, 1, VerticalAlign);
+    SourceGraph.RescaleRgbaLinear(LayoutWidth, LayoutHeight, True, 1, VerticalAlign);
     if (Delta <> SourceGraph.Width) or (Remainder <> SourceGraph.Height) then
     begin
       if PreserveAlpha then
@@ -839,8 +892,5 @@ begin
     LogWideScreenGiRescaleDone;
   end;
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCGiEC.ClassName;
-end;
+
 end.

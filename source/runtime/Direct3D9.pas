@@ -1,74 +1,136 @@
-{$EXCESSPRECISION OFF}
 unit Direct3D9;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types;
+
 const
+
   D3DADAPTER_DEFAULT = 0;
+
   D3DDEVTYPE_HAL = 1;
+
   D3DCREATE_MULTITHREADED = $4;
+
   D3DCREATE_SOFTWARE_VERTEXPROCESSING = $20;
+
   D3DCREATE_HARDWARE_VERTEXPROCESSING = $40;
+
   D3DPRESENT_INTERVAL_DEFAULT = 0;
+
   D3DPRESENT_INTERVAL_ONE = 1;
+
   D3DPRESENT_INTERVAL_IMMEDIATE = $80000000;
+
   D3DSWAPEFFECT_DISCARD = 1;
+
   D3DSWAPEFFECT_FLIP = 2;
+
   D3DBACKBUFFER_TYPE_MONO = 0;
+
   D3DMULTISAMPLE_NONE = 0;
+
   D3DCLEAR_TARGET = $1;
+
   D3DFVF_XYZRHW = $004;
+
   D3DFVF_DIFFUSE = $040;
+
   D3DFVF_TEX1 = $100;
+
   D3DFMT_R8G8B8 = 20;
+
   D3DFMT_A8R8G8B8 = 21;
+
   D3DFMT_X8R8G8B8 = 22;
+
   D3DFMT_R5G6B5 = 23;
+
   D3DFMT_A8 = 28;
+
   D3DPOOL_DEFAULT = 0;
+
   D3DPOOL_MANAGED = 1;
+
   D3DPOOL_SYSTEMMEM = 2;
+
   D3DLOCK_READONLY = $10;
+
   D3DPT_POINTLIST = 1;
+
   D3DPT_LINESTRIP = 3;
+
   D3DPT_TRIANGLELIST = 4;
+
   D3DPT_TRIANGLEFAN = 6;
+
   D3DRS_FILLMODE = 8;
+
   D3DFILL_WIREFRAME = 2;
+
   D3DFILL_SOLID = 3;
+
   D3DRS_SRCBLEND = 19;
+
   D3DRS_DESTBLEND = 20;
+
   D3DRS_CULLMODE = 22;
+
   D3DRS_ALPHABLENDENABLE = 27;
+
   D3DRS_SCISSORTESTENABLE = 174;
+
   D3DBLEND_SRCALPHA = 5;
+
   D3DBLEND_INVSRCALPHA = 6;
+
   D3DCULL_NONE = 1;
+
   D3DTSS_ALPHAOP = 4;
+
   D3DTOP_MODULATE = 4;
+
   D3DSAMP_MAGFILTER = 5;
+
   D3DSAMP_MINFILTER = 6;
+
   D3DSAMP_MIPFILTER = 7;
+
   D3DTEXF_LINEAR = 2;
+
 type
+
   IDirect3D9 = interface;
+
   IDirect3DBaseTexture9 = interface;
+
   IDirect3DCubeTexture9 = interface;
+
   IDirect3DDevice9 = interface;
+
   IDirect3DIndexBuffer9 = interface;
+
   IDirect3DResource9 = interface;
+
   IDirect3DStateBlock9 = interface;
+
   IDirect3DSurface9 = interface;
+
   IDirect3DSwapChain9 = interface;
+
   IDirect3DTexture9 = interface;
+
   IDirect3DVertexBuffer9 = interface;
+
   IDirect3DVertexDeclaration9 = interface;
+
   IDirect3DVertexShader9 = interface;
+
   IDirect3DVolumeTexture9 = interface;
+
   TD3DAdapterIdentifier9 = packed record
     Driver: array[0..511] of AnsiChar;
     Description: array[0..511] of AnsiChar;
@@ -81,6 +143,7 @@ type
     DeviceIdentifier: TGUID;
     WHQLLevel: Cardinal;
   end;
+
   TD3DCaps9 = packed record
     CapabilitiesPrefix: array[0..87] of Byte;
     MaxTextureWidth: Cardinal;
@@ -91,11 +154,13 @@ type
     MaxAnisotropy: Cardinal;
     CapabilitiesTail: array[0..191] of Byte;
   end;
+
   TD3DGammaRamp = packed record
     Red: array[0..255] of Word;
     Green: array[0..255] of Word;
     Blue: array[0..255] of Word;
   end;
+
   TD3DPresentParameters = record
     BackBufferWidth: Cardinal;
     BackBufferHeight: Cardinal;
@@ -112,10 +177,12 @@ type
     FullScreenRefreshRateInHz: Cardinal;
     PresentationInterval: Cardinal;
   end;
+
   TD3DLockedRect = packed record
     Pitch: Integer;
     Bits: Pointer;
   end;
+
   TD3DSurfaceDesc = packed record
     Format: Cardinal;
     ResourceType: Cardinal;
@@ -126,6 +193,7 @@ type
     Width: Cardinal;
     Height: Cardinal;
   end;
+
   IDirect3D9 = interface(IInterface)
     ['{81BDCBCA-64D4-426D-AE8D-AD0147F4275C}']
     function RegisterSoftwareDevice(InitializeFunction: Pointer): LongInt; stdcall;
@@ -194,32 +262,46 @@ type
         out Device: IDirect3DDevice9
     ): LongInt; stdcall;
   end;
+
   IDirect3DSwapChain9 = interface(IInterface)
+
   end;
+
   IDirect3DVolumeTexture9 = interface(IInterface)
+
   end;
+
   IDirect3DCubeTexture9 = interface(IInterface)
+
   end;
+
   IDirect3DVertexBuffer9 = interface(IInterface)
+
   end;
+
   IDirect3DIndexBuffer9 = interface(IInterface)
+
   end;
+
   IDirect3DVertexDeclaration9 = interface(IInterface)
     ['{DD13C59C-36FA-4098-A8FB-C7ED39DC8546}']
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall;
     function GetDeclaration(Elements: Pointer; var ElementCount: Cardinal): LongInt; stdcall;
   end;
+
   IDirect3DVertexShader9 = interface(IInterface)
     ['{EFC5557E-6265-4613-8A94-43857889EB36}']
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall;
     function GetFunction(Data: Pointer; var ByteCount: Cardinal): LongInt; stdcall;
   end;
+
   IDirect3DStateBlock9 = interface(IInterface)
     ['{B07C4FE5-310D-4BA8-A23C-4F0F206F218B}']
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall;
     function Capture: LongInt; stdcall;
     function Apply: LongInt; stdcall;
   end;
+
   IDirect3DResource9 = interface(IInterface)
     ['{05EEC05D-8F7D-4362-B999-D1BAF357C704}']
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall;
@@ -240,6 +322,7 @@ type
     procedure PreLoad; stdcall;
     function GetType: Cardinal; stdcall;
   end;
+
   IDirect3DBaseTexture9 = interface(IDirect3DResource9)
     ['{580CA87E-1D3C-4D54-991D-B7D3E3C298CE}']
     function SetLOD(NewLOD: Cardinal): Cardinal; stdcall;
@@ -249,6 +332,7 @@ type
     function GetAutoGenFilterType: Cardinal; stdcall;
     procedure GenerateMipSubLevels; stdcall;
   end;
+
   IDirect3DTexture9 = interface(IDirect3DBaseTexture9)
     ['{85C31227-3DE5-4F00-9B3A-F11AC38C18B5}']
     function GetLevelDesc(Level: Cardinal; out Desc: TD3DSurfaceDesc): LongInt; stdcall;
@@ -262,6 +346,7 @@ type
     function UnlockRect(Level: Cardinal): LongInt; stdcall;
     function AddDirtyRect(Rect: PRect): LongInt; stdcall;
   end;
+
   IDirect3DSurface9 = interface(IDirect3DResource9)
     ['{0CFBAF3A-9FF6-429A-99B3-A2796AF8B89B}']
     function GetContainer(const IID: TGUID; out Container): LongInt; stdcall;
@@ -275,6 +360,7 @@ type
     function GetDC(out DC: Cardinal): LongInt; stdcall;
     function ReleaseDC(DC: Cardinal): LongInt; stdcall;
   end;
+
   IDirect3DDevice9 = interface(IInterface)
     ['{D0223B96-BF7A-43FD-92BD-A43B0D82B9EB}']
     function TestCooperativeLevel: LongInt; stdcall;
@@ -528,22 +614,11 @@ type
     ): LongInt; stdcall;
     function SetVertexShader(Shader: IDirect3DVertexShader9): LongInt; stdcall;
   end;
-const
-  D3DERR_DEVICENOTRESET = -2005530519;
-type
-  TDirect3DCreate9 = function(SDKVersion: Cardinal): Pointer; stdcall;
-var
-  Direct3DCreate9: TDirect3DCreate9;
-function CreateDirect3D9(SDKVersion: Cardinal): IDirect3D9; stdcall;
-implementation
-uses
-  Math;
 
-function CreateDirect3D9(SDKVersion: Cardinal): IDirect3D9; stdcall;
-begin
-  Result := IDirect3D9(Direct3DCreate9(SDKVersion));
-  if Result <> nil then
-    Result._Release;
-end;
+const
+
+  D3DERR_DEVICENOTRESET = -2005530519;
+
+implementation
 
 end.

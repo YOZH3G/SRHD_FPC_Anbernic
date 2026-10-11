@@ -1,15 +1,17 @@
-{$EXCESSPRECISION OFF}
 unit fCustom;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   EC_BlockPar;
+
 type
+
   TfCustomLoop = class;
+
   TfCustomLoop = class(TMessageLoopGI)
     ReservedBeforeText: WideString;
     ReservedAfterText: WideString;
@@ -17,13 +19,16 @@ type
     procedure InitializeLayout; override;
     procedure ExecuteUiCode(Block: TBlockParEC; Key: Cardinal); override;
   end;
+
 var
+
   CurrentCustomDialog: TMessageLoopGI = nil;
+
 function ShowCustomDialog(Parent: TMessageLoopGI; const ScreenName: WideString): Integer;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   ThreadCalc,
   aCalc,
   GR_Main,
@@ -54,10 +59,10 @@ begin
           in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
     if Galaxy <> nil then
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(30011);
     ExecuteGameplayUiCode(Block, Key);
     if Galaxy <> nil then
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(40011);
   end;
 end;
 
@@ -70,7 +75,7 @@ var
   BeforeCode, AfterCode: WideString;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -110,11 +115,7 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-end;
 end.

@@ -1,22 +1,23 @@
-{$EXCESSPRECISION OFF}
 unit GI_CheckBox;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_MessageLoop,
   GI_TransImage,
   Types;
+
 type
+
   TCheckBoxGI = class;
+
   TCheckBoxGI = class(TObjectGI)
     CheckedImage: TTransImageGI;
     UncheckedImage: TTransImageGI;
     Checked: Boolean;
-    Gap129: array[0..6] of Byte;
     ChangedCallback: TObjectNotifyEventGI;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
@@ -28,9 +29,10 @@ type
     destructor Destroy; override;
     procedure RefreshStateImages;
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   Classes,
   EC_Str,
@@ -39,6 +41,7 @@ uses
 constructor TCheckBoxGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiTap;
   CheckedImage := TTransImageGI.Create(Self);
   CheckedImage.SetImageKindX(ikxCenter);
   CheckedImage.SetImageKindY(ikyCenter);
@@ -108,6 +111,8 @@ end;
 
 procedure TCheckBoxGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonDown(KeyState, Point);
   if Checked = True then
   begin

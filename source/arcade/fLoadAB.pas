@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit fLoadAB;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_Image,
   GI_MessageLoop,
   Types;
+
 type
+
   TfLoadAB = class;
+
   TfLoadABSlot = record
     Name: WideString;
     MapName: WideString;
@@ -20,13 +22,13 @@ type
     BackgroundImage: TImageGI;
     Difficulty: Integer;
   end;
+
   TfLoadAB = class(TMessageLoopGI)
     Entries: array of TfLoadABSlot;
     SelectedIndex: Integer;
     HoveredIndex: Integer;
     Category: Integer;
     KeyHistory: WideString;
-
     procedure OnOpen; override;
     procedure OnClose; override;
     procedure SelectMusic; override;
@@ -48,15 +50,16 @@ type
     procedure SelectCategory(Sender: TObjectGI);
     procedure StartSelectedArena(Sender: TObjectGI);
     procedure ShowSelectedArenaDetails;
-    procedure PrepareCatalog;
     function GetCatalogSummary: WideString;
   end;
+
 var
+
   ArcadeNameColor: Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GlobalsV,
   GR_Main,
   SysUtils,
@@ -73,18 +76,20 @@ uses
   GI_PanelScrollBar,
   GI_ScrollBar,
   Globals,
-  Windows;
+  GameInput;
+
 constructor TfLoadAB.Create;
 begin
   inherited Create;
   SelectedIndex := -1;
   Category := 0;
-
 end;
+
 destructor TfLoadAB.Destroy;
 begin
   inherited Destroy;
 end;
+
 procedure TfLoadAB.InitializeLayout;
 var
   Root, Panel: TObjectGI;
@@ -119,6 +124,7 @@ begin
   end;
   ArcadeNameColor := GetStyleColorGI('LoadAB.MapsNameColor', 192, 112, 112);
 end;
+
 procedure TfLoadAB.OnOpen;
 begin
   inherited OnOpen;
@@ -133,6 +139,7 @@ begin
   RebuildArenaList;
   SelectArena(0);
 end;
+
 procedure TfLoadAB.OnClose;
 begin
   Entries := nil;
@@ -140,12 +147,14 @@ begin
     AuxRenderBuffer.Clear;
   inherited OnClose;
 end;
+
 procedure TfLoadAB.ReturnToMenu(Sender: TObjectGI);
 begin
   AuxRenderBuffer.Clear;
   RequestedScreenId := screenMainMenu;
   RequestClose(1);
 end;
+
 procedure TfLoadAB.ArenaListKeyDown(Sender: TObjectGI; VirtualKey: Cardinal);
 begin
   if VirtualKey = VK_ESCAPE then
@@ -191,6 +200,7 @@ begin
       SelectCategory(GetByName('ButGroup0'));
   end;
 end;
+
 procedure TfLoadAB.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 var
   Panel: TPanelScrollBarGI;
@@ -219,11 +229,19 @@ begin
     PostMouseMoveMessage;
   end;
 end;
+
 function TfLoadAB.AppendEntry(IgnoredAccess: Integer): Integer;
+var
+  Index, I: Integer;
 begin
-  Result := Length(Entries);
-  SetLength(Entries, Result + 1);
+  Index := High(Entries) + 1;
+  SetLength(Entries, High(Entries) + 2);
+  { Retained native insertion loop; appending makes its range empty. }
+  for I := High(Entries) downto Index + 1 do
+    Entries[I] := Entries[I - 1];
+  Result := Index;
 end;
+
 procedure TfLoadAB.RebuildArenaList;
 var
   Entry: TBlockParEC;
@@ -232,9 +250,8 @@ var
   Row: TPanelGI;
   List: TBlockParEC;
   Name: WideString;
-  function ReadArcadeDescription(
-      const Path: WideString
-  ): WideString; // @addr $557E9C @ida "void __usercall $name(unsigned __int16 *Path@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x558168"
+
+  function ReadArcadeDescription(const Path: WideString): WideString;
   var
     J, LineCount: Integer;
   begin
@@ -247,11 +264,10 @@ var
       Result := Result + Entry.GetParamByPath(Path + ':' + IntToStr(J));
     end;
   end;
+
 begin
   Panel := GetByName('PanelSlot') as TPanelScrollBarGI;
-
   Panel.FreeOwnedChildren;
-  PrepareCatalog;
   Entries := nil;
   List := LanguageDataConfig.GetBlockByPath('ABMap');
   Count := List.GetBlockCount;
@@ -300,6 +316,7 @@ begin
   SelectArena(SelectedIndex);
   Panel.Invalidate;
 end;
+
 procedure TfLoadAB.InitializeArenaRow(Row: TObjectGI);
 var
   Index: Integer;
@@ -344,6 +361,7 @@ begin
     DifficultyImage.SetActive(True);
   end;
 end;
+
 procedure TfLoadAB.SelectArena(Index: Integer);
 var
   Previous: Integer;
@@ -365,6 +383,7 @@ begin
         ScrollRectIntoView(GetLocalBounds);
   ShowSelectedArenaDetails;
 end;
+
 procedure TfLoadAB.UpdateArenaRow(Index: Integer);
 var
   Image: TImageGI;
@@ -379,6 +398,7 @@ begin
   else
     Image.SetImagePath('GI,Bm.FormLoadAB.SlotNormal');
 end;
+
 procedure TfLoadAB.ArenaRowMouseEnter(Sender: TObjectGI);
 var
   Previous: Integer;
@@ -391,6 +411,7 @@ begin
     UpdateArenaRow(HoveredIndex);
   end;
 end;
+
 procedure TfLoadAB.ArenaRowMouseLeave(Sender: TObjectGI);
 var
   Previous: Integer;
@@ -403,19 +424,19 @@ begin
     UpdateArenaRow(HoveredIndex);
   end;
 end;
+
 procedure TfLoadAB.ArenaRowMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
-
   SoundManager.PlaySound('Sound.ButtonClick');
   SelectArena(Sender.UserValue);
   BreakUiMessage;
 end;
+
 procedure TfLoadAB.ArenaRowDoubleClick(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
-
   StartSelectedArena(nil);
-
 end;
+
 procedure TfLoadAB.SelectCategory(Sender: TObjectGI);
 var
   NewCategory: Integer;
@@ -433,6 +454,7 @@ begin
     SelectArena(0);
   end;
 end;
+
 procedure TfLoadAB.StartSelectedArena(Sender: TObjectGI);
 begin
   if SelectedIndex < 0 then
@@ -444,6 +466,7 @@ begin
   RequestClose(1);
   BreakUiMessage;
 end;
+
 procedure TfLoadAB.ShowSelectedArenaDetails;
 var
   Path: WideString;
@@ -505,21 +528,14 @@ begin
     VerticalScrollBar.SetPageSize(ClientSize.Y);
   end;
 end;
-procedure TfLoadAB.PrepareCatalog;
-begin
-end;
+
 function TfLoadAB.GetCatalogSummary: WideString;
 begin
   Result := IntToStr(LanguageDataConfig.GetBlockByPath('ABMap').GetBlockCount);
 end;
+
 procedure TfLoadAB.SelectMusic;
 begin
 end;
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-end;
+
 end.

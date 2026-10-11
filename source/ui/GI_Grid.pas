@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_Grid;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_Frame,
@@ -13,19 +12,26 @@ uses
   GI_MessageLoop,
   GI_PanelScrollBar,
   Types;
+
 type
+
   PointerToInteger = ^Integer;
+
 type
+
   TGridGI = class;
+
   {$Z1}
   TGridTypeGI = (gtHide = 0, gtCell = 1, gtRow = 2, gtCol = 3);
-  TGridRowGI = packed record
+
+  TGridRowGI = record
     Height: Integer;
     AutoHeightMinimum: Integer;
     AutoHeight: Boolean;
-    Gap9: array[0..2] of Byte;
   end;
+
   TGridCanSelectCellEventGI = function(Sender: TObjectGI; Cell: TPoint): Boolean of object;
+
   TGridGI = class(TPanelScrollBarGI)
     ColumnCount: Integer;
     RowCount: Integer;
@@ -34,7 +40,6 @@ type
     FontName: WideString;
     TextColor: Cardinal;
     GridType: TGridTypeGI;
-    Gap189: array[0..2] of Byte;
     GridColor: Cardinal;
     BackgroundImage: TImageGI;
     ActiveCellImage: TImageGI;
@@ -42,7 +47,6 @@ type
     ActiveCell: TPoint;
     RowSelect: Boolean;
     ColSelect: Boolean;
-    Gap1A6: array[0..1] of Byte;
     SelectionChangedCallback: TObjectNotifyEventGI;
     CanSelectCellCallback: TGridCanSelectCellEventGI;
     RepeatedCellClickCallback: TObjectNotifyEventGI;
@@ -81,18 +85,19 @@ type
     procedure CellClick(Sender: TObjectGI; MouseState: Cardinal; Point: TPoint);
     procedure LoadGridProperties(Block: TBlockParEC);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   Classes,
   SysUtils,
-  Windows,
+  GameInput,
   EC_Mem,
   EC_Str,
   GI_Main,
   GI_Line,
   GR_Main;
+
 const
   // Cell UserValue packs the column below the row; decorations use -1.
   GridCellCoordinateMask = $FFFF;
@@ -931,9 +936,4 @@ begin
   inherited Draw(ClipRect);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TLabelGI.ClassName;
-  TLineGI.ClassName;
-end;
 end.

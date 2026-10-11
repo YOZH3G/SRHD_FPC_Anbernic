@@ -1,20 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit WStringUtils;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 type
+
   PointerToWideString = ^WideString;
+
 type
+
   PStartupWideString = PointerToWideString;
+
 function AllocateStartupWideString(Length: Integer): PStartupWideString;
+
 function TruncateStartupWideString(var Text: PStartupWideString): PStartupWideString;
+
 function FreeStartupWideString(var Text: PStartupWideString): Boolean;
+
 implementation
-uses
-  Math;
 
 function AllocateStartupWideString(Length: Integer): PStartupWideString;
 begin

@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_GraphButton;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_Image,
@@ -12,20 +11,30 @@ uses
   GI_Main,
   GI_MessageLoop,
   Types;
+
 type
+
   TGraphButtonGI = class;
+
   {$Z1}
   TGraphButtonKindGI = (gbkNormal = 0, gbkFix = 1, gbkDisable = 2, gbkFixDisable = 3);
+
   {$Z1}
   TGraphButtonHitKindGI = (gbhRect = 0, gbhGraph = 1, gbhImageHit = 2);
+
   TGraphButtonGI = class(TObjectGI)
+  private
+    TouchPreview: Boolean;
+  public
     Kind: TGraphButtonKindGI;
     HitKind: TGraphButtonHitKindGI;
     Down: Boolean;
     Disabled: Boolean;
-    Gap124: array[0..3] of Byte;
     DownCallback: TObjectNotifyEventGI;
     UpCallback: TObjectNotifyEventGI;
+    // Only controls with reversible held actions opt into an early mouse-down.
+    TouchHold: Boolean;
+    TouchCancelCallback: TObjectNotifyEventGI;
     StateChangedCallback: TObjectNotifyEventGI;
     ImageNormal: TImageGI;
     ImageNormalActive: TImageGI;
@@ -50,10 +59,8 @@ type
     CaptionShadowColors: array[0..5] of Cardinal;
     CaptionAlignX: TTextAlignXGI;
     CaptionAlignY: TTextAlignYGI;
-    Gap1E6: array[0..1] of Byte;
     ImageAutoUpdateFlags: Cardinal;
     UpOnlyDown: Boolean;
-    Gap1ED: array[0..2] of Byte;
     OnPressCode: TBlockParEC;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
@@ -64,6 +71,11 @@ type
     procedure OnMouseLeave; override;
     procedure OnActivate; override;
     procedure OnDeactivate; override;
+    procedure CancelPointerInput; override;
+    function GetTouchInteraction: TTouchInteractionGI; override;
+    function TouchPressContains(Point: TPoint): Boolean; override;
+    function BeginTouchPress(Point: TPoint): Boolean; override;
+    procedure CancelTouchPress; override;
     procedure ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint); override;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); override;
     procedure ProcessLeftButtonDoubleClick(KeyState: Cardinal; Point: TPoint); override;
@@ -91,20 +103,22 @@ type
     function IsHovered: Boolean;
     procedure SetHovered(Value: Boolean);
     function GetMaxStateImageSize: TPoint;
-    procedure UpdateStateVisuals;
+    procedure UpdateStateVisuals(NotifyState: Boolean = True);
     procedure UpdateStateImagePlacement;
     procedure ExecuteOnPressCode;
     procedure LoadButtonProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   Classes,
   EC_Str,
   EC_Struct,
   GR_Main,
+  GameInput,
   GR_Sound,
-  Math,
-  Windows;
+  Math;
 
 constructor TGraphButtonGI.Create(Owner: TObjectGI);
 begin
@@ -130,6 +144,7 @@ end;
 
 procedure TGraphButtonGI.Clear;
 begin
+  CancelTouchPress;
   Kind := gbkNormal;
   if ImageNormal <> nil then
   begin
@@ -427,8 +442,11 @@ begin
   Result.Y := Max(Result.Y, Size.Y);
 end;
 
-procedure TGraphButtonGI.UpdateStateVisuals;
+procedure TGraphButtonGI.UpdateStateVisuals(NotifyState: Boolean);
+var
+  Pressed: Boolean;
 begin
+  Pressed := Down or TouchPreview;
   if ImageNormal <> nil then
     ImageNormal.SetActive(False);
   if ImageNormalActive <> nil then
@@ -457,7 +475,7 @@ begin
   end
   else
   begin
-    if Down then
+    if Pressed then
     begin
       if MessageLoop.HoveredControl = Self then
       begin
@@ -484,7 +502,7 @@ begin
   end;
   if CaptionLabel <> nil then
   begin
-    if not Down then
+    if not Pressed then
       CaptionLabel.SetPosition(CaptionOffsets.TopLeft)
     else
       CaptionLabel.SetPosition(CaptionOffsets.BottomRight);
@@ -503,7 +521,7 @@ begin
     end
     else
     begin
-      if Down then
+      if Pressed then
       begin
         if MessageLoop.HoveredControl = Self then
         begin
@@ -550,7 +568,7 @@ begin
     if ImageDisabledActive.Active then
       ImageDisabledActive.RestartPlayback;
   Invalidate;
-  if Assigned(StateChangedCallback) then
+  if NotifyState and Assigned(StateChangedCallback) then
     StateChangedCallback(Self);
 end;
 
@@ -601,6 +619,7 @@ end;
 
 procedure TGraphButtonGI.OnDeactivate;
 begin
+  CancelTouchPress;
   inherited OnDeactivate;
   if MessageLoop.HoveredControl = Self then
     MessageLoop.HoveredControl := nil;
@@ -614,6 +633,57 @@ begin
   inherited OnMouseEnter;
 end;
 
+procedure TGraphButtonGI.CancelPointerInput;
+begin
+  CancelTouchPress;
+  inherited CancelPointerInput;
+  if (Kind = gbkNormal) or (Kind = gbkDisable) then
+    SetDown(False);
+end;
+
+function TGraphButtonGI.GetTouchInteraction: TTouchInteractionGI;
+begin
+  if TouchHold then
+    Result := tiHold
+  else
+    Result := tiTap;
+end;
+
+function TGraphButtonGI.TouchPressContains(Point: TPoint): Boolean;
+begin
+  Result := inherited TouchPressContains(Point) and HitTest(Point) and not Disabled;
+end;
+
+function TGraphButtonGI.BeginTouchPress(Point: TPoint): Boolean;
+begin
+  Result := TouchPressContains(Point);
+  if not Result then
+    Exit;
+  TouchPreview := True;
+  // Normal buttons only preview their down artwork. Their existing callbacks
+  // still run on the completed tap, never just because a finger touches them.
+  if TouchHold then
+    ProcessLeftButtonDown(MK_LBUTTON, Point)
+  else
+    UpdateStateVisuals(False);
+end;
+
+procedure TGraphButtonGI.CancelTouchPress;
+begin
+  if not TouchPreview then
+    Exit;
+  TouchPreview := False;
+  if TouchHold then
+  begin
+    Down := False;
+    // Cancellation is deliberately distinct from release, which can activate
+    // ordinary buttons. Held controls supply a cleanup-only callback.
+    if Assigned(TouchCancelCallback) then
+      TouchCancelCallback(Self);
+  end;
+  UpdateStateVisuals(False);
+end;
+
 procedure TGraphButtonGI.OnMouseLeave;
 begin
   inherited OnMouseLeave;
@@ -623,7 +693,7 @@ end;
 
 procedure TGraphButtonGI.ProcessMouseMove(KeyState: Cardinal; Point: TPoint);
 begin
-  if MouseBlockingTest and IsOccludedAtPoint(AbsolutePosition) then
+  if MouseBlockingTest and IsOccludedAtPoint(LogicalToScreenPoint(AbsolutePosition)) then
     Exit;
   if HitTest(Point) then
   begin
@@ -675,6 +745,8 @@ end;
 
 procedure TGraphButtonGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonDown(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
@@ -729,6 +801,8 @@ procedure TGraphButtonGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 var
   WasDown: Boolean;
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonUp(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
@@ -940,7 +1014,7 @@ begin
       if Bounds.Right - Bounds.Left < 1 then
         Bounds := ImageBounds
       else
-        Windows.UnionRect(Bounds, Bounds, ImageBounds);
+        Types.UnionRect(Bounds, Bounds, ImageBounds);
     end;
     if ImageDown <> nil then
     begin
@@ -950,7 +1024,7 @@ begin
       if Bounds.Right - Bounds.Left < 1 then
         Bounds := ImageBounds
       else
-        Windows.UnionRect(Bounds, Bounds, ImageBounds);
+        Types.UnionRect(Bounds, Bounds, ImageBounds);
     end;
     if ImageDownActive <> nil then
     begin
@@ -960,7 +1034,7 @@ begin
       if Bounds.Right - Bounds.Left < 1 then
         Bounds := ImageBounds
       else
-        Windows.UnionRect(Bounds, Bounds, ImageBounds);
+        Types.UnionRect(Bounds, Bounds, ImageBounds);
     end;
     if ImageDisabled <> nil then
     begin
@@ -970,7 +1044,7 @@ begin
       if Bounds.Right - Bounds.Left < 1 then
         Bounds := ImageBounds
       else
-        Windows.UnionRect(Bounds, Bounds, ImageBounds);
+        Types.UnionRect(Bounds, Bounds, ImageBounds);
     end;
     if ImageDisabledActive <> nil then
     begin
@@ -980,10 +1054,10 @@ begin
       if Bounds.Right - Bounds.Left < 1 then
         Bounds := ImageBounds
       else
-        Windows.UnionRect(Bounds, Bounds, ImageBounds);
+        Types.UnionRect(Bounds, Bounds, ImageBounds);
     end;
     if (ImageAutoUpdateFlags and agfPosition) = agfPosition then
-      SetPosition(Parent.ToLocalPoint(Bounds.TopLeft));
+      SetPosition(Parent.LogicalToLocalPoint(Bounds.TopLeft));
     if (ImageAutoUpdateFlags and agfSize) = agfSize then
       SetSize(SubtractPoints(Bounds.BottomRight, Bounds.TopLeft));
   end;

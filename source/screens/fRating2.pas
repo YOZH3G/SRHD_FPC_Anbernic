@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fRating2;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   GI_MessageLoop,
   GI_PanelScrollBar,
@@ -12,16 +11,21 @@ uses
   Types,
   aRanger,
   fPanelMain;
+
 type
+
   TfRating2 = class;
+
   {$Z4}
   TRangerRatingSortColumn =
       (rrscName = 1, rrscExperience = 2, rrscRace = 3, rrscRank = 4, rrscCharacter = 5);
+
   TRangerRatingRow = packed record
     Ranger: TRanger;
     Top: Integer;
     Height: Integer;
   end;
+
   TfRating2 = class(TMessageLoopGIWithMainPanel)
     RewardWindow: TWindowGI;
     Rows: array of TRangerRatingRow;
@@ -29,11 +33,9 @@ type
     SelectedRangerId: Integer;
     SortColumn: TRangerRatingSortColumn;
     SortAscending: Boolean;
-    GapE9: array[0..2] of Byte;
     TablePanel: TPanelScrollBarGI;
     SelectedRowRect: TRect;
     BackgroundClickStarted: Boolean;
-    Gap101: array[0..2] of Byte;
     HoveredAwardId: Integer;
     procedure OnOpen; override;
     procedure OnClose; override;
@@ -68,14 +70,18 @@ type
     procedure RefreshFeaturedRangers;
     procedure ShowDominatorKillsHint(Sender: TObjectGI);
   end;
+
 const
+
   CareerHintColumns: array[1..3] of Integer = (10, 75, 105);
+
   DominatorHintColumns: array[1..3] of Integer = (10, 75, 95);
+
 function ShowRangerRating(Parent: TMessageLoopGI): Boolean;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  aCalc,
   aGalaxyStruct,
   GI_Panel,
   GR_GraphBuf,
@@ -85,7 +91,7 @@ uses
   fShip2,
   aMyFunction,
   Math,
-  Windows,
+  GameInput,
   SysUtils,
   Classes,
   EC_Str,
@@ -131,7 +137,7 @@ begin
       SetPosition(
           Classes.Point(
               LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
+              LocalPosition.Y + MainPanel.VerticalContentOffset
           )
       );
   end;
@@ -188,14 +194,14 @@ begin
   HideHint;
   RefreshFeaturedRangers;
   RebuildTable;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(1113);
   MainPanel.RebuildMessageButtons(False);
 end;
 
 procedure TfRating2.OnClose;
 begin
   inherited OnClose;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(1114);
   if GetPlayer <> nil then
     GetPlayer.ScriptItemsAct(satOnLeavingForm, nil, nil, 0);
   ClearRows;
@@ -279,20 +285,20 @@ end;
 
 procedure TfRating2.AwardsMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
-  if UiRuntimeFlag then
+  if AwardDialogsEnabled then
   begin
     RewardWindow.SetActive(False);
     AwardSubject := Galaxy.IdToShip(Sender.UserValue, True);
     if AwardSubject <> nil then
     begin
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(335);
       if not RunRewards(Self, True) then
       begin
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(336);
         RequestClose(2);
       end
       else
-        aCalc.WaitForTurnCalculationUI;
+        Galaxy.PrimeIntegrityChecksum(336);
     end;
   end;
 end;
@@ -331,9 +337,10 @@ var
   Text, PartnerInfo, Names: WideString;
   Ally: TRanger;
   Pirate: TPirate;
+
   function FormatRangerWingmenHint(
       Ranger: TRanger
-  ): WideString; // @addr 0x566378 @ida "void __usercall $name(TRanger *Ranger@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x566f07,0x567068" @note "Nested in TfRating2.ShowPartnershipHint; caller supplies its parent frame."
+  ): WideString; { Nested in TfRating2.ShowPartnershipHint; caller supplies its parent frame. }
   var
     I: Integer;
     Names: WideString;
@@ -348,7 +355,7 @@ var
           Result :=
               FormatText2(
                   LocalizedColorText('FormRating.PartnerBossOneText'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Name>',
                   Ally.GetName,
                   '<Date>',
@@ -370,7 +377,7 @@ var
                     + ', '
                     + FormatText2(
                         LocalizedColorText('FormRating.AddInfoAboutPartner'),
-                        '<color=255,240,100>',
+                        TextHighlightColorTag,
                         '<Name>',
                         Ally.GetName,
                         '<Date>',
@@ -379,7 +386,7 @@ var
             Names :=
                 FormatText2(
                     LocalizedColorText('FormRating.AddInfoAboutPartner'),
-                    '<color=255,240,100>',
+                    TextHighlightColorTag,
                     '<Name>',
                     Ally.GetName,
                     '<Date>',
@@ -399,7 +406,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.PlayerName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               GetPlayer.GetName
           )
@@ -418,7 +425,7 @@ begin
                     + ', '
                     + FormatText2(
                         LocalizedColorText('FormRating.AddInfoAboutPartner'),
-                        '<color=255,240,100>',
+                        TextHighlightColorTag,
                         '<Name>',
                         Ally.GetName,
                         '<Date>',
@@ -427,7 +434,7 @@ begin
             Names :=
                 FormatText2(
                     LocalizedColorText('FormRating.AddInfoAboutPartner'),
-                    '<color=255,240,100>',
+                    TextHighlightColorTag,
                     '<Name>',
                     Ally.GetName,
                     '<Date>',
@@ -444,7 +451,7 @@ begin
                   + ', '
                   + FormatText2(
                       LocalizedColorText('FormRating.AddInfoAboutPirate'),
-                      '<color=255,240,100>',
+                      TextHighlightColorTag,
                       '<Name>',
                       Pirate.GetName,
                       '<Date>',
@@ -453,7 +460,7 @@ begin
           Names :=
               FormatText2(
                   LocalizedColorText('FormRating.AddInfoAboutPirate'),
-                  '<color=255,240,100>',
+                  TextHighlightColorTag,
                   '<Name>',
                   Pirate.GetName,
                   '<Date>',
@@ -478,7 +485,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.InPrisonName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               Rows[Sender.UserValue].Ranger.GetName
           )
@@ -487,7 +494,7 @@ begin
       Text :=
           FormatText1(
               LocalizedColorText('FormRating.InPrisonText'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Planet>',
               Rows[Sender.UserValue].Ranger.CurrentPlanet.Name
           )
@@ -504,7 +511,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.PartnerName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               Rows[Sender.UserValue].Ranger.GetName
           )
@@ -514,7 +521,7 @@ begin
         Text,
         '<Name>',
         Rows[Sender.UserValue].Ranger.PartnerShip.GetName,
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         Text,
@@ -522,7 +529,7 @@ begin
         Galaxy.FormatTurnDate(
             Galaxy.CurrentTurn + Rows[Sender.UserValue].Ranger.PartnershipDaysRemaining
         ),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     if Rows[Sender.UserValue].Ranger.PartnershipDaysRemaining = 0 then
       Text := Text + ' ' + LocalizedColorText('FormRating.PartnerTextDateEnd');
@@ -539,7 +546,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.PartnerName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               Rows[Sender.UserValue].Ranger.GetName
           )
@@ -579,13 +586,14 @@ end;
 
 procedure TfRating2.ShowCareerHint(Sender: TObjectGI);
 var
-  I: Byte;
+  Career: TRangerCareer;
   Cursor: TPoint;
   Text: WideString;
   Ranger: TRanger;
+
   function FormatCareerHintColumn(
       Column: Integer
-  ): WideString; // @addr 0x567654 @ida "void __usercall $name(int Column@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x56786f,0x5678b9,0x567901,0x56791b" @note "Nested in TfRating2.ShowCareerHint; caller supplies its parent frame."
+  ): WideString; { Nested in TfRating2.ShowCareerHint; caller supplies its parent frame. }
   begin
     Result := IntToStr(CareerHintColumns[Column] + 40);
   end;
@@ -598,7 +606,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.PlayerName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               Ranger.GetName
           )
@@ -612,7 +620,7 @@ begin
       SetText(
           FormatText1(
               LocalizedColorText('FormRating.PartnerName'),
-              '<color=255,240,100>',
+              TextHighlightColorTag,
               '<Name>',
               Ranger.GetName
           )
@@ -627,19 +635,19 @@ begin
           + LocalizedColorText('FormRating.Rating.Title')
           + '</align>'
           + #13#10;
-  for I := 0 to 2 do
+  for Career := Low(TRangerCareer) to High(TRangerCareer) do
     Text :=
         Text
             + '<td='
             + FormatCareerHintColumn(1)
             + '><align=left>'
-            + LocalizedColorText('FormRating.Rating.' + CareerTuning[I].Name)
+            + LocalizedColorText('FormRating.Rating.' + CareerTuning[Career].Name)
             + '<td='
             + FormatCareerHintColumn(2)
             + '>:</align><td='
             + FormatCareerHintColumn(3)
             + '><align=right>'
-            + WrapTextInColor(IntToStr(Ranger.CareerStatus[I]), '<color=255,240,100>')
+            + WrapTextInColor(IntToStr(Ranger.CareerStatus[Career]), TextHighlightColorTag)
             + '</align>'
             + #13#10;
   with GetByName('RewardText') as TLabelGI do
@@ -799,7 +807,7 @@ var
 begin
   if SelectedIndex <> Index then
   begin
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.CheckIntegrityChecksum(1115);
     Previous := SelectedIndex;
     SelectedIndex := Index;
     if Previous >= 0 then
@@ -812,7 +820,7 @@ begin
       TablePanel.ScrollRectIntoView(SelectedRowRect);
     end;
     HideHint;
-    aCalc.WaitForTurnCalculationUI;
+    Galaxy.PrimeIntegrityChecksum(1116);
   end;
 end;
 
@@ -826,7 +834,7 @@ begin
 end;
 
 procedure TfRating2.RebuildTable;
-// Widen before narrowing to preserve both native signed-byte register loads.
+// Compare the signed ordinal values used by the native sort.
 var
   I, J, Top: Integer;
   List: TList;
@@ -892,26 +900,10 @@ begin
       begin
         if SortAscending then
         begin
-          if CompareString(
-                      LOCALE_USER_DEFAULT,
-                      0,
-                      PChar(AnsiString(B.Name)),
-                      -1,
-                      PChar(AnsiString(A.Name)),
-                      -1)
-                  - 2
-              < 0 then
+          if WideCompareStr(B.Name, A.Name) < 0 then
             List.Exchange(I, J);
         end
-        else if CompareString(
-                    LOCALE_USER_DEFAULT,
-                    0,
-                    PChar(AnsiString(B.Name)),
-                    -1,
-                    PChar(AnsiString(A.Name)),
-                    -1)
-                - 2
-            > 0 then
+        else if WideCompareStr(B.Name, A.Name) > 0 then
           List.Exchange(I, J);
       end
       else if SortColumn = rrscExperience then
@@ -928,20 +920,20 @@ begin
       begin
         if SortAscending then
         begin
-          if ShortInt(Integer(B.PilotRace) + 0) < ShortInt(Integer(A.PilotRace) + 0) then
+          if Ord(B.PilotRace) < Ord(A.PilotRace) then
             List.Exchange(I, J);
         end
-        else if ShortInt(Integer(B.PilotRace) + 0) > ShortInt(Integer(A.PilotRace) + 0) then
+        else if Ord(B.PilotRace) > Ord(A.PilotRace) then
           List.Exchange(I, J);
       end
       else if SortColumn = rrscRank then
       begin
         if SortAscending then
         begin
-          if ShortInt(Integer(B.Rank) + 0) < ShortInt(Integer(A.Rank) + 0) then
+          if Ord(B.Rank) < Ord(A.Rank) then
             List.Exchange(I, J);
         end
-        else if ShortInt(Integer(B.Rank) + 0) > ShortInt(Integer(A.Rank) + 0) then
+        else if Ord(B.Rank) > Ord(A.Rank) then
           List.Exchange(I, J);
       end
       else if SortColumn = rrscCharacter then
@@ -1030,9 +1022,10 @@ var
   Ratio: Single;
   ExtraKills: Integer;
   Animation: TgaiGI;
+
   function GetRatingRankImagePath(
-      Rank: Byte
-  ): WideString; // @addr 0x569044 @ida "void __usercall $name(unsigned __int8 Rank@<al>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x56add4" @note "Nested in TfRating2.CreateRow; caller supplies its parent frame."
+      Rank: TShipRank
+  ): WideString; { Nested in TfRating2.CreateRow; caller supplies its parent frame. }
   begin
     if Rank = 0 then
       Result := 'GI,Bm.FormRating2.' + GiResourceSuffix + 'Rank1'
@@ -1053,8 +1046,8 @@ var
     else
       RaiseWideMessage('error');
   end;
-  procedure CreateRatingRowAwardStrip; // @addr 0x5692B4 @ida "void __cdecl $name(void *ParentFrame);" @stackpop 0 @calls "0x56ab1c" @note "Nested in TfRating2.CreateRow; requires its parent frame."
-  // Value expressions retain native maximum and image-receiver evaluation order.
+
+  procedure CreateRatingRowAwardStrip; { Nested in TfRating2.CreateRow; requires its parent frame. }
   var
     I, J: Integer;
     Buffer: TGraphBufGI;
@@ -1079,9 +1072,7 @@ var
       Buffer.MouseLeaveCallback := HintMouseLeave;
       Buffer.LeftButtonDownCallback := AwardsMouseDown;
       Buffer.UserValue := Ranger.Id;
-      Buffer
-          .GraphBuf
-          .AllocateRgbaTight(Max(Buffer.ClientSize.X + 0, Step * Count + Size - Step), Size);
+      Buffer.GraphBuf.AllocateRgbaTight(Max(Buffer.ClientSize.X, Step * Count + Size - Step), Size);
       for I := 0 to Size - 1 do
         Buffer.GraphBuf.FillRect32(
             Classes.Rect(0, I, Buffer.GraphBuf.Width, I + 1),
@@ -1104,18 +1095,20 @@ var
           Icon.RescaleRgba(Size, Round(Size / Cardinal(Icon.Width) * Cardinal(Icon.Height)), 5)
         else
           Icon.RescaleRgba(Round(Size / Cardinal(Icon.Height) * Cardinal(Icon.Width)), Size, 5);
-        if (Icon.Height <= Size) and (Icon.Width + J * Step <= Buffer.GraphBuf.Width) then
-          Buffer.GraphBuf.BlendRect32(
-              Classes.Point(J * Step, 0),
-              Icon,
-              Classes.Rect(0, 0, Icon.Width, Icon.Height)
-          );
+        if Icon.Height <= Size then
+          if Icon.Width + J * Step <= Buffer.GraphBuf.Width then
+            Buffer.GraphBuf.BlendRect32(
+                Classes.Point(J * Step, 0),
+                Icon,
+                Classes.Rect(0, 0, Icon.Width, Icon.Height)
+            );
         Inc(I);
         Inc(J);
       end;
       Icon.Free;
     end;
   end;
+
 begin
   Ranger := Rows[Index].Ranger;
   Panel := TPanelGI.Create(TablePanel);
@@ -1130,7 +1123,7 @@ begin
         'GI,Bm.FormRating2.'
             + GiResourceSuffix
             + 'Open'
-            + OwnerInfo[Integer(RaceToOwner(Ranger.PilotRace)) and $7F].InternalName
+            + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName
     );
     Image.SetSize(Image.GetContentSize);
     Image.SetPosition(Classes.Point(0, 0));
@@ -1355,7 +1348,7 @@ begin
         'GI,Bm.FormRating2.'
             + GiResourceSuffix
             + 'Normal'
-            + OwnerInfo[Integer(RaceToOwner(Ranger.PilotRace)) and $7F].InternalName
+            + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName
     );
     Image.SetSize(Image.GetContentSize);
     Image.SetPosition(Classes.Point(0, 0));
@@ -1457,8 +1450,7 @@ begin
           'GI,Bm.FormRating2.'
               + GiResourceSuffix
               + 'Select'
-              + OwnerInfo[Integer(RaceToOwner(Rows[Sender.UserState].Ranger.PilotRace)) and $7F]
-                  .InternalName);
+              + OwnerInfo[RaceToOwner(Rows[Sender.UserState].Ranger.PilotRace)].InternalName);
   SoundManager.PlaySound('Sound.ButtonEnter');
 end;
 
@@ -1469,8 +1461,7 @@ begin
           'GI,Bm.FormRating2.'
               + GiResourceSuffix
               + 'Normal'
-              + OwnerInfo[Integer(RaceToOwner(Rows[Sender.UserState].Ranger.PilotRace)) and $7F]
-                  .InternalName);
+              + OwnerInfo[RaceToOwner(Rows[Sender.UserState].Ranger.PilotRace)].InternalName);
   SoundManager.PlaySound('Sound.ButtonLeave');
 end;
 
@@ -1478,7 +1469,7 @@ procedure TfRating2.RefreshFeaturedRangers;
 var
   Ship: TShip;
 begin
-  if Galaxy.EminentCareerShips[Ord(rcTrader)] = nil then
+  if Galaxy.EminentCareerShips[rcTrader] = nil then
   begin
     GetByName('TraderCaptainI').SetActive(False);
     GetByName('TraderCaptainA').SetActive(False);
@@ -1489,7 +1480,7 @@ begin
   end
   else
   begin
-    Ship := TShip(Galaxy.EminentCareerShips[Ord(rcTrader)]);
+    Ship := TShip(Galaxy.EminentCareerShips[rcTrader]);
     with GetByName('ButTrader') as TGraphButtonGI do
     begin
       SetDisabled(False);
@@ -1523,7 +1514,7 @@ begin
       RestartPlayback;
     end;
   end;
-  if Galaxy.EminentCareerShips[Ord(rcWarrior)] = nil then
+  if Galaxy.EminentCareerShips[rcWarrior] = nil then
   begin
     GetByName('WarriorCaptainI').SetActive(False);
     GetByName('WarriorCaptainA').SetActive(False);
@@ -1534,7 +1525,7 @@ begin
   end
   else
   begin
-    Ship := TShip(Galaxy.EminentCareerShips[Ord(rcWarrior)]);
+    Ship := TShip(Galaxy.EminentCareerShips[rcWarrior]);
     with GetByName('ButWarior') as TGraphButtonGI do
     begin
       SetDisabled(False);
@@ -1568,7 +1559,7 @@ begin
       RestartPlayback;
     end;
   end;
-  if Galaxy.EminentCareerShips[Ord(rcPirate)] = nil then
+  if Galaxy.EminentCareerShips[rcPirate] = nil then
   begin
     GetByName('PirateCaptainI').SetActive(False);
     GetByName('PirateCaptainA').SetActive(False);
@@ -1579,7 +1570,7 @@ begin
   end
   else
   begin
-    Ship := TShip(Galaxy.EminentCareerShips[Ord(rcPirate)]);
+    Ship := TShip(Galaxy.EminentCareerShips[rcPirate]);
     with GetByName('ButPirate') as TGraphButtonGI do
     begin
       SetDisabled(False);
@@ -1623,13 +1614,12 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.CurrentPlanet.OwnerId = Byte(oiPirate) then
+    else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
         MusicManager.PlayCategory(
             'Nation.'
-                + OwnerInfo[Integer(RaceToOwner(GetPlayer.CurrentPlanet.RaceId)) and $7F]
-                    .InternalName
+                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
                 + 'Pirate'
         )
       else
@@ -1643,16 +1633,13 @@ begin
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
-    else if GetPlayer.DockedTo.TypeId in [Ord(rstPirateBase), Ord(rstDominion)] then
+    else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
-              + 'Pirate'
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
       )
     else
       MusicManager.PlayCategory(
-          'Nation.'
-              + OwnerInfo[Integer(RaceToOwner(GetPlayer.DockedTo.PilotRace)) and $7F].InternalName
+          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
       );
   end
   else if GetPlayer.InNormalSpace then
@@ -1687,7 +1674,7 @@ var
   CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -1702,20 +1689,21 @@ begin
   Parent.InvalidateViewport;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
   Parent.Present;
   PostMouseMoveMessage;
 end;
 
 procedure TfRating2.ShowDominatorKillsHint(Sender: TObjectGI);
 var
-  I: Byte;
+  DisplayIndex: TDominatorDisplayIndex;
   Cursor: TPoint;
   Text: WideString;
   Ranger: TRanger;
+
   function FormatDominatorKillsHintColumn(
       Column: Integer
-  ): WideString; // @addr 0x56C708 @ida "void __usercall $name(int Column@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x56c93f,0x56c99e,0x56ca03,0x56ca20" @note "Nested in TfRating2.ShowDominatorKillsHint; caller supplies its parent frame."
+  ): WideString; { Nested in TfRating2.ShowDominatorKillsHint; caller supplies its parent frame. }
   begin
     Result := IntToStr(DominatorHintColumns[Column] + 40);
   end;
@@ -1730,7 +1718,7 @@ begin
         SetText(
             FormatText1(
                 LocalizedColorText('FormRating.PlayerName'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 Ranger.GetName
             )
@@ -1744,7 +1732,7 @@ begin
         SetText(
             FormatText1(
                 LocalizedColorText('FormRating.PartnerName'),
-                '<color=255,240,100>',
+                TextHighlightColorTag,
                 '<Name>',
                 Ranger.GetName
             )
@@ -1761,8 +1749,8 @@ begin
               + LocalizedText('FormRating.Dominator')
               + '</align>'
               + #13#10;
-      for I := 0 to 7 do
-        if Ord(DominatorDisplayOrder[I]) <> 0 then
+      for DisplayIndex := Low(DominatorDisplayOrder) to High(DominatorDisplayOrder) do
+        if DominatorDisplayOrder[DisplayIndex] <> ktBoss then
           Text :=
               Text
                   + '<td='
@@ -1770,15 +1758,15 @@ begin
                   + '><align=left>'
                   + LocalizedColorText(
                       AnsiString('ShipType.Dominator.Blazer.')
-                          + IntToStr(Ord(DominatorDisplayOrder[I])))
+                          + IntToStr(Ord(DominatorDisplayOrder[DisplayIndex])))
                   + '<td='
                   + FormatDominatorKillsHintColumn(2)
                   + '>:</align><td='
                   + FormatDominatorKillsHintColumn(3)
                   + '><align=left>'
                   + WrapTextInColor(
-                      IntToStr(GetPlayer.DominatorKillsByType[Ord(DominatorDisplayOrder[I])]),
-                      '<color=255,240,100>')
+                      IntToStr(GetPlayer.DominatorKillsByType[DominatorDisplayOrder[DisplayIndex]]),
+                      TextHighlightColorTag)
                   + '</align>'
                   + #13#10;
       with GetByName('RewardText') as TLabelGI do
@@ -1816,16 +1804,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-  TPlayer.ClassName;
-  TRanger.ClassName;
-  TWindowGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

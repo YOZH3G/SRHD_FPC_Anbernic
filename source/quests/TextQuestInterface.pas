@@ -1,16 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit TextQuestInterface;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct;
+
 type
+
   TTextQuestInterface = class;
+
   {$Z4}
   TQuestOutcome = (qoNone = 0, qoFailure = 1, qoSuccess = 2, qoDeath = 3);
+
   TTextQuestInterface = class(TObjectEx)
     procedure ShowText(Text: WideString); virtual;
     procedure ShowPicture(Name: WideString); virtual;
@@ -29,9 +32,8 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+
 implementation
-uses
-  Math;
 
 constructor TTextQuestInterface.Create;
 begin

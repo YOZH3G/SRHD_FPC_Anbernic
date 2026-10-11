@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit EC_CacheHSAI;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Buf,
@@ -12,26 +11,39 @@ uses
   GR_DX,
   GR_GraphBuf,
   Direct3D9;
+
 type
+
   TCHSAIControlEC = class;
+
   TCHSAIEC = class;
+
   PointerToTHSAIHeaderEC = ^THSAIHeaderEC;
+
   THSAIHeaderEC = packed record
-    Gap0: array[0..3] of Byte;
+    Magic: Cardinal;
     Width: Integer;
     Height: Integer;
     PitchBytes: Integer;
     FrameCount: Cardinal;
     FrameStride: Cardinal;
-    Gap18: array[0..23] of Byte;
-    PalettePresent: Cardinal;
+    HasPalette: Cardinal;
+    BitsPerPixel: Cardinal;
+    RedMask: Cardinal;
+    GreenMask: Cardinal;
+    BlueMask: Cardinal;
+    AlphaMask: Cardinal;
+    PaletteBytes: Cardinal;
   end;
+
   PHSAIHeaderEC = PointerToTHSAIHeaderEC;
+
   TCHSAIControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCHSAIEC = class(TCacheDataEC)
     BlobData: Pointer;
     Header: PHSAIHeaderEC;
@@ -47,15 +59,16 @@ type
     function GetOrCreateFrameSurface(FrameIndex: Cardinal): IDirect3DTexture9;
     function GetSourcePitchBytes: Integer;
   end;
+
 function AcquireCachedHSAI(Control: TCacheControlEC): TCHSAIEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   EC_Mem,
   GR_Main,
-  Windows;
+  Types;
 
 procedure TCHSAIControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
@@ -129,7 +142,7 @@ function TCHSAIEC.GetFramePalette(FrameIndex: Cardinal): PColorRGBA;
 begin
   if FrameIndex >= Header.FrameCount then
     Result := nil
-  else if Header.PalettePresent = 0 then
+  else if Header.PaletteBytes = 0 then
     Result := nil
   else
     Result :=
@@ -184,15 +197,11 @@ begin
   if SourceBuffer.DataSize < SizeOf(THSAIHeaderEC) then
     raise Exception.Create('Error Load HSAI');
   BlobData := AllocEC(SourceBuffer.DataSize);
-  CopyMemory(BlobData, SourceBuffer.Data, SourceBuffer.DataSize);
+  System.Move(Pointer(SourceBuffer.Data)^, Pointer(BlobData)^, SourceBuffer.DataSize);
   ResidentBytes := SourceBuffer.DataSize;
   Header := BlobData;
   Width := Header.Width;
   Height := Header.Height;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCHSAIEC.ClassName;
-end;
 end.

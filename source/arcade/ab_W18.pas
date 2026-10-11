@@ -1,23 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit ab_W18;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   GI_Tail,
   ab_Global,
   ab_Object,
   ab_WorldImage;
+
 type
+
   TabW18 = class;
+
   TabW18 = class(TabObject)
     Damage: Integer;
     Image: PabWorldImage;
     Exploding: Boolean;
-    GapB9: array[0..2] of Byte;
     ExpireTick: Integer;
     OrbitAngle: Single;
     AngleCorrection: Single;
@@ -28,10 +29,10 @@ type
     destructor Destroy; override;
     procedure Launch(Owner: TabObject; Amount: Integer; Angle: Single);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   aMyFunction,
   GlobalsV,
   ab_Ship;
@@ -170,8 +171,4 @@ begin
   inherited UpdateVisuals;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TabW18.ClassName;
-end;
 end.

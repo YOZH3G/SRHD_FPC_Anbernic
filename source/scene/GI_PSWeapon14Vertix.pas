@@ -1,16 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon14Vertix;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 type
+
   TGAISet = array[0..0] of WideString;
+
 var
+
   Weapon14AnimationPaths: array of TGAISet;
+
 procedure LoadWeapon14AnimationPaths;
+
 implementation
+
 uses
   GR_Main,
   SysUtils,
@@ -18,8 +23,6 @@ uses
   EC_BlockPar,
   EC_Str,
   Globals;
-// @unit-initialization $87794C
-// @unit-finalization $695E74
 
 procedure LoadWeapon14AnimationPaths;
 var

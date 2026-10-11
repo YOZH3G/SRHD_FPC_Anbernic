@@ -1,16 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit GR_Rect;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Struct,
   Types;
+
 type
+
   TArrayRectGR = class;
+
   TRectGR = class;
+
   TRectGR = class(TObject)
     Prev: TRectGR;
     Next: TRectGR;
@@ -18,6 +21,7 @@ type
     constructor Create;
     destructor Destroy; override;
   end;
+
   TArrayRectGR = class(TObjectEx)
     FirstRect: TRectGR;
     LastRect: TRectGR;
@@ -30,9 +34,10 @@ type
     procedure InsertRectFragment(Left: Integer; Top: Integer; Right: Integer; Bottom: Integer);
     procedure AddScreenClippedRect(Rect: TRect; UnusedPoint1: TPoint; UnusedPoint2: TPoint);
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main;
 
 constructor TRectGR.Create;

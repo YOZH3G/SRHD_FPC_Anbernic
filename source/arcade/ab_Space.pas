@@ -1,18 +1,21 @@
-{$EXCESSPRECISION OFF}
 unit ab_Space;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   Classes,
   EC_Struct,
-  GI_GAI,
-  Types;
+  GI_GAI;
+
 type
+
   TabSpace = class;
+
   PointerToTabSpaceLink = ^TabSpaceLink;
+
   TabSpace = class(TObjectEx)
     Prev: TabSpace;
     Next: TabSpace;
@@ -28,13 +31,12 @@ type
     AppearanceIndex: Integer;
     MapPath: WideString;
     BoundaryKind: Integer;
-    PortalSlotCount: Integer;
+    PortalSlotCount: Integer; // Native +$44 stays zero; distinct from OutgoingCount.
     Danger: Double;
     ApproachDanger: Double;
     RouteCost: Double;
     Objects: TList;
     ImageActive: Boolean;
-    Gap65: array[0..2] of Byte;
     Image: TgaiGI;
     constructor Create;
     destructor Destroy; override;
@@ -53,7 +55,9 @@ type
     function GetDangerText: WideString;
     procedure RecountLinks;
   end;
+
   PabSpaceLink = PointerToTabSpaceLink;
+
   TabSpaceLink = record
     Prev: PabSpaceLink;
     Next: PabSpaceLink;
@@ -62,38 +66,69 @@ type
     ExitIndex: Integer;
     Points: array[0..10] of TPoint;
   end;
+
 var
+
   FirstArcadeSpace: TabSpace = nil;
+
   LastArcadeSpace: TabSpace = nil;
+
   CurrentArcadeSpace: TabSpace = nil;
+
   NextArcadeSpace: TabSpace = nil;
+
   StartArcadeSpace: TabSpace = nil;
+
   EndArcadeSpace: TabSpace = nil;
+
   HoveredArcadeSpace: TabSpace = nil;
+
   FirstArcadeSpaceLink: PabSpaceLink = nil;
+
   LastArcadeSpaceLink: PabSpaceLink = nil;
+
   ArcadeKellerEncounter: Boolean;
+
 procedure ab_Space_Clear;
+
 function ab_Space_Add: TabSpace;
+
 procedure ab_Space_Delete(Space: TabSpace);
+
 procedure ab_Space_CreateImages;
+
 procedure ab_Space_ClearImages;
+
 procedure ab_Space_Update;
+
 function ab_Space_Find(GridPosition: TPoint): TabSpace;
+
 procedure ab_Space_RecountLinks;
+
 procedure ab_Space_UpdateApproachDanger;
+
 procedure ab_SpaceLink_Clear;
+
 function ab_SpaceLink_Add: PabSpaceLink;
+
 procedure ab_SpaceLink_Delete(Link: PabSpaceLink);
+
 procedure ab_SpaceLink_Connect(First: TabSpace; Last: TabSpace);
+
 function ab_SpaceLink_Find(First: TabSpace; Last: TabSpace): PabSpaceLink;
+
 function ab_SpaceLink_FindExit(First: TabSpace; ExitIndex: Integer): PabSpaceLink;
+
 procedure ab_SpaceLink_Invalidate;
+
 procedure ab_SpaceLink_BuildGeometry;
+
 procedure ab_SpaceLink_ClearImages;
+
 procedure ab_SpaceLink_Draw;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   aKling,
   SysUtils,
@@ -319,7 +354,7 @@ begin
   MineralBudget :=
       Min(
           CargoHookLevelStats[8].PickupPower,
-          GetPlayer.Wealth div 40 div GoodsMarket[4].AveragePrice
+          GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice
       );
   MineralBudget := Round(RemapClamped(Danger + ApproachDanger, 0, 250, 0.2, 1.2) * MineralBudget);
   MineralBudget := Round(RemapClamped(Count, 0, 4, 0.8, 1.2) * MineralBudget);
@@ -450,7 +485,7 @@ begin
   MineralBudget :=
       Min(
           CargoHookLevelStats[8].PickupPower,
-          GetPlayer.Wealth div 40 div GoodsMarket[4].AveragePrice
+          GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice
       );
   MineralBudget := Round(RemapClamped(Count, 2, 4, 0.8, 1.2) * MineralBudget);
   for Index := 1 to 8 do
@@ -486,7 +521,8 @@ var
   Ship: TabShipAI;
   Minimum, Maximum, J: Integer;
   OtherShip: TabShip;
-  procedure InitializeScriptedEncounterShip; // @addr $5514C8 @ida "void __cdecl $name(void *ParentFrame);"
+
+  procedure InitializeScriptedEncounterShip;
   var
     WeaponIndex, Hitpoints: Integer;
   begin
@@ -707,10 +743,8 @@ begin
 end;
 
 procedure TabSpace.UpdateApproachDanger;
-  function FindApproachDanger(
-      Space: TabSpace;
-      Accumulated: Single
-  ): Single; // @addr $5526EC @ida "float __userpurge $name@<st0>(TabSpace *Space@<eax>, float Accumulated@<^0>, void *ParentFrame@<^4>);" @stackpop 4 @calls "0x552777,0x5527dd"
+
+  function FindApproachDanger(Space: TabSpace; Accumulated: Single): Single;
   var
     Link: PabSpaceLink;
     Candidate: Single;
@@ -738,6 +772,7 @@ procedure TabSpace.UpdateApproachDanger;
       Link := Link.Next;
     end;
   end;
+
 begin
   if Danger <= 0 then
   begin
@@ -807,6 +842,7 @@ end;
 
 procedure ab_Space_Clear;
 begin
+  HoveredArcadeSpace := nil;
   ab_SpaceLink_Clear;
   while not (FirstArcadeSpace = nil) do
     ab_Space_Delete(LastArcadeSpace);
@@ -835,6 +871,8 @@ procedure ab_Space_Delete(Space: TabSpace);
 var
   Link, Removing: PabSpaceLink;
 begin
+  if HoveredArcadeSpace = Space then
+    HoveredArcadeSpace := nil;
   if Space.Prev <> nil then
     Space.Prev.Next := Space.Next;
   if Space.Next <> nil then
@@ -1276,8 +1314,4 @@ begin
   end;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGoods.ClassName;
-end;
 end.

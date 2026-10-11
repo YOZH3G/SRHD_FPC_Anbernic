@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit fCount1;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   Types,
   GI_MessageLoop;
+
 type
+
   TfCount1 = class;
+
   TfCount1 = class(TMessageLoopGI)
     ImagePath: WideString;
     KindImagePath: WideString;
@@ -21,11 +23,11 @@ type
     Value: Integer;
     Items: TList;
     Dragging: Boolean;
-    GapF1: array[0..2] of Byte;
     RepeatTimer: PCallbackTimerGI;
     RepeatCount: Cardinal;
     procedure OnOpen; override;
     procedure OnClose; override;
+    procedure CancelPointerInput; override;
     procedure ProcessCallbackTimers; override;
     procedure ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer); override;
     procedure InitializeLayout; override;
@@ -45,6 +47,7 @@ type
     procedure MainMouseMove(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure MainKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
+
 function ShowNumberDialog(
     Parent: TMessageLoopGI;
     const ImagePath: WideString;
@@ -56,13 +59,14 @@ function ShowNumberDialog(
     Items: TList;
     var Value: Integer
 ): Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   GI_Main,
   Math,
   SysUtils,
-  Windows,
+  GameInput,
   GR_Main,
   Globals,
   GlobalsV,
@@ -96,10 +100,15 @@ begin
           )
       );
   end;
+  FitMobileControl(
+      GetByName('Ok').Parent,
+      Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
+  );
 end;
 
 procedure TfCount1.OnOpen;
 begin
+  (GetByName('BGBuf') as TGraphBufGI).GraphBuf.LoadFromScreen(0, True);
   Dragging := False;
   with GetByName('ItemImage') as TImageGI do
   begin
@@ -109,16 +118,19 @@ begin
     SetActive(True);
   end;
   (GetByName('Caption') as TLabelGI).SetText(Caption);
-  (GetByName('BGBuf') as TGraphBufGI).BindExternalGraphBuf(AuxRenderBuffer);
   with GetByName('Add') as TGraphButtonGI do
   begin
     DownCallback := AddPressed;
     UpCallback := AddReleased;
+    TouchHold := True;
+    TouchCancelCallback := AddReleased;
   end;
   with GetByName('Sub') as TGraphButtonGI do
   begin
     DownCallback := SubPressed;
     UpCallback := SubReleased;
+    TouchHold := True;
+    TouchCancelCallback := SubReleased;
   end;
   (GetByName('Max') as TGraphButtonGI).UpCallback := MaxClicked;
   (GetByName('Ok') as TGraphButtonGI).UpCallback := AcceptClicked;
@@ -149,6 +161,18 @@ begin
     GetByName('Kind0').SetActive(False);
   end;
   RefreshValue;
+end;
+
+procedure TfCount1.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  Dragging := False;
+  if RepeatTimer <> nil then
+  begin
+    CancelCallbackTimer(RepeatTimer);
+    RepeatTimer := nil;
+  end;
+  RepeatCount := 0;
 end;
 
 procedure TfCount1.OnClose;
@@ -383,11 +407,10 @@ var
   Dialog: TfCount1;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
-  CaptureScreenBackground(False, 0);
   Dialog := TfCount1.Create;
   Dialog.ParentLoop := Parent;
   Parent.ChildLoop := Dialog;
@@ -411,14 +434,7 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-end;
 end.

@@ -1,31 +1,35 @@
-{$EXCESSPRECISION OFF}
 unit SE_Comet;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  Classes,
   Types,
+  Classes,
   EC_BlockPar,
   EC_Struct,
   GI_GAI,
   GI_MessageLoop,
   SE_Space;
+
 type
+
   TCometSE = class;
+
   PointerToTCometTrailEntry = ^TCometTrailEntry;
+
   PCometTrailEntry = PointerToTCometTrailEntry;
-  TCometTrailEntry = packed record
+
+  TCometTrailEntry = record
     Next: PCometTrailEntry;
     Prev: PCometTrailEntry;
     Position: TPointF;
     Velocity: TPointF;
     Animation: TgaiGI;
     Finished: Boolean;
-    Gap1D: array[0..2] of Byte;
   end;
+
   TCometSE = class(TObjectSE)
     TimerInterval: Integer;
     MoveTimer: PSpaceTimerSE;
@@ -68,8 +72,9 @@ type
     procedure ExplodeAndRespawn;
     procedure AdvanceSteps(Count: Integer);
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   SysUtils,
   Math,
@@ -481,8 +486,4 @@ begin
   Control.Free;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TgaiGI.ClassName;
-end;
 end.

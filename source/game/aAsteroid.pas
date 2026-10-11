@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit aAsteroid;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   SE_Space,
   aEFilm,
   aGalaxy;
+
 type
+
   TAsteroid = class;
+
   TAsteroid = class(TObjectEx)
     Id: Cardinal;
     CurrentStar: TStar;
@@ -37,14 +39,16 @@ type
     procedure SpawnSiblingAsteroidInCurrentStar;
     procedure IntegrateMotion(TimeScale: Single);
     procedure WritePredictedPositions(Positions: PPointF; Count: Integer);
-    function GetDisplayName: WideString; overload;
-    function GetDisplayName(const Template: WideString): WideString; overload;
-    function GetInfoText: WideString; overload;
-    function GetInfoText(const Template: WideString): WideString; overload;
+    function GetDisplayName: WideString;
+    function GetInfoText: WideString;
   end;
+
 const
+
   AsteroidGravitationalConstant: Single = 6.672041391597716e-11;
+
 implementation
+
 uses
   Classes,
   Math,
@@ -57,7 +61,9 @@ uses
   aConst,
   aPlayer,
   aShip,
-  GR_Main;
+  GR_Main,
+  aGalaxyStruct;
+
 const
   // Preserve native Extended constants. DCC32's decimal conversion rounds plain
   // 2e30 and 6e-9 one mantissa bit above the constants in this binary.
@@ -140,7 +146,7 @@ end;
 
 procedure TAsteroid.AdvanceOrbitStep(StepIndex: Integer; RecordFilm: Boolean);
 begin
-  IntegrateMotion(200 / CurrentStar.MovementStepCount);
+  IntegrateMotion(BaseMovementStepsPerTurn / CurrentStar.MovementStepCount);
   if RecordFilm then
     PrimaryFilm.SetObjectPosition(StepIndex, FilmObject, Position);
 end;
@@ -253,31 +259,20 @@ end;
 
 function TAsteroid.GetDisplayName: WideString;
 begin
-  Result := GetDisplayName(LocalizedText('Asteroid.Name'));
-end;
-
-// CHANGE: PERFORMANCE - Batch callers can share the unchanged localized template.
-function TAsteroid.GetDisplayName(const Template: WideString): WideString;
-begin
-  Result := Template;
-  ReplaceTextToken(Result, '<Number>', IntToWideString(Id), '<color=255,240,100>');
+  Result := LocalizedText('Asteroid.Name');
+  ReplaceTextToken(Result, '<Number>', IntToWideString(Id), TextHighlightColorTag);
 end;
 
 function TAsteroid.GetInfoText: WideString;
-begin
-  Result := GetInfoText(LocalizedText('Asteroid.Text'));
-end;
-
-function TAsteroid.GetInfoText(const Template: WideString): WideString;
 var
   Speed: Single;
 begin
-  Result := Template;
-  ReplaceTextToken(Result, '<Number>', IntToWideString(Id), '<color=255,240,100>');
+  Result := LocalizedText('Asteroid.Text');
+  ReplaceTextToken(Result, '<Number>', IntToWideString(Id), TextHighlightColorTag);
   Speed := Sqrt(Sqr(Velocity.X) + Sqr(Velocity.Y));
-  Speed := Speed * 200 * 19968 * AsteroidWorldScale;
-  ReplaceTextToken(Result, '<Speed>', IntToWideString(Round(Speed)), '<color=255,240,100>');
-  ReplaceTextToken(Result, '<Count>', IntToWideString(MineralCount), '<color=255,240,100>');
+  Speed := Speed * BaseMovementStepsPerTurn * 19968 * AsteroidWorldScale;
+  ReplaceTextToken(Result, '<Speed>', IntToWideString(Round(Speed)), TextHighlightColorTag);
+  ReplaceTextToken(Result, '<Count>', IntToWideString(MineralCount), TextHighlightColorTag);
 end;
 
 end.

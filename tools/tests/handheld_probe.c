@@ -7,8 +7,8 @@ int main(void) {
     SDL_version version;
     SDL_GetVersion(&version);
     printf("System SDL: %u.%u.%u\n", version.major, version.minor, version.patch);
-    if (SDL_VERSIONNUM(version.major, version.minor, version.patch) < SDL_VERSIONNUM(2, 0, 18)) {
-        fprintf(stderr, "SDL 2.0.18 or newer is required. Update the firmware.\n");
+    if (SDL_VERSIONNUM(version.major, version.minor, version.patch) < SDL_VERSIONNUM(2, 26, 0)) {
+        fprintf(stderr, "SDL 2.26.0 or newer is required. Update the firmware.\n");
         return 1;
     }
     printf("Video drivers:");

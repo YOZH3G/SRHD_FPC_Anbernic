@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit fLoadRobot;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
-  RTLFileSystem,
+  GameSystem,
   GI_MessageLoop,
   Types,
   fPanelLoad,
   GI_Image;
+
 type
+
   TfLoadRobot = class;
+
   TfLoadRobotSlot = record
     Name: WideString;
     FileName: WideString;
@@ -21,9 +23,9 @@ type
     Access: Integer;
     Side: Integer;
     AlternateBackground: Boolean;
-    Gap19: array[0..2] of Byte;
     Length: Integer;
   end;
+
   TfLoadRobot = class(TMessageLoopGI)
     LoadPanel: TfPanelLoad;
     Entries: array of TfLoadRobotSlot;
@@ -64,10 +66,13 @@ type
     function GetCompletionCounts: TPoint;
     function GetCompletionSummary: WideString;
   end;
+
 var
+
   RobotMapNameColor: Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   Globals,
   GR_Main,
@@ -86,7 +91,7 @@ uses
   GI_GraphBuf,
   aConst,
   aMyFunction,
-  Windows,
+  GameInput,
   GI_Label;
 
 constructor TfLoadRobot.Create;
@@ -197,19 +202,19 @@ begin
         StartText,
         '<Star>',
         LocalizedText('FormLoadRobot.PStar'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         StartText,
         '<Planet>',
         LocalizedText('FormLoadRobot.PPlanet'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         StartText,
         '<Player>',
         LocalizedText('FormLoadRobot.PPlayer'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ExpandLocalizedTextMarkupAndPrefixLines(StartText);
     StartText := WideString(IntToStr(Difficulty)) + StartText;
@@ -219,38 +224,38 @@ begin
         WinText,
         '<Star>',
         LocalizedText('FormLoadRobot.PStar'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         WinText,
         '<Planet>',
         LocalizedText('FormLoadRobot.PPlanet'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         WinText,
         '<Player>',
         LocalizedText('FormLoadRobot.PPlayer'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ExpandLocalizedTextMarkupAndPrefixLines(WinText);
     ReplaceTextToken(
         LossText,
         '<Star>',
         LocalizedText('FormLoadRobot.PStar'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         LossText,
         '<Planet>',
         LocalizedText('FormLoadRobot.PPlanet'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ReplaceTextToken(
         LossText,
         '<Player>',
         LocalizedText('FormLoadRobot.PPlayer'),
-        '<color=255,240,100>'
+        TextHighlightColorTag
     );
     ExpandLocalizedTextMarkupAndPrefixLines(LossText);
     TerronName := LocalizedText('FormLoadRobot.PPlace');
@@ -269,13 +274,13 @@ begin
           if Difficulty = 1 then
             RecordCompletion(
                 RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id,
-                -RobotBattleStatistics[0] div 1000,
+                -RobotBattleStatistics.SignedTimeMs div 1000,
                 2
             )
           else
             RecordCompletion(
                 RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id,
-                -RobotBattleStatistics[0] div 1000,
+                -RobotBattleStatistics.SignedTimeMs div 1000,
                 1
             );
           SaveCompletionData;
@@ -477,7 +482,7 @@ var
   Alternate: Boolean;
   Path: WideString;
   FindHandle: Cardinal;
-  FindData: TWin32FindDataW;
+  FindData: TSearchRec;
 begin
   Panel := GetByName('PanelSlot') as TPanelScrollBarGI;
   Panel.FreeOwnedChildren;
@@ -512,13 +517,15 @@ begin
     Path := '';
     if InstallConfig.CountParams('RobotPath') > 0 then
       Path := InstallConfig.GetParam('RobotPath');
-    FindHandle := Windows.FindFirstFileW(PWideChar(Path + 'Matrix\Map\*.cmap'), FindData);
-    if FindHandle <> INVALID_HANDLE_VALUE then
+    // Match the extension separately: Unix masks do not fold case as Windows did.
+    if SysUtils.FindFirst(UTF8Encode(NativeGamePath(Path + 'Matrix\Map\*')), faAnyFile, FindData)
+        = 0 then
     begin
       repeat
-        if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then
+        if ((FindData.Attr and faDirectory) = 0)
+            and SameText(ExtractFileExt(FindData.Name), '.cmap') then
         begin
-          Path := TrimWideString(LowerCaseWideString(WideString(FindData.cFileName)));
+          Path := TrimWideString(LowerCaseWideString(WideString(FindData.Name)));
           I := 0;
           while I <= High(RobotMapDefinitions) do
           begin
@@ -529,15 +536,15 @@ begin
           if I > High(RobotMapDefinitions) then
           begin
             EntryIndex := InsertEntry(0);
-            Entries[EntryIndex].Name := ExtractFileNameNoExtW(WideString(FindData.cFileName));
-            Entries[EntryIndex].FileName := WideString(FindData.cFileName);
+            Entries[EntryIndex].Name := ExtractFileNameNoExtW(WideString(FindData.Name));
+            Entries[EntryIndex].FileName := WideString(FindData.Name);
             Entries[EntryIndex].MapIndex := -1;
             Entries[EntryIndex].Side := 0;
             Entries[EntryIndex].Length := -1;
           end;
         end;
-      until not Windows.FindNextFileW(FindHandle, FindData);
-      Windows.FindClose(FindHandle);
+      until SysUtils.FindNext(FindData) <> 0;
+      SysUtils.FindClose(FindData);
     end;
   end;
   UnlockedAccess := GetUnlockedAccess;
@@ -939,20 +946,20 @@ begin
     begin
       SetActive(True);
       Text := RobotMapDefinitions[Entries[SelectedIndex].MapIndex].GovTextStart;
-      ReplaceTextToken(Text, '<Star>', LocalizedText('FormLoadRobot.PStar'), '<color=0,71,234>');
+      ReplaceTextToken(Text, '<Star>', LocalizedText('FormLoadRobot.PStar'), BrightBlueColorTag);
       ReplaceTextToken(
           Text,
           '<Planet>',
           LocalizedText('FormLoadRobot.PPlanet'),
-          '<color=0,71,234>'
+          BrightBlueColorTag
       );
       ReplaceTextToken(
           Text,
           '<Player>',
           LocalizedText('FormLoadRobot.PPlayer'),
-          '<color=0,71,234>'
+          BrightBlueColorTag
       );
-      ReplaceTextToken(Text, '<Money>', WideString(IntToStr(1000)), '<color=0,71,234>');
+      ReplaceTextToken(Text, '<Money>', WideString(IntToStr(1000)), BrightBlueColorTag);
       SetText(Text);
       Text := RobotMapDefinitions[Entries[SelectedIndex].MapIndex].FromAuthor;
       if Text <> '' then
@@ -1004,7 +1011,7 @@ var
 begin
   CompletionData := nil;
   FileName := GetGameUserDirectory + 'robotcomplate.dat';
-  if RTLFileSystem.FileExists(AnsiString(FileName)) then
+  if SysUtils.FileExists(NativeGamePath(AnsiString(FileName))) then
   begin
     try
       Buffer := TBufEC.Create;
@@ -1135,11 +1142,4 @@ procedure TfLoadRobot.SelectMusic;
 begin
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-end;
 end.

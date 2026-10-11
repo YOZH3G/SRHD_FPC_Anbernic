@@ -1,17 +1,19 @@
-{$EXCESSPRECISION OFF}
 unit fTextBox;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Types,
   GI_MessageLoop,
   GI_Edit,
   GI_GraphButton;
+
 type
+
   TfTextBox = class;
+
   TfTextBox = class(TMessageLoopGI)
     Caption: WideString;
     Edit: TEditGI;
@@ -32,6 +34,7 @@ type
     function IsValidText(Candidate: WideString): Boolean;
     procedure EditKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
+
 function ShowTextInputDialog(
     Parent: TMessageLoopGI;
     Caption: WideString;
@@ -40,11 +43,12 @@ function ShowTextInputDialog(
     OffsetX: Integer;
     OffsetY: Integer
 ): Cardinal;
+
 implementation
+
 uses
-  Math,
   Classes,
-  Windows,
+  GameInput,
   EC_Str,
   GI_Window,
   GI_Label,
@@ -143,9 +147,9 @@ begin
   CaptionLabel.SetFontName(NormalBoldFontName);
   CaptionLabel.SetText(
       ReplaceAllWideString(
-          ReplaceAllWideString(Caption, '<color=255,240,100>', '<color=0,50,200>'),
-          '<color=0,255,0>',
-          '<color=255,255,0>'
+          ReplaceAllWideString(Caption, TextHighlightColorTag, DialogHighlightColorTag),
+          GreenColorTag,
+          YellowColorTag
       )
   );
   Edit := TEditGI.Create(ContentPanel);
@@ -187,6 +191,7 @@ end;
 
 procedure TfTextBox.OnClose;
 begin
+
 end;
 
 procedure TfTextBox.AcceptClicked(Sender: TObjectGI);
@@ -266,7 +271,7 @@ var
   Dialog: TfTextBox;
   State: TCursorStateGI;
 begin
-  Parent.RootUiObject.NativeHook50;
+  Parent.RootUiObject.OnModalSuspend;
   Parent.CaptureCursorState(@State);
   Parent.SetCursorActive(False);
   Parent.DrawQueuedUpdateRects;
@@ -290,7 +295,7 @@ begin
   end;
   Parent.RestoreCursorState(@State);
   Parent.UpdateCursorPosition;
-  Parent.RootUiObject.NativeHook48;
+  Parent.RootUiObject.OnModalResume;
   if Result = 254 then
     BreakUiMessage;
 end;

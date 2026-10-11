@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit GI_Window;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_Image,
   GI_MessageLoop,
   GI_Panel,
   Types;
+
 type
+
   TWindowGI = class;
+
   TWindowGI = class(TPanelGI)
     LeftImage: TImageGI;
     RightImage: TImageGI;
@@ -34,7 +36,9 @@ type
     procedure UpdateBorderLayout;
     procedure LoadWindowProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
   Classes,
   GI_Main,

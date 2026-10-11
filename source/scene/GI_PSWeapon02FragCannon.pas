@@ -1,35 +1,42 @@
-{$EXCESSPRECISION OFF}
 unit GI_PSWeapon02FragCannon;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   GI_MessageLoop,
-  GI_PSWeapon,
-  Types;
+  GI_PSWeapon;
+
 type
+
   PointerToTFragCannonParticle = ^TFragCannonParticle;
+
   PFragCannonParticle = PointerToTFragCannonParticle;
+
   TFragCannonParticle = record
     Prev: PFragCannonParticle;
     Next: PFragCannonParticle;
     Position: TPointF;
     Color: Word;
     Alpha: Byte;
-    Gap13: array[0..0] of Byte;
     Velocity: TPointF;
     State: Byte;
-    Gap1D: array[0..0] of Byte;
     Unknown1E: Word;
   end;
+
   TFragCannonPalette = array[0..1] of Word;
+
 var
+
   FragCannonPalettes: array of TFragCannonPalette;
+
 type
+
   TPSWeapon02FragCannon = class;
+
   TPSWeapon02FragCannon = class(TPSWeaponGI)
     HalfWidth: Integer;
     FirstParticle: PFragCannonParticle;
@@ -51,13 +58,18 @@ type
     function AddParticle: PFragCannonParticle;
     procedure ClearParticles;
   end;
+
 var
+
   FragCannonRandomIndex: Integer = 0;
+
 function NextFragCannonRandom: Integer;
+
 procedure LoadFragCannonPalettes;
+
 implementation
+
 uses
-  ObserverHooks,
   GlobalsV,
   SysUtils,
   Math,
@@ -68,10 +80,9 @@ uses
   GR_DX,
   aMyFunction,
   Globals;
-// @unit-initialization $8778F4
-// @unit-finalization $689988
+
 var
-  FragCannonRandomValues: array[0..127] of Integer; // @addr $88AA98
+  FragCannonRandomValues: array[0..127] of Integer;
 
 function NextFragCannonRandom: Integer;
 begin
@@ -286,8 +297,8 @@ begin
               Spark.Position.X := Current.Position.X;
               Spark.Position.Y := Current.Position.Y;
               Spark.Color := SecondaryColor;
-              Y := PresentationRandom(16) / 8.0 * Pi;
-              Power := PresentationRandom(50);
+              Y := Random(16) / 8.0 * Pi;
+              Power := Random(50);
               Spark.Velocity.X := Sin(Y) * (Power + 50) / 50.0;
               Spark.Velocity.Y := Cos(Y) * (Power + 50) / 50.0;
               Spark.State := 4;
@@ -315,7 +326,7 @@ begin
               Spark.Velocity.Y := Current.Velocity.Y * 0.75;
               Spark.State := 2;
               Spark.Unknown1E := 30000;
-              I := Current.Alpha - PresentationRandom(128);
+              I := Current.Alpha - Random(128);
               if I > 255 then
                 I := 255
               else if I < 0 then
@@ -347,7 +358,7 @@ begin
             Spark.Velocity.Y := 0.7 * Current.Velocity.Y;
             Spark.State := 2;
             Spark.Unknown1E := 30000;
-            I := Current.Alpha + PresentationRandom(60) - 32;
+            I := Current.Alpha + Random(60) - 32;
             if I > 255 then
               I := 255
             else if I < 0 then
@@ -447,7 +458,7 @@ var
   Text: WideString;
 begin
   for Index := Low(FragCannonRandomValues) to High(FragCannonRandomValues) do
-    FragCannonRandomValues[Index] := PresentationRandom(100);
+    FragCannonRandomValues[Index] := Random(100);
   Block := GameDataConfig.GetBlockByPath('SE.Weapon.1.Palettes');
   ColorIndex := Block.GetBlockCount;
   Count := 0;

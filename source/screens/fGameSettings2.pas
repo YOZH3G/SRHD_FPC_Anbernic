@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fGameSettings2;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   EC_Thread,
@@ -15,20 +14,22 @@ uses
   GI_Panel,
   Types,
   aGalaxyStruct;
+
 type
+
   TfGameSettings2 = class;
+
   TNewGameSliderEvent = procedure(Sender: TCountBarGI) of object;
+
   TfGameSettings2 = class(TMessageLoopGI)
     CollapsedLevelPanelTop: Integer;
     LevelPanelTop: Integer;
     LevelPanelTimer: PCallbackTimerGI;
-    PlayerRace: Byte;
-    GapDD: array[0..2] of Byte;
+    PlayerRace: TOwnerId;
     CharacterPreset: Integer;
     CaptainPortraitIndex: Integer;
-    LastPortraitByRace: array[0..4] of Integer;
-    StartingSkills: array[0..1] of Byte;
-    GapFE: array[0..1] of Byte;
+    LastPortraitByRace: array[oiMaloc..oiGaal] of Integer;
+    StartingSkills: array[0..1] of TPilotSkill;
     SelectedSkillSlot: Integer;
     StartingItemChoices: array[0..1] of Integer;
     SelectedItemSlot: Integer;
@@ -37,11 +38,9 @@ type
     DifficultyLevels: TGalaxyDifficultyLevels;
     PlayerNameEdited: Boolean;
     PlayerNameValid: Boolean;
-    Gap127: array[0..0] of Byte;
     IronWillImage: TImageGI;
     IronWillLabel: TLabelGI;
     IronWill: Boolean;
-    Gap131: array[0..2] of Byte;
     ActiveExtendedGroup: Integer;
     ExtendedGroupPanels: array[0..3] of TPanelGI;
     ExtendedGroupNextY: array[0..3] of Integer;
@@ -128,13 +127,13 @@ type
     procedure DecreaseAllDifficulties;
     procedure RefreshDifficultyHelp;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
 
 uses
   fGameSettings,
   Classes,
-  Windows,
+  GameInput,
   SysUtils,
   Math,
   EC_Str,
@@ -167,12 +166,12 @@ procedure TfGameSettings2.InitializeLayout;
 var
   I, J: Integer;
   Text: WideString;
-  Race: Byte;
+  Race: TOwnerId;
   Unused: Integer; // Native O- stack reserves this unused local.
 begin
   inherited InitializeLayout;
   AppendLogTextThreadSafe('fGameSettings2... ');
-  for Race := 0 to 4 do
+  for Race := oiMaloc to oiGaal do
   begin
     I := -1;
     repeat
@@ -181,8 +180,7 @@ begin
       if I < 10 then
         Text := '0' + Text;
     until GameDataConfig
-            .GetBlockByPath(
-                'StyleFace' + OwnerInfo[Integer(RaceToOwner(Race)) and $7F].InternalName)
+            .GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName)
             .CountParams(Text)
         <= 0;
     LastPortraitByRace[Race] := I - 1;
@@ -352,16 +350,19 @@ begin
   for I := 0 to 11 do
     ItemTypeByChoice[I] := I + 43;
   for I := 0 to 11 do
-    if ItemTypeByChoice[I] in [Ord(t_Weapon1)..Ord(t_Weapon18)] then
+    if ItemTypeByChoice[I] in [Ord(t_IndustrialLaser)..Ord(t_Lirecron)] then
       (GetByName('ItemI' + IntToStr(I + 1)) as TImageGI)
           .SetImagePath(
-              'GI,Bm.Items.' + GiResourceSuffix + ItemTypeNames[ItemTypeByChoice[I]] + 's')
+              'GI,Bm.Items.'
+                  + GiResourceSuffix
+                  + ItemTypeNames[TItemType(ItemTypeByChoice[I])]
+                  + 's')
     else
       (GetByName('ItemI' + IntToStr(I + 1)) as TImageGI)
           .SetImagePath(
               'GI,Bm.Items.'
                   + GiResourceSuffix
-                  + ItemTypeNames[ItemTypeByChoice[I]]
+                  + ItemTypeNames[TItemType(ItemTypeByChoice[I])]
                   + IntToStr(1)
                   + 's');
   for I := 1 to 4 do
@@ -443,6 +444,7 @@ begin
     ExtendedGroupButtonTops[2] := LocalPosition.Y;
   end;
 end;
+
 procedure TfGameSettings2.OnOpen;
 var
   I, X, Y, Value: Integer;
@@ -451,15 +453,17 @@ var
   ValueLabel: TLabelGI;
   Position: Integer;
   Enabled: Boolean;
+
   function GetNewGameCustomRule(
       Path: WideString
-  ): WideString; // @addr 0x56E714 @ida "void __usercall $name(unsigned __int16 *Path@<eax>, unsigned __int16 **Result@<edx>, void *ParentFrame@<^0>);" @stackpop 0 @calls "0x56f1f6,0x56f28c,0x56f322,0x56f3b8,0x56f44e,0x56f4e5,0x56f57d,0x56f612,0x56f6c5,0x56f778,0x56f82b,0x56f935,0x56f9cc,0x56fa63,0x56fafa,0x56fb91,0x56fc28,0x56fce8,0x56fd9b,0x56fe4e,0x56ff01,0x56ffb4,0x570067,0x5700fe,0x570195,0x570248,0x5702df,0x570376,0x57040d,0x5704a4,0x570557,0x57060a,0x5706a1,0x570754,0x570807,0x5708ba,0x57096d,0x570a20" @note "Nested in OnOpen; static link unused. Returns an empty string for an absent CustomRules block or key."
+  ): WideString; { Nested in OnOpen; static link unused. Returns an empty string for an absent CustomRules block or key. }
   begin
     Result := '';
     if NewGameSettingsConfig.CountBlocks('CustomRules') <> 0 then
       if NewGameSettingsConfig.GetBlockByPath('CustomRules').CountParamsByPath(Path) <> 0 then
         Result := NewGameSettingsConfig.GetBlockByPath('CustomRules').GetParamByPath(Path);
   end;
+
 begin
   PlayerNameEdited := False;
   PlayerNameValid := True;
@@ -475,33 +479,33 @@ begin
     Text := NewGameSettingsConfig.GetParamByPathOrMarker('Race');
     if Text = 'Maloc' then
     begin
-      PlayerRace := 0;
+      PlayerRace := oiMaloc;
       RaceClicked(GetByName('RaceMaloc'));
     end
     else if Text = 'Peleng' then
     begin
-      PlayerRace := 1;
+      PlayerRace := oiPeleng;
       RaceClicked(GetByName('RacePeleng'));
     end
     else if Text = 'Fei' then
     begin
-      PlayerRace := 3;
+      PlayerRace := oiFeyan;
       RaceClicked(GetByName('RaceFei'));
     end
     else if Text = 'Gaal' then
     begin
-      PlayerRace := 4;
+      PlayerRace := oiGaal;
       RaceClicked(GetByName('RaceGaal'));
     end
     else
     begin
-      PlayerRace := 2;
+      PlayerRace := oiHuman;
       RaceClicked(GetByName('RacePeople'));
     end;
   end
   else
   begin
-    PlayerRace := 2;
+    PlayerRace := oiHuman;
     RaceClicked(GetByName('RacePeople'));
   end;
   if (NewGameSettingsConfig.CountParamsByPath('Name') > 0)
@@ -536,14 +540,14 @@ begin
           <> ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2'))) then
   begin
     StartingSkills[0] :=
-        ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill1'));
+        TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill1')));
     StartingSkills[1] :=
-        ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2'));
+        TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2')));
   end
   else
   begin
-    StartingSkills[0] := 0;
-    StartingSkills[1] := 3;
+    StartingSkills[0] := psAccuracy;
+    StartingSkills[1] := psTrading;
   end;
   RefreshStartingSkills;
   SelectedItemSlot := 0;
@@ -1284,6 +1288,7 @@ begin
   ActiveExtendedGroup := 0;
   RefreshExtendedGroup;
 end;
+
 procedure TfGameSettings2.OnClose;
 begin
   if LevelPanelTimer <> nil then
@@ -1298,6 +1303,7 @@ begin
   with GetByName('PanelSet') as TPanelScrollBarGI do
     FreeOwnedChildren;
 end;
+
 procedure TfGameSettings2.AddIronWillChoice(
     Value, X, Y: Integer;
     Caption, Help: WideString;
@@ -1357,6 +1363,7 @@ begin
     UserValue := PtrInt(IronWillImage);
   end;
 end;
+
 procedure TfGameSettings2.IronWillMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   if Sender is TLabelGI then
@@ -1375,6 +1382,7 @@ begin
   if (Point.X <> -1000) or (Point.Y <> -1000) then
     SoundManager.PlaySound('Sound.ButtonClick');
 end;
+
 procedure TfGameSettings2.IronWillMouseEnter(Sender: TObjectGI);
 begin
   if not (Sender is TImageGI) then
@@ -1382,6 +1390,7 @@ begin
   if (Sender as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN' then
     (Sender as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchA');
 end;
+
 procedure TfGameSettings2.IronWillMouseLeave(Sender: TObjectGI);
 begin
   if not (Sender is TImageGI) then
@@ -1389,6 +1398,7 @@ begin
   if (Sender as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchA' then
     (Sender as TImageGI).SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN');
 end;
+
 procedure TfGameSettings2.GeneratePlayerName;
 var
   BlockName, Name: WideString;
@@ -1417,10 +1427,12 @@ begin
         .SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
   until Length(Name) <= 13;
 end;
+
 procedure TfGameSettings2.PlayerNameMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   SetFocusedControl(GetByName('PlayerName'));
 end;
+
 procedure TfGameSettings2.ToggleLevelPanel(Sender: TObjectGI);
 begin
   if LevelPanelTimer = nil then
@@ -1431,6 +1443,7 @@ begin
   RefreshStartingItems;
   BreakUiMessage;
 end;
+
 procedure TfGameSettings2.AnimateLevelPanel(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
   Level, I: Integer;
@@ -1480,14 +1493,15 @@ begin
         end;
   PostMouseMoveMessage;
 end;
+
 procedure TfGameSettings2.RaceClicked(Sender: TObjectGI);
 begin
-  PlayerRace := Sender.UserValue;
-  (GetByName('RaceMaloc') as TGraphButtonGI).SetDown(PlayerRace = 0);
-  (GetByName('RacePeleng') as TGraphButtonGI).SetDown(PlayerRace = 1);
-  (GetByName('RacePeople') as TGraphButtonGI).SetDown(PlayerRace = 2);
-  (GetByName('RaceFei') as TGraphButtonGI).SetDown(PlayerRace = 3);
-  (GetByName('RaceGaal') as TGraphButtonGI).SetDown(PlayerRace = 4);
+  PlayerRace := TOwnerId(Sender.UserValue);
+  (GetByName('RaceMaloc') as TGraphButtonGI).SetDown(PlayerRace = oiMaloc);
+  (GetByName('RacePeleng') as TGraphButtonGI).SetDown(PlayerRace = oiPeleng);
+  (GetByName('RacePeople') as TGraphButtonGI).SetDown(PlayerRace = oiHuman);
+  (GetByName('RaceFei') as TGraphButtonGI).SetDown(PlayerRace = oiFeyan);
+  (GetByName('RaceGaal') as TGraphButtonGI).SetDown(PlayerRace = oiGaal);
   CaptainPortraitIndex := 0;
   RefreshPortrait;
   if not PlayerNameEdited then
@@ -1497,6 +1511,7 @@ begin
     SetCaretPosition(Length(Text));
   PlayerNameChanged(nil);
 end;
+
 procedure TfGameSettings2.CharacterPresetClicked(Sender: TObjectGI);
 begin
   CharacterPreset := ExtractDigitsToIntW(Sender.ControlName);
@@ -1507,6 +1522,7 @@ begin
   (GetByName('Char5') as TGraphButtonGI).SetDown(CharacterPreset = 5);
   PlayerNameChanged(nil);
 end;
+
 procedure TfGameSettings2.RefreshPortrait;
 begin
   if CaptainPortraitIndex < 0 then
@@ -1520,7 +1536,7 @@ begin
       SetImagePath(
           'GI,Bm.Captain.'
               + GiResourceSuffix
-              + OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName
+              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
               + IntToStr(CaptainPortraitIndex)
               + 'i'
       );
@@ -1539,7 +1555,7 @@ begin
       SetImagePath(
           'Bm.Captain.'
               + GiResourceSuffix
-              + OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName
+              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
               + IntToStr(CaptainPortraitIndex)
               + 'a'
       );
@@ -1554,26 +1570,29 @@ begin
       SetActive(False);
   end;
 end;
+
 procedure TfGameSettings2.PreviousPortraitClicked(Sender: TObjectGI);
 begin
   Dec(CaptainPortraitIndex);
   RefreshPortrait;
 end;
+
 procedure TfGameSettings2.NextPortraitClicked(Sender: TObjectGI);
 begin
   Inc(CaptainPortraitIndex);
   RefreshPortrait;
 end;
+
 procedure TfGameSettings2.RefreshStartingSkills;
 var
-  Skill: Byte;
+  Skill: TPilotSkill;
   Number, Slot: Integer;
   Selected: Boolean;
 begin
   with GetByName('SkillCur') do
-    SetPosition(Classes.Point(68 + 55 * StartingSkills[SelectedSkillSlot], 109));
+    SetPosition(Classes.Point(68 + 55 * Ord(StartingSkills[SelectedSkillSlot]), 109));
   Number := 1;
-  for Skill := 0 to 5 do
+  for Skill := Low(TPilotSkill) to High(TPilotSkill) do
   begin
     Selected := False;
     for Slot := 0 to 1 do
@@ -1586,14 +1605,15 @@ begin
     Inc(Number);
   end;
 end;
+
 procedure TfGameSettings2.StartingSkillClicked(Sender: TObjectGI);
 var
   Slot: Integer;
-  Skill: Byte;
+  Skill: TPilotSkill;
 begin
   if (GetByName('LevelOpen') as TGraphButtonGI).Active then
   begin
-    Skill := ExtractDigitsToIntW(Sender.ControlName) - 1;
+    Skill := TPilotSkill(ExtractDigitsToIntW(Sender.ControlName) - 1);
     for Slot := 0 to 1 do
       if StartingSkills[Slot] = Skill then
       begin
@@ -1604,6 +1624,7 @@ begin
     RefreshStartingSkills;
   end;
 end;
+
 procedure TfGameSettings2.RefreshStartingItems;
 var
   Item, Slot: Integer;
@@ -1628,6 +1649,7 @@ begin
     (GetByName(AnsiString('Item') + IntToStr(Item)) as TGraphButtonGI).SetDown(Selected);
   end;
 end;
+
 procedure TfGameSettings2.StartingItemClicked(Sender: TObjectGI);
 var
   Slot, Item: Integer;
@@ -1645,6 +1667,7 @@ begin
     RefreshStartingItems;
   end;
 end;
+
 procedure TfGameSettings2.RefreshDifficulty;
 var
   I, Level, Custom, Average: Integer;
@@ -1674,18 +1697,19 @@ begin
     Average := Average + 50 + DifficultyLevels[I] * 50;
   Average := Average div 8;
   if Average = 50 then
-    Color := '<color=0,255,0>'
+    Color := GreenColorTag
   else if Average <= 100 then
     Color := '<color=254,255,255>'
   else if Average <= 150 then
-    Color := '<color=255,240,100>'
+    Color := TextHighlightColorTag
   else if Average <= 200 then
-    Color := '<color=255,166,0>'
+    Color := OrangeColorTag
   else
     Color :=
         '<color=255,' + IntToWideString(Round(RemapClamped(Average, 200, 500, 166, 0))) + ',0>';
   (GetByName('LevelProc') as TLabelGI).SetText(WrapTextInColor(IntToStr(Average) + '%', Color));
 end;
+
 procedure TfGameSettings2.DifficultyComponentClicked(Sender: TObjectGI);
 var
   I, Component: Integer;
@@ -1735,6 +1759,7 @@ begin
     DifficultyPreset := Value;
   RefreshDifficulty;
 end;
+
 procedure TfGameSettings2.DifficultyPresetClicked(Sender: TObjectGI);
 var
   I, First, J: Integer;
@@ -1823,11 +1848,13 @@ begin
   end;
   RefreshDifficulty;
 end;
+
 procedure TfGameSettings2.CustomDifficultyClicked(Sender: TObjectGI);
 begin
   RefreshDifficulty;
   ToggleLevelPanel(Sender);
 end;
+
 procedure TfGameSettings2.CustomDifficultyMouseUp(
     Sender: TObjectGI;
     KeyState: Cardinal;
@@ -1837,6 +1864,7 @@ begin
   RefreshDifficulty;
   ToggleLevelPanel(Sender);
 end;
+
 procedure TfGameSettings2.StartNewGameGeneration;
 var
   I: Integer;
@@ -1855,6 +1883,7 @@ begin
     NewGameGenerationThread.StartingSkills[I] := StartingSkills[I];
   NewGameGenerationThread.Start;
 end;
+
 procedure TfGameSettings2.ApplyClicked(Sender: TObjectGI);
 var
   I: Integer;
@@ -1886,12 +1915,11 @@ begin
         NewGameSettingsConfig.SetOrAddParam('IronWill', 'True')
       else
         NewGameSettingsConfig.SetOrAddParam('IronWill', 'False');
-      NewGameSettingsConfig
-          .SetOrAddParam('Race', OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName);
+      NewGameSettingsConfig.SetOrAddParam('Race', OwnerInfo[RaceToOwner(PlayerRace)].InternalName);
       NewGameSettingsConfig.SetOrAddParam('Char', IntToStr(CharacterPreset));
       NewGameSettingsConfig.SetOrAddParam('Face', IntToStr(CaptainPortraitIndex));
-      NewGameSettingsConfig.SetOrAddParam('Skill1', IntToStr(StartingSkills[0]));
-      NewGameSettingsConfig.SetOrAddParam('Skill2', IntToStr(StartingSkills[1]));
+      NewGameSettingsConfig.SetOrAddParam('Skill1', IntToStr(Ord(StartingSkills[0])));
+      NewGameSettingsConfig.SetOrAddParam('Skill2', IntToStr(Ord(StartingSkills[1])));
       NewGameSettingsConfig.SetOrAddParam('Item1', IntToStr(StartingItemChoices[0]));
       NewGameSettingsConfig.SetOrAddParam('Item2', IntToStr(StartingItemChoices[1]));
       for I := 0 to 7 do
@@ -1987,14 +2015,13 @@ begin
       NewGameGenerationThread := TThreadCreateNewGame.Create;
       NewGameGenerationThread.PlayerName :=
           TrimWideString((GetByName('PlayerName') as TEditGI).Text);
-
       StartNewGameGeneration;
-
       RequestedScreenId := screenIntroduction;
       RequestClose(1);
     end;
   end;
 end;
+
 procedure TfGameSettings2.CancelClicked(Sender: TObjectGI);
 begin
   if GetByName('PanelExtended').Active then
@@ -2005,6 +2032,7 @@ begin
     RequestClose(1);
   end;
 end;
+
 procedure TfGameSettings2.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
   if IsVirtualKeyDown(VK_CONTROL) and IsVirtualKeyDown(VK_SHIFT) and IsVirtualKeyDown(VK_RIGHT) then
@@ -2027,6 +2055,7 @@ begin
     end;
   end;
 end;
+
 procedure TfGameSettings2.PlayerNameChanged(Sender: TObjectGI);
 var
   Text: WideString;
@@ -2038,7 +2067,7 @@ begin
   Text :=
       LocalizedColorText(
           'FormGameSet2.'
-              + OwnerInfo[Integer(RaceToOwner(PlayerRace)) and $7F].InternalName
+              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
               + '.Char'
               + IntToStr(CharacterPreset)
       );
@@ -2046,10 +2075,11 @@ begin
       Text,
       '<Name>',
       TrimWideString((GetByName('PlayerName') as TEditGI).Text),
-      '<color=255,240,100>'
+      TextHighlightColorTag
   );
   (GetByName('Info') as TLabelGI).SetText(Text);
 end;
+
 function TfGameSettings2.ValidatePlayerName(Name: WideString): Boolean;
 var
   I: Integer;
@@ -2088,6 +2118,7 @@ begin
     HelpLabel.SetActive(False);
   PlayerNameValid := Result;
 end;
+
 procedure TfGameSettings2.ShowControlHelp(Sender: TObjectGI; Show: Boolean);
 var
   HelpLabel: TLabelGI;
@@ -2114,21 +2145,27 @@ begin
     end;
   end;
 end;
+
 procedure TfGameSettings2.HelpMouseEnter(Sender: TObjectGI);
 begin
   ShowControlHelp(Sender, True);
 end;
+
 procedure TfGameSettings2.HelpMouseLeave(Sender: TObjectGI);
 begin
   ShowControlHelp(Sender, False);
 end;
+
 procedure TfGameSettings2.SelectMusic;
 begin
   MusicManager.PlayCategory('Base');
 end;
+
 procedure TfGameSettings2.ExtendedSettingsPressed(Sender: TObjectGI);
 begin
+
 end;
+
 procedure TfGameSettings2.ToggleExtendedSettings(Sender: TObjectGI);
 begin
   with GetByName('PanelExtended') do
@@ -2140,6 +2177,7 @@ begin
   with GetByName('PanelSkills') do
     SetActive(True);
 end;
+
 procedure TfGameSettings2.ResetExtendedSettingsClicked(Sender: TObjectGI);
 var
   OldGroup: Integer;
@@ -2188,6 +2226,7 @@ begin
   SetExtendedOptionValue('MissileBonuses', 1);
   ActiveExtendedGroup := OldGroup;
 end;
+
 procedure TfGameSettings2.ExtendedGroupClicked(Sender: TObjectGI);
 var
   Group: Integer;
@@ -2202,6 +2241,7 @@ begin
     RefreshExtendedGroup;
   end;
 end;
+
 procedure TfGameSettings2.RefreshExtendedGroup;
 var
   I: Integer;
@@ -2222,6 +2262,7 @@ begin
     SetVerticalScrollbarEnabled(ExtendedGroupNextY[ActiveExtendedGroup] > ClientSize.Y);
   end;
 end;
+
 function TfGameSettings2.AddExtendedOptionLabel(
     OptionName, Caption: WideString;
     UnusedFlag: Boolean
@@ -2254,6 +2295,7 @@ begin
   Result.SetSize(Classes.Point(Result.ClientSize.X, Result.ClientSize.Y + 1));
   Inc(ExtendedGroupNextY[BuildExtendedGroup], 2);
 end;
+
 procedure TfGameSettings2.AddExtendedOptionChoice(
     Value: Integer;
     Caption: WideString;
@@ -2330,6 +2372,7 @@ begin
       ExtendedGroupNextY[BuildExtendedGroup] + CaptionLabel.ClientSize.Y + GiScalePixels(5);
   CaptionLabel.UserValue := PtrInt(ChoiceImage);
 end;
+
 procedure TfGameSettings2.ExtendedChoiceMouseDown(
     Sender: TObjectGI;
     KeyState: Cardinal;
@@ -2355,6 +2398,7 @@ begin
   if (Point.X <> -1000) or (Point.Y <> -1000) then
     SoundManager.PlaySound('Sound.ButtonClick');
 end;
+
 procedure TfGameSettings2.AddExtendedOptionSlider(
     ValueLabel: TLabelGI;
     Minimum, Maximum, Position, UnusedStep: Integer;
@@ -2407,6 +2451,7 @@ begin
       ExtendedGroupNextY[BuildExtendedGroup] + Slider.ClientSize.Y + GiScalePixels(6);
   Callback(Slider);
 end;
+
 function TfGameSettings2.GetExtendedOptionValue(OptionName: WideString): Integer;
 var
   Control: TObjectGI;
@@ -2433,6 +2478,7 @@ begin
   end;
   RaiseWideMessage('UnitGet Type=' + OptionName);
 end;
+
 procedure TfGameSettings2.SetExtendedOptionValue(OptionName: WideString; Value: Integer);
 var
   Control: TObjectGI;
@@ -2458,12 +2504,14 @@ begin
     Control := Control.NextSibling;
   end;
 end;
+
 procedure TfGameSettings2.FormatExtendedInteger(Sender: TCountBarGI);
 begin
   if Sender.UserIndex <> 0 then
     with TLabelGI(Sender.UserIndex) do
-      SetText(HelpText + '<color=255,240,100>' + ' ' + IntToStr(Sender.Position) + '</color>');
+      SetText(HelpText + TextHighlightColorTag + ' ' + IntToStr(Sender.Position) + EndColorTag);
 end;
+
 procedure TfGameSettings2.FormatExtendedAutoPercent(Sender: TCountBarGI);
 var
   Value: Integer;
@@ -2475,31 +2523,32 @@ begin
       if Value = 0 then
         SetText(
             HelpText
-                + '<color=255,240,100>'
+                + TextHighlightColorTag
                 + ' '
                 + LocalizedText('FormGameSet2.Extended.HelpAuto')
-                + '</color>'
+                + EndColorTag
         )
       else if Value <= 25 then
         SetText(
             HelpText
-                + '<color=255,240,100>'
+                + TextHighlightColorTag
                 + ' '
                 + IntToStr(50 + Round((Value - 1) * 6.25))
                 + '%'
-                + '</color>'
+                + EndColorTag
         )
       else
         SetText(
             HelpText
-                + '<color=255,166,0>'
+                + OrangeColorTag
                 + ' '
                 + IntToStr(50 + Round((Value - 1) * 6.25))
                 + '%'
-                + '</color>'
+                + EndColorTag
         );
     end;
 end;
+
 procedure TfGameSettings2.FormatExtendedDifficultyPercent(Sender: TCountBarGI);
 var
   Value: Integer;
@@ -2510,14 +2559,15 @@ begin
       Value := Sender.Position;
       SetText(
           HelpText
-              + '<color=255,240,100>'
+              + TextHighlightColorTag
               + ' '
               + IntToStr(50 + Round(Value * 6.25))
               + '%'
-              + '</color>'
+              + EndColorTag
       );
     end;
 end;
+
 procedure TfGameSettings2.FormatExtendedPercent(Sender: TCountBarGI);
 var
   Value: Integer;
@@ -2526,9 +2576,10 @@ begin
     with TLabelGI(Sender.UserIndex) do
     begin
       Value := Sender.Position;
-      SetText(HelpText + '<color=255,240,100>' + ' ' + IntToStr(Value) + '%' + '</color>');
+      SetText(HelpText + TextHighlightColorTag + ' ' + IntToStr(Value) + '%' + EndColorTag);
     end;
 end;
+
 procedure TfGameSettings2.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 begin
   if GetByName('PanelExtended').Active then
@@ -2540,6 +2591,7 @@ begin
         VerticalScrollBar.SetPosition(VerticalScrollBar.Position + VerticalScrollBar.SmallChange);
     end;
 end;
+
 procedure TfGameSettings2.IncreaseAllDifficulties;
 var
   I: Integer;
@@ -2554,6 +2606,7 @@ begin
   RefreshDifficultyHelp;
   RefreshDifficulty;
 end;
+
 procedure TfGameSettings2.DecreaseAllDifficulties;
 var
   I: Integer;
@@ -2568,6 +2621,7 @@ begin
   RefreshDifficultyHelp;
   RefreshDifficulty;
 end;
+
 procedure TfGameSettings2.RefreshDifficultyHelp;
 var
   I, J, First: Integer;
@@ -2652,18 +2706,10 @@ begin
     end;
   end;
 end;
+
 procedure TfGameSettings2.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
   ExecuteGameplayUiCode(Block, Key);
 end;
-procedure LinkRecoveredTypes;
-begin
-  TCountBarGI.ClassName;
-  TEditGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelScrollBarGI.ClassName;
-  TgaiGI.ClassName;
-end;
+
 end.

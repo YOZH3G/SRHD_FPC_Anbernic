@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit fPanelMain;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_Struct,
@@ -14,11 +13,16 @@ uses
   GI_MessageLoop,
   GI_Panel,
   Types;
+
 type
+
   TMessageLoopGIWithMainPanel = class;
+
   TfPanelMain = class;
+
   TfPanelMain = class(TObjectEx)
     Screen: TMessageLoopGI;
+    Panel: TObjectGI;
     StatusTimer: PCallbackTimerGI;
     MessagePulseTimer: PCallbackTimerGI;
     MessageSlideTimer: PCallbackTimerGI;
@@ -36,27 +40,30 @@ type
     DateNextImage: TImageGI;
     NextDateLabel: TLabelGI;
     NavigationLocked: Boolean;
-    Gap49: array[0..2] of Byte;
     MessagePulseStep: Integer;
     MessageSlideDirection: Integer;
     MessagePanelRestTop: Integer;
+    MessagePanelHiddenTop: Integer;
     DisplayedTurn: Integer;
     DateSlideProgress: Single;
     TargetTurn: Integer;
     DateTimer: PCallbackTimerGI;
-    DateTimerIntervalMs: PtrInt;
+    DateTimerIntervalMs: Integer;
     AuxiliaryItems: TList;
     MoneyWarningActive: Boolean;
-    Gap71: array[0..2] of Byte;
     MoneyWarningTicks: Integer;
     MoneyWarningTimer: PCallbackTimerGI;
     CargoWarningActive: Boolean;
-    Gap7D: array[0..2] of Byte;
     CargoWarningTicks: Integer;
     CargoWarningTimer: PCallbackTimerGI;
     constructor Create;
     destructor Destroy; override;
     procedure InitializeLayout(Screen: TMessageLoopGI);
+    procedure FinalizeLayout;
+    function ContentLayoutHeight: Integer;
+    function ContentBounds: TRect;
+    procedure FitContent(Control: TObjectGI);
+    function VerticalContentOffset: Integer;
     procedure OnOpen;
     procedure OnClose;
     procedure Show;
@@ -108,19 +115,24 @@ type
     procedure ProcessKeyDown(Key: Cardinal);
     procedure PostMouseMove;
   end;
+
   TMessageLoopGIWithMainPanel = class(TMessageLoopGI)
     MainPanel: TfPanelMain;
     constructor Create;
     destructor Destroy; override;
   end;
+
 var
+
   CurrentDateColor: Cardinal;
+
   AdvancingDateColor: Cardinal;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
   Math,
-  SearchBookmarks,
+  GameWindow,
   GI_GI,
   aMyFunction,
   aGalaxy,
@@ -137,8 +149,7 @@ uses
   GI_GAI,
   GI_Main,
   GR_gi,
-  Windows,
-  Messages,
+  GameInput,
   fPanelLoad,
   fShip2,
   fRating2,
@@ -169,71 +180,94 @@ begin
 end;
 
 procedure TfPanelMain.InitializeLayout(Screen: TMessageLoopGI);
+var
+  LayoutSize: TPoint;
+  LayoutWidth, LayoutHeight, ExtraWidth, ExtraHeight, Query: Integer;
+  ImagePath: WideString;
 begin
   Self.Screen := Screen;
+  Panel := Screen.GetByName('PanelMain');
+  LayoutSize := GetMobileHudLayoutSize;
+  LayoutWidth := LayoutSize.X;
+  LayoutHeight := LayoutSize.Y;
+  ExtraWidth := LayoutWidth - 1024;
+  ExtraHeight := LayoutHeight - 768;
+  Panel.DisplayScale := Min(GameScreenWidth / LayoutWidth, GameScreenHeight / LayoutHeight);
   AppendLogTextThreadSafe('fPanelMain... ');
-  with Self.Screen.GetByName('PanelMain') do
+  with Panel do
   begin
-    SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
+    SetSize(Classes.Point(LayoutWidth, LayoutHeight));
     with FindByNameRecursive('PM_PanelMsg') do
     begin
-      SetSize(Classes.Point(ClientSize.X + ExtraScreenWidth, ClientSize.Y));
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
+      SetSize(Classes.Point(ClientSize.X + ExtraWidth, ClientSize.Y));
+      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraHeight));
     end;
     with FindByNameRecursive('PM_WinMsg') do
     begin
-      SetSize(Classes.Point(ClientSize.X + ExtraScreenWidth, ClientSize.Y));
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
+      SetSize(Classes.Point(ClientSize.X + ExtraWidth, ClientSize.Y));
+      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraHeight));
     end;
     with FindByNameRecursive('PM_Ship').Parent do
     begin
-      SetSize(Classes.Point(GameScreenWidth, ClientSize.Y));
-      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
+      SetSize(Classes.Point(LayoutWidth, ClientSize.Y));
+      SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraHeight));
       with FindByNameRecursive('PM_ImageBG') as TImageGI do
       begin
         SetPosition(Classes.Point(0, 0));
-        SetSize(Classes.Point(GameScreenWidth, ClientSize.Y));
+        SetSize(Classes.Point(LayoutWidth, ClientSize.Y));
       end;
       with FindByNameRecursive('PM_Ship') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_Gal') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_Quest') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_EndTurn') as TGraphButtonGI do
         if GiResourceVariant = 2 then
-          SetPosition(Classes.Point(899 + ExtraScreenWidth, 33))
+          SetPosition(Classes.Point(899 + ExtraWidth, 33))
         else
-          SetPosition(Classes.Point(702 + ExtraScreenWidth, 25));
+          SetPosition(Classes.Point(702 + ExtraWidth, 25));
       with FindByNameRecursive('PM_Break') as TGraphButtonGI do
         if GiResourceVariant = 2 then
-          SetPosition(Classes.Point(899 + ExtraScreenWidth, 33))
+          SetPosition(Classes.Point(899 + ExtraWidth, 33))
         else
-          SetPosition(Classes.Point(702 + ExtraScreenWidth, 25));
+          SetPosition(Classes.Point(702 + ExtraWidth, 25));
       with FindByNameRecursive('PM_Logo') do
         if GiResourceVariant = 2 then
           SetPosition(Classes.Point(0, 42))
         else
           SetPosition(Classes.Point(3, 32));
       with FindByNameRecursive('PM_WarningSpace') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_WarningMoney') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_Money') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_FreeSpace') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
       with FindByNameRecursive('PM_Help') do
-        SetSize(Classes.Point(ClientSize.X + ExtraScreenWidth, ClientSize.Y));
+        SetSize(Classes.Point(ClientSize.X + ExtraWidth, ClientSize.Y));
       with FindByNameRecursive('PM_PanelDate') do
-        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
+        SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
     end;
   end;
   AppendLogLineThreadSafe('ok');
   MessagePanel := Self.Screen.GetByName('PM_PanelMsg') as TPanelGI;
   MessagePanelRestTop := MessagePanel.LocalPosition.Y;
+  MessagePanelHiddenTop := LayoutHeight - 5;
   HelpLabel := Self.Screen.GetByName('PM_Help') as TLabelGI;
   BackgroundImage := Self.Screen.GetByName('PM_ImageBG') as TImageGI;
+  if (LayoutWidth <> GameScreenWidth) or (LayoutHeight <> GameScreenHeight) then
+  begin
+    // The enlarged HUD must not share its resized background with full panels.
+    ImagePath := BackgroundImage.GetImagePath;
+    Query := Pos('?', ImagePath);
+    if Query > 0 then
+      SetLength(ImagePath, Query - 1);
+    BackgroundImage.SetImagePath(
+        ImagePath + '?mobile-hud=' + IntToStr(LayoutWidth) + ',' + IntToStr(LayoutHeight)
+    );
+  end;
   ShipButton := Self.Screen.GetByName('PM_Ship') as TGraphButtonGI;
   GalaxyButton := Self.Screen.GetByName('PM_Gal') as TGraphButtonGI;
   QuestButton := Self.Screen.GetByName('PM_Quest') as TGraphButtonGI;
@@ -250,6 +284,75 @@ begin
   Self.Screen.SetHelpCallback(ShowControlHelp);
   CurrentDateColor := GetStyleColorGI('PanelMain.TextColor', 200, 240, 255);
   AdvancingDateColor := GetStyleColorGI('PanelMain.DateTransitionColor', 6, 166, 198);
+end;
+
+procedure TfPanelMain.FinalizeLayout;
+var
+  Delta: TPoint;
+
+  procedure AlignBarPart(const Name: WideString; RightAligned: Boolean);
+  var
+    Control: TObjectGI;
+  begin
+    Control := Screen.FindControlByPath(Name);
+    if Control = nil then
+      Exit;
+    // Planet/station navigation and transaction labels are siblings of the
+    // common bar in the original layouts. Keep their depth and callbacks.
+    Control.DisplayScale := Panel.DisplayScale;
+    if RightAligned then
+      Control.SetPosition(
+          Classes.Point(Control.LocalPosition.X + Delta.X, Control.LocalPosition.Y + Delta.Y)
+      )
+    else
+      Control
+          .SetPosition(Classes.Point(Control.LocalPosition.X, Control.LocalPosition.Y + Delta.Y));
+  end;
+
+begin
+  if Panel.DisplayScale = 1 then
+    Exit;
+  Screen.RootUiObject.UpdateAbsolutePosition;
+  Panel.SetPosition(
+      Classes.Point(-Panel.Parent.AbsolutePosition.X, -Panel.Parent.AbsolutePosition.Y)
+  );
+  Delta :=
+      Classes.Point(Panel.ClientSize.X - GameScreenWidth, Panel.ClientSize.Y - GameScreenHeight);
+  AlignBarPart('PanelPlanet', True);
+  AlignBarPart('PanelPlanetNO', True);
+  AlignBarPart('PanelRuins', True);
+  AlignBarPart('ADD_WarningSpace', True);
+  AlignBarPart('ADD_WarningMoney', True);
+  AlignBarPart('ADD_Space', True);
+  AlignBarPart('ADD_Money', True);
+  AlignBarPart('GS_Help', False);
+end;
+
+function TfPanelMain.ContentLayoutHeight: Integer;
+begin
+  Result := GameScreenHeight - Round(ShipButton.Parent.ClientSize.Y * (Panel.DisplayScale - 1));
+end;
+
+function TfPanelMain.ContentBounds: TRect;
+begin
+  Result :=
+      Classes.Rect(0, 0, GameScreenWidth, ContentLayoutHeight - ShipButton.Parent.ClientSize.Y);
+end;
+
+procedure TfPanelMain.FitContent(Control: TObjectGI);
+var
+  Bounds: TRect;
+begin
+  Bounds := ContentBounds;
+  InflateRect(Bounds, -10, -10);
+  FitMobileControl(Control, Bounds, 1.5);
+end;
+
+function TfPanelMain.VerticalContentOffset: Integer;
+begin
+  // Keep the original centered layout, reserving the additional height taken
+  // by the shared mobile bar. Content moves; its artwork and hitboxes keep scale.
+  Result := (ContentLayoutHeight - 768) div 2;
 end;
 
 procedure TfPanelMain.OnOpen;
@@ -478,7 +581,7 @@ begin
     Exit;
   if GetPlayer = nil then
     Exit;
-  if (GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentPlanet.OwnerId = Byte(oiDominator)) then
+  if (GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentPlanet.OwnerId = oiDominator) then
     Exit;
   if GetPlayer.QueuedTravelTarget <> nil then
     Exit;
@@ -515,12 +618,11 @@ begin
     end;
   end;
   if (GetPlayer = nil)
-      or ((GetPlayer.CurrentPlanet <> nil)
-          and (GetPlayer.CurrentPlanet.OwnerId = Byte(oiDominator))) then
+      or ((GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentPlanet.OwnerId = oiDominator)) then
   begin
     Event := AddGalaxyEvent('PlayerDeath');
     Event.AddTextData('PlanetCaptured');
-    GameEndReason := 2;
+    GameEndReason := gerPlayerDeath;
     RequestedScreenId := screenGameEnd;
     Screen.RequestClose(1);
   end
@@ -530,14 +632,14 @@ begin
     if (GetPlayer.PendingDockDialogue > 0) and (GetPlayer.DockedTo <> nil) then
     begin
       RequestedScreenId := screenRuinsTalk;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RequestClose(1);
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
     end
     else if (GetPlayer.PendingDockDialogue > 0)
         and (GetPlayer.CurrentPlanet <> nil)
-        and (GetPlayer.CurrentPlanet.OwnerId <> Byte(oiUninhabited)) then
+        and (GetPlayer.CurrentPlanet.OwnerId <> oiUninhabited) then
     begin
       RequestedScreenId := screenGovernment;
-      TMessageLoopGI(RegisteredScreens[Ord(CurrentScreenId)]).RequestClose(1);
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
     end;
   end;
 end;
@@ -563,18 +665,18 @@ begin
   Screen.SetCursorActive(True);
   Changed := False;
   ShipScreen.PlayTransitionSounds := True;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(109);
   while True do
   begin
     ClearMessageButtons;
     RunShipEquipment(Screen);
     RebuildMessageButtons(False);
     PostMouseMove;
-    if ShipScreen.Flag3BC then
+    if ShipScreen.ShipStateChanged then
       Changed := True;
     RefreshMoneyAndCargo;
     RebuildMessageButtons(False);
-    if not ShipScreen.FlagD4 then
+    if not ShipScreen.ReopenRequested then
       Break;
     Screen.SetCursorActive(False);
     FullFrameRedrawRequested := True;
@@ -583,8 +685,8 @@ begin
     CaptureScreenBackground(True, 0);
     Screen.SetCursorActive(True);
   end;
-  aCalc.WaitForTurnCalculationUI;
-  ShipScreen.Flag3BC := Changed;
+  Galaxy.PrimeIntegrityChecksum(110);
+  ShipScreen.ShipStateChanged := Changed;
   if GetPlayer.IsOnPlanet and (Screen <> GovernmentScreen) then
     if GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile then
     begin
@@ -610,12 +712,12 @@ begin
   Screen.Present;
   CaptureScreenBackground(True, 0);
   Screen.SetCursorActive(True);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(107);
   ClearMessageButtons;
   ShowRangerRating(Screen);
   RebuildMessageButtons(False);
   PostMouseMove;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(108);
 end;
 
 procedure TfPanelMain.GalaxyClicked(Sender: TObjectGI);
@@ -636,12 +738,12 @@ begin
   CaptureScreenBackground(True, 0);
   Screen.SetCursorActive(True);
   GalaxyScreen.ViewMode := 1;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(140);
   ClearMessageButtons;
   RunGalaxyMap(Screen);
   RebuildMessageButtons(False);
   PostMouseMove;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(141);
 end;
 
 procedure TfPanelMain.JournalClicked(Sender: TObjectGI);
@@ -661,12 +763,12 @@ begin
   Screen.Present;
   CaptureScreenBackground(True, 0);
   Screen.SetCursorActive(True);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(102);
   ClearMessageButtons;
   RunJournal(Screen);
   RebuildMessageButtons(False);
   PostMouseMove;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(103);
 end;
 
 procedure TfPanelMain.MenuClicked(Sender: TObjectGI);
@@ -683,9 +785,9 @@ begin
   Screen.Present;
   CaptureScreenBackground(True, 0);
   CaptureSavePreview;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(98);
   CaptureGalaxyPreview(Screen);
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(99);
   Screen.SetCursorActive(True);
   GameMenuReturnScreenId := FormToId(Screen);
   RequestedScreenId := screenGameMenu;
@@ -743,12 +845,12 @@ begin
   Screen.SetCursorActive(False);
   Screen.Present;
   CaptureSavePreview;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(132);
   CaptureGalaxyPreview(Screen);
   Screen.SetCursorActive(False);
   SaveManagerReturnScreenId := FormToId(Screen);
   SaveGameToFile(SaveManagerScreen.GetQuickSavePath(1), 'QuickSave');
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(133);
   Screen.SetCursorActive(True);
 end;
 
@@ -773,7 +875,7 @@ begin
               LookupLocalizedTextByKey('FormSaveManager.QueryQuickN'),
               '<Num>',
               WideString(IntToStr(SlotIndex)),
-              '<color=255,240,100>'
+              TextHighlightColorTag
           )
     else
       Text := LookupLocalizedTextByKey('FormSaveManager.QueryQuick');
@@ -793,7 +895,7 @@ begin
               LookupLocalizedTextByKey('FormSaveManager.QuickNotExistN'),
               '<Num>',
               WideString(IntToStr(SlotIndex)),
-              '<color=255,240,100>'
+              TextHighlightColorTag
           )
     else
       Text := LookupLocalizedTextByKey('FormSaveManager.QuickNotExist');
@@ -842,7 +944,7 @@ begin
           if Control is TGraphButtonGI then
           begin
             Stage := 4;
-            if (MessageEntry.Kind in [0, 6]) and not MessageEntry.WasRead then
+            if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead then
             begin
               Stage := 5;
               with Control as TGraphButtonGI do
@@ -978,13 +1080,13 @@ begin
       Button.EnterSound := 'Sound.ButtonInfoEnter';
       Button.LeaveSound := 'Sound.ButtonInfoLeave';
       Button.ClickSound := 'Sound.ButtonInfoClick';
-      if (MessageEntry.Kind = 1)
+      if (MessageEntry.Kind = pmRadio)
           and (GetPlayer <> nil)
           and ((Integer(MessageEntry.Targets[0].ShipId) = GetPlayer.Id)
               or (Integer(MessageEntry.Targets[1].ShipId) = GetPlayer.Id)
               or (Integer(MessageEntry.Targets[2].ShipId) = GetPlayer.Id)) then
-        MessageEntry.Kind := 10;
-      if (MessageEntry.Kind in [0, 6]) and not MessageEntry.WasRead then
+        MessageEntry.Kind := pmRadioPlayer;
+      if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead then
       begin
         Button.SetImageNormalPath('GraphBuf');
         Button.ImageNormal.GraphBufControl.SourceHasPerPixelAlpha := True;
@@ -1048,7 +1150,7 @@ end;
 function TfPanelMain.RemoveDismissibleMessages(Key: WideString): Boolean;
 begin
   Result := False;
-  if RemovePlayerMessagesExceptKinds(Key, [3, 9], False) then
+  if RemovePlayerMessagesExceptKinds(Key, [pmQuestActive, pmStorage], False) then
   begin
     RebuildMessageButtons(False);
     SoundManager.PlaySound('Sound.DelMsg');
@@ -1094,7 +1196,7 @@ begin
     if not MessageEntry.WasRead then
     begin
       MessageEntry.WasRead := True;
-      if MessageEntry.Kind = 6 then
+      if MessageEntry.Kind = pmTip then
         MessageEntry.Turn := Galaxy.CurrentTurn;
     end;
     LabelControl.SetPosition(Window.WorkSubRect.TopLeft);
@@ -1131,7 +1233,7 @@ begin
     MessageEntry := TMessagePlayer(Sender.UserValue);
     if not IsPersistentPlayerMessageQueued(MessageEntry, True) then
       Exit;
-    if MessageEntry.Kind in [3, 9] then
+    if MessageEntry.Kind in [pmQuestActive, pmStorage] then
       Exit;
     Control := MessagePanel.FirstChild;
     while Control <> nil do
@@ -1287,7 +1389,7 @@ begin
     Screen.CancelCallbackTimer(MessageSlideTimer);
     MessageSlideTimer := nil;
   end;
-  if MessagePanel.LocalPosition.Y < GameScreenHeight - 5 then
+  if MessagePanel.LocalPosition.Y < MessagePanelHiddenTop then
     MessageSlideTimer := Screen.ScheduleCallbackTimer(10, 10, AdvanceMessageSlide);
 end;
 
@@ -1313,7 +1415,7 @@ begin
   end
   else
   begin
-    if MessagePanel.LocalPosition.Y >= GameScreenHeight - 5 then
+    if MessagePanel.LocalPosition.Y >= MessagePanelHiddenTop then
     begin
       if MessageSlideTimer <> nil then
       begin
@@ -1339,8 +1441,6 @@ var
   ShipId, PlanetId: Cardinal;
   Attempts: Integer;
   FilmObject: TEFilmObj;
-  Targets: array[0..2] of TPlayerMessageTarget;
-  BookmarkTarget: TPlayerMessageTarget;
 begin
   if (CurrentScreenId <> screenStarMap)
       or ((StarMapScreen.Mode <> smmOrders) and (StarMapScreen.Mode <> smmTurnFilm)) then
@@ -1350,14 +1450,6 @@ begin
     MessageEntry := TMessagePlayer(Sender.UserValue);
     if not IsPersistentPlayerMessageQueued(MessageEntry, True) then
       Exit;
-    for Attempts := 0 to High(Targets) do
-      Targets[Attempts] := MessageEntry.Targets[Attempts];
-    // CHANGE: ENHANCEMENT - Center and ping the destination of the clicked bookmark.
-    if ResolveSearchBookmarkTarget(MessageEntry, GetPlayer.CurrentStar, BookmarkTarget) then
-    begin
-      FillChar(Targets, SizeOf(Targets), 0);
-      Targets[0] := BookmarkTarget;
-    end;
     Attempts := 0;
     while Attempts < 3 do
     begin
@@ -1365,31 +1457,31 @@ begin
       PlanetId := 0;
       if (DisplayedShipId = 0) and (DisplayedPlanetId = 0) then
       begin
-        ShipId := Targets[0].ShipId;
+        ShipId := MessageEntry.Targets[0].ShipId;
         if ShipId < 1 then
-          PlanetId := Targets[0].PlanetId;
+          PlanetId := MessageEntry.Targets[0].PlanetId;
         if (ShipId < 1) and (PlanetId < 1) then
           Exit;
       end
       else
       begin
-        if Targets[0].ShipId = DisplayedShipId then
-          ShipId := Targets[1].ShipId
-        else if Targets[1].ShipId = DisplayedShipId then
-          ShipId := Targets[2].ShipId
-        else if Targets[2].ShipId = DisplayedShipId then
-          ShipId := Targets[0].ShipId;
-        if Targets[0].PlanetId = DisplayedPlanetId then
-          PlanetId := Targets[1].PlanetId
-        else if Targets[1].PlanetId = DisplayedPlanetId then
-          PlanetId := Targets[2].PlanetId
-        else if Targets[2].PlanetId = DisplayedPlanetId then
-          PlanetId := Targets[0].PlanetId;
+        if MessageEntry.Targets[0].ShipId = DisplayedShipId then
+          ShipId := MessageEntry.Targets[1].ShipId
+        else if MessageEntry.Targets[1].ShipId = DisplayedShipId then
+          ShipId := MessageEntry.Targets[2].ShipId
+        else if MessageEntry.Targets[2].ShipId = DisplayedShipId then
+          ShipId := MessageEntry.Targets[0].ShipId;
+        if MessageEntry.Targets[0].PlanetId = DisplayedPlanetId then
+          PlanetId := MessageEntry.Targets[1].PlanetId
+        else if MessageEntry.Targets[1].PlanetId = DisplayedPlanetId then
+          PlanetId := MessageEntry.Targets[2].PlanetId
+        else if MessageEntry.Targets[2].PlanetId = DisplayedPlanetId then
+          PlanetId := MessageEntry.Targets[0].PlanetId;
         if (ShipId < 1) and (PlanetId < 1) then
         begin
-          ShipId := Targets[0].ShipId;
+          ShipId := MessageEntry.Targets[0].ShipId;
           if ShipId < 1 then
-            PlanetId := Targets[0].PlanetId;
+            PlanetId := MessageEntry.Targets[0].PlanetId;
         end;
         if (ShipId < 1) and (PlanetId < 1) then
           Exit;
@@ -1471,13 +1563,13 @@ begin
     while MessageEntry <> nil do
     begin
       if not MessageEntry.NotificationSoundPlayed then
-        if MessageEntry.Kind in [0..6, 8] then
-          if not PlayedQuestOk and (MessageEntry.Kind = 4) then
+        if MessageEntry.Kind in [pmGalaxyNews..pmTip, pmShipNegative] then
+          if not PlayedQuestOk and (MessageEntry.Kind = pmQuestSucceeded) then
           begin
             PlayedQuestOk := True;
             SoundManager.PlaySound('Sound.QuestOk');
           end
-          else if not PlayedQuestCancel and (MessageEntry.Kind = 5) then
+          else if not PlayedQuestCancel and (MessageEntry.Kind = pmQuestCancelled) then
           begin
             PlayedQuestCancel := True;
             SoundManager.PlaySound('Sound.QuestCancel');
@@ -1615,9 +1707,9 @@ begin
     else if Galaxy.SpecialSimulationMode = 0 then
     begin
       CaptureSavePreview;
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.CheckIntegrityChecksum(100);
       CaptureGalaxyPreview(Screen);
-      aCalc.WaitForTurnCalculationUI;
+      Galaxy.PrimeIntegrityChecksum(101);
       SaveManagerReturnScreenId := FormToId(Screen);
       SaveManagerMode := smmSave;
       RequestedScreenId := screenSaveManager;
@@ -1660,9 +1752,9 @@ procedure TfPanelMain.PostMouseMove;
 var
   Point: TPoint;
 begin
-  GetCursorPos(Point);
-  ScreenToClient(MainWindowHandle, Point);
-  PostMessage(MainWindowHandle, WM_MOUSEMOVE, 0, SmallInt(Point.X) or (SmallInt(Point.Y) shl 16));
+  GetGameMouse(Point);
+
+  PostGameMessage(WM_MOUSEMOVE, 0, SmallInt(Point.X) or (SmallInt(Point.Y) shl 16));
 end;
 
 constructor TMessageLoopGIWithMainPanel.Create;
@@ -1681,15 +1773,4 @@ begin
   inherited Destroy;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TGraphButtonGI.ClassName;
-  TImageGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-  TPlanet.ClassName;
-  TShip.ClassName;
-  TWindowGI.ClassName;
-  TgaiGI.ClassName;
-end;
 end.

@@ -1,16 +1,18 @@
-{$EXCESSPRECISION OFF}
 unit ParViewStringClass;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   EC_Struct,
   TextFieldClass;
+
 type
+
   TParViewString = class;
+
   TParViewString = class(TObjectEx)
     MinValue: Integer;
     MaxValue: Integer;
@@ -19,9 +21,8 @@ type
     destructor Destroy; override;
     procedure LoadFromReader(Reader: TBufEC);
   end;
+
 implementation
-uses
-  Math;
 
 constructor TParViewString.Create(Value: WideString);
 begin

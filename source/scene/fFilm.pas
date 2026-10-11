@@ -1,11 +1,11 @@
-{$EXCESSPRECISION OFF}
 unit fFilm;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
   EC_Struct,
   EC_Thread,
   GI_GraphBuf,
@@ -14,14 +14,18 @@ uses
   GI_MessageLoop,
   GI_Panel,
   GI_ScrollBar,
-  Types,
   aEFilm;
+
 type
+
   TfFilm = class;
+
   TfFilmLoader = class;
+
   TfFilmLoader = class(TThreadEC)
     procedure Execute; override;
   end;
+
   TfFilm = class(TMessageLoopGI)
     PanTimer: PCallbackTimerGI;
     PanLeft: Boolean;
@@ -29,7 +33,6 @@ type
     PanUp: Boolean;
     PanDown: Boolean;
     Playing: Boolean;
-    GapD9: array[0..2] of Byte;
     CenterShipButton: TGraphButtonGI;
     SpacePanel: TPanelGI;
     MapPanel: TObjectGI;
@@ -48,13 +51,16 @@ type
     FrameIntervalMs: Integer;
     PlaybackTimer: PCallbackTimerGI;
     EffectsTimer: PCallbackTimerGI;
-    StepIndex: PtrInt;
+    StepIndex: Integer;
     NextCommand: PEFilmCommand;
     procedure DrawFrame; override;
     procedure OnOpen; override;
     procedure OnClose; override;
+    procedure CancelPointerInput; override;
     procedure SelectMusic; override;
     procedure InitializeLayout; override;
+    function CanPanGesture(Point: TPoint): Boolean; override;
+    procedure ProcessPanGesture(DX, DY: Double; Point: TPoint); override;
     function GetViewOffset: TPoint;
     procedure SetViewOffset(Offset: TPoint);
     procedure FollowViewOffset(Offset: TPoint);
@@ -81,13 +87,14 @@ type
     procedure AdvanceOneStep;
     procedure InvalidateAnimatedControls;
   end;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  aCalc,
+  aGalaxyStruct,
   SysUtils,
   Math,
-  Windows,
+  GameInput,
   fFilmFile,
   Globals,
   GlobalsV,
@@ -95,6 +102,7 @@ uses
   GR_Sound,
   GI_Main,
   aMyFunction,
+  aConst,
   aPlayer,
   aShip,
   aEFilmEnd,
@@ -238,17 +246,27 @@ begin
   StopButton.UpCallback := PlayStopClicked;
   TurnSlider.SetRange(0, FilmHistory.GetCount - 1);
   TurnSlider.PositionChangedCallback := TurnSliderChanged;
-  GetByName('MapPanelA').SetActive((GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(1));
+  GetByName('MapPanelA')
+      .SetActive((GetPlayer <> nil) and GetPlayer.IsHealthEffectActive(heBlindness));
   SelectHistoryEntry(FilmHistory.GetCount - 1, True);
   CopyLiveVisualStateToFilm;
   AdvanceOneStep;
   StartPlayback;
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.PrimeIntegrityChecksum(133);
+end;
+
+procedure TfFilm.CancelPointerInput;
+begin
+  inherited CancelPointerInput;
+  PanLeft := False;
+  PanRight := False;
+  PanUp := False;
+  PanDown := False;
 end;
 
 procedure TfFilm.OnClose;
 begin
-  aCalc.WaitForTurnCalculationUI;
+  Galaxy.CheckIntegrityChecksum(134);
   (StarMapScreen.GetByName('StarFieldImg') as TStarFieldImgGI)
       .CopyStarsFrom(GetByName('StarFieldImg') as TStarFieldImgGI);
   StarMapScreen.SaveSpaceImageState(GetByName('SpaceImg') as TSpaceImgGI);
@@ -279,6 +297,25 @@ begin
     PanTimer := nil;
   end;
   SpaceProcess.CloseSpace;
+end;
+
+function TfFilm.CanPanGesture(Point: TPoint): Boolean;
+begin
+  Result :=
+      (ChildLoop = nil)
+          and (SpacePanel <> nil)
+          and SpacePanel.Active
+          and SpacePanel.DragScrollingEnabled
+          and not SpacePanel.Dragging
+          and SpacePanel.ContainsPoint(Point)
+          and not SpacePanel.IsOccludedAtPoint(Point);
+end;
+
+procedure TfFilm.ProcessPanGesture(DX, DY: Double; Point: TPoint);
+begin
+  if not CanPanGesture(Point) then
+    Exit;
+  SetViewOffset(AccumulatePanGesture(DX, DY, GetViewOffset));
 end;
 
 function TfFilm.GetViewOffset: TPoint;
@@ -312,8 +349,7 @@ end;
 
 procedure TfFilm.PanView(Timer: PCallbackTimerGI; UserData: PtrInt);
 var
-  Offset, OldOffset: TPoint;
-  X, Y: SmallInt;
+  Offset, OldOffset, MousePoint: TPoint;
 begin
   OldOffset := GetViewOffset;
   Offset := OldOffset;
@@ -325,16 +361,17 @@ begin
     Dec(Offset.Y, ScrollStep);
   if PanDown then
     Inc(Offset.Y, ScrollStep);
-  X := GetCursorPoint.X;
-  Y := GetCursorPoint.Y;
-  if X < ScrollSense then
-    Dec(Offset.X, ScrollStep);
-  if X > GameScreenWidth - ScrollSense - 1 then
-    Inc(Offset.X, ScrollStep);
-  if Y < ScrollSense then
-    Dec(Offset.Y, ScrollStep);
-  if Y > GameScreenHeight - ScrollSense - 1 then
-    Inc(Offset.Y, ScrollStep);
+  if GetScrollMousePoint(MousePoint) then
+  begin
+    if MousePoint.X < ScrollSense then
+      Dec(Offset.X, ScrollStep);
+    if MousePoint.X > GameScreenWidth - ScrollSense - 1 then
+      Inc(Offset.X, ScrollStep);
+    if MousePoint.Y < ScrollSense then
+      Dec(Offset.Y, ScrollStep);
+    if MousePoint.Y > GameScreenHeight - ScrollSense - 1 then
+      Inc(Offset.Y, ScrollStep);
+  end;
   if (OldOffset.X <> Offset.X) or (OldOffset.Y <> Offset.Y) then
     SetViewOffset(Offset);
 end;
@@ -566,7 +603,7 @@ begin
   SpaceProcess.BindMinimap(MapPanel);
   SpaceProcess.Space.MinimapScale := MapPanel.ClientSize.X / CurrentFilm.MapDiameter;
   if GetPlayer <> nil then
-    if GetPlayer.IsHealthEffectActive(1) then
+    if GetPlayer.IsHealthEffectActive(heBlindness) then
       SpaceProcess.Space.AlphaShift := 2;
   SpaceProcess.Space.CreateMinimapViewport;
   StepIndex := 0;
@@ -937,21 +974,4 @@ begin
     MusicManager.RequestFadeOut;
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TAsteroidSE.ClassName;
-  TGraphBufGI.ClassName;
-  TGraphButtonGI.ClassName;
-  TLabelGI.ClassName;
-  TPanelGI.ClassName;
-  TPlanetSE.ClassName;
-  TScrollBarGI.ClassName;
-  TShip2SE.ClassName;
-  TSpaceImgGI.ClassName;
-  TSputnikSE.ClassName;
-  TStarFieldGI.ClassName;
-  TStarFieldImgGI.ClassName;
-  TStarSE.ClassName;
-  TWeaponSE.ClassName;
-end;
 end.

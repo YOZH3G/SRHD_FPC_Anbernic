@@ -1,10 +1,9 @@
-{$EXCESSPRECISION OFF}
 unit GI_Image;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_GAI,
@@ -18,8 +17,11 @@ uses
   GI_GraphBuf,
   Classes,
   Types;
+
 type
+
   TImageGI = class;
+
   TImageGI = class(TObjectGI)
     SimpleImageControl: TSimpleImageGI;
     TransImageControl: TTransImageGI;
@@ -55,9 +57,10 @@ type
     procedure LoadImageProperties(Block: TBlockParEC);
     procedure SetHardwareMirrorHorizontal(Value: Boolean);
   end;
+
 implementation
+
 uses
-  Math,
   SysUtils,
   GlobalsV,
   EC_Str,
@@ -344,6 +347,8 @@ begin
     Result := GiImageControl.HitTestPixel(Point)
   else if GaiImageControl <> nil then
     Result := GaiImageControl.HitTestPixel(Point)
+  else if GraphBufControl <> nil then
+    Result := GraphBufControl.HitTestPixel(Point)
   else
     Result := False;
 end;
@@ -398,7 +403,7 @@ procedure TImageGI.UpdateAutoGeometry;
 begin
   inherited UpdateAutoGeometry;
   if (AutoUpdateFlags and agfPosition) = agfPosition then
-    SetPosition(Parent.ToLocalPoint(GetContentOrigin));
+    SetPosition(Parent.LogicalToLocalPoint(GetContentOrigin));
   if (AutoUpdateFlags and agfSize) = agfSize then
     SetSize(GetContentSize);
 end;

@@ -1,34 +1,39 @@
-{$EXCESSPRECISION OFF}
 unit EC_CachePalBitmap;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_Buf,
   GR_GraphBufPal,
   EC_Cache,
   Classes;
+
 type
+
   TCPalBitmapControlEC = class;
+
   TCPalBitmapEC = class;
+
   TCPalBitmapControlEC = class(TCacheControlEC)
     procedure QueueLoadIfMissing(PendingLoads: TList); override;
     function CreateData: TCacheDataEC; override;
     function AcquireData: TCacheDataEC; override;
   end;
+
   TCPalBitmapEC = class(TCacheDataEC)
     Bitmap: TGraphBufPalGR;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
   end;
+
 function AcquireOrCreatePalBitmap(Control: TCacheControlEC): TCPalBitmapEC;
-procedure LinkRecoveredTypes;
+
 implementation
+
 uses
-  Math,
   GR_Main;
 
 procedure TCPalBitmapControlEC.QueueLoadIfMissing(PendingLoads: TList);
@@ -88,8 +93,4 @@ begin
       Bitmap.PitchBytes * Bitmap.Height + Bitmap.PaletteCount * SizeOf(Bitmap.Palette^);
 end;
 
-procedure LinkRecoveredTypes;
-begin
-  TCPalBitmapEC.ClassName;
-end;
 end.

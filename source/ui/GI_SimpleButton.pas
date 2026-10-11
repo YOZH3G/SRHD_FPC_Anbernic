@@ -1,18 +1,20 @@
-{$EXCESSPRECISION OFF}
 unit GI_SimpleButton;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   Classes,
   EC_BlockPar,
   EC_CacheBitmap,
   GI_MessageLoop,
   Types;
+
 type
+
   TSimpleButtonGI = class;
+
   TSimpleButtonGI = class(TObjectGI)
     CurrentImage: TCBitmapControlEC;
     NormalImage: TCBitmapControlEC;
@@ -29,15 +31,17 @@ type
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   GI_Main;
 
 constructor TSimpleButtonGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
+  TouchInteraction := tiTap;
   NormalImage := TCBitmapControlEC.Create;
   GlobalCache.ResetControl(NormalImage);
   ActiveImage := TCBitmapControlEC.Create;
@@ -74,12 +78,16 @@ end;
 
 procedure TSimpleButtonGI.ProcessLeftButtonDown(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonDown(KeyState, Point);
   DispatchNamedEvent(1, Point.X, Point.Y);
 end;
 
 procedure TSimpleButtonGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonUp(KeyState, Point);
   DispatchNamedEvent(2, Point.X, Point.Y);
 end;

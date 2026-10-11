@@ -1,22 +1,24 @@
-{$EXCESSPRECISION OFF}
 unit GI_Door;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar,
   GI_GAI,
   GI_MessageLoop,
   Types;
+
 type
+
   TDoorGI = class;
+
   TDoorGI = class(TObjectGI)
     Image: TgaiGI;
     FrameStep: Integer;
     StepTimer: PCallbackTimerGI;
-    StepTime: PtrInt;
+    StepTime: Integer;
     ClickCallback: TObjectNotifyEventGI;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
@@ -27,6 +29,7 @@ type
     procedure OnActivate; override;
     procedure OnDeactivate; override;
     procedure ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint); override;
+    function GetTouchInteraction: TTouchInteractionGI; override;
     procedure LoadFromBlock(Block: TBlockParEC); override;
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
@@ -36,9 +39,10 @@ type
     procedure StepFrame(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure LoadDoorProperties(Block: TBlockParEC);
   end;
+
 implementation
+
 uses
-  Math,
   GR_Main,
   SysUtils,
   GI_Main;
@@ -167,8 +171,18 @@ begin
   end;
 end;
 
+function TDoorGI.GetTouchInteraction: TTouchInteractionGI;
+begin
+  if Assigned(ClickCallback) then
+    Result := tiTap
+  else
+    Result := inherited GetTouchInteraction;
+end;
+
 procedure TDoorGI.ProcessLeftButtonUp(KeyState: Cardinal; Point: TPoint);
 begin
+  if not AllowsTouchActivation then
+    Exit;
   inherited ProcessLeftButtonUp(KeyState, Point);
   if not IsOccludedAtPoint(MessageLoop.GetCursorPoint) then
     if Assigned(ClickCallback) then

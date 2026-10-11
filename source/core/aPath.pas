@@ -1,23 +1,30 @@
-{$EXCESSPRECISION OFF}
 unit aPath;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
+  Types,
+  GameHeap,
   EC_Struct,
   SyncObjs;
+
 type
+
   TSPath = class;
+
   PointerToTSPathNode = ^TSPathNode;
+
   PSPathNode = PointerToTSPathNode;
+
   TSPathNode = packed record
     Prev: PSPathNode;
     Next: PSPathNode;
     Position: TPointF;
     Heading: Single;
   end;
+
   TSPath = class(TObject)
     ActiveHead: PSPathNode;
     ActiveTail: PSPathNode;
@@ -44,32 +51,44 @@ type
         SampleCount: Integer
     );
   end;
+
 var
-  PathNodeHeap: Cardinal = 0;
+
+  PathNodeHeap: TGameHeapHandle = 0;
+
   PathPoolHead: PSPathNode = nil;
+
   PathPoolTail: PSPathNode = nil;
+
   PathPoolLock: TCriticalSection = nil;
+
   PathGrowthBlockCount: Integer = -1;
+
 procedure InitializePathNodePool;
+
 procedure EnsurePathGrowthBlockSlot;
+
 procedure FreePathGrowthBlocks;
+
 function ReservePathGrowthBlock: Boolean;
+
 function GrowPathNodePool: Boolean;
+
 procedure FinalizePathNodePool;
+
 implementation
+
 uses
+  aBezierPC24,
   aMyFunction,
   EC_Mem,
   GR_Main,
-  Math,
-  SysUtils,
-  Windows;
-// @unit-initialization $876740
-// @unit-finalization $4DC41C
+  SysUtils;
+
 var
-  PathInitialBlock: Pointer; // @addr $88A230
-  PathPoolFreeCount: Integer; // @addr $88A234
-  PathGrowthBlocks: array of Pointer; // @addr $88A238
+  PathInitialBlock: Pointer;
+  PathPoolFreeCount: Integer;
+  PathGrowthBlocks: array of Pointer;
 
 procedure InitializePathNodePool;
 var
@@ -78,11 +97,11 @@ var
 begin
   PathPoolLock := TCriticalSection.Create;
   PathPoolFreeCount := 200000;
-  PathNodeHeap := HeapCreate(0, 16, 0);
-  PathInitialBlock := HeapAlloc(PathNodeHeap, 0, PathPoolFreeCount * SizeOf(TSPathNode));
+  PathNodeHeap := GameHeap.HeapCreate(0, 16, 0);
+  PathInitialBlock := GameHeap.HeapAlloc(PathNodeHeap, 0, PathPoolFreeCount * SizeOf(TSPathNode));
   if PathInitialBlock = nil then
     raise Exception.Create('Error: HeapAlloc');
-  ZeroMemory(PathInitialBlock, PathPoolFreeCount * SizeOf(TSPathNode));
+  System.FillChar(Pointer(PathInitialBlock)^, PathPoolFreeCount * SizeOf(TSPathNode), 0);
   Node := PathInitialBlock;
   PathPoolHead := Node;
   Prev := nil;
@@ -116,7 +135,7 @@ begin
   for Index := 0 to High(PathGrowthBlocks) do
     if PathGrowthBlocks[Index] <> nil then
     begin
-      HeapFree(PathNodeHeap, 0, PathGrowthBlocks[Index]);
+      GameHeap.HeapFree(PathNodeHeap, 0, PathGrowthBlocks[Index]);
       PathGrowthBlocks[Index] := nil;
     end;
   SetLength(PathGrowthBlocks, 0);
@@ -148,7 +167,7 @@ begin
   Count := 100000;
   Inc(PathPoolFreeCount, Count);
   ByteCount := Count * SizeOf(TSPathNode);
-  Block := HeapAlloc(PathNodeHeap, HEAP_ZERO_MEMORY, ByteCount);
+  Block := GameHeap.HeapAlloc(PathNodeHeap, GameHeap.HEAP_ZERO_MEMORY, ByteCount);
   if Block = nil then
     Exit;
   Node := Block;
@@ -171,12 +190,12 @@ begin
   FreePathGrowthBlocks;
   if PathInitialBlock <> nil then
   begin
-    HeapFree(PathNodeHeap, 0, PathInitialBlock);
+    GameHeap.HeapFree(PathNodeHeap, 0, PathInitialBlock);
     PathInitialBlock := nil;
   end;
   if PathNodeHeap <> 0 then
   begin
-    HeapDestroy(PathNodeHeap);
+    GameHeap.HeapDestroy(PathNodeHeap);
     PathNodeHeap := 0;
   end;
   if PathPoolLock <> nil then
@@ -339,19 +358,19 @@ begin
   begin
     AppendNode;
     Result := ActiveTail;
-    Exit;
+  end
+  else
+  begin
+    NewNode := PopFreeNode;
+    NewNode.Prev := Node.Prev;
+    NewNode.Next := Node;
+    if Node.Prev <> nil then
+      Node.Prev.Next := NewNode;
+    Node.Prev := NewNode;
+    if Node = ActiveHead then
+      ActiveHead := NewNode;
+    Result := NewNode;
   end;
-  NewNode := PopFreeNode;
-  // Value expressions preserve DCC32's native address/value evaluation order;
-  // the + 0 operations themselves emit no instructions.
-  PSPathNode(PtrUInt(NewNode) + 0).Prev := Node.Prev;
-  PSPathNode(PtrUInt(NewNode) + 0).Next := Node;
-  if Node.Prev <> nil then
-    Node.Prev.Next := NewNode;
-  Node.Prev := NewNode;
-  if PSPathNode(PtrUInt(Node) + 0) = ActiveHead then
-    ActiveHead := PSPathNode(PtrUInt(NewNode) + 0);
-  Result := NewNode;
 end;
 
 function TSPath.GetFollowingNode(Node: PSPathNode; SkipCount: Integer): PSPathNode;
@@ -427,16 +446,15 @@ begin
     Result := Count;
 end;
 
-// CHANGE: BUGFIX - Reverse evaluation near the endpoint to avoid ARM64 floating-point underflow.
 procedure TSPath.ResampleBezierRange(FirstNode, LastNode: PSPathNode; SampleCount: Integer);
 var
-  Coefficients: array of Double;
+  Coefficients: array of TBezierPC24Wide;
+  TPower, InvRemaining, RemainingPower, Weight, TWide: TBezierPC24Wide;
+  T, Step, Heading: Single;
+  X, Y, Angle: Double;
   Count: Integer;
-  Node, NewNode, AfterNode, EndNode: PSPathNode;
+  Node, NewNode, AfterNode: PSPathNode;
   Index, Sample: Integer;
-  Heading, Weight, X, Y, Angle, T, U: Double;
-  TPower, InvRemaining, RemainingPower: Extended;
-  Reverse: Boolean;
 begin
   Count := CountNodeRangeInclusive(FirstNode, LastNode);
   if Count < 2 then
@@ -445,11 +463,12 @@ begin
     Exit;
   AfterNode := LastNode.Next;
   SetLength(Coefficients, Count);
-  Coefficients[0] := 1;
-  Coefficients[Count - 1] := 1;
+  Coefficients[0] := BezierWide(1);
+  Coefficients[Count - 1] := BezierWide(1);
   for Index := 1 to (Count - 1) div 2 do
   begin
-    Coefficients[Index] := (Count - Index) * Coefficients[Index - 1] / Index;
+    Coefficients[Index] :=
+        BezierDiv(BezierMul(BezierWide(Count - Index), Coefficients[Index - 1]), BezierWide(Index));
     Coefficients[Count - 1 - Index] := Coefficients[Index];
   end;
   Heading := FirstNode.Heading;
@@ -470,57 +489,40 @@ begin
   Heading := Heading + LastNode.Heading;
   LastNode.Heading := Heading;
   T := 0;
+  Step := 1 / (SampleCount - 1);
   for Sample := 0 to SampleCount - 1 do
   begin
     X := 0;
     Y := 0;
     Angle := 0;
-    // Native $4D8332..$4D83EA keeps these powers in x87 80-bit slots.
-    // ARM64 Extended is Double: (1-T)^198 underflows near the last five
-    // samples, leaving only the final control's T^198 contribution and
-    // pulling the ship toward (0,0). Evaluate the second half backwards:
-    // B_i,n(T) = B_n-i,n(1-T). Turn paths have at most 200 controls, so
-    // the initial power is at least 0.5^199 and stays in normal range.
-    Reverse := T > 0.5;
-    if Reverse then
-    begin
-      U := Max(0.0, 1 - T);
-      Node := LastNode;
-      EndNode := FirstNode;
-    end
-    else
-    begin
-      U := T;
-      Node := FirstNode;
-      EndNode := LastNode;
-    end;
+    { Preserve the original forward accumulation. The normalized factors
+      retain the x87 exponent range even when the initial tail is < 2^-1074. }
+    Node := FirstNode;
     Index := 0;
-    TPower := 1;
-    InvRemaining := 1 / (1 - U);
-    RemainingPower := Power(1 - U, Count - 1);
-    while Node <> EndNode do
+    TPower := BezierWide(1);
+    InvRemaining := BezierDiv(BezierWide(1), BezierWide(1 - T));
+    RemainingPower := BezierPower(BezierWide(1 - T), Count - 1);
+    TWide := BezierWide(T);
+    while Node <> LastNode do
     begin
-      Weight := TPower * Coefficients[Index] * RemainingPower;
-      X := X + Weight * Node.Position.X;
-      Y := Y + Weight * Node.Position.Y;
-      Angle := Angle + Weight * Node.Heading;
+      Weight := BezierMul(BezierMul(TPower, Coefficients[Index]), RemainingPower);
+      X := BezierAddProduct(X, Weight, Node.Position.X);
+      Y := BezierAddProduct(Y, Weight, Node.Position.Y);
+      Angle := BezierAddProduct(Angle, Weight, Node.Heading);
       Inc(Index);
-      TPower := TPower * U;
-      RemainingPower := RemainingPower * InvRemaining;
-      if Reverse then
-        Node := Node.Prev
-      else
-        Node := Node.Next;
+      TPower := BezierMul(TPower, TWide);
+      RemainingPower := BezierMul(RemainingPower, InvRemaining);
+      Node := Node.Next;
     end;
-    Weight := TPower * Coefficients[Index];
-    X := X + Weight * Node.Position.X;
-    Y := Y + Weight * Node.Position.Y;
-    Angle := Angle + Weight * Node.Heading;
+    Weight := BezierMul(TPower, Coefficients[Index]);
+    X := BezierAddProduct(X, Weight, Node.Position.X);
+    Y := BezierAddProduct(Y, Weight, Node.Position.Y);
+    Angle := BezierAddProduct(Angle, Weight, Node.Heading);
     NewNode := InsertNodeBefore(AfterNode);
     NewNode.Position.X := X;
     NewNode.Position.Y := Y;
     NewNode.Heading := WrapHeadingDegrees(Angle);
-    T := T + 1 / (SampleCount - 1);
+    T := T + Step;
   end;
   if AfterNode = nil then
     NewNode := ActiveTail

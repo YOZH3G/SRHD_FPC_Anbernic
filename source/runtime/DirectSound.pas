@@ -1,27 +1,116 @@
-{$EXCESSPRECISION OFF}
 unit DirectSound;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
+uses
+  GameEvents;
+
+const
+
+  WAVE_FORMAT_PCM = 1;
+
+  DS_OK = 0;
+
+  DS_NO_VIRTUALIZATION = 142082058;
+
+  DS_INCOMPLETE = 142082068;
+
+  DSERR_ALLOCATED = -2005401590;
+
+  DSERR_CONTROLUNAVAIL = -2005401570;
+
+  DSERR_INVALIDPARAM = -2147024809;
+
+  DSERR_INVALIDCALL = -2005401550;
+
+  DSERR_GENERIC = -2147467259;
+
+  DSERR_PRIOLEVELNEEDED = -2005401530;
+
+  DSERR_OUTOFMEMORY = -2147024882;
+
+  DSERR_BADFORMAT = -2005401500;
+
+  DSERR_UNSUPPORTED = -2147467263;
+
+  DSERR_NODRIVER = -2005401480;
+
+  DSERR_ALREADYINITIALIZED = -2005401470;
+
+  DSERR_NOAGGREGATION = -2147221232;
+
+  DSERR_BUFFERLOST = -2005401450;
+
+  DSERR_OTHERAPPHASPRIO = -2005401440;
+
+  DSERR_UNINITIALIZED = -2005401430;
+
+  DSERR_NOINTERFACE = -2147467262;
+
+  DSERR_ACCESSDENIED = -2147024891;
+
+  DSERR_BUFFERTOOSMALL = -2005401420;
+
+  DSERR_DS8_REQUIRED = -2005401410;
+
+  DSERR_SENDLOOP = -2005401400;
+
+  DSERR_BADSENDBUFFERGUID = -2005401390;
+
+  DSERR_OBJECTNOTFOUND = -2005397151;
+
+  DSERR_FXUNAVAILABLE = -2005401380;
+
+  DSBCAPS_PRIMARYBUFFER = $00000001;
+
+  DSBCAPS_STATIC = $00000002;
+
+  DSBCAPS_LOCSOFTWARE = $00000008;
+
+  DSBCAPS_CTRLPAN = $00000040;
+
+  DSBCAPS_CTRLVOLUME = $00000080;
+
+  DSBCAPS_CTRLPOSITIONNOTIFY = $00000100;
+
+  DSBCAPS_GETCURRENTPOSITION2 = $00010000;
+
+  DSBPLAY_LOOPING = 1;
+
+  DSBLOCK_ENTIREBUFFER = 2;
+
+  DSBSTATUS_PLAYING = 1;
+
+  DSSCL_PRIORITY = 2;
+
+  DSBVOLUME_MIN = -10000;
+
+  DSBPAN_LEFT = -10000;
+
+  DSBPAN_RIGHT = 10000;
+
 type
-  IDirectSoundNotify = interface;
-  IDirectSoundBuffer = interface;
+
   IDirectSound = interface;
+
+  IDirectSoundBuffer = interface;
+
+  IDirectSoundNotify = interface;
+
   PointerToTDSPositionNotify = ^TDSPositionNotify;
-  TDSPositionNotify = record
-    Offset: Cardinal;
-    EventHandle: Cardinal;
+
+  TSoundWaveFormat = record
+    FormatTag: Word;
+    Channels: Word;
+    SamplesPerSecond: Cardinal;
+    AverageBytesPerSecond: Cardinal;
+    BlockAlign: Word;
+    BitsPerSample: Word;
+    ExtraSize: Word;
   end;
-  PDSPositionNotify = PointerToTDSPositionNotify;
-  IDirectSoundNotify = interface(IInterface)
-    ['{B0210783-89CD-11D0-AF08-00A0C925CD16}']
-    function SetNotificationPositions(
-        Count: Cardinal;
-        Positions: PDSPositionNotify
-    ): LongInt; stdcall;
-  end;
+
   TDSBufferDesc = record
     Size: Cardinal;
     Flags: Cardinal;
@@ -30,7 +119,35 @@ type
     WaveFormat: Pointer;
     Algorithm: TGUID;
   end;
+
+  PDSPositionNotify = PointerToTDSPositionNotify;
+
+  TDSPositionNotify = record
+    Offset: Cardinal;
+    EventHandle: TGameEventHandle;
+  end;
+
+  IDirectSound = interface(IInterface)
+    ['{279AFA83-4981-11CE-A521-0020AF0BE560}']
+    function CreateSoundBuffer(
+        const Desc: TDSBufferDesc;
+        out Buffer: IDirectSoundBuffer;
+        Outer: IInterface
+    ): LongInt; stdcall;
+    function GetCaps(Caps: Pointer): LongInt; stdcall;
+    function DuplicateSoundBuffer(
+        Original: IDirectSoundBuffer;
+        out Duplicate: IDirectSoundBuffer
+    ): LongInt; stdcall;
+    function SetCooperativeLevel(Window: Cardinal; Level: Cardinal): LongInt; stdcall;
+    function Compact: LongInt; stdcall;
+    function GetSpeakerConfig(out Configuration: Cardinal): LongInt; stdcall;
+    function SetSpeakerConfig(Configuration: Cardinal): LongInt; stdcall;
+    function Initialize(Guid: Pointer): LongInt; stdcall;
+  end;
+
   IDirectSoundBuffer = interface(IInterface)
+    ['{279AFA85-4981-11CE-A521-0020AF0BE560}']
     function GetCaps(Caps: Pointer): LongInt; stdcall;
     function GetCurrentPosition(PlayCursor: PCardinal; WriteCursor: PCardinal): LongInt; stdcall;
     function GetFormat(Format: Pointer; Size: Cardinal; Written: PCardinal): LongInt; stdcall;
@@ -63,29 +180,18 @@ type
     ): LongInt; stdcall;
     function Restore: LongInt; stdcall;
   end;
-  TSoundWaveFormat = record
-    FormatTag: Word;
-    Channels: Word;
-    SamplesPerSecond: Cardinal;
-    AverageBytesPerSecond: Cardinal;
-    BlockAlign: Word;
-    BitsPerSample: Word;
-    ExtraSize: Word;
-    Gap12: array[0..1] of Byte;
-  end;
-  IDirectSound = interface(IInterface)
-    function CreateSoundBuffer(
-        const Desc: TDSBufferDesc;
-        out Buffer: IDirectSoundBuffer;
-        Outer: IInterface
+
+  IDirectSoundNotify = interface(IInterface)
+    ['{B0210783-89CD-11D0-AF08-00A0C925CD16}']
+    function SetNotificationPositions(
+        Count: Cardinal;
+        Positions: PDSPositionNotify
     ): LongInt; stdcall;
-    function GetCaps(Caps: Pointer): LongInt; stdcall;
-    function DuplicateSoundBuffer(
-        Original: IDirectSoundBuffer;
-        out Duplicate: IDirectSoundBuffer
-    ): LongInt; stdcall;
-    function SetCooperativeLevel(Window: Cardinal; Level: Cardinal): LongInt; stdcall;
   end;
+
+  TDirectSoundCreate =
+      function(Guid: Pointer; out DirectSound: IDirectSound; Outer: IInterface): LongInt; stdcall;
+
   TDSEnumCallback =
       function(
           Guid: Pointer;
@@ -93,62 +199,27 @@ type
           Module: PAnsiChar;
           Context: Pointer
       ): LongBool; stdcall;
-  TDirectSoundCreate =
-      function(Guid: Pointer; out DirectSound: IDirectSound; Outer: IInterface): LongInt; stdcall;
-  TDirectSoundEnumerate = function(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
-const
-  DS_OK = 0;
-  DS_NO_VIRTUALIZATION = 142082058;
-  DS_INCOMPLETE = 142082068;
-  DSERR_ALLOCATED = -2005401590;
-  DSERR_CONTROLUNAVAIL = -2005401570;
-  DSERR_INVALIDPARAM = -2147024809;
-  DSERR_INVALIDCALL = -2005401550;
-  DSERR_GENERIC = -2147467259;
-  DSERR_PRIOLEVELNEEDED = -2005401530;
-  DSERR_OUTOFMEMORY = -2147024882;
-  DSERR_BADFORMAT = -2005401500;
-  DSERR_UNSUPPORTED = -2147467263;
-  DSERR_NODRIVER = -2005401480;
-  DSERR_ALREADYINITIALIZED = -2005401470;
-  DSERR_NOAGGREGATION = -2147221232;
-  DSERR_BUFFERLOST = -2005401450;
-  DSERR_OTHERAPPHASPRIO = -2005401440;
-  DSERR_UNINITIALIZED = -2005401430;
-  DSERR_NOINTERFACE = -2147467262;
-  DSERR_ACCESSDENIED = -2147024891;
-  DSERR_BUFFERTOOSMALL = -2005401420;
-  DSERR_DS8_REQUIRED = -2005401410;
-  DSERR_SENDLOOP = -2005401400;
-  DSERR_BADSENDBUFFERGUID = -2005401390;
-  DSERR_OBJECTNOTFOUND = -2005397151;
-  DSERR_FXUNAVAILABLE = -2005401380;
-  DSBCAPS_PRIMARYBUFFER = $00000001;
-  DSBCAPS_STATIC = $00000002;
-  DSBCAPS_LOCSOFTWARE = $00000008;
-  DSBCAPS_CTRLPAN = $00000040;
-  DSBCAPS_CTRLVOLUME = $00000080;
-  DSBCAPS_CTRLPOSITIONNOTIFY = $00000100;
-  DSBCAPS_GETCURRENTPOSITION2 = $00010000;
-  DSBPLAY_LOOPING = 1;
-  DSBLOCK_ENTIREBUFFER = 2;
-  DSBSTATUS_PLAYING = 1;
-  DSSCL_PRIORITY = 2;
-  DSBVOLUME_MIN = -10000;
-  DSBPAN_LEFT = -10000;
-  DSBPAN_RIGHT = 10000;
-var
-  DirectSoundCreate: TDirectSoundCreate;
-  DirectSoundEnumerate: TDirectSoundEnumerate;
+
 function DirectSoundEnumerateA(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
+
+type
+
+  TDirectSoundEnumerate = function(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
+
+var
+
+  DirectSoundCreate: TDirectSoundCreate;
+
+  DirectSoundEnumerate: TDirectSoundEnumerate;
+
 implementation
+
 uses
-  Math,
-  RangersSupport,
-  SysUtils,
-  Windows;
+  GameAudio;
+
 function DirectSoundEnumerateA(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
 begin
-  raise Exception.Create('Win32 multimedia API is unavailable in the native host')
+  Result := EnumerateGameSound(Callback, Context);
 end;
+
 end.

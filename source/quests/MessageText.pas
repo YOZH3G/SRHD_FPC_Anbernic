@@ -1,14 +1,16 @@
-{$EXCESSPRECISION OFF}
 unit MessageText;
-{$R-}
-{$Q-}
-{$B-}
-{$A8}
+
+{$I GameOptions.inc}
+
 interface
+
 uses
   EC_BlockPar;
+
 type
+
   TQuestMessages = class;
+
   TQuestMessages = class(TObject)
     Entries: TBlockParEC;
     constructor Create;
@@ -16,11 +18,14 @@ type
     function GetText(Path: WideString): WideString;
     function GetTextOrKey(Key: WideString): WideString;
   end;
+
 var
+
   QuestMessages: TQuestMessages;
+
 implementation
+
 uses
-  Math,
   EC_Str;
 
 constructor TQuestMessages.Create;

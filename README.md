@@ -6,7 +6,7 @@ An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.
 Supply game assets from your own licensed copy; downloads contain the port only.
 
-[Download builds](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11)
+[Download builds](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-sdl-2026.10.11)
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
@@ -25,7 +25,7 @@ RG35XX 2022/2023 and Android are not covered by these Linux packages.
 
 ## Install
 
-1. Install current **PortMaster**. The firmware must provide **SDL2 ≥ 2.0.18**
+1. Install current **PortMaster**. The firmware must provide **SDL2 ≥ 2.26.0**
    and **glibc ≥ 2.29**.
 2. Extract your package into the firmware's Ports directory: muOS uses
    `/mnt/mmc/ROMS/Ports` or `/mnt/sdcard/ROMS/Ports`; KNULLI uses
@@ -58,7 +58,21 @@ field. While it is open:
 The keyboard respects each field's length and character restrictions. It is
 on by default in PortMaster; manual launches use `--on-screen-keyboard`.
 
+## Renderer and screen resolution
+
+Linux attempts `--renderer=sdl` by default. If accelerated renderer or initial
+render-target creation fails, it falls back to software automatically. Use
+`--renderer=software` to force software. The selected SDL backend and fallback
+reason are in `spacerangershd/profile/########.log`.
+
+The physical panel and game layout resolution differ: fullscreen scales the
+logical frame to the panel while preserving aspect ratio. A 640×480 panel does
+not by itself make the game render its layout at 640×480.
+
 ## Screenshots
+
+The screenshots and video below belong to the earlier
+[enhanced-branch keyboard release](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11).
 
 Captured from the actual ARMHF/AArch64 builds under QEMU using licensed game
 assets. These images do not demonstrate a physical handheld or firmware driver.
@@ -103,14 +117,13 @@ campaign play remain untested. This is an **experimental release**.
 
 ## Development and attribution
 
-This fork's `main` extends the author's
-[enhanced `personal` branch](https://github.com/pakompom/SpaceRangersHD_FPC/tree/personal),
-based on the [original decompilation](https://github.com/pakompom/SpaceRangersHD_decomp).
-The author's reference `main` has different history and behavior;
-[upstream tracking details](platform/linux/UPSTREAM.md) explain the chosen base.
+This fork is based on the author's current
+[reference `main`](https://github.com/pakompom/SpaceRangersHD_FPC/tree/main),
+with the Anbernic packaging and RU/EN keyboard adapted to its SDL platform layer.
+[Upstream tracking details](platform/linux/UPSTREAM.md) record the revision and migration.
 The upstream port was developed with LLMs through Codex.
 
-- [Behavior changes](ADDITIONS.md) and [build instructions](BUILDING.md).
+- [Behavior changes](CHANGES.md) and [build instructions](BUILDING.md).
 - `source/`: Pascal game code; `platform/`: compatibility and SDL runtime.
 - `native/`: native integration; `tools/`: build, packaging and test helpers.
 - `vendor/okgf/` and `vendor/fpc/`: pinned submodules; initialize them with
