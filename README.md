@@ -1,46 +1,120 @@
-# Space Rangers HD — FPC Enhanced Port
+[Русская версия](README_RU.md)
 
-A personal, opinionated Free Pascal port of **Space Rangers HD: A War Apart**,
+# Space Rangers HD — Anbernic Linux / FPC Enhanced Port
+
+An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
+experimental Anbernic Linux packages and a built-in Russian/English keyboard.
+Supply game assets from your own licensed copy; downloads contain the port only.
+
+[Download builds](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases/tag/anbernic-keyboard-2026.10.11)
+· [Installation and troubleshooting](platform/linux/ANBERNIC.md)
+· [Build from source](BUILDING.md)
+
+## Choose a package
+
+Choose your installed firmware first, then check the model:
+
+- **muOS:** RG35XX Plus/H/SP/2024, RG28XX, RG40XX H/V — H700 package with ARMHF and AArch64.
+- **KNULLI:** the same H700 models — AArch64.
+- **ArkOS:** RG353V/VS/M, RG351P/M/V/MP, RG503 — AArch64. RG351P/M require a compatible community release.
+- **AmberELEC:** RG351P/M/V/MP and RG552 — AArch64.
+- **ROCKNIX:** RG353P/PS/V/VS/M, RG552 and RG503 — AArch64.
+
+These are target models, not a list of hardware-tested devices. The original
+RG35XX 2022/2023 and Android are not covered by these Linux packages.
+
+## Install
+
+1. Install current **PortMaster**. The firmware must provide **SDL2 ≥ 2.0.18**
+   and **glibc ≥ 2.29**.
+2. Extract your package into the firmware's Ports directory: muOS uses
+   `/mnt/mmc/ROMS/Ports` or `/mnt/sdcard/ROMS/Ports`; KNULLI uses
+   `/userdata/roms/ports`; ArkOS/AmberELEC/ROCKNIX usually use `/roms/ports`.
+   See the [full instructions](platform/linux/ANBERNIC.md) for alternate paths.
+3. Keep `Space Rangers HD.sh` beside `spacerangershd/`. Copy `INSTALL*.TXT`,
+   `CFG.TXT`, `CFG/` and `DATA/` from your installed game into
+   `spacerangershd/game/`; `INSTALL.TXT` must be directly inside that folder.
+4. Refresh the game list and launch **Space Rangers HD** from Ports.
+
+Settings and saves live in `spacerangershd/profile/`; the launcher log is
+`spacerangershd/log.txt`. Back up `game/` and `profile/` before updating.
+Firmware SDL and display/audio drivers remain in use; the packages include the
+other runtime libraries. Avoid mixing libraries from different port versions.
+
+## Controls and RU/EN keyboard
+
+The D-pad or left stick moves the mouse; **A/B** are left/right click.
+**Start/R1** sends Enter, **Select** sends Escape, **L1** slows the cursor,
+**X** sends Space and **Y** sends Tab. Sticks are optional.
+
+Click a text field with **A** to open the keyboard; **L2** opens it for a focused
+field. While it is open:
+
+- **Y:** Russian/English; **R2:** lower/upper case, including ё/Ё.
+- **A:** click a key; **B:** delete the character before the caret.
+- Use the on-screen Space and `<` / `>` buttons to insert spaces or move the caret.
+- **Start/R1** or **OK:** apply; **Select** or **Cancel:** discard edits.
+
+The keyboard respects each field's length and character restrictions. It is
+on by default in PortMaster; manual launches use `--on-screen-keyboard`.
+
+## Screenshots
+
+Captured from the actual ARMHF/AArch64 builds under QEMU using licensed game
+assets. These images do not demonstrate a physical handheld or firmware driver.
+
+Russian keyboard, ARMHF:
+
+![Russian keyboard on ARMHF](docs/screenshots/armhf/keyboard-ru.png)
+
+English keyboard, AArch64:
+
+![English keyboard on AArch64](docs/screenshots/aarch64/keyboard-en.png)
+
+In space after takeoff, AArch64:
+
+![Ship in space on AArch64](docs/screenshots/aarch64/space.png)
+
+[More screenshots and their test context](docs/screenshots/README.md).
+
+## Video: main menu to space
+
+[![Watch: main menu to space](docs/media/video-preview.png)](docs/media/aarch64-menu-to-space.mp4)
+
+[Watch or download the AArch64 recording](docs/media/aarch64-menu-to-space.mp4).
+It shows the main menu, character setup, galaxy generation, station, hangar and
+first takeoff, including 20 seconds in space. The recording preserves elapsed
+time and the game's audio; it has no cuts or speed changes.
+
+This is the Linux AArch64 executable used by the ArkOS package, running under
+QEMU with SDK SDL. It is not an ArkOS firmware session or a physical RG353V test.
+[Recording details](docs/media/README.md) include the binary hash and method.
+
+## What has been verified
+
+Both architectures pass resource-backed checks for RU/EN entry, case, caret
+editing, the name-length limit, confirmation and cancellation. After updating
+upstream, both also completed a new galaxy's 300 preliminary turns, entered the
+station and hangar, took off, and loaded a new autosave for another takeoff.
+The release includes the validation report and SHA256 checksums.
+
+Physical devices, their display rotation, sound/controller behavior and extended
+campaign play remain untested. This is an **experimental release**.
+
+## Development and attribution
+
+This fork's `main` extends the author's
+[enhanced `personal` branch](https://github.com/pakompom/SpaceRangersHD_FPC/tree/personal),
 based on the [original decompilation](https://github.com/pakompom/SpaceRangersHD_decomp).
-Breaking changes can happen at any time.
+The author's reference `main` has different history and behavior;
+[upstream tracking details](platform/linux/UPSTREAM.md) explain the chosen base.
+The upstream port was developed with LLMs through Codex.
 
-This fork's `main` branch extends the author's
-[`personal` branch](https://github.com/pakompom/SpaceRangersHD_FPC/tree/personal)
-with Anbernic Linux support. The author's reference `main` branch is a separate
-port focused on platform compatibility.
+- [Behavior changes](ADDITIONS.md) and [build instructions](BUILDING.md).
+- `source/`: Pascal game code; `platform/`: compatibility and SDL runtime.
+- `native/`: native integration; `tools/`: build, packaging and test helpers.
+- `vendor/okgf/` and `vendor/fpc/`: pinned submodules; initialize them with
+  `git submodule update --init --recursive`.
+- [License for custom additions](LICENSE) and [rights and attribution](NOTICE.md).
 
-https://github.com/user-attachments/assets/724f0543-1cb1-4b46-bb47-95ab45cbdfee
-
-This port is developed exclusively with LLMs such as GPT-6 Astra through Codex.
-
-- [Additions and behavior changes](ADDITIONS.md)
-- [Building and running](BUILDING.md)
-- [Anbernic installation and RU/EN keyboard controls](platform/linux/ANBERNIC.md)
-- [Download Anbernic releases](https://github.com/YOZH3G/SpaceRangersHD_FPC/releases)
-- [MIT license for custom additions](LICENSE) and [attribution](NOTICE.md)
-
-## Anbernic Linux
-
-Experimental ARMHF and AArch64 packages target muOS, KNULLI, ArkOS, AmberELEC
-and ROCKNIX. Install current PortMaster and supply assets from your own game
-copy. The launcher enables the built-in Russian/English on-screen keyboard:
-click an edit field with A, use Y for language and R2 for case, Start to confirm,
-and Select to cancel. L2 opens the keyboard for a focused edit field.
-
-Keyboard input, commit/cancel, name-length limits and takeoff have been checked
-under QEMU with game assets. Physical handhelds remain untested; see the release
-report for the exact binaries and checks.
-
-Free Pascal is pinned as the [fpc_sr](https://github.com/pakompom/fpc_sr) submodule,
-which retains upstream history and carries our compiler and runtime fixes.
-Both macOS and Android builds use its LLVM backend. See the
-[FPC changes](vendor/fpc/PORT.md) for the compiler fixes and Android support.
-
-## Source
-
-- `source/`: Pascal game code, grouped by subsystem.
-- `platform/`: native compatibility, SDL, and Android runtime.
-- `native/`: OKGF build integration.
-- `tools/`: build, run, and formatting scripts.
-- `vendor/okgf/`: pinned [OKGF](https://github.com/pakompom/okgf) submodule.
-- `vendor/fpc/`: pinned [Free Pascal fork](https://github.com/pakompom/fpc_sr) submodule.
+Unofficial; not affiliated with the game's developers or publisher.
