@@ -103,6 +103,11 @@ type
   TSDLDevice = class(TSDLDeviceBase)
     CurrentTexture: IDirect3DBaseTexture9;
     CurrentTarget: IDirect3DSurface9;
+    // Binding interfaces own the storage; these pointers only avoid repeated
+    // QueryInterface/AddRef/Release work inside each draw.
+    TextureStorage, TargetStorage: TSDLStorage;
+    DrawVertices: array of TSDL_Vertex;
+    FanIndices: array of Integer;
     Clip: TRect;
     LinearFilter, Wireframe: Boolean;
     ScreenSurface: IDirect3DSurface9;
@@ -786,6 +791,8 @@ end;
 destructor TSDLDevice.Destroy;
 begin
   SDL_DestroyTexture(GammaTexture);
+  TextureStorage := nil;
+  TargetStorage := nil;
   CurrentTexture := nil;
   CurrentTarget := nil;
   ScreenSurface := nil;
@@ -975,6 +982,7 @@ begin
   Check(SDL_SetRenderTarget(GameSDLRenderer, A.Handle));
   Check(SDL_RenderSetLogicalSize(GameSDLRenderer, 0, 0));
   CurrentTarget := Surface;
+  TargetStorage := A;
   Result := 0;
 end;
 function TSDLDevice.GetRenderTarget(Index: Cardinal; out Surface: IDirect3DSurface9): LongInt;
@@ -1141,9 +1149,18 @@ begin
   Result := 0;
 end;
 function TSDLDevice.SetTexture(Stage: Cardinal; Texture: IDirect3DBaseTexture9): LongInt;
+var
+  Storage: TSDLStorage;
 begin
   Require(Stage = 0, 'texture stage');
-  CurrentTexture := Texture;
+  if CurrentTexture <> Texture then
+  begin
+    Storage := nil;
+    if Texture <> nil then
+      Storage := ImageOf(Texture);
+    CurrentTexture := Texture;
+    TextureStorage := Storage;
+  end;
   Result := 0
 end;
 function TSDLDevice.SetTextureStageState(Stage, State, Value: Cardinal): LongInt;
@@ -1264,9 +1281,8 @@ type
 var
   Image, Target: TSDLStorage;
   Texture: PSDL_Texture;
-  Vertices: array of TSDL_Vertex;
-  Indices: array of Integer;
-  Count, Index, A, B, C: Integer;
+  Count, Index, A, B, C, Capacity, IndexCount: Integer;
+  IndexData: PInteger;
   Source: PGameVertex;
   Value: TSDL_Rect;
   Color: TSDL_Color;
@@ -1283,12 +1299,12 @@ var
     // Rotated sprites and skewed geometry must retain the requested filtering.
     for I := 0 to 3 do
     begin
-      if (Vertices[I].Position.X <> Round(Vertices[I].Position.X))
-          or (Vertices[I].Position.Y <> Round(Vertices[I].Position.Y)) then
+      if (DrawVertices[I].Position.X <> Round(DrawVertices[I].Position.X))
+          or (DrawVertices[I].Position.Y <> Round(DrawVertices[I].Position.Y)) then
         Exit;
       Next := (I + 1) mod 4;
-      if (Vertices[I].Position.X <> Vertices[Next].Position.X)
-          and (Vertices[I].Position.Y <> Vertices[Next].Position.Y) then
+      if (DrawVertices[I].Position.X <> DrawVertices[Next].Position.X)
+          and (DrawVertices[I].Position.Y <> DrawVertices[Next].Position.Y) then
         Exit;
     end;
     Result := True;
@@ -1304,8 +1320,8 @@ var
     for I := 0 to 3 do
     begin
       Next := (I + 1) mod 4;
-      if (Vertices[I].Position.X <> Vertices[Next].Position.X)
-          and (Vertices[I].Position.Y <> Vertices[Next].Position.Y) then
+      if (DrawVertices[I].Position.X <> DrawVertices[Next].Position.X)
+          and (DrawVertices[I].Position.Y <> DrawVertices[Next].Position.Y) then
         Exit;
     end;
     // Adjacent UI tiles must share a physical edge. SDL's software triangle
@@ -1315,8 +1331,8 @@ var
     // original geometry and sampling policy.
     for I := 0 to 3 do
     begin
-      Vertices[I].Position.X := Round(Vertices[I].Position.X);
-      Vertices[I].Position.Y := Round(Vertices[I].Position.Y);
+      DrawVertices[I].Position.X := Round(DrawVertices[I].Position.X);
+      DrawVertices[I].Position.Y := Round(DrawVertices[I].Position.Y);
     end;
   end;
 
@@ -1327,12 +1343,12 @@ var
     Line: array[0..3] of TSDL_Vertex;
     DX, DY, Distance, NX, NY: Single;
   begin
-    Color := Vertices[First].Color;
-    DX := Vertices[Last].Position.X - Vertices[First].Position.X;
-    DY := Vertices[Last].Position.Y - Vertices[First].Position.Y;
+    Color := DrawVertices[First].Color;
+    DX := DrawVertices[Last].Position.X - DrawVertices[First].Position.X;
+    DY := DrawVertices[Last].Position.Y - DrawVertices[First].Position.Y;
     Distance := Sqrt(DX * DX + DY * DY);
     if (Distance = 0)
-        or (CompareMem(@Color, @Vertices[Last].Color, SizeOf(Color))
+        or (CompareMem(@Color, @DrawVertices[Last].Color, SizeOf(Color))
             and (Transform.ScaleX = 1)
             and (Transform.ScaleY = 1)) then
     begin
@@ -1340,10 +1356,10 @@ var
       Check(
           SDL_RenderDrawLineF(
               GameSDLRenderer,
-              Vertices[First].Position.X,
-              Vertices[First].Position.Y,
-              Vertices[Last].Position.X,
-              Vertices[Last].Position.Y
+              DrawVertices[First].Position.X,
+              DrawVertices[First].Position.Y,
+              DrawVertices[Last].Position.X,
+              DrawVertices[Last].Position.Y
           )
       );
       Exit;
@@ -1355,10 +1371,10 @@ var
     Distance := Sqrt(DX * DX + DY * DY);
     NX := -DY * 0.5 * Transform.ScaleX / Distance;
     NY := DX * 0.5 * Transform.ScaleY / Distance;
-    Line[0] := Vertices[First];
-    Line[1] := Vertices[Last];
-    Line[2] := Vertices[Last];
-    Line[3] := Vertices[First];
+    Line[0] := DrawVertices[First];
+    Line[1] := DrawVertices[Last];
+    Line[2] := DrawVertices[Last];
+    Line[3] := DrawVertices[First];
     Line[0].Position.X := Line[0].Position.X + NX;
     Line[0].Position.Y := Line[0].Position.Y + NY;
     Line[1].Position.X := Line[1].Position.X + NX;
@@ -1383,24 +1399,32 @@ begin
   else
     raise Exception.Create('Unsupported primitive type');
   end;
-  SetLength(Vertices, Count);
-  Target := ImageOf(CurrentTarget);
+  // SDL copies submitted geometry into its command queue before returning.
+  // Retain scratch capacity across draws instead of allocating twice per sprite.
+  if Length(DrawVertices) < Count then
+  begin
+    Capacity := Max(32, Length(DrawVertices));
+    while Capacity < Count do
+      Capacity := Capacity * 2;
+    SetLength(DrawVertices, Capacity);
+  end;
+  Target := TargetStorage;
   Transform := Target.RasterTransform(True);
   for Index := 0 to Count - 1 do
   begin
     Source := PGameVertex(PByte(Data) + SizeUInt(Index) * Stride);
     // D3D9 addresses pixel centers at integers; SDL uses half-integers.
-    Vertices[Index].Position.X := (Source.X + 0.5) * Transform.ScaleX + Transform.OffsetX;
-    Vertices[Index].Position.Y := (Source.Y + 0.5) * Transform.ScaleY + Transform.OffsetY;
-    Vertices[Index].Color := ColorValue(Source.Color);
-    Vertices[Index].TexCoord.X := Source.U;
-    Vertices[Index].TexCoord.Y := Source.V;
+    DrawVertices[Index].Position.X := (Source.X + 0.5) * Transform.ScaleX + Transform.OffsetX;
+    DrawVertices[Index].Position.Y := (Source.Y + 0.5) * Transform.ScaleY + Transform.OffsetY;
+    DrawVertices[Index].Color := ColorValue(Source.Color);
+    DrawVertices[Index].TexCoord.X := Source.U;
+    DrawVertices[Index].TexCoord.Y := Source.V;
   end;
   SnapUiQuadEdges;
   Texture := nil;
   if CurrentTexture <> nil then
   begin
-    Image := ImageOf(CurrentTexture);
+    Image := TextureStorage;
     Image.Upload;
     Texture := Image.Handle;
     Check(SDL_SetTextureBlendMode(Texture, SDL_BLENDMODE_BLEND));
@@ -1412,22 +1436,22 @@ begin
   if PrimitiveType = D3DPT_POINTLIST then
     for Index := 0 to Count - 1 do
     begin
-      Color := Vertices[Index].Color;
+      Color := DrawVertices[Index].Color;
       Check(SDL_SetRenderDrawColor(GameSDLRenderer, Color.R, Color.G, Color.B, Color.A));
       if (Transform.ScaleX = 1) and (Transform.ScaleY = 1) then
         Check(
             SDL_RenderDrawPointF(
                 GameSDLRenderer,
-                Vertices[Index].Position.X,
-                Vertices[Index].Position.Y
+                DrawVertices[Index].Position.X,
+                DrawVertices[Index].Position.Y
             )
         )
       else
       begin
-        Value.X := Round(Vertices[Index].Position.X - Transform.ScaleX * 0.5);
-        Value.Y := Round(Vertices[Index].Position.Y - Transform.ScaleY * 0.5);
-        Value.W := Max(1, Round(Vertices[Index].Position.X + Transform.ScaleX * 0.5) - Value.X);
-        Value.H := Max(1, Round(Vertices[Index].Position.Y + Transform.ScaleY * 0.5) - Value.Y);
+        Value.X := Round(DrawVertices[Index].Position.X - Transform.ScaleX * 0.5);
+        Value.Y := Round(DrawVertices[Index].Position.Y - Transform.ScaleY * 0.5);
+        Value.W := Max(1, Round(DrawVertices[Index].Position.X + Transform.ScaleX * 0.5) - Value.X);
+        Value.H := Max(1, Round(DrawVertices[Index].Position.Y + Transform.ScaleY * 0.5) - Value.Y);
         Check(SDL_RenderFillRect(GameSDLRenderer, @Value));
       end;
     end
@@ -1436,7 +1460,30 @@ begin
       DrawEdge(Index, Index + 1)
   else
   begin
-    SetLength(Indices, PrimitiveCount * 3);
+    IndexData := nil;
+    IndexCount := 0;
+    if (PrimitiveType = D3DPT_TRIANGLEFAN) and not Wireframe then
+    begin
+      IndexCount := PrimitiveCount * 3;
+      if Length(FanIndices) < IndexCount then
+      begin
+        Capacity := Max(96, Length(FanIndices));
+        while Capacity < IndexCount do
+          Capacity := Capacity * 2;
+        A := Length(FanIndices) div 3;
+        SetLength(FanIndices, Capacity);
+        for Index := A to Capacity div 3 - 1 do
+        begin
+          FanIndices[Index * 3] := 0;
+          FanIndices[Index * 3 + 1] := Index + 1;
+          FanIndices[Index * 3 + 2] := Index + 2;
+        end;
+      end;
+      IndexData := @FanIndices[0];
+    end;
+    // Triangle lists are already ordered triples. SDL accepts them directly,
+    // while every fan reuses the same immutable index prefix.
+    if Wireframe then
     for Index := 0 to Integer(PrimitiveCount) - 1 do
     begin
       if PrimitiveType = D3DPT_TRIANGLEFAN then
@@ -1451,25 +1498,19 @@ begin
         B := A + 1;
         C := A + 2;
       end;
-      Indices[Index * 3] := A;
-      Indices[Index * 3 + 1] := B;
-      Indices[Index * 3 + 2] := C;
-      if Wireframe then
-      begin
-        DrawEdge(A, B);
-        DrawEdge(B, C);
-        DrawEdge(C, A);
-      end;
+      DrawEdge(A, B);
+      DrawEdge(B, C);
+      DrawEdge(C, A);
     end;
     if not Wireframe then
       Check(
           SDL_RenderGeometry(
               GameSDLRenderer,
               Texture,
-              @Vertices[0],
+              @DrawVertices[0],
               Count,
-              @Indices[0],
-              Length(Indices)
+              IndexData,
+              IndexCount
           )
       );
   end;
