@@ -6,7 +6,7 @@ An unofficial Free Pascal port of **Space Rangers HD: A War Apart** with
 experimental Anbernic Linux packages and a built-in Russian/English keyboard.
 Supply game assets from your own licensed copy; downloads contain the port only.
 
-[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-ui-2026.10.11)
+[Download builds](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/tag/anbernic-performance-2026.10.11)
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
@@ -83,6 +83,11 @@ Equipment in space is centered above the HUD at both resolutions; see the
 [updated captures](docs/screenshots/centered-1024/README.md).
 [Planetary screens](docs/screenshots/planet-layout/README.md) now fill the 800×600
 frame, with the governor fitted to the right of the dialogue.
+
+The optimized SDL renderer reuses geometry buffers and bound resource storage.
+In the QEMU/SDL software UI benchmark at 800×600, rendering time fell by 28.6%
+on ARMHF and 16.4% on AArch64. These are not device FPS measurements;
+see [method and results](docs/performance/README.md).
 
 ## Screenshots
 
