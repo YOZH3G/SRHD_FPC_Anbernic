@@ -1,0 +1,682 @@
+{
+  "baseline_commit": "875e743da86fbc74a2d7aad0861ee09e0adb686f",
+  "accepted_change": "TSpaceImgGI.Draw resolves the sequence index once, requests the cached texture once, and only loads GI directly for ScreenRenderBuffer drawing. Cache misses still decode through GetOrCreateFrameSurface. No background bounds cache is included.",
+  "physical_hardware_tested": false,
+  "stable_average_fps_improvement_established": false,
+  "source_sha256": {
+    "baseline": "3dfd6f4314abe279a66d2cde7f8b39cb1d3f9a956236e40bb70cdae73fd1b9ba",
+    "optimized": "7c233ca0259f0411a05efbd55fcb1b3be76b405926d519b5f846db181117ea0e",
+    "fixture": "78457743f262871c7e6f40969685220f6a29c5aabe8e6a3f8bbc1ab052c2339b"
+  },
+  "build_provenance": {
+    "native": {
+      "baseline_sha256": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+      "baseline_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+      "baseline_fixture_sha256": "af229a29392ce4eeb393c37d7d908165766b3461bc7a179c2975b71f501827bb",
+      "optimized_sha256": "137d8050378951b51c05824bb8511da0bee26a8008f8be851cfead5825add055",
+      "optimized_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+      "optimized_fixture_sha256": "cddd13e4ae942e62fd743cf217f60f976d356e23e32ca55b50f7a6c2d7a55bf2"
+    },
+    "armhf": {
+      "baseline_sha256": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+      "baseline_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+      "baseline_fixture_sha256": "975f9306296c06f48bd395cd778b135119fe14e0851f902bfa86b2b3b6764d83",
+      "optimized_sha256": "251623b9f88fcb9dedb8bb9687767083cd10f195509b89022328cc701bfd8796",
+      "optimized_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+      "optimized_fixture_sha256": "8169018f80775520758b087a2942526695331851f3ad6e41a878f4e78cd157ea",
+      "maximum_glibc_symbol": "2.4"
+    },
+    "arm64": {
+      "baseline_sha256": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4",
+      "baseline_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+      "baseline_fixture_sha256": "91646df97a8e3ae25ac0fb064869d1138e97eeaf78b498e5d9846353ec79f474",
+      "optimized_sha256": "aa2ceaf8e6858a236d18f026184853540611728628987564657e3e001f892766",
+      "optimized_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+      "optimized_fixture_sha256": "8ac5fc27e50fa59f49f73b65f3428a8becd050cc8d4f2f3d2ee28e5789616ddc",
+      "maximum_glibc_symbol": "2.17"
+    }
+  },
+  "artifact_note": "Accepted immutable ELFs were built and measured before the background experiments, then reused after rejecting those experiments and restoring the identical objects-only source. Fresh functional fixtures and gameplay smoke runs validate the accepted source and ELF hashes.",
+  "accepted_measurements": [
+    {
+      "executable_sha256": {
+        "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+        "optimized": "137d8050378951b51c05824bb8511da0bee26a8008f8be851cfead5825add055"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 1024x768 output and logical canvas; renderer explicitly selected, no batching environment override, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.019719,
+            "frames": 1860,
+            "fps": 92.9084,
+            "geometry_calls": 766464,
+            "geometry_ms_per_frame": 0.031774
+          },
+          {
+            "seconds": 20.021817,
+            "frames": 1868,
+            "fps": 93.2982,
+            "geometry_calls": 768754,
+            "geometry_ms_per_frame": 0.030178
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.024559,
+            "frames": 1848,
+            "fps": 92.2867,
+            "geometry_calls": 763667,
+            "geometry_ms_per_frame": 0.030894
+          },
+          {
+            "seconds": 20.016092,
+            "frames": 1882,
+            "fps": 94.0243,
+            "geometry_calls": 777377,
+            "geometry_ms_per_frame": 0.030331
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 93.10329999999999,
+        "optimized": 93.15549999999999
+      },
+      "fps_change_percent": 0.06,
+      "background_image_enabled": false,
+      "stable_fps_improvement_established": false
+    },
+    {
+      "executable_sha256": {
+        "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+        "optimized": "137d8050378951b51c05824bb8511da0bee26a8008f8be851cfead5825add055"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 640x480 output / 1024x768 logical canvas, SDL batching enabled, LP_NUM_THREADS=1, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.011074,
+            "frames": 4838,
+            "fps": 241.7661,
+            "geometry_calls": 258095,
+            "geometry_ms_per_frame": 0.008156
+          },
+          {
+            "seconds": 20.008359,
+            "frames": 4934,
+            "fps": 246.5969,
+            "geometry_calls": 256103,
+            "geometry_ms_per_frame": 0.007656
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.008383,
+            "frames": 4905,
+            "fps": 245.1473,
+            "geometry_calls": 256573,
+            "geometry_ms_per_frame": 0.007759
+          },
+          {
+            "seconds": 20.010031,
+            "frames": 4932,
+            "fps": 246.4764,
+            "geometry_calls": 253103,
+            "geometry_ms_per_frame": 0.007706
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 244.1815,
+        "optimized": 245.81185
+      },
+      "fps_change_percent": 0.67,
+      "background_image_enabled": false,
+      "stable_fps_improvement_established": false
+    },
+    {
+      "arch": "armhf",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+        "optimized": "251623b9f88fcb9dedb8bb9687767083cd10f195509b89022328cc701bfd8796"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.009086,
+            "frames": 1179,
+            "fps": 58.9232,
+            "geometry_calls": 47917,
+            "geometry_ms_per_frame": 0.165938
+          },
+          {
+            "seconds": 20.022684,
+            "frames": 1173,
+            "fps": 58.5836,
+            "geometry_calls": 48865,
+            "geometry_ms_per_frame": 0.168768
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.008715,
+            "frames": 1180,
+            "fps": 58.9743,
+            "geometry_calls": 48075,
+            "geometry_ms_per_frame": 0.163237
+          },
+          {
+            "seconds": 20.010602,
+            "frames": 1182,
+            "fps": 59.0687,
+            "geometry_calls": 48603,
+            "geometry_ms_per_frame": 0.162604
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 58.7534,
+        "optimized": 59.0215
+      },
+      "fps_change_percent": 0.46,
+      "background_image_enabled": false,
+      "stable_fps_improvement_established": false
+    }
+  ],
+  "functional_validation": {
+    "scope": "10 process runs, nine cases each with four lifecycle cycles: cold/warm/texture cache clear/device reset; raw/compressed/empty GI; full/partial/invisible clip; remapped sequence; nonzero frame origin; objects assert no warm decode, background asserts legacy decode remains",
+    "physical_hardware_tested": false,
+    "results": {
+      "native": {
+        "renderer": "software",
+        "cases": [
+          "CASE 0 6D73433082B01D25",
+          "CASE 1 6D73433082B01D25",
+          "CASE 2 2B29D2239BC26325",
+          "CASE 3 6CD6B1E1B1E863D3",
+          "CASE 4 6CD6B1E1B1E863D3",
+          "CASE 5 2B29D2239BC26325",
+          "CASE 6 B54B763ED7E48D25",
+          "CASE 7 E48613F4ECDB0773",
+          "CASE 8 2B29D2239BC26325"
+        ],
+        "object_warm_decode_assertion_passed": true,
+        "background_legacy_decode_assertion_passed": true,
+        "baseline_and_optimized_pixels_equal": true
+      },
+      "armhf": {
+        "renderer": "software",
+        "cases": [
+          "CASE 0 6D73433082B01D25",
+          "CASE 1 6D73433082B01D25",
+          "CASE 2 2B29D2239BC26325",
+          "CASE 3 6CD6B1E1B1E863D3",
+          "CASE 4 6CD6B1E1B1E863D3",
+          "CASE 5 2B29D2239BC26325",
+          "CASE 6 B54B763ED7E48D25",
+          "CASE 7 E48613F4ECDB0773",
+          "CASE 8 2B29D2239BC26325"
+        ],
+        "object_warm_decode_assertion_passed": true,
+        "background_legacy_decode_assertion_passed": true,
+        "baseline_and_optimized_pixels_equal": true
+      },
+      "arm64": {
+        "renderer": "software",
+        "cases": [
+          "CASE 0 6D73433082B01D25",
+          "CASE 1 6D73433082B01D25",
+          "CASE 2 2B29D2239BC26325",
+          "CASE 3 6CD6B1E1B1E863D3",
+          "CASE 4 6CD6B1E1B1E863D3",
+          "CASE 5 2B29D2239BC26325",
+          "CASE 6 B54B763ED7E48D25",
+          "CASE 7 E48613F4ECDB0773",
+          "CASE 8 2B29D2239BC26325"
+        ],
+        "object_warm_decode_assertion_passed": true,
+        "background_legacy_decode_assertion_passed": true,
+        "baseline_and_optimized_pixels_equal": true
+      },
+      "opengl": {
+        "environment": "Native Mesa offscreen",
+        "cases": [
+          "CASE 0 6D73433082B01D25",
+          "CASE 1 6D73433082B01D25",
+          "CASE 2 2B29D2239BC26325",
+          "CASE 3 6CD6B1E1B1E863D3",
+          "CASE 4 6CD6B1E1B1E863D3",
+          "CASE 5 2B29D2239BC26325",
+          "CASE 6 B54B763ED7E48D25",
+          "CASE 7 E48613F4ECDB0773",
+          "CASE 8 2B29D2239BC26325"
+        ],
+        "object_warm_decode_assertion_passed": true,
+        "background_legacy_decode_assertion_passed": true,
+        "baseline_and_optimized_pixels_equal": true
+      },
+      "opengles2": {
+        "environment": "Native Mesa offscreen",
+        "cases": [
+          "CASE 0 6D73433082B01D25",
+          "CASE 1 6D73433082B01D25",
+          "CASE 2 2B29D2239BC26325",
+          "CASE 3 6CD6B1E1B1E863D3",
+          "CASE 4 6CD6B1E1B1E863D3",
+          "CASE 5 2B29D2239BC26325",
+          "CASE 6 B54B763ED7E48D25",
+          "CASE 7 E48613F4ECDB0773",
+          "CASE 8 2B29D2239BC26325"
+        ],
+        "object_warm_decode_assertion_passed": true,
+        "background_legacy_decode_assertion_passed": true,
+        "baseline_and_optimized_pixels_equal": true
+      }
+    }
+  },
+  "gameplay_smoke": {
+    "environment": "SDL dummy/software; ARM under QEMU with Ubuntu 20.04 sysroot",
+    "scope": "Load autosave, enter hangar, takeoff, render space for 20 seconds, quit and capture current frame; one smoke run per architecture, not an FPS comparison",
+    "physical_hardware_tested": false,
+    "results": {
+      "native": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "137d8050378951b51c05824bb8511da0bee26a8008f8be851cfead5825add055",
+        "space_sample": {
+          "seconds": 20.005469,
+          "frames": 1201,
+          "fps": 60.0336,
+          "geometry_calls": 48895,
+          "geometry_ms_per_frame": 0.008424
+        },
+        "fps_comparison": false
+      },
+      "armhf": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "251623b9f88fcb9dedb8bb9687767083cd10f195509b89022328cc701bfd8796",
+        "space_sample": {
+          "seconds": 20.008643,
+          "frames": 1163,
+          "fps": 58.1249,
+          "geometry_calls": 47573,
+          "geometry_ms_per_frame": 0.166274
+        },
+        "fps_comparison": false
+      },
+      "arm64": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "aa2ceaf8e6858a236d18f026184853540611728628987564657e3e001f892766",
+        "space_sample": {
+          "seconds": 20.009624,
+          "frames": 1199,
+          "fps": 59.9212,
+          "geometry_calls": 49397,
+          "geometry_ms_per_frame": 0.129215
+        },
+        "fps_comparison": false
+      }
+    }
+  },
+  "rejected_experiments": [
+    {
+      "variant": "all-frame-bounds-cache",
+      "included_in_final_code": false,
+      "reason": "Not kept: caching all GI bounds measured -1.50% FPS with background enabled.",
+      "build_provenance": {
+        "native": {
+          "baseline_sha256": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+          "baseline_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+          "baseline_fixture_sha256": "3d772e9d52c109891fd5770bf7f6a6744fc97965b7b1b6fe99e966774817b5f7",
+          "optimized_sha256": "37593107b3d7a0591c01e90d75101768fd6c239f52e70916e69045e506c8be19",
+          "optimized_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+          "optimized_fixture_sha256": "b5d69ea96a1485f5832d54f0116dc06d89838ae42ff7540f5cfd7f0dbe022bcb"
+        },
+        "armhf": {
+          "baseline_sha256": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+          "baseline_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+          "baseline_fixture_sha256": "a2965ac350241ea39c8afa8331d962d751a4711afd44d941b98b1b013e669e65",
+          "optimized_sha256": "d07307dc2b73f9f4fe3d99d0a3656006cbbb0aa48fc176fdf2a2d2e1812e4a53",
+          "optimized_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+          "optimized_fixture_sha256": "fdeabf22a5911862b1a062377285304c2e8dfd21bb17e7a1424158ddba17f962",
+          "maximum_glibc_symbol": "2.4"
+        },
+        "arm64": {
+          "baseline_sha256": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4",
+          "baseline_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+          "baseline_fixture_sha256": "2d8096aa616c8c555809c5ab2bb627f24604109ffef5436e953278a076d185c1",
+          "optimized_sha256": "0325c0c0003cab8574a7d15872e5c2c411a5bdbc1a471e68595c568d81a9ee79",
+          "optimized_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+          "optimized_fixture_sha256": "ac5537156ac3629c8f35c760c6297f15113b7aed302f0f54b3cc3aa6fe13116d",
+          "maximum_glibc_symbol": "2.17"
+        }
+      },
+      "measurements": [
+        {
+          "executable_sha256": {
+            "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+            "optimized": "37593107b3d7a0591c01e90d75101768fd6c239f52e70916e69045e506c8be19"
+          },
+          "scenario": "unbounded",
+          "frame_limit_disabled": true,
+          "injected_frame_delay_ms": 0,
+          "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 640x480 output / 1024x768 logical canvas, BGImage=True, SDL batching enabled, LP_NUM_THREADS=1, one CPU, vsync disabled, same campaign autosave loaded before each run",
+          "physical_hardware_tested": false,
+          "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+          "runs": {
+            "baseline": [
+              {
+                "seconds": 20.013962,
+                "frames": 3482,
+                "fps": 173.9785,
+                "geometry_calls": 181440,
+                "geometry_ms_per_frame": 0.00858
+              },
+              {
+                "seconds": 20.013385,
+                "frames": 3473,
+                "fps": 173.5339,
+                "geometry_calls": 179747,
+                "geometry_ms_per_frame": 0.008936
+              }
+            ],
+            "optimized": [
+              {
+                "seconds": 20.012816,
+                "frames": 3442,
+                "fps": 171.9898,
+                "geometry_calls": 178053,
+                "geometry_ms_per_frame": 0.00865
+              },
+              {
+                "seconds": 20.015153,
+                "frames": 3409,
+                "fps": 170.321,
+                "geometry_calls": 176326,
+                "geometry_ms_per_frame": 0.009815
+              }
+            ]
+          },
+          "median_fps": {
+            "baseline": 173.75619999999998,
+            "optimized": 171.1554
+          },
+          "fps_change_percent": -1.5
+        },
+        {
+          "executable_sha256": {
+            "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+            "optimized": "37593107b3d7a0591c01e90d75101768fd6c239f52e70916e69045e506c8be19"
+          },
+          "scenario": "unbounded",
+          "frame_limit_disabled": true,
+          "injected_frame_delay_ms": 0,
+          "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 1024x768 output and logical canvas; renderer explicitly selected, no batching environment override, one CPU, vsync disabled, same campaign autosave loaded before each run",
+          "physical_hardware_tested": false,
+          "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+          "runs": {
+            "baseline": [
+              {
+                "seconds": 20.018505,
+                "frames": 1835,
+                "fps": 91.6652,
+                "geometry_calls": 756613,
+                "geometry_ms_per_frame": 0.031726
+              },
+              {
+                "seconds": 20.019113,
+                "frames": 1854,
+                "fps": 92.6115,
+                "geometry_calls": 765520,
+                "geometry_ms_per_frame": 0.031069
+              }
+            ],
+            "optimized": [
+              {
+                "seconds": 20.022368,
+                "frames": 1864,
+                "fps": 93.0959,
+                "geometry_calls": 767213,
+                "geometry_ms_per_frame": 0.030583
+              },
+              {
+                "seconds": 20.024343,
+                "frames": 1882,
+                "fps": 93.9856,
+                "geometry_calls": 774628,
+                "geometry_ms_per_frame": 0.030249
+              }
+            ]
+          },
+          "median_fps": {
+            "baseline": 92.13835,
+            "optimized": 93.54075
+          },
+          "fps_change_percent": 1.52
+        },
+        {
+          "executable_sha256": {
+            "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+            "optimized": "37593107b3d7a0591c01e90d75101768fd6c239f52e70916e69045e506c8be19"
+          },
+          "scenario": "unbounded",
+          "frame_limit_disabled": true,
+          "injected_frame_delay_ms": 0,
+          "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 640x480 output / 1024x768 logical canvas, SDL batching enabled, LP_NUM_THREADS=1, one CPU, vsync disabled, same campaign autosave loaded before each run",
+          "physical_hardware_tested": false,
+          "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+          "runs": {
+            "baseline": [
+              {
+                "seconds": 20.008331,
+                "frames": 4884,
+                "fps": 244.0983,
+                "geometry_calls": 256619,
+                "geometry_ms_per_frame": 0.008431
+              },
+              {
+                "seconds": 20.009798,
+                "frames": 4846,
+                "fps": 242.1814,
+                "geometry_calls": 249885,
+                "geometry_ms_per_frame": 0.008476
+              }
+            ],
+            "optimized": [
+              {
+                "seconds": 20.011246,
+                "frames": 4844,
+                "fps": 242.0639,
+                "geometry_calls": 260942,
+                "geometry_ms_per_frame": 0.008488
+              },
+              {
+                "seconds": 20.009456,
+                "frames": 4858,
+                "fps": 242.7852,
+                "geometry_calls": 249786,
+                "geometry_ms_per_frame": 0.008405
+              }
+            ]
+          },
+          "median_fps": {
+            "baseline": 243.13985,
+            "optimized": 242.42455
+          },
+          "fps_change_percent": -0.29
+        }
+      ]
+    },
+    {
+      "variant": "compressed-bounds-and-raw-header",
+      "included_in_final_code": false,
+      "reason": "Not kept: +1.14% with background and overlapping ranges, -0.52% without background; no established overall FPS benefit.",
+      "build_provenance": {
+        "native": {
+          "baseline_sha256": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+          "baseline_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+          "baseline_fixture_sha256": "3d772e9d52c109891fd5770bf7f6a6744fc97965b7b1b6fe99e966774817b5f7",
+          "optimized_sha256": "b37d443dfa024b63b2bc21ef7f5e2c38369b5c3f28a25e227994bd0b9f459fdb",
+          "optimized_libokgf_sha256": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+          "optimized_fixture_sha256": "575c4296b50c9c92ca258a3980372c0f31cb204c1bc1cdb1af8e5884c3d38518"
+        },
+        "armhf": {
+          "baseline_sha256": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+          "baseline_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+          "baseline_fixture_sha256": "a2965ac350241ea39c8afa8331d962d751a4711afd44d941b98b1b013e669e65",
+          "optimized_sha256": "3b5fd54d994a1c4bfdd49210dfd3b9a3161ef250e3bb10e746f2f1c807319c40",
+          "optimized_libokgf_sha256": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+          "optimized_fixture_sha256": "065028d599ecec33d2743bd9929b71da7886bb3b5e16f7fe6a74f43ca87c2608",
+          "maximum_glibc_symbol": "2.4"
+        },
+        "arm64": {
+          "baseline_sha256": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4",
+          "baseline_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+          "baseline_fixture_sha256": "2d8096aa616c8c555809c5ab2bb627f24604109ffef5436e953278a076d185c1",
+          "optimized_sha256": "e8bf4e05cf6a7b59135e8698ce4735c95da40e8a380784d7957d5316928c7a79",
+          "optimized_libokgf_sha256": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6",
+          "optimized_fixture_sha256": "852b2fdfad1bff5992942d3e63543127a975c25694fe683db0a570709837f9a5",
+          "maximum_glibc_symbol": "2.17"
+        }
+      },
+      "measurements": [
+        {
+          "executable_sha256": {
+            "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+            "optimized": "b37d443dfa024b63b2bc21ef7f5e2c38369b5c3f28a25e227994bd0b9f459fdb"
+          },
+          "scenario": "unbounded",
+          "frame_limit_disabled": true,
+          "injected_frame_delay_ms": 0,
+          "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 640x480 output / 1024x768 logical canvas, BGImage=True, SDL batching enabled, LP_NUM_THREADS=1, one CPU, vsync disabled, same campaign autosave loaded before each run",
+          "physical_hardware_tested": false,
+          "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+          "runs": {
+            "baseline": [
+              {
+                "seconds": 20.01591,
+                "frames": 3391,
+                "fps": 169.4152,
+                "geometry_calls": 176109,
+                "geometry_ms_per_frame": 0.010258
+              },
+              {
+                "seconds": 20.011723,
+                "frames": 3464,
+                "fps": 173.0985,
+                "geometry_calls": 177596,
+                "geometry_ms_per_frame": 0.008722
+              }
+            ],
+            "optimized": [
+              {
+                "seconds": 20.007713,
+                "frames": 3463,
+                "fps": 173.0833,
+                "geometry_calls": 181413,
+                "geometry_ms_per_frame": 0.008698
+              },
+              {
+                "seconds": 20.014325,
+                "frames": 3469,
+                "fps": 173.3259,
+                "geometry_calls": 179156,
+                "geometry_ms_per_frame": 0.008774
+              }
+            ]
+          },
+          "median_fps": {
+            "baseline": 171.25685,
+            "optimized": 173.2046
+          },
+          "fps_change_percent": 1.14
+        },
+        {
+          "executable_sha256": {
+            "baseline": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+            "optimized": "b37d443dfa024b63b2bc21ef7f5e2c38369b5c3f28a25e227994bd0b9f459fdb"
+          },
+          "scenario": "unbounded",
+          "frame_limit_disabled": true,
+          "injected_frame_delay_ms": 0,
+          "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 1024x768 output and logical canvas; renderer explicitly selected, no batching environment override, one CPU, vsync disabled, same campaign autosave loaded before each run",
+          "physical_hardware_tested": false,
+          "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+          "runs": {
+            "baseline": [
+              {
+                "seconds": 20.02083,
+                "frames": 1875,
+                "fps": 93.6525,
+                "geometry_calls": 776406,
+                "geometry_ms_per_frame": 0.031081
+              },
+              {
+                "seconds": 20.023859,
+                "frames": 1882,
+                "fps": 93.9879,
+                "geometry_calls": 777759,
+                "geometry_ms_per_frame": 0.03055
+              }
+            ],
+            "optimized": [
+              {
+                "seconds": 20.024945,
+                "frames": 1868,
+                "fps": 93.2837,
+                "geometry_calls": 768916,
+                "geometry_ms_per_frame": 0.030897
+              },
+              {
+                "seconds": 20.023666,
+                "frames": 1870,
+                "fps": 93.3895,
+                "geometry_calls": 772416,
+                "geometry_ms_per_frame": 0.03034
+              }
+            ]
+          },
+          "median_fps": {
+            "baseline": 93.8202,
+            "optimized": 93.3366
+          },
+          "fps_change_percent": -0.52
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "GPU tests use native x86_64 Mesa offscreen; ARM runs use QEMU user and SDL software. No handheld GPU, audio or controller testing.",
+    "Only one campaign autosave, hangar and 20 seconds of space were tested.",
+    "Two 20-second samples per version and scenario; small deltas do not establish a stable average FPS gain.",
+    "ARMHF comparison is capped; AArch64 has a gameplay smoke run but no accepted-variant comparative FPS measurement.",
+    "Rejected variants are excluded from current source and final ELF artifacts."
+  ]
+}

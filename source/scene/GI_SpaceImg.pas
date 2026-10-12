@@ -340,9 +340,10 @@ end;
 procedure TSpaceImgGI.Draw(ClipRect: TRect);
 var
   Image: PSpaceImageGI;
-  I: Integer;
+  I, SourceFrameIndex: Integer;
   Data: TCGaiEC;
   Frame: TgiGR;
+  Texture: IDirect3DTexture9;
   Origin: TPoint;
   Bounds, Intersection: TRect;
 begin
@@ -362,13 +363,14 @@ begin
       if IntersectRects(Intersection, Bounds, ClipRect) then
       begin
         Data := TCGaiEC(SpaceImageTemplates[Image.TemplateIndex].CachedData);
-        Frame := Data.LoadFrameGi(Data.GetSequenceFrameIndex(0, Image.FrameIndex));
+        SourceFrameIndex := Data.GetSequenceFrameIndex(0, Image.FrameIndex);
         if HardwareRenderingEnabled then
         begin
-          Data.GetOrCreateFrameSurface(Data.GetSequenceFrameIndex(0, Image.FrameIndex));
-          Origin := Data.GetFrameOrigin(Data.GetSequenceFrameIndex(0, Image.FrameIndex));
+          // Cached textures already contain decoded pixels; only cache misses need GI decoding.
+          Texture := Data.GetOrCreateFrameSurface(SourceFrameIndex);
+          Origin := Data.GetFrameOrigin(SourceFrameIndex);
           DrawTexture(
-              Data.GetOrCreateFrameSurface(Data.GetSequenceFrameIndex(0, Image.FrameIndex)),
+              Texture,
               Bounds.Left + Origin.X,
               Bounds.Top + Origin.Y,
               255,
@@ -379,6 +381,8 @@ begin
           );
         end
         else
+        begin
+          Frame := Data.LoadFrameGi(SourceFrameIndex);
           Frame.DrawToGraphBuf(
               ScreenRenderBuffer,
               Bounds.Left + Frame.GetBoundsRect.Left - Data.GetBoundsRect.Left,
@@ -387,6 +391,7 @@ begin
               0,
               255
           );
+        end;
       end;
       Image := AddPointerOffset(Image, SizeOf(TSpaceImageGI));
     end;
