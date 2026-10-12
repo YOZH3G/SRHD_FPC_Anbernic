@@ -1356,6 +1356,7 @@ var
   Value: TSDL_Rect;
   Color: TSDL_Color;
   Transform: TGameGraphicsTransform;
+  OpaqueVertices: Boolean;
 
   function IsPixelAlignedQuad: Boolean;
   var
@@ -1479,6 +1480,7 @@ begin
   end;
   Target := TargetStorage;
   Transform := Target.RasterTransform(True);
+  OpaqueVertices := True;
   for Index := 0 to Count - 1 do
   begin
     Source := PGameVertex(PByte(Data) + SizeUInt(Index) * Stride);
@@ -1486,6 +1488,7 @@ begin
     DrawVertices[Index].Position.X := (Source.X + 0.5) * Transform.ScaleX + Transform.OffsetX;
     DrawVertices[Index].Position.Y := (Source.Y + 0.5) * Transform.ScaleY + Transform.OffsetY;
     DrawVertices[Index].Color := ColorValue(Source.Color);
+    OpaqueVertices := OpaqueVertices and (DrawVertices[Index].Color.A = 255);
     DrawVertices[Index].TexCoord.X := Source.U;
     DrawVertices[Index].TexCoord.Y := Source.V;
   end;
@@ -1496,7 +1499,12 @@ begin
     Image := TextureStorage;
     Image.Upload;
     Texture := Image.Handle;
-    Image.SetBlend(SDL_BLENDMODE_BLEND);
+    // RGB565 source pixels have no alpha. Targets use an ARGB backing texture
+    // and may contain transparency even when their requested format is RGB565.
+    if (Image.Desc.Format = D3DFMT_R5G6B5) and not Image.Target and OpaqueVertices then
+      Image.SetBlend(SDL_BLENDMODE_NONE)
+    else
+      Image.SetBlend(SDL_BLENDMODE_BLEND);
     Image.SetSampling(Ord(LinearFilter and not IsPixelAlignedQuad));
   end;
   Value := Target.RasterClipRect(Clip, Transform);

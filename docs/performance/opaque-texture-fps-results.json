@@ -1,0 +1,286 @@
+{
+  "date": "2026-10-12",
+  "baseline_commit": "14cd33f95999dd60fb8bdca9945446c2817ef178",
+  "physical_hardware_tested": false,
+  "scope": "Only static RGB565 source textures with alpha 255 on every vertex use SDL_BLENDMODE_NONE; all other draws retain alpha blending.",
+  "optimized_source_sha256": {
+    "platform/GameGraphics.pas": "68186040fdd2109976dd22adab627a9a6b245cdd89ef02bf5ea3f1272052b571",
+    "tools/tests/opaque_texture.pas": "f61e274cd9ec45f9bab90d413b02821ed30303ad59e0ad28ead0f11657479f63"
+  },
+  "game_profiles": {
+    "native": {
+      "executable_sha256": {
+        "baseline": "b653397a844119baea67679ffe64c11c45c7c0290cf2d0e2263a8c49627792cf",
+        "optimized": "514f8e63d1d172df42e593e80f8924df28b56d8a2f3c2f18b4306246fdf9b337"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.003372,
+            "frames": 5451,
+            "fps": 272.5041,
+            "geometry_calls": 220487,
+            "geometry_ms_per_frame": 0.006696
+          },
+          {
+            "seconds": 20.005295,
+            "frames": 5494,
+            "fps": 274.6273,
+            "geometry_calls": 225073,
+            "geometry_ms_per_frame": 0.006792
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.005426,
+            "frames": 5772,
+            "fps": 288.5217,
+            "geometry_calls": 239767,
+            "geometry_ms_per_frame": 0.006754
+          },
+          {
+            "seconds": 20.005322,
+            "frames": 5800,
+            "fps": 289.9228,
+            "geometry_calls": 238525,
+            "geometry_ms_per_frame": 0.006787
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 273.5657,
+        "optimized": 289.22225000000003
+      },
+      "fps_change_percent": 5.72
+    },
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "7722a66ee50e9bf32e3da76091cd4c9a5d3dce142c78ebbf44c05ed95a2e58c4",
+        "optimized": "02079af7cb7fec807fdd343231936435a994d036d194af31d2dd9354516ce92f"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.010895,
+            "frames": 1129,
+            "fps": 56.4193,
+            "geometry_calls": 46550,
+            "geometry_ms_per_frame": 0.168114
+          },
+          {
+            "seconds": 20.009064,
+            "frames": 1146,
+            "fps": 57.274,
+            "geometry_calls": 46435,
+            "geometry_ms_per_frame": 0.170091
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.019728,
+            "frames": 1171,
+            "fps": 58.4923,
+            "geometry_calls": 47405,
+            "geometry_ms_per_frame": 0.162001
+          },
+          {
+            "seconds": 20.027977,
+            "frames": 1189,
+            "fps": 59.367,
+            "geometry_calls": 49338,
+            "geometry_ms_per_frame": 0.172024
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 56.84665,
+        "optimized": 58.929649999999995
+      },
+      "fps_change_percent": 3.66
+    },
+    "arm64": {
+      "arch": "arm64",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "b2a562291f1f5bdbb2c61f1ce0a1bd84ab392383ea68190a15de27bb6c34a7e4",
+        "optimized": "61792fb07b4ca245f436f7301d05989cc27662b48a9e43d0d8ed50d71a843768"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.006383,
+            "frames": 954,
+            "fps": 47.6848,
+            "geometry_calls": 38734,
+            "geometry_ms_per_frame": 0.154957
+          },
+          {
+            "seconds": 20.011265,
+            "frames": 961,
+            "fps": 48.023,
+            "geometry_calls": 40606,
+            "geometry_ms_per_frame": 0.201717
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.015243,
+            "frames": 964,
+            "fps": 48.1633,
+            "geometry_calls": 38189,
+            "geometry_ms_per_frame": 0.149463
+          },
+          {
+            "seconds": 20.018516,
+            "frames": 976,
+            "fps": 48.7549,
+            "geometry_calls": 39899,
+            "geometry_ms_per_frame": 0.18045
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 47.8539,
+        "optimized": 48.4591
+      },
+      "fps_change_percent": 1.26
+    }
+  },
+  "validation": {
+    "native": {
+      "fixture_passes": [
+        "Fixture PASS: native baseline opaque_texture",
+        "Fixture PASS: native baseline presentation_coverage",
+        "Fixture PASS: native baseline texture_state",
+        "Fixture PASS: native baseline ui_tile_seams",
+        "Fixture PASS: native baseline clip_transform",
+        "Fixture PASS: native optimized opaque_texture",
+        "Fixture PASS: native optimized presentation_coverage",
+        "Fixture PASS: native optimized texture_state",
+        "Fixture PASS: native optimized ui_tile_seams",
+        "Fixture PASS: native optimized clip_transform"
+      ],
+      "rgb565_case_hashes": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204"
+      ]
+    },
+    "armhf": {
+      "fixture_passes": [
+        "Fixture PASS: armhf baseline opaque_texture",
+        "Fixture PASS: armhf baseline presentation_coverage",
+        "Fixture PASS: armhf baseline texture_state",
+        "Fixture PASS: armhf baseline ui_tile_seams",
+        "Fixture PASS: armhf baseline clip_transform",
+        "Fixture PASS: armhf optimized opaque_texture",
+        "Fixture PASS: armhf optimized presentation_coverage",
+        "Fixture PASS: armhf optimized texture_state",
+        "Fixture PASS: armhf optimized ui_tile_seams",
+        "Fixture PASS: armhf optimized clip_transform"
+      ],
+      "rgb565_case_hashes": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 1D791B0B82575287",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 B13284AFF05E9B54",
+        "CASE 7 9067B185018FD204"
+      ]
+    },
+    "arm64": {
+      "fixture_passes": [
+        "Fixture PASS: arm64 baseline opaque_texture",
+        "Fixture PASS: arm64 baseline presentation_coverage",
+        "Fixture PASS: arm64 baseline texture_state",
+        "Fixture PASS: arm64 baseline ui_tile_seams",
+        "Fixture PASS: arm64 baseline clip_transform",
+        "Fixture PASS: arm64 optimized opaque_texture",
+        "Fixture PASS: arm64 optimized presentation_coverage",
+        "Fixture PASS: arm64 optimized texture_state",
+        "Fixture PASS: arm64 optimized ui_tile_seams",
+        "Fixture PASS: arm64 optimized clip_transform"
+      ],
+      "rgb565_case_hashes": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204"
+      ]
+    }
+  },
+  "native_offscreen_opengl_validation": {
+    "renderer": "opengl",
+    "both_versions_passed": true,
+    "rgb565_case_hashes": [
+      "CASE 0 C25734811EEDEC05",
+      "CASE 1 E05E1B5166D4A9E5",
+      "CASE 2 B905670D44B38325",
+      "CASE 3 8F53D3E7B5C3F1BB",
+      "CASE 4 9E01448594B76291",
+      "CASE 5 240FECB386FC0D4F",
+      "CASE 6 1785792348CF6F4D",
+      "CASE 7 F0FC23388F0931C7"
+    ],
+    "hardware_fps_measured": false
+  },
+  "unchanged_libokgf_sha256": {
+    "native": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+    "armhf": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+    "arm64": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6"
+  },
+  "maximum_glibc_symbol": {
+    "armhf": "2.4",
+    "arm64": "2.17"
+  },
+  "limitations": [
+    "QEMU and native cloud SDL software measurements cannot establish physical handheld FPS.",
+    "ARM uses the game frame limiter; native disables it because the baseline already reaches 60 FPS.",
+    "Four early-campaign 20-second samples per architecture; combat and late campaign not measured.",
+    "The small AArch64 improvement requires additional confirmation on devices."
+  ],
+  "native_offscreen_opengles2_validation": {
+    "renderer": "opengles2",
+    "both_versions_passed": true,
+    "rgb565_case_hashes": [
+      "CASE 0 C25734811EEDEC05",
+      "CASE 1 E05E1B5166D4A9E5",
+      "CASE 2 B905670D44B38325",
+      "CASE 3 8F53D3E7B5C3F1BB",
+      "CASE 4 9E01448594B76291",
+      "CASE 5 240FECB386FC0D4F",
+      "CASE 6 8ED06464FAA6834D",
+      "CASE 7 F0FC23388F0931C7"
+    ],
+    "hardware_fps_measured": false
+  }
+}
