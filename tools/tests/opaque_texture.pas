@@ -19,12 +19,15 @@ var
   Pixels: array[0..4095] of Cardinal;
   Hash: QWord;
   Pixel: Cardinal;
+  Format: Cardinal;
   Reference: array[0..7] of QWord;
   Rect: TSDL_Rect;
   Samples: array[0..6] of Double;
   Started: QWord;
   Swap: Double;
   I, J, K, Cycle, Sample, CaseIndex: Integer;
+  Alpha: Byte;
+  Bench: Boolean;
 
 procedure Draw;
 begin
@@ -35,6 +38,14 @@ end;
 
 begin
   DefaultFormatSettings.DecimalSeparator := '.';
+  Format := D3DFMT_R5G6B5;
+  Bench := False;
+  for I := 1 to ParamCount do
+  begin
+    if ParamStr(I) = '--rgba' then Format := D3DFMT_A8R8G8B8;
+    if ParamStr(I) = '--rgbx' then Format := D3DFMT_X8R8G8B8;
+    if ParamStr(I) = '--bench' then Bench := True;
+  end;
   FillChar(Params, SizeOf(Params), 0);
   Params.BackBufferWidth := 800; Params.BackBufferHeight := 600;
   Params.BackBufferFormat := D3DFMT_A8R8G8B8;
@@ -44,12 +55,20 @@ begin
   Graphics.CreateDevice(0, D3DDEVTYPE_HAL, 0, 0, Params, Device);
   WriteLn('RENDERER ', GameRendererName);
   Device.GetBackBuffer(0, 0, 0, Screen);
-  Device.CreateTexture(32, 32, 1, 0, D3DFMT_R5G6B5, D3DPOOL_MANAGED, Texture, nil);
+  Device.CreateTexture(32, 32, 1, 0, Format, D3DPOOL_MANAGED, Texture, nil);
   Texture.LockRect(0, Locked, nil, 0);
   for J := 0 to 31 do
     for I := 0 to 31 do
-      PWord(PByte(Locked.Bits) + J * Locked.Pitch + I * 2)^ :=
-          (I shl 11) or ((J * 2) shl 5) or ((I + J) mod 32);
+      if Format = D3DFMT_R5G6B5 then
+        PWord(PByte(Locked.Bits) + J * Locked.Pitch + I * 2)^ :=
+            (I shl 11) or ((J * 2) shl 5) or ((I + J) mod 32)
+      else
+      begin
+        Pixel := (I * 8 shl 16) or (J * 8 shl 8) or ((I + J) mod 32 * 8);
+        // XRGB's unused alpha byte deliberately stays zero.
+        if Format = D3DFMT_A8R8G8B8 then Pixel := Pixel or $FF000000;
+        PCardinal(PByte(Locked.Bits) + J * Locked.Pitch + I * 4)^ := Pixel;
+      end;
   Texture.UnlockRect(0);
   Texture.GetSurfaceLevel(0, TextureSurface);
   FillChar(Quad, SizeOf(Quad), 0);
@@ -92,8 +111,43 @@ begin
       Hash := 14695981039346656037;
       for I := 0 to High(Pixels) do Hash := (Hash xor Pixels[I]) * 1099511628211;
       if Cycle = 0 then Reference[CaseIndex] := Hash
-      else if Hash <> Reference[CaseIndex] then raise Exception.Create('Reset changed RGB565 output');
+      else if Hash <> Reference[CaseIndex] then raise Exception.Create('Copy/reset changed texture output');
       if Cycle = 0 then WriteLn('CASE ', CaseIndex, ' ', IntToHex(Hash, 16));
+    end;
+  end;
+  if Format = D3DFMT_A8R8G8B8 then
+  begin
+    for I := 0 to 3 do Quad[I].Color := $FFFFFFFF;
+    Device.SetSamplerState(0, 5, 1);
+    Rect.X := 63; Rect.Y := 63; Rect.W := 1; Rect.H := 1;
+    // Mutate the last texel after an opaque upload. The cached decision must
+    // change in both directions, including after managed-handle recreation.
+    for Cycle := 0 to 3 do
+    begin
+      case Cycle of
+        0: Alpha := 0;
+        1: Alpha := 254;
+        2: Alpha := 128;
+      else Alpha := 255;
+      end;
+      Texture.LockRect(0, Locked, nil, 0);
+      PCardinal(PByte(Locked.Bits) + 31 * Locked.Pitch + 31 * 4)^ :=
+          Cardinal(Alpha) shl 24 or $00FF0000;
+      Texture.UnlockRect(0);
+      if Cycle = 2 then
+      begin
+        Inc(GameTextureGeneration); Device.TestCooperativeLevel;
+      end;
+      Draw;
+      if SDL_RenderReadPixels(GameSDLRenderer, @Rect, SDL_PIXELFORMAT_ARGB8888,
+          @Pixel, 4) <> 0 then raise Exception.Create(string(SDL_GetError));
+      if (Alpha = 0) and (Pixel <> $FF123456) then
+        raise Exception.Create('Transparent last texel replaced the background');
+      if (Alpha = 255) and (Pixel <> $FFFF0000) then
+        raise Exception.Create('Opaque last texel did not replace the background');
+      if (Alpha = 128) and ((Pixel and 255 = 0) or ((Pixel shr 16) and 255 < 100)) then
+        raise Exception.Create('Changed texel lost alpha blending');
+      WriteLn('MUTATION ', Alpha, ' ', IntToHex(Pixel, 8));
     end;
   end;
   // Alpha modulation must also blend into a RGB565 target's ARGB backing store.
@@ -113,7 +167,7 @@ begin
   Quad[2].Y := 599.5; Quad[3].Y := 599.5;
   for I := 0 to 3 do Quad[I].Color := $FFFFFFFF;
   Device.SetSamplerState(0, 5, 1);
-  if ParamStr(1) = '--bench' then
+  if Bench then
   begin
     for J := 1 to 10 do begin Draw; Device.Present(nil, nil, 0, nil); end;
     for Sample := 0 to High(Samples) do
@@ -130,7 +184,7 @@ begin
     WriteLn('{"median_ms":', Samples[3]:0:6, ',"min_ms":', Samples[0]:0:6,
         ',"max_ms":', Samples[6]:0:6, '}');
   end;
-  WriteLn('PASS: RGB565 opacity, modulation, filtering, alpha transitions, copy, targets and reset');
+  WriteLn('PASS: texture opacity, modulation, filtering, alpha transitions, copy, targets and reset');
   Device.SetTexture(0, nil); TextureSurface := nil; Texture := nil; Screen := nil;
   Device := nil; Graphics := nil; CloseGameWindow;
 end.

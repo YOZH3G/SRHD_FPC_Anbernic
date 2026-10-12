@@ -1358,6 +1358,40 @@ var
   Transform: TGameGraphicsTransform;
   OpaqueVertices: Boolean;
 
+  function DrawOpaqueRectangle: Boolean;
+  var
+    I: Integer;
+    Rect: TSDL_Rect;
+  begin
+    Result := False;
+    if (Texture <> nil) or Wireframe or (PrimitiveType <> D3DPT_TRIANGLEFAN)
+        or (Count <> 4) then
+      Exit;
+    Color := DrawVertices[0].Color;
+    if Color.A <> 255 then
+      Exit;
+    for I := 0 to 3 do
+      if not CompareMem(@Color, @DrawVertices[I].Color, SizeOf(Color))
+          or (DrawVertices[I].Position.X <> Round(DrawVertices[I].Position.X))
+          or (DrawVertices[I].Position.Y <> Round(DrawVertices[I].Position.Y)) then
+        Exit;
+    if (DrawVertices[0].Position.Y <> DrawVertices[1].Position.Y)
+        or (DrawVertices[1].Position.X <> DrawVertices[2].Position.X)
+        or (DrawVertices[2].Position.Y <> DrawVertices[3].Position.Y)
+        or (DrawVertices[3].Position.X <> DrawVertices[0].Position.X) then
+      Exit;
+    Rect.X := Round(DrawVertices[0].Position.X);
+    Rect.Y := Round(DrawVertices[0].Position.Y);
+    Rect.W := Round(DrawVertices[1].Position.X) - Rect.X;
+    Rect.H := Round(DrawVertices[3].Position.Y) - Rect.Y;
+    if (Rect.W <= 0) or (Rect.H <= 0) then
+      Exit;
+    Check(SDL_SetRenderDrawBlendMode(GameSDLRenderer, SDL_BLENDMODE_NONE));
+    Check(SDL_SetRenderDrawColor(GameSDLRenderer, Color.R, Color.G, Color.B, Color.A));
+    Check(SDL_RenderFillRect(GameSDLRenderer, @Rect));
+    Result := True;
+  end;
+
   function IsPixelAlignedQuad: Boolean;
   var
     I, Next: Integer;
@@ -1509,6 +1543,8 @@ begin
   end;
   Value := Target.RasterClipRect(Clip, Transform);
   Check(SDL_RenderSetClipRect(GameSDLRenderer, @Value));
+  if DrawOpaqueRectangle then
+    Exit(0);
   Check(SDL_SetRenderDrawBlendMode(GameSDLRenderer, SDL_BLENDMODE_BLEND));
   if PrimitiveType = D3DPT_POINTLIST then
     for Index := 0 to Count - 1 do

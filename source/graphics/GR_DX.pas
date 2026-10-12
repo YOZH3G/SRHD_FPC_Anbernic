@@ -899,7 +899,7 @@ begin
     Direct3DDevice.SetScissorRect(ClipRect);
   end;
   if Filled then
-    Direct3DDevice.DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 4, @DrawVertices, SizeOf(TScreenVertexGR))
+    Direct3DDevice.DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, @DrawVertices, SizeOf(TScreenVertexGR))
   else
     Direct3DDevice.DrawPrimitiveUP(D3DPT_LINESTRIP, 4, @DrawVertices, SizeOf(TScreenVertexGR));
   if ClipRect <> nil then

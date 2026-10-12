@@ -1,0 +1,558 @@
+{
+  "date": "2026-10-12",
+  "baseline_commit": "7bc72e82a287033c065c31456a8110a25b432d5d",
+  "physical_hardware_tested": false,
+  "scope": "Two triangles per filled rectangle; direct unblended SDL fill only for uniform opaque integer axis-aligned four-vertex fans.",
+  "optimized_source_sha256": {
+    "platform/GameGraphics.pas": "64c01d3a0628ed15aca3c39ee2e997caf2e7a9447a115062520eb354388c7670",
+    "source/graphics/GR_DX.pas": "e0dbd6f15fe61d16bb4da39b9bf60aca36b1394fabc5cc59c056ab207fa05737",
+    "tools/tests/opaque_texture.pas": "5a4f86dd9605a16d447c5ab7ba992127136579b5cf8b30e0a50be7c142732b6d",
+    "tools/tests/solid_rectangle.pas": "69755faada0863a98446e3d3387ab6f598ff76fc921016fa0f2bb2d50c045cae"
+  },
+  "game_profiles": {
+    "native": {
+      "executable_sha256": {
+        "baseline": "514f8e63d1d172df42e593e80f8924df28b56d8a2f3c2f18b4306246fdf9b337",
+        "optimized": "cc93c52e158aafd019dec8ef8691313542bd9417a65859105ba05f2ca4c099ae"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.004887,
+            "frames": 5681,
+            "fps": 283.9806,
+            "geometry_calls": 234402,
+            "geometry_ms_per_frame": 0.007061
+          },
+          {
+            "seconds": 20.003553,
+            "frames": 5797,
+            "fps": 289.7985,
+            "geometry_calls": 246979,
+            "geometry_ms_per_frame": 0.00688
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.005547,
+            "frames": 5754,
+            "fps": 287.6202,
+            "geometry_calls": 238625,
+            "geometry_ms_per_frame": 0.006745
+          },
+          {
+            "seconds": 20.005174,
+            "frames": 5778,
+            "fps": 288.8253,
+            "geometry_calls": 235879,
+            "geometry_ms_per_frame": 0.006288
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 286.88955,
+        "optimized": 288.22275
+      },
+      "fps_change_percent": 0.46
+    },
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "02079af7cb7fec807fdd343231936435a994d036d194af31d2dd9354516ce92f",
+        "optimized": "cc9f20d4fabf5ca6ce4685ddde3d0801a7d8c59791b980d3bbd292cde19ec8d4"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.01099,
+            "frames": 1180,
+            "fps": 58.9676,
+            "geometry_calls": 48554,
+            "geometry_ms_per_frame": 0.169331
+          },
+          {
+            "seconds": 20.014902,
+            "frames": 1174,
+            "fps": 58.6563,
+            "geometry_calls": 47365,
+            "geometry_ms_per_frame": 0.169368
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.022231,
+            "frames": 1190,
+            "fps": 59.4339,
+            "geometry_calls": 47775,
+            "geometry_ms_per_frame": 0.16442
+          },
+          {
+            "seconds": 20.029608,
+            "frames": 1179,
+            "fps": 58.8629,
+            "geometry_calls": 47264,
+            "geometry_ms_per_frame": 0.164874
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 58.811949999999996,
+        "optimized": 59.1484
+      },
+      "fps_change_percent": 0.57
+    },
+    "arm64": {
+      "arch": "arm64",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "61792fb07b4ca245f436f7301d05989cc27662b48a9e43d0d8ed50d71a843768",
+        "optimized": "2500e2a11757a43e8ea73117fea0ff2ae851497967b03f9b75dab2b87fe2db0a"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.021106,
+            "frames": 964,
+            "fps": 48.1492,
+            "geometry_calls": 39664,
+            "geometry_ms_per_frame": 0.193596
+          },
+          {
+            "seconds": 20.019815,
+            "frames": 982,
+            "fps": 49.0514,
+            "geometry_calls": 40301,
+            "geometry_ms_per_frame": 0.161241
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.019237,
+            "frames": 977,
+            "fps": 48.8031,
+            "geometry_calls": 39780,
+            "geometry_ms_per_frame": 0.177359
+          },
+          {
+            "seconds": 20.008855,
+            "frames": 975,
+            "fps": 48.7284,
+            "geometry_calls": 39931,
+            "geometry_ms_per_frame": 0.160101
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 48.600300000000004,
+        "optimized": 48.76575
+      },
+      "fps_change_percent": 0.34
+    }
+  },
+  "validation": {
+    "native": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 F6BB58A994B3CBCE",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 568B1F1A12AF52BC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 8B64AAB291AE554A",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ]
+    },
+    "armhf": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 1D791B0B82575287",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 B13284AFF05E9B54",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 57079629008860DC",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 804062F86EDB7FFC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 33F7B234C2863AD4",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ]
+    },
+    "arm64": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 57079629008860DC",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 804062F86EDB7FFC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 33F7B234C2863AD4",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ]
+    }
+  },
+  "offscreen_gpu_api_pixel_hashes": {
+    "opengl": {
+      "solid_rectangle": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 CE24928B8BB29D25",
+        "RECT 0 3 40BC4E79EDF3F525",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 D808D98D0CCEC84E",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9D113BF581D228E5",
+        "RECT 1 1 9D113BF581D228E5",
+        "RECT 1 2 34AB0712E1130265",
+        "RECT 1 3 36D91EF6921C0C92",
+        "RECT 1 4 3994323EA4B41E25",
+        "RECT 1 5 2F4A3644C11F4405",
+        "RECT 1 6 03A8A2ED2816287D",
+        "RECT 1 7 26E3A62744179785",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 296503C955A01A25",
+        "RECT 2 3 EDD3E18CB0757F8E",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 99B2C3DE94F675AB",
+        "RECT 2 7 EBB94D750A81BB15",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "opaque_texture": [
+        "CASE 0 C25734811EEDEC05",
+        "CASE 1 E05E1B5166D4A9E5",
+        "CASE 2 B905670D44B38325",
+        "CASE 3 8F53D3E7B5C3F1BB",
+        "CASE 4 9E01448594B76291",
+        "CASE 5 240FECB386FC0D4F",
+        "CASE 6 1785792348CF6F4D",
+        "CASE 7 F0FC23388F0931C7"
+      ],
+      "opaque_texture--rgba": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 918BBC19F27B6325",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92",
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF891A2B",
+        "MUTATION 255 FFFF0000"
+      ],
+      "opaque_texture--rgbx": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 918BBC19F27B6325",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92"
+      ]
+    },
+    "opengles2": {
+      "solid_rectangle": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 CE24928B8BB29D25",
+        "RECT 0 3 40BC4E79EDF3F525",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 D808D98D0CCEC84E",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9D113BF581D228E5",
+        "RECT 1 1 9D113BF581D228E5",
+        "RECT 1 2 34AB0712E1130265",
+        "RECT 1 3 36D91EF6921C0C92",
+        "RECT 1 4 3994323EA4B41E25",
+        "RECT 1 5 2F4A3644C11F4405",
+        "RECT 1 6 03A8A2ED2816287D",
+        "RECT 1 7 26E3A62744179785",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 296503C955A01A25",
+        "RECT 2 3 EDD3E18CB0757F8E",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 99B2C3DE94F675AB",
+        "RECT 2 7 EBB94D750A81BB15",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "opaque_texture": [
+        "CASE 0 C25734811EEDEC05",
+        "CASE 1 E05E1B5166D4A9E5",
+        "CASE 2 B905670D44B38325",
+        "CASE 3 8F53D3E7B5C3F1BB",
+        "CASE 4 9E01448594B76291",
+        "CASE 5 240FECB386FC0D4F",
+        "CASE 6 8ED06464FAA6834D",
+        "CASE 7 F0FC23388F0931C7"
+      ],
+      "opaque_texture--rgba": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 F11F579BEE1E4725",
+        "CASE 3 8F4C720C47A2301E",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 84B83C006675A7E2",
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF891A2B",
+        "MUTATION 255 FFFF0000"
+      ],
+      "opaque_texture--rgbx": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 F11F579BEE1E4725",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92"
+      ]
+    }
+  },
+  "unchanged_libokgf_sha256": {
+    "native": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+    "armhf": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+    "arm64": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6"
+  },
+  "maximum_glibc_symbol": {
+    "armhf": "2.4",
+    "arm64": "2.17"
+  },
+  "interpretation": "Small positive medians have overlapping sample ranges; no reliable space FPS improvement is established by these four-run tests.",
+  "rejected_argb_opacity_scan_native_control": {
+    "executable_sha256": {
+      "baseline": "514f8e63d1d172df42e593e80f8924df28b56d8a2f3c2f18b4306246fdf9b337",
+      "optimized": "3e8208aa5c563a1c24149506e82aa82e6779dc9c00e1bd7434008d8897afac6f"
+    },
+    "scenario": "unbounded",
+    "frame_limit_disabled": true,
+    "injected_frame_delay_ms": 0,
+    "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+    "physical_hardware_tested": false,
+    "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+    "runs": {
+      "baseline": [
+        {
+          "seconds": 20.005195,
+          "frames": 5764,
+          "fps": 288.1252,
+          "geometry_calls": 230502,
+          "geometry_ms_per_frame": 0.006223
+        },
+        {
+          "seconds": 20.005393,
+          "frames": 5753,
+          "fps": 287.5724,
+          "geometry_calls": 233461,
+          "geometry_ms_per_frame": 0.006071
+        }
+      ],
+      "optimized": [
+        {
+          "seconds": 20.003972,
+          "frames": 5743,
+          "fps": 287.093,
+          "geometry_calls": 233859,
+          "geometry_ms_per_frame": 0.006488
+        },
+        {
+          "seconds": 20.003317,
+          "frames": 5771,
+          "fps": 288.5022,
+          "geometry_calls": 237283,
+          "geometry_ms_per_frame": 0.006279
+        }
+      ]
+    },
+    "median_fps": {
+      "baseline": 287.8488,
+      "optimized": 287.7976
+    },
+    "fps_change_percent": -0.02
+  },
+  "limitations": [
+    "Physical handhelds and hardware GPU FPS untested.",
+    "Early campaign only, four 20-second samples per architecture.",
+    "Native FPS limiter disabled; ARM limiter enabled."
+  ]
+}
