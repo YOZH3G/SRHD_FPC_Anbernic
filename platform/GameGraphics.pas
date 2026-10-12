@@ -117,9 +117,10 @@ type
     // QueryInterface/AddRef/Release work inside each draw.
     TextureStorage, TargetStorage: TSDLStorage;
     DrawVertices: array of TSDL_Vertex;
+    PointVertices: array of TSDL_Vertex;
     FanIndices: array of Integer;
     Clip: TRect;
-    LinearFilter, Wireframe: Boolean;
+    LinearFilter, Wireframe, Accelerated: Boolean;
     ScreenSurface: IDirect3DSurface9;
     Gamma: TD3DGammaRamp;
     GammaEnabled: Boolean;
@@ -854,6 +855,7 @@ function TSDLDevice.Reset(var Parameters): LongInt;
 var
   Params: TD3DPresentParameters;
   WindowWidth, WindowHeight: Integer;
+  Info: TSDL_RendererInfo;
 begin
   if GameSDLRenderer <> nil then
     TestCooperativeLevel;
@@ -880,6 +882,8 @@ begin
       Params.Windowed,
       Params.PresentationInterval <> D3DPRESENT_INTERVAL_IMMEDIATE
   );
+  Check(SDL_GetRendererInfo(GameSDLRenderer, Info));
+  Accelerated := (Info.Flags and SDL_RENDERER_ACCELERATED) <> 0;
   ScreenSurface :=
       TSDLSurface.Create(
           TSDLStorage.Create(
@@ -1358,6 +1362,48 @@ var
   Transform: TGameGraphicsTransform;
   OpaqueVertices: Boolean;
 
+  function DrawScaledPoints: Boolean;
+  var
+    I, Base, Capacity, VertexCount: Integer;
+    Rect: TSDL_Rect;
+  begin
+    Result := False;
+    if not Accelerated or not OpaqueVertices
+        or ((Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
+      Exit;
+    // Keep the existing integer coverage, colors and submission order. One
+    // geometry command replaces a color change and fill command per point.
+    Require(Count <= High(Integer) div 6, 'point vertex count');
+    VertexCount := Count * 6;
+    if Length(PointVertices) < VertexCount then
+    begin
+      Capacity := Max(192, Length(PointVertices));
+      while Capacity < VertexCount do Capacity := Capacity * 2;
+      SetLength(PointVertices, Capacity);
+    end;
+    for I := 0 to Count - 1 do
+    begin
+      Rect.X := Round(DrawVertices[I].Position.X - Transform.ScaleX * 0.5);
+      Rect.Y := Round(DrawVertices[I].Position.Y - Transform.ScaleY * 0.5);
+      Rect.W := Max(1, Round(DrawVertices[I].Position.X + Transform.ScaleX * 0.5) - Rect.X);
+      Rect.H := Max(1, Round(DrawVertices[I].Position.Y + Transform.ScaleY * 0.5) - Rect.Y);
+      Base := I * 6;
+      PointVertices[Base].Position.X := Rect.X;
+      PointVertices[Base].Position.Y := Rect.Y;
+      PointVertices[Base].Color := DrawVertices[I].Color;
+      PointVertices[Base + 1] := PointVertices[Base];
+      PointVertices[Base + 1].Position.X := Rect.X + Rect.W;
+      PointVertices[Base + 2] := PointVertices[Base + 1];
+      PointVertices[Base + 2].Position.Y := Rect.Y + Rect.H;
+      PointVertices[Base + 3] := PointVertices[Base];
+      PointVertices[Base + 4] := PointVertices[Base + 2];
+      PointVertices[Base + 5] := PointVertices[Base];
+      PointVertices[Base + 5].Position.Y := Rect.Y + Rect.H;
+    end;
+    Check(SDL_RenderGeometry(GameSDLRenderer, nil, @PointVertices[0], VertexCount, nil, 0));
+    Result := True;
+  end;
+
   function DrawOpaqueRectangle: Boolean;
   var
     I: Integer;
@@ -1547,6 +1593,9 @@ begin
     Exit(0);
   Check(SDL_SetRenderDrawBlendMode(GameSDLRenderer, SDL_BLENDMODE_BLEND));
   if PrimitiveType = D3DPT_POINTLIST then
+  begin
+    if DrawScaledPoints then
+      Exit(0);
     for Index := 0 to Count - 1 do
     begin
       Color := DrawVertices[Index].Color;
@@ -1567,7 +1616,8 @@ begin
         Value.H := Max(1, Round(DrawVertices[Index].Position.Y + Transform.ScaleY * 0.5) - Value.Y);
         Check(SDL_RenderFillRect(GameSDLRenderer, @Value));
       end;
-    end
+    end;
+  end
   else if PrimitiveType = D3DPT_LINESTRIP then
     for Index := 0 to Count - 2 do
       DrawEdge(Index, Index + 1)

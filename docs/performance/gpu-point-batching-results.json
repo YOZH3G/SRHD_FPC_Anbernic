@@ -1,0 +1,1144 @@
+{
+  "date": "2026-10-12",
+  "baseline_commit": "c1b4a8e3cb557adc685b0c5ea13b691a06e57e22",
+  "physical_hardware_tested": false,
+  "optimized_source_sha256": {
+    "platform/GameGraphics.pas": "182aed549369284a34b37b5463d827ecf28178ec8b9940e4a5a2e0a9c820b0c7",
+    "platform/GameWindow.pas": "e24b8ab088312168e4ec88d015c6a8d041735bea0ea3f1a8cb8eb743407ce18c",
+    "tools/tests/point_blocks.pas": "2b21a7793238a9f7e4c331d1668295e76cf534330b64cebc6b6789bd4b47bd03",
+    "tools/tests/force_accelerated_info.c": "5c2196ff0ce13a6fe8bd5234c445865b78000a23e7c28c9555fb66fb52e689fa"
+  },
+  "optimized_executable_sha256": {
+    "native": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+    "armhf": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+    "arm64": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4"
+  },
+  "gpu_game_profiles": {
+    "driver_queue": {
+      "executable_sha256": {
+        "baseline": "cc93c52e158aafd019dec8ef8691313542bd9417a65859105ba05f2ca4c099ae",
+        "optimized": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 1024x768 output and logical canvas; renderer explicitly selected, no batching environment override, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.016691,
+            "frames": 1817,
+            "fps": 90.7742,
+            "geometry_calls": 749139,
+            "geometry_ms_per_frame": 5.076351
+          },
+          {
+            "seconds": 20.020427,
+            "frames": 1825,
+            "fps": 91.1569,
+            "geometry_calls": 746798,
+            "geometry_ms_per_frame": 5.064724
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.024426,
+            "frames": 1891,
+            "fps": 94.4347,
+            "geometry_calls": 781464,
+            "geometry_ms_per_frame": 0.029253
+          },
+          {
+            "seconds": 20.01616,
+            "frames": 1875,
+            "fps": 93.6743,
+            "geometry_calls": 774420,
+            "geometry_ms_per_frame": 0.030216
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 90.96555,
+        "optimized": 94.0545
+      },
+      "fps_change_percent": 3.4,
+      "actual_output_size": [
+        1024,
+        768
+      ],
+      "renderer": "opengles2",
+      "sdl_batching_environment_override": false
+    },
+    "scaled_points": {
+      "executable_sha256": {
+        "baseline": "cc93c52e158aafd019dec8ef8691313542bd9417a65859105ba05f2ca4c099ae",
+        "optimized": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, Mesa offscreen SDL OpenGL ES 2, 640x480 output / 1024x768 logical canvas, SDL batching enabled, LP_NUM_THREADS=1, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.008341,
+            "frames": 4803,
+            "fps": 240.0499,
+            "geometry_calls": 240315,
+            "geometry_ms_per_frame": 0.005928
+          },
+          {
+            "seconds": 20.008978,
+            "frames": 4788,
+            "fps": 239.2926,
+            "geometry_calls": 236704,
+            "geometry_ms_per_frame": 0.005933
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.010114,
+            "frames": 4868,
+            "fps": 243.277,
+            "geometry_calls": 250281,
+            "geometry_ms_per_frame": 0.007932
+          },
+          {
+            "seconds": 20.007621,
+            "frames": 4915,
+            "fps": 245.6564,
+            "geometry_calls": 258414,
+            "geometry_ms_per_frame": 0.008198
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 239.67125,
+        "optimized": 244.4667
+      },
+      "fps_change_percent": 2.0,
+      "actual_output_size": [
+        640,
+        480
+      ],
+      "renderer": "opengles2",
+      "sdl_batching_environment_override": true
+    }
+  },
+  "point_throughput": {
+    "method": "ABBA, seven samples of 100 frames after ten warmup frames; median of two run medians",
+    "environment": "Native Linux x86_64, Mesa offscreen, one CPU, LP_NUM_THREADS=1",
+    "physical_hardware_tested": false,
+    "game_fps_measured": false,
+    "scope": "Synthetic clear + 512 opaque scaled points + direct presentation at 128x96",
+    "results": {
+      "opengl": {
+        "runs": {
+          "baseline": [
+            {
+              "median_ms": 0.341389,
+              "min_ms": 0.33841,
+              "max_ms": 0.358318
+            },
+            {
+              "median_ms": 0.344674,
+              "min_ms": 0.335551,
+              "max_ms": 0.406407
+            }
+          ],
+          "optimized": [
+            {
+              "median_ms": 0.315249,
+              "min_ms": 0.307253,
+              "max_ms": 0.349467
+            },
+            {
+              "median_ms": 0.316343,
+              "min_ms": 0.310361,
+              "max_ms": 0.415453
+            }
+          ]
+        },
+        "median_ms": {
+          "baseline": 0.3430315,
+          "optimized": 0.31579599999999997
+        },
+        "time_reduction_percent": 7.94,
+        "fixture_sha256": {
+          "baseline": "eb8bb55914b662e91c30d472793202b9eaa1c20c2c41461661bcc1de2dc76ddb",
+          "optimized": "2481437753fb95d12b02a2d6cdee5c2f1d8a14cec550f6d4220ef895a6e41a0d"
+        },
+        "point_pixel_hashes": [
+          "POINT 0 0 B5AD9848B435BEC9",
+          "POINT 0 1 207D1D992BEBCD6C",
+          "POINT 0 2 2B7866033095D05E",
+          "POINT 0 3 FA0888C013D68DC7",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 4005D4A81A6799BE",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 D9ABFDDC9B179CF3",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 95732821E3715D75",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 AA6069A3E0BBA71B",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 A1735BAA1F6CB608",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ]
+      },
+      "opengles2": {
+        "runs": {
+          "baseline": [
+            {
+              "median_ms": 0.431687,
+              "min_ms": 0.423355,
+              "max_ms": 0.449533
+            },
+            {
+              "median_ms": 0.429535,
+              "min_ms": 0.418798,
+              "max_ms": 0.485114
+            }
+          ],
+          "optimized": [
+            {
+              "median_ms": 0.408323,
+              "min_ms": 0.402868,
+              "max_ms": 0.45378
+            },
+            {
+              "median_ms": 0.411927,
+              "min_ms": 0.401039,
+              "max_ms": 0.561986
+            }
+          ]
+        },
+        "median_ms": {
+          "baseline": 0.43061099999999997,
+          "optimized": 0.41012499999999996
+        },
+        "time_reduction_percent": 4.76,
+        "fixture_sha256": {
+          "baseline": "eb8bb55914b662e91c30d472793202b9eaa1c20c2c41461661bcc1de2dc76ddb",
+          "optimized": "2481437753fb95d12b02a2d6cdee5c2f1d8a14cec550f6d4220ef895a6e41a0d"
+        },
+        "point_pixel_hashes": [
+          "POINT 0 0 D65B3159C17D0956",
+          "POINT 0 1 13BE97B9EA7B9302",
+          "POINT 0 2 5C68683D48582675",
+          "POINT 0 3 10181965DAF32F6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 4005D4A81A6799BE",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 D9ABFDDC9B179CF3",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 95732821E3715D75",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 AA6069A3E0BBA71B",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 A1735BAA1F6CB608",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ]
+      }
+    },
+    "sdl_render_batching": "1"
+  },
+  "software_validation": {
+    "native": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 F6BB58A994B3CBCE",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 568B1F1A12AF52BC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 8B64AAB291AE554A",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "POINT": [
+        "POINT 0 0 2444CFA0DDB1AD56",
+        "POINT 0 1 B3937CBEC0B6724F",
+        "POINT 0 2 48FBBC06ED076E19",
+        "POINT 0 3 8865E7A285949B6A",
+        "POINT 0 4 1C76AC729A6DE325",
+        "POINT 1 0 4BBD9E66F173D246",
+        "POINT 1 1 0C9AA0A1F8ACDC86",
+        "POINT 1 2 EF60093F22FFF57B",
+        "POINT 1 3 6F5F6D56DA610E50",
+        "POINT 1 4 1C76AC729A6DE325",
+        "POINT 2 0 D0B1D1EEF8841A9C",
+        "POINT 2 1 1EE11BF9818857F6",
+        "POINT 2 2 351206982121A749",
+        "POINT 2 3 A7388C6D4F35FD5B",
+        "POINT 2 4 1C76AC729A6DE325",
+        "POINT 3 0 350593F34D6C2979",
+        "POINT 3 1 F07D74952B0A5DFD",
+        "POINT 3 2 F54BDDEEE6098351",
+        "POINT 3 3 17528535F40929C9",
+        "POINT 3 4 1C76AC729A6DE325",
+        "POINT 4 0 B458698E55D61B25",
+        "POINT 4 1 96813C6879617405",
+        "POINT 4 2 9D555AEF9975781E",
+        "POINT 4 3 F812E05BE2B30B2A",
+        "POINT 4 4 1C76AC729A6DE325",
+        "POINT 5 0 C99D0D5C91E51786",
+        "POINT 5 1 D03F54EEF9D15021",
+        "POINT 5 2 983D10C4BC625745",
+        "POINT 5 3 EB3CD66871FE9964",
+        "POINT 5 4 1C76AC729A6DE325"
+      ]
+    },
+    "armhf": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 1D791B0B82575287",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 B13284AFF05E9B54",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 57079629008860DC",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 804062F86EDB7FFC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 33F7B234C2863AD4",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "POINT": [
+        "POINT 0 0 2444CFA0DDB1AD56",
+        "POINT 0 1 B3937CBEC0B6724F",
+        "POINT 0 2 48FBBC06ED076E19",
+        "POINT 0 3 8865E7A285949B6A",
+        "POINT 0 4 1C76AC729A6DE325",
+        "POINT 1 0 4BBD9E66F173D246",
+        "POINT 1 1 0C9AA0A1F8ACDC86",
+        "POINT 1 2 EF60093F22FFF57B",
+        "POINT 1 3 6F5F6D56DA610E50",
+        "POINT 1 4 1C76AC729A6DE325",
+        "POINT 2 0 D0B1D1EEF8841A9C",
+        "POINT 2 1 1EE11BF9818857F6",
+        "POINT 2 2 351206982121A749",
+        "POINT 2 3 A7388C6D4F35FD5B",
+        "POINT 2 4 1C76AC729A6DE325",
+        "POINT 3 0 350593F34D6C2979",
+        "POINT 3 1 F07D74952B0A5DFD",
+        "POINT 3 2 F54BDDEEE6098351",
+        "POINT 3 3 17528535F40929C9",
+        "POINT 3 4 1C76AC729A6DE325",
+        "POINT 4 0 B458698E55D61B25",
+        "POINT 4 1 96813C6879617405",
+        "POINT 4 2 9D555AEF9975781E",
+        "POINT 4 3 F812E05BE2B30B2A",
+        "POINT 4 4 1C76AC729A6DE325",
+        "POINT 5 0 C99D0D5C91E51786",
+        "POINT 5 1 D03F54EEF9D15021",
+        "POINT 5 2 983D10C4BC625745",
+        "POINT 5 3 EB3CD66871FE9964",
+        "POINT 5 4 1C76AC729A6DE325"
+      ]
+    },
+    "arm64": {
+      "CASE": [
+        "CASE 0 2A26B23D63866E05",
+        "CASE 1 2C354363711079E5",
+        "CASE 2 50868121A9862FE5",
+        "CASE 3 9067B185018FD204",
+        "CASE 4 6850CFB4F4BBFAD8",
+        "CASE 5 F8BCA1D7E5D5DFE9",
+        "CASE 6 1517FA0204AAE34C",
+        "CASE 7 9067B185018FD204",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 E33729DB5D00A1D9",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF",
+        "CASE 0 569E13C86E796325",
+        "CASE 1 19D32533F1FC3B25",
+        "CASE 2 221997A12D02F725",
+        "CASE 3 7FCAE62A2CC7FCCF",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 A79EFC20690E546F",
+        "CASE 7 7FCAE62A2CC7FCCF"
+      ],
+      "MUTATION": [
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF88192A",
+        "MUTATION 255 FFFF0000"
+      ],
+      "RECT": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 95106ECC5DD09E9D",
+        "RECT 0 3 75468E899F51ECB8",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 57079629008860DC",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9E56D50719AD4305",
+        "RECT 1 1 9E56D50719AD4305",
+        "RECT 1 2 2C7AB491D52D2489",
+        "RECT 1 3 63837E98C4737CD2",
+        "RECT 1 4 9E56D50719AD4305",
+        "RECT 1 5 28988C3D157AB225",
+        "RECT 1 6 804062F86EDB7FFC",
+        "RECT 1 7 7A4574DB274CC435",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 07FEF1240BA3F3B5",
+        "RECT 2 3 0D48BD10BA39F116",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 33F7B234C2863AD4",
+        "RECT 2 7 ED0CA841F481A825",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "POINT": [
+        "POINT 0 0 2444CFA0DDB1AD56",
+        "POINT 0 1 B3937CBEC0B6724F",
+        "POINT 0 2 48FBBC06ED076E19",
+        "POINT 0 3 8865E7A285949B6A",
+        "POINT 0 4 1C76AC729A6DE325",
+        "POINT 1 0 4BBD9E66F173D246",
+        "POINT 1 1 0C9AA0A1F8ACDC86",
+        "POINT 1 2 EF60093F22FFF57B",
+        "POINT 1 3 6F5F6D56DA610E50",
+        "POINT 1 4 1C76AC729A6DE325",
+        "POINT 2 0 D0B1D1EEF8841A9C",
+        "POINT 2 1 1EE11BF9818857F6",
+        "POINT 2 2 351206982121A749",
+        "POINT 2 3 A7388C6D4F35FD5B",
+        "POINT 2 4 1C76AC729A6DE325",
+        "POINT 3 0 350593F34D6C2979",
+        "POINT 3 1 F07D74952B0A5DFD",
+        "POINT 3 2 F54BDDEEE6098351",
+        "POINT 3 3 17528535F40929C9",
+        "POINT 3 4 1C76AC729A6DE325",
+        "POINT 4 0 B458698E55D61B25",
+        "POINT 4 1 96813C6879617405",
+        "POINT 4 2 9D555AEF9975781E",
+        "POINT 4 3 F812E05BE2B30B2A",
+        "POINT 4 4 1C76AC729A6DE325",
+        "POINT 5 0 C99D0D5C91E51786",
+        "POINT 5 1 D03F54EEF9D15021",
+        "POINT 5 2 983D10C4BC625745",
+        "POINT 5 3 EB3CD66871FE9964",
+        "POINT 5 4 1C76AC729A6DE325"
+      ]
+    }
+  },
+  "offscreen_gpu_api_validation": {
+    "opengl": {
+      "point_blocks": [
+        "POINT 0 0 B5AD9848B435BEC9",
+        "POINT 0 1 207D1D992BEBCD6C",
+        "POINT 0 2 2B7866033095D05E",
+        "POINT 0 3 FA0888C013D68DC7",
+        "POINT 0 4 1C76AC729A6DE325",
+        "POINT 1 0 4BBD9E66F173D246",
+        "POINT 1 1 4005D4A81A6799BE",
+        "POINT 1 2 EF60093F22FFF57B",
+        "POINT 1 3 6F5F6D56DA610E50",
+        "POINT 1 4 1C76AC729A6DE325",
+        "POINT 2 0 D0B1D1EEF8841A9C",
+        "POINT 2 1 D9ABFDDC9B179CF3",
+        "POINT 2 2 351206982121A749",
+        "POINT 2 3 A7388C6D4F35FD5B",
+        "POINT 2 4 1C76AC729A6DE325",
+        "POINT 3 0 350593F34D6C2979",
+        "POINT 3 1 95732821E3715D75",
+        "POINT 3 2 F54BDDEEE6098351",
+        "POINT 3 3 17528535F40929C9",
+        "POINT 3 4 1C76AC729A6DE325",
+        "POINT 4 0 B458698E55D61B25",
+        "POINT 4 1 AA6069A3E0BBA71B",
+        "POINT 4 2 9D555AEF9975781E",
+        "POINT 4 3 F812E05BE2B30B2A",
+        "POINT 4 4 1C76AC729A6DE325",
+        "POINT 5 0 C99D0D5C91E51786",
+        "POINT 5 1 A1735BAA1F6CB608",
+        "POINT 5 2 983D10C4BC625745",
+        "POINT 5 3 EB3CD66871FE9964",
+        "POINT 5 4 1C76AC729A6DE325"
+      ],
+      "solid_rectangle": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 CE24928B8BB29D25",
+        "RECT 0 3 40BC4E79EDF3F525",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 D808D98D0CCEC84E",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9D113BF581D228E5",
+        "RECT 1 1 9D113BF581D228E5",
+        "RECT 1 2 34AB0712E1130265",
+        "RECT 1 3 36D91EF6921C0C92",
+        "RECT 1 4 3994323EA4B41E25",
+        "RECT 1 5 2F4A3644C11F4405",
+        "RECT 1 6 03A8A2ED2816287D",
+        "RECT 1 7 26E3A62744179785",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 296503C955A01A25",
+        "RECT 2 3 EDD3E18CB0757F8E",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 99B2C3DE94F675AB",
+        "RECT 2 7 EBB94D750A81BB15",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "opaque_texture": [
+        "CASE 0 C25734811EEDEC05",
+        "CASE 1 E05E1B5166D4A9E5",
+        "CASE 2 B905670D44B38325",
+        "CASE 3 8F53D3E7B5C3F1BB",
+        "CASE 4 9E01448594B76291",
+        "CASE 5 240FECB386FC0D4F",
+        "CASE 6 1785792348CF6F4D",
+        "CASE 7 F0FC23388F0931C7"
+      ],
+      "opaque_texture--rgba": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 918BBC19F27B6325",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92",
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF891A2B",
+        "MUTATION 255 FFFF0000"
+      ],
+      "opaque_texture--rgbx": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 918BBC19F27B6325",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92"
+      ]
+    },
+    "opengles2": {
+      "point_blocks": [
+        "POINT 0 0 D65B3159C17D0956",
+        "POINT 0 1 13BE97B9EA7B9302",
+        "POINT 0 2 5C68683D48582675",
+        "POINT 0 3 10181965DAF32F6A",
+        "POINT 0 4 1C76AC729A6DE325",
+        "POINT 1 0 4BBD9E66F173D246",
+        "POINT 1 1 4005D4A81A6799BE",
+        "POINT 1 2 EF60093F22FFF57B",
+        "POINT 1 3 6F5F6D56DA610E50",
+        "POINT 1 4 1C76AC729A6DE325",
+        "POINT 2 0 D0B1D1EEF8841A9C",
+        "POINT 2 1 D9ABFDDC9B179CF3",
+        "POINT 2 2 351206982121A749",
+        "POINT 2 3 A7388C6D4F35FD5B",
+        "POINT 2 4 1C76AC729A6DE325",
+        "POINT 3 0 350593F34D6C2979",
+        "POINT 3 1 95732821E3715D75",
+        "POINT 3 2 F54BDDEEE6098351",
+        "POINT 3 3 17528535F40929C9",
+        "POINT 3 4 1C76AC729A6DE325",
+        "POINT 4 0 B458698E55D61B25",
+        "POINT 4 1 AA6069A3E0BBA71B",
+        "POINT 4 2 9D555AEF9975781E",
+        "POINT 4 3 F812E05BE2B30B2A",
+        "POINT 4 4 1C76AC729A6DE325",
+        "POINT 5 0 C99D0D5C91E51786",
+        "POINT 5 1 A1735BAA1F6CB608",
+        "POINT 5 2 983D10C4BC625745",
+        "POINT 5 3 EB3CD66871FE9964",
+        "POINT 5 4 1C76AC729A6DE325"
+      ],
+      "solid_rectangle": [
+        "RECT 0 0 C2043DD9F98179A5",
+        "RECT 0 1 C2043DD9F98179A5",
+        "RECT 0 2 CE24928B8BB29D25",
+        "RECT 0 3 40BC4E79EDF3F525",
+        "RECT 0 4 C2043DD9F98179A5",
+        "RECT 0 5 5F35F70D79302B15",
+        "RECT 0 6 D808D98D0CCEC84E",
+        "RECT 0 7 3B2A6704C196F9A5",
+        "RECT 0 8 C2043DD9F98179A5",
+        "RECT 1 0 9D113BF581D228E5",
+        "RECT 1 1 9D113BF581D228E5",
+        "RECT 1 2 34AB0712E1130265",
+        "RECT 1 3 36D91EF6921C0C92",
+        "RECT 1 4 3994323EA4B41E25",
+        "RECT 1 5 2F4A3644C11F4405",
+        "RECT 1 6 03A8A2ED2816287D",
+        "RECT 1 7 26E3A62744179785",
+        "RECT 1 8 9D113BF581D228E5",
+        "RECT 2 0 94210EFBC2024525",
+        "RECT 2 1 94210EFBC2024525",
+        "RECT 2 2 296503C955A01A25",
+        "RECT 2 3 EDD3E18CB0757F8E",
+        "RECT 2 4 94210EFBC2024525",
+        "RECT 2 5 94210EFBC2024525",
+        "RECT 2 6 99B2C3DE94F675AB",
+        "RECT 2 7 EBB94D750A81BB15",
+        "RECT 2 8 94210EFBC2024525"
+      ],
+      "opaque_texture": [
+        "CASE 0 C25734811EEDEC05",
+        "CASE 1 E05E1B5166D4A9E5",
+        "CASE 2 B905670D44B38325",
+        "CASE 3 8F53D3E7B5C3F1BB",
+        "CASE 4 9E01448594B76291",
+        "CASE 5 240FECB386FC0D4F",
+        "CASE 6 8ED06464FAA6834D",
+        "CASE 7 F0FC23388F0931C7"
+      ],
+      "opaque_texture--rgba": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 F11F579BEE1E4725",
+        "CASE 3 8F4C720C47A2301E",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 84B83C006675A7E2",
+        "MUTATION 0 FF123456",
+        "MUTATION 254 FFFE0000",
+        "MUTATION 128 FF891A2B",
+        "MUTATION 255 FFFF0000"
+      ],
+      "opaque_texture--rgbx": [
+        "CASE 0 569E13C86E796325",
+        "CASE 1 C2E103F8B0F1C325",
+        "CASE 2 F11F579BEE1E4725",
+        "CASE 3 F3D2E967A51665E0",
+        "CASE 4 03B88235712E5CFD",
+        "CASE 5 B0F85A5B87099C79",
+        "CASE 6 582E1604DC826C5F",
+        "CASE 7 D56B407BC9588C92"
+      ]
+    }
+  },
+  "forced_batch_branch_validation": {
+    "scope": "Test-only public renderer info flag forces the GPU point-batch branch over SDL software, including ARM code under QEMU; no physical GPU is tested.",
+    "results": {
+      "native": {
+        "baseline": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ],
+        "optimized": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ]
+      },
+      "armhf": {
+        "baseline": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ],
+        "optimized": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ]
+      },
+      "arm64": {
+        "baseline": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ],
+        "optimized": [
+          "POINT 0 0 2444CFA0DDB1AD56",
+          "POINT 0 1 B3937CBEC0B6724F",
+          "POINT 0 2 48FBBC06ED076E19",
+          "POINT 0 3 8865E7A285949B6A",
+          "POINT 0 4 1C76AC729A6DE325",
+          "POINT 1 0 4BBD9E66F173D246",
+          "POINT 1 1 0C9AA0A1F8ACDC86",
+          "POINT 1 2 EF60093F22FFF57B",
+          "POINT 1 3 6F5F6D56DA610E50",
+          "POINT 1 4 1C76AC729A6DE325",
+          "POINT 2 0 D0B1D1EEF8841A9C",
+          "POINT 2 1 1EE11BF9818857F6",
+          "POINT 2 2 351206982121A749",
+          "POINT 2 3 A7388C6D4F35FD5B",
+          "POINT 2 4 1C76AC729A6DE325",
+          "POINT 3 0 350593F34D6C2979",
+          "POINT 3 1 F07D74952B0A5DFD",
+          "POINT 3 2 F54BDDEEE6098351",
+          "POINT 3 3 17528535F40929C9",
+          "POINT 3 4 1C76AC729A6DE325",
+          "POINT 4 0 B458698E55D61B25",
+          "POINT 4 1 96813C6879617405",
+          "POINT 4 2 9D555AEF9975781E",
+          "POINT 4 3 F812E05BE2B30B2A",
+          "POINT 4 4 1C76AC729A6DE325",
+          "POINT 5 0 C99D0D5C91E51786",
+          "POINT 5 1 D03F54EEF9D15021",
+          "POINT 5 2 983D10C4BC625745",
+          "POINT 5 3 EB3CD66871FE9964",
+          "POINT 5 4 1C76AC729A6DE325"
+        ]
+      }
+    }
+  },
+  "unchanged_libokgf_sha256": {
+    "native": "8622394bd530c440535f18f2640d8ae125cbea3d39c12c87a5314dd0270c005c",
+    "armhf": "6c133ef11e1c22f04494c180a17daeb987afc5f301031df6a0c19aed2133fb39",
+    "arm64": "f05f7de062f95798d41130835f5e26d98a1e816b88db1f5e4524cfbddb535ff6"
+  },
+  "maximum_glibc_symbol": {
+    "armhf": "2.4",
+    "arm64": "2.17"
+  },
+  "limitations": [
+    "Native x86_64 Mesa offscreen performance does not establish physical handheld FPS.",
+    "GPU game FPS limiter and VSync disabled in both versions.",
+    "Two separate scenarios differ in output size, SDL batching override and Mesa threading; their FPS values must not be compared across rows.",
+    "Four early-campaign 20-second samples per scenario; combat and late campaign unmeasured.",
+    "Software and forced public-info tests verify ARM geometry and pixels; they do not test a physical ARM GPU."
+  ],
+  "final_game_smoke_validation": {
+    "environment": "SDL dummy/software; ARM under QEMU with Ubuntu 20.04 sysroot",
+    "scope": "Load autosave, enter hangar, takeoff, render space for 20 seconds, quit and capture current frame; one smoke run per architecture, not an FPS comparison",
+    "physical_hardware_tested": false,
+    "results": {
+      "native": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "b3b77d5769ded1441de901d236f87d6ad46d749c0ab1094ae6cac896281ddf1c",
+        "space_sample": {
+          "seconds": 20.006632,
+          "frames": 1201,
+          "fps": 60.0301,
+          "geometry_calls": 48405,
+          "geometry_ms_per_frame": 0.008065
+        },
+        "fps_comparison": false
+      },
+      "armhf": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676",
+        "space_sample": {
+          "seconds": 20.019589,
+          "frames": 997,
+          "fps": 49.8012,
+          "geometry_calls": 40315,
+          "geometry_ms_per_frame": 0.185822
+        },
+        "fps_comparison": false
+      },
+      "arm64": {
+        "exit_code": 0,
+        "space_capture_size": [
+          800,
+          600
+        ],
+        "executable_sha256": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4",
+        "space_sample": {
+          "seconds": 20.007367,
+          "frames": 1198,
+          "fps": 59.8779,
+          "geometry_calls": 47988,
+          "geometry_ms_per_frame": 0.123677
+        },
+        "fps_comparison": false
+      }
+    }
+  },
+  "final_software_arm_comparisons": {
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "cc9f20d4fabf5ca6ce4685ddde3d0801a7d8c59791b980d3bbd292cde19ec8d4",
+        "optimized": "dac09b9fab2de71aa84a7cb0f16ddb1b5d3c75069a3e760f8a4471ea3fccf676"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.013548,
+            "frames": 1173,
+            "fps": 58.6103,
+            "geometry_calls": 47004,
+            "geometry_ms_per_frame": 0.16619
+          },
+          {
+            "seconds": 20.012756,
+            "frames": 1187,
+            "fps": 59.3122,
+            "geometry_calls": 48982,
+            "geometry_ms_per_frame": 0.161814
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.020971,
+            "frames": 1185,
+            "fps": 59.1879,
+            "geometry_calls": 47930,
+            "geometry_ms_per_frame": 0.161507
+          },
+          {
+            "seconds": 20.019369,
+            "frames": 1183,
+            "fps": 59.0928,
+            "geometry_calls": 49105,
+            "geometry_ms_per_frame": 0.168808
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 58.96125,
+        "optimized": 59.14035
+      },
+      "fps_change_percent": 0.3
+    },
+    "arm64": {
+      "arch": "arm64",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "2500e2a11757a43e8ea73117fea0ff2ae851497967b03f9b75dab2b87fe2db0a",
+        "optimized": "bb6654dc2eccbaaa0676cbd62e102be68564e2172a53df840f4986a755c9f9d4"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.007207,
+            "frames": 980,
+            "fps": 48.9824,
+            "geometry_calls": 39886,
+            "geometry_ms_per_frame": 0.171682
+          },
+          {
+            "seconds": 20.007972,
+            "frames": 956,
+            "fps": 47.781,
+            "geometry_calls": 40307,
+            "geometry_ms_per_frame": 0.179372
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.007735,
+            "frames": 969,
+            "fps": 48.4313,
+            "geometry_calls": 40172,
+            "geometry_ms_per_frame": 0.165327
+          },
+          {
+            "seconds": 20.018963,
+            "frames": 969,
+            "fps": 48.4041,
+            "geometry_calls": 39509,
+            "geometry_ms_per_frame": 0.171846
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 48.381699999999995,
+        "optimized": 48.417699999999996
+      },
+      "fps_change_percent": 0.07
+    }
+  },
+  "software_comparison_interpretation": "Overlapping sample ranges; ARMHF +0.30%, AArch64 +0.07%; no stable FPS improvement or regression established in the software path."
+}

@@ -254,6 +254,9 @@ begin
   // actions before the user can distinguish a tap from a drag.
   SDL_SetHint('SDL_TOUCH_MOUSE_EVENTS', '0');
   SDL_SetHint('SDL_MOUSE_TOUCH_EVENTS', '0');
+  // SDL otherwise disables its command queue when a firmware names a render
+  // driver. Our drawing uses SDL exclusively and submitted vertices are copied.
+  SDL_SetHint('SDL_RENDER_BATCHING', '1');
 {$IFDEF ANDROID}
   // SDL_HINT_ORIENTATIONS retains its iOS name on Android too. Without it,
   // SDL's resizable window overrides the manifest and permits portrait.
