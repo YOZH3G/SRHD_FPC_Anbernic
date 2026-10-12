@@ -10,6 +10,7 @@ uses
   Windows,
 {$ENDIF}
   GameSystem,
+  GameFramePacing,
   GR_Music,
   DirectSound,
   EC_Thread,
@@ -1183,7 +1184,7 @@ var
 
   AltResolutionSwitch: Boolean = False;
 
-  LastPresentationTick: Cardinal = 0;
+  PresentationPacer: TGameFramePacer;
 
   PresentationFrameRate: Cardinal = 0;
 
@@ -5329,7 +5330,7 @@ begin
     if PresentationFrameRate = 0 then
       PresentationFrameRate := DesktopDisplayMode.RefreshRate;
     if PresentationFrameRate = 0 then
-      PresentationFrameRate := 50;
+      PresentationFrameRate := 60;
   end;
 end;
 
@@ -6128,8 +6129,6 @@ begin
 end;
 
 procedure EndFramePresentation;
-var
-  Tick: Cardinal;
 begin
   if PresentationDepth > 0 then
   begin
@@ -6140,16 +6139,15 @@ begin
       // The legacy millisecond gate would discard refreshes: at 120 Hz its
       // strict comparison requires at least 9 ms instead of 8.33 ms.
       if PresentWithoutLimit or VSyncEnabled or GameWindowUsesCanvas then
-        PresentScreenBuffer
-      else
       begin
-        Tick := GameTickCount;
-        if 1000 div PresentationFrameRate < Tick - LastPresentationTick then
-        begin
-          LastPresentationTick := Tick;
+        PresentationPacer.Reset;
+        PresentScreenBuffer;
+      end
+      else
+        if PresentationPacer.Ready(
+            SDL_GetPerformanceCounter, PerformanceCounterFrequency, PresentationFrameRate
+        ) then
           PresentScreenBuffer;
-        end;
-      end;
     end;
   end;
 end;

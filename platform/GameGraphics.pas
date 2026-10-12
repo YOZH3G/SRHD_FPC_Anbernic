@@ -46,6 +46,10 @@ type
     SamplingMode, BlendMode: Integer;
     Generation, DisplayGeneration: LongInt;
     Dirty, Locked, ReadOnly, Screen, Target: Boolean;
+    ClipCached: Boolean;
+    CachedClip: TRect;
+    CachedClipTransform: TGameGraphicsTransform;
+    CachedRasterClip: TSDL_Rect;
     constructor Create(
         W, H: Integer;
         Format, Pool: Cardinal;
@@ -60,7 +64,10 @@ type
     function UpdateScreenRaster: Boolean;
     function RasterTransform(ApplyTransform: Boolean): TGameGraphicsTransform;
     function RasterRect(const Rect: TRect; ApplyTransform: Boolean = False): TSDL_Rect;
-    function RasterClipRect(const Rect: TRect): TSDL_Rect;
+    function RasterClipRect(const Rect: TRect): TSDL_Rect; overload;
+    function RasterClipRect(
+        const Rect: TRect; const Transform: TGameGraphicsTransform
+    ): TSDL_Rect; overload;
     procedure ReadPixels(Dest: Pointer; DestPitch: Integer; DestFormat: Cardinal);
     procedure ReadRasterPixels(Dest: Pointer; DestPitch: Integer; DestFormat: Cardinal);
     procedure Upload;
@@ -545,8 +552,13 @@ begin
 end;
 
 function TSDLStorage.RasterClipRect(const Rect: TRect): TSDL_Rect;
-var
-  Transform: TGameGraphicsTransform;
+begin
+  Result := RasterClipRect(Rect, RasterTransform(True));
+end;
+
+function TSDLStorage.RasterClipRect(
+    const Rect: TRect; const Transform: TGameGraphicsTransform
+): TSDL_Rect;
 
   function PixelEdge(Coordinate: Integer; Scale, Offset: Single): Integer;
   var
@@ -559,11 +571,26 @@ var
   end;
 
 begin
-  Transform := RasterTransform(True);
+  // Space sprites share their clip and mapping across many draws. Cache only
+  // this coordinate calculation; SDL target changes and readback still apply
+  // their actual clip state normally. Mapping changes invalidate the result,
+  // including camera zoom and native-raster resizes.
+  if ClipCached
+      and (CachedClip.Left = Rect.Left) and (CachedClip.Top = Rect.Top)
+      and (CachedClip.Right = Rect.Right) and (CachedClip.Bottom = Rect.Bottom)
+      and (CachedClipTransform.ScaleX = Transform.ScaleX)
+      and (CachedClipTransform.ScaleY = Transform.ScaleY)
+      and (CachedClipTransform.OffsetX = Transform.OffsetX)
+      and (CachedClipTransform.OffsetY = Transform.OffsetY) then
+    Exit(CachedRasterClip);
   Result.X := PixelEdge(Rect.Left, Transform.ScaleX, Transform.OffsetX);
   Result.Y := PixelEdge(Rect.Top, Transform.ScaleY, Transform.OffsetY);
   Result.W := PixelEdge(Rect.Right, Transform.ScaleX, Transform.OffsetX) - Result.X;
   Result.H := PixelEdge(Rect.Bottom, Transform.ScaleY, Transform.OffsetY) - Result.Y;
+  CachedClip := Rect;
+  CachedClipTransform := Transform;
+  CachedRasterClip := Result;
+  ClipCached := True;
 end;
 
 procedure TSDLStorage.ReadRasterPixels(Dest: Pointer; DestPitch: Integer; DestFormat: Cardinal);
@@ -1459,7 +1486,7 @@ begin
     Image.SetBlend(SDL_BLENDMODE_BLEND);
     Image.SetSampling(Ord(LinearFilter and not IsPixelAlignedQuad));
   end;
-  Value := Target.RasterClipRect(Clip);
+  Value := Target.RasterClipRect(Clip, Transform);
   Check(SDL_RenderSetClipRect(GameSDLRenderer, @Value));
   Check(SDL_SetRenderDrawBlendMode(GameSDLRenderer, SDL_BLENDMODE_BLEND));
   if PrimitiveType = D3DPT_POINTLIST then

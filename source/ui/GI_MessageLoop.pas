@@ -2243,8 +2243,14 @@ begin
             RootUiObject.UnlinkOwnedChild(PopupController);
           end;
           Stage := 19;
-          if not (VSyncEnabled or GameWindowUsesCanvas) then
-            SysUtils.Sleep(1);
+          // A slow frame already consumed its refresh budget. Adding a timer
+          // sleep costs more latency on handheld kernels, where a 1 ms request
+          // can wait a whole scheduler tick. Uncapped presentation also needs
+          // no extra pacing; fast capped frames retain the cooperative yield.
+          if not (VSyncEnabled or GameWindowUsesCanvas or PresentWithoutLimit) then
+            if (PresentationFrameRate = 0)
+                or (GameTickCount - FrameTime < 1000 div PresentationFrameRate) then
+              SysUtils.Sleep(1);
           FrameTime := GameTickCount - FrameTime;
           if FrameTime > 200 then
             FrameTime := 200;

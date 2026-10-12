@@ -1,0 +1,1141 @@
+{
+  "date": "2026-10-12",
+  "baseline_commit": "914ae58e7474225394a82071132da834ecb32d25",
+  "fpc_commit": "e79995bc0986f46a4ad6eb3fcdd9bdc1db88b1f7",
+  "optimized_source_sha256": {
+    "platform/GameGraphics.pas": "9ca97ec6b9e6aa9d6f004091caa7f329c6b428008e88bfaf43d9e575316357e9",
+    "platform/GameFramePacing.pas": "08dc4356450df3db7230335d3a675fba84bdd6b2cb4fe363bef7f982ba8f16aa",
+    "platform/SDL2.pas": "4bd08c65d5ccb65436a6e0a005228c61bf3db50161db2569ff5bdc098992b204",
+    "source/GR_Main.pas": "1ea3f4630f74d06848ad4074341bcfe9fe5d7078982ba6ea0807fafee6f915ad",
+    "source/ui/GI_MessageLoop.pas": "cf0744b1aba15d6899349767dfba4eb2a29addce9cf40e7e5c3ba445bfd0af9d"
+  },
+  "physical_hardware_tested": false,
+  "test_sdk": "Debian 13, SDL 2.32.4, LLVM 19.1.7; test-only ARM sysroots, not handheld release SDKs",
+  "native_game_profiles": {
+    "unbounded": {
+      "executable_sha256": {
+        "baseline": "51679096ff898fbbe404888368988d0a29cd10ddc2e07165fed9c75e72ecbc38",
+        "optimized": "6efb937e0f90ad5f63cf6196be5fed50935869e28f17e35c51861fa53d8b89df"
+      },
+      "scenario": "unbounded",
+      "frame_limit_disabled": true,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.012462,
+            "frames": 4124,
+            "fps": 206.0716,
+            "geometry_calls": 171094,
+            "geometry_ms_per_frame": 0.007387
+          },
+          {
+            "seconds": 20.013292,
+            "frames": 4098,
+            "fps": 204.7639,
+            "geometry_calls": 169943,
+            "geometry_ms_per_frame": 0.007608
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.012529,
+            "frames": 5357,
+            "fps": 267.6823,
+            "geometry_calls": 219290,
+            "geometry_ms_per_frame": 0.007646
+          },
+          {
+            "seconds": 20.011374,
+            "frames": 5360,
+            "fps": 267.8477,
+            "geometry_calls": 219881,
+            "geometry_ms_per_frame": 0.007226
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 205.41775,
+        "optimized": 267.765
+      },
+      "fps_change_percent": 30.35
+    },
+    "capped": {
+      "executable_sha256": {
+        "baseline": "51679096ff898fbbe404888368988d0a29cd10ddc2e07165fed9c75e72ecbc38",
+        "optimized": "6efb937e0f90ad5f63cf6196be5fed50935869e28f17e35c51861fa53d8b89df"
+      },
+      "scenario": "capped",
+      "frame_limit_disabled": false,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.047656,
+            "frames": 737,
+            "fps": 36.7624,
+            "geometry_calls": 181456,
+            "geometry_ms_per_frame": 0.037412
+          },
+          {
+            "seconds": 20.012354,
+            "frames": 688,
+            "fps": 34.3788,
+            "geometry_calls": 185217,
+            "geometry_ms_per_frame": 0.040573
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.031532,
+            "frames": 880,
+            "fps": 43.9307,
+            "geometry_calls": 191456,
+            "geometry_ms_per_frame": 0.035369
+          },
+          {
+            "seconds": 20.027374,
+            "frames": 862,
+            "fps": 43.0411,
+            "geometry_calls": 183716,
+            "geometry_ms_per_frame": 0.032975
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 35.5706,
+        "optimized": 43.4859
+      },
+      "fps_change_percent": 22.25
+    },
+    "slow": {
+      "executable_sha256": {
+        "baseline": "51679096ff898fbbe404888368988d0a29cd10ddc2e07165fed9c75e72ecbc38",
+        "optimized": "6efb937e0f90ad5f63cf6196be5fed50935869e28f17e35c51861fa53d8b89df"
+      },
+      "scenario": "slow",
+      "frame_limit_disabled": false,
+      "injected_frame_delay_ms": 25,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.014393,
+            "frames": 662,
+            "fps": 33.0762,
+            "geometry_calls": 26636,
+            "geometry_ms_per_frame": 0.011192
+          },
+          {
+            "seconds": 20.012065,
+            "frames": 662,
+            "fps": 33.08,
+            "geometry_calls": 27096,
+            "geometry_ms_per_frame": 0.010309
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.014509,
+            "frames": 685,
+            "fps": 34.2252,
+            "geometry_calls": 28076,
+            "geometry_ms_per_frame": 0.010984
+          },
+          {
+            "seconds": 20.014845,
+            "frames": 682,
+            "fps": 34.0747,
+            "geometry_calls": 28638,
+            "geometry_ms_per_frame": 0.014249
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 33.0781,
+        "optimized": 34.149950000000004
+      },
+      "fps_change_percent": 3.24
+    }
+  },
+  "qemu_game_profiles": {
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU user, Debian 13 ARM sysroot, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "3793412634d8add0b922ee8cbd6b29b1e4b822de8483ef68ec1601dad2562c2e",
+        "optimized": "84823940dc1db56abd77fad4dfcb6538cd79bd02e1adf6173f4f0ffa0f0108d5"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.028202,
+            "frames": 843,
+            "fps": 42.0906,
+            "geometry_calls": 36562,
+            "geometry_ms_per_frame": 0.191877
+          },
+          {
+            "seconds": 20.014886,
+            "frames": 834,
+            "fps": 41.669,
+            "geometry_calls": 36559,
+            "geometry_ms_per_frame": 0.194602
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.008056,
+            "frames": 871,
+            "fps": 43.5325,
+            "geometry_calls": 37967,
+            "geometry_ms_per_frame": 0.192967
+          },
+          {
+            "seconds": 20.011917,
+            "frames": 891,
+            "fps": 44.5235,
+            "geometry_calls": 38760,
+            "geometry_ms_per_frame": 0.193668
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 41.8798,
+        "optimized": 44.028
+      },
+      "fps_change_percent": 5.13
+    },
+    "arm64": {
+      "arch": "arm64",
+      "environment": "QEMU user, Debian 13 ARM sysroot, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "0841b91591e82161749e611513db322829c4ed4e49fd48d5c77d2fab17cb433d",
+        "optimized": "0a57a68a7cf191add6dbc40aa9485adabd63a6098adfb02f996b566b780cd222"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.022349,
+            "frames": 977,
+            "fps": 48.7955,
+            "geometry_calls": 46756,
+            "geometry_ms_per_frame": 0.203742
+          },
+          {
+            "seconds": 20.020965,
+            "frames": 888,
+            "fps": 44.3535,
+            "geometry_calls": 47364,
+            "geometry_ms_per_frame": 0.205605
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.010951,
+            "frames": 1080,
+            "fps": 53.9704,
+            "geometry_calls": 50433,
+            "geometry_ms_per_frame": 0.188896
+          },
+          {
+            "seconds": 20.015596,
+            "frames": 1080,
+            "fps": 53.9579,
+            "geometry_calls": 48545,
+            "geometry_ms_per_frame": 0.187947
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 46.5745,
+        "optimized": 53.964150000000004
+      },
+      "fps_change_percent": 15.87,
+      "observed_frame_limit_hz": 60,
+      "frame_limit_evidence": "Runtime symbol probe: rate=60, limit_disabled=0, frequency=1000000000; .local/performance/arm64/rate-probe/console.log"
+    }
+  },
+  "render_profiles": {
+    "native": {
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU; no parallel builds",
+      "physical_hardware_tested": false,
+      "game_fps_measured": false,
+      "method": "Three ABBA cycles, seven samples per run, median of six run medians",
+      "comparison": [
+        {
+          "case": "ui-800",
+          "baseline_ms": 2.5195,
+          "optimized_ms": 2.2485,
+          "time_reduction_percent": 10.76,
+          "hash": "ACBF7205"
+        },
+        {
+          "case": "sprites-1024",
+          "baseline_ms": 3.3625,
+          "optimized_ms": 3.1654999999999998,
+          "time_reduction_percent": 5.86,
+          "hash": "7BC183A5"
+        },
+        {
+          "case": "mixed-primitives",
+          "baseline_ms": 40.662,
+          "optimized_ms": 40.620999999999995,
+          "time_reduction_percent": 0.1,
+          "hash": "E37F4E36"
+        },
+        {
+          "case": "ui-after-reset",
+          "baseline_ms": 2.49,
+          "optimized_ms": 2.2424999999999997,
+          "time_reduction_percent": 9.94,
+          "hash": "ACBF7205"
+        }
+      ],
+      "runs": {
+        "baseline": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.534,
+              "min_ms": 2.455,
+              "max_ms": 3.305,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.399,
+              "min_ms": 3.356,
+              "max_ms": 3.442,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.638,
+              "min_ms": 40.212,
+              "max_ms": 40.79,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.489,
+              "min_ms": 2.458,
+              "max_ms": 2.705,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.473,
+              "min_ms": 2.443,
+              "max_ms": 2.501,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.341,
+              "min_ms": 3.31,
+              "max_ms": 3.377,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.83,
+              "min_ms": 40.093,
+              "max_ms": 41.248,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.458,
+              "min_ms": 2.445,
+              "max_ms": 2.492,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.554,
+              "min_ms": 2.493,
+              "max_ms": 2.698,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.352,
+              "min_ms": 3.328,
+              "max_ms": 3.414,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.478,
+              "min_ms": 40.2,
+              "max_ms": 42.089,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.494,
+              "min_ms": 2.441,
+              "max_ms": 2.521,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.561,
+              "min_ms": 2.491,
+              "max_ms": 2.772,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.373,
+              "min_ms": 3.309,
+              "max_ms": 3.922,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.686,
+              "min_ms": 40.481,
+              "max_ms": 41.058,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.491,
+              "min_ms": 2.445,
+              "max_ms": 2.532,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.505,
+              "min_ms": 2.449,
+              "max_ms": 3.053,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.433,
+              "min_ms": 3.333,
+              "max_ms": 4.081,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 41.039,
+              "min_ms": 40.646,
+              "max_ms": 41.198,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.503,
+              "min_ms": 2.43,
+              "max_ms": 2.554,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.454,
+              "min_ms": 2.446,
+              "max_ms": 2.467,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.32,
+              "min_ms": 3.311,
+              "max_ms": 3.413,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.053,
+              "min_ms": 39.913,
+              "max_ms": 42.94,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.467,
+              "min_ms": 2.444,
+              "max_ms": 2.536,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ],
+        "optimized": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.313,
+              "min_ms": 2.271,
+              "max_ms": 2.445,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.175,
+              "min_ms": 3.111,
+              "max_ms": 3.216,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.655,
+              "min_ms": 39.81,
+              "max_ms": 45.691,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.265,
+              "min_ms": 2.261,
+              "max_ms": 2.302,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.218,
+              "min_ms": 2.211,
+              "max_ms": 2.253,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.084,
+              "min_ms": 3.08,
+              "max_ms": 3.11,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 39.756,
+              "min_ms": 39.674,
+              "max_ms": 39.899,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.221,
+              "min_ms": 2.217,
+              "max_ms": 2.277,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.243,
+              "min_ms": 2.227,
+              "max_ms": 2.3,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.209,
+              "min_ms": 3.135,
+              "max_ms": 3.737,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 41.606,
+              "min_ms": 40.949,
+              "max_ms": 42.206,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.309,
+              "min_ms": 2.228,
+              "max_ms": 2.37,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.386,
+              "min_ms": 2.224,
+              "max_ms": 2.69,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.203,
+              "min_ms": 3.119,
+              "max_ms": 3.269,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.64,
+              "min_ms": 40.3,
+              "max_ms": 40.959,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.254,
+              "min_ms": 2.216,
+              "max_ms": 2.329,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.254,
+              "min_ms": 2.215,
+              "max_ms": 2.336,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.156,
+              "min_ms": 3.091,
+              "max_ms": 3.33,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 40.602,
+              "min_ms": 40.238,
+              "max_ms": 40.981,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.231,
+              "min_ms": 2.217,
+              "max_ms": 2.261,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 2.215,
+              "min_ms": 2.197,
+              "max_ms": 2.28,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 3.13,
+              "min_ms": 3.096,
+              "max_ms": 3.198,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 39.827,
+              "min_ms": 39.745,
+              "max_ms": 40.689,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 2.214,
+              "min_ms": 2.211,
+              "max_ms": 2.221,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ]
+      },
+      "fixture_sha256": {
+        "baseline": "9cd6ab9cdce29ab8a1ffb57c71c15ebbbd50c4a6848058e4d97973de630cb806",
+        "optimized": "1200bf79b9b249feb1fc5daeff11e10b11865e4140dcb3a7af8ae2acdaef35e6"
+      }
+    },
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU, SDL dummy/software, single host CPU affinity",
+      "method": "ABBA; seven samples per run; median of two run medians; 2048 draws per scene",
+      "physical_hardware_tested": false,
+      "game_fps_measured": false,
+      "fixture_sha256": {
+        "baseline": "a7b1fdc0cc44eaaf17273cb67c0cdb7cf384e86943fd5a204fb759ff9745a7f0",
+        "optimized": "52006c4b7a06af7fc39756d447b10655a82c72743a3b542232cac433c2b7f4f9"
+      },
+      "runs": {
+        "baseline": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 38.636,
+              "min_ms": 38.383,
+              "max_ms": 38.881,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 64.956,
+              "min_ms": 64.106,
+              "max_ms": 65.79,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 587.089,
+              "min_ms": 586.036,
+              "max_ms": 594.308,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 38.42,
+              "min_ms": 38.237,
+              "max_ms": 40.078,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 38.713,
+              "min_ms": 38.479,
+              "max_ms": 39.579,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 63.846,
+              "min_ms": 63.698,
+              "max_ms": 64.165,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 595.76,
+              "min_ms": 585.705,
+              "max_ms": 607.864,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 38.523,
+              "min_ms": 38.226,
+              "max_ms": 40.181,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ]
+        ],
+        "optimized": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 33.666,
+              "min_ms": 33.594,
+              "max_ms": 33.797,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 61.176,
+              "min_ms": 60.872,
+              "max_ms": 61.346,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 585.633,
+              "min_ms": 578.358,
+              "max_ms": 601.544,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 35.116,
+              "min_ms": 33.873,
+              "max_ms": 41.417,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 34.505,
+              "min_ms": 33.755,
+              "max_ms": 37.151,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 60.845,
+              "min_ms": 60.392,
+              "max_ms": 61.821,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 577.245,
+              "min_ms": 575.006,
+              "max_ms": 596.093,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 33.563,
+              "min_ms": 33.448,
+              "max_ms": 33.674,
+              "draws_per_scene": 2048,
+              "hash": "81F91B73"
+            }
+          ]
+        ]
+      },
+      "comparison": [
+        {
+          "case": "ui-800",
+          "baseline_ms": 38.6745,
+          "optimized_ms": 34.085499999999996,
+          "time_reduction_percent": 11.87,
+          "throughput_increase_percent": 13.46,
+          "framebuffer_hash": "81F91B73"
+        },
+        {
+          "case": "sprites-1024",
+          "baseline_ms": 64.401,
+          "optimized_ms": 61.0105,
+          "time_reduction_percent": 5.26,
+          "throughput_increase_percent": 5.56,
+          "framebuffer_hash": "7BC183A5"
+        },
+        {
+          "case": "mixed-primitives",
+          "baseline_ms": 591.4245000000001,
+          "optimized_ms": 581.4390000000001,
+          "time_reduction_percent": 1.69,
+          "throughput_increase_percent": 1.72,
+          "framebuffer_hash": "E37F4E36"
+        },
+        {
+          "case": "ui-after-reset",
+          "baseline_ms": 38.471500000000006,
+          "optimized_ms": 34.3395,
+          "time_reduction_percent": 10.74,
+          "throughput_increase_percent": 12.03,
+          "framebuffer_hash": "81F91B73"
+        }
+      ]
+    },
+    "aarch64": {
+      "arch": "aarch64",
+      "environment": "QEMU, SDL dummy/software, single host CPU affinity",
+      "method": "ABBA; seven samples per run; median of two run medians; 2048 draws per scene",
+      "physical_hardware_tested": false,
+      "game_fps_measured": false,
+      "fixture_sha256": {
+        "baseline": "45924b7d323d195ca2d68837ca36f3a55aaffa049b113e57949397ac465dc179",
+        "optimized": "5654b613b540e45c437d50fc4377e85dfb6470e7abe2a895b75f0be0d781263c"
+      },
+      "runs": {
+        "baseline": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 35.524,
+              "min_ms": 35.304,
+              "max_ms": 35.92,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 35.001,
+              "min_ms": 34.696,
+              "max_ms": 35.441,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 443.916,
+              "min_ms": 442.856,
+              "max_ms": 448.404,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 35.255,
+              "min_ms": 34.912,
+              "max_ms": 35.787,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 35.688,
+              "min_ms": 35.35,
+              "max_ms": 38.271,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 34.484,
+              "min_ms": 34.001,
+              "max_ms": 34.732,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 434.024,
+              "min_ms": 433.475,
+              "max_ms": 437.929,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 35.341,
+              "min_ms": 35.166,
+              "max_ms": 35.673,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ],
+        "optimized": [
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 33.451,
+              "min_ms": 33.282,
+              "max_ms": 33.915,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 33.751,
+              "min_ms": 32.771,
+              "max_ms": 34.761,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 437.861,
+              "min_ms": 435.236,
+              "max_ms": 441.66,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 33.559,
+              "min_ms": 33.345,
+              "max_ms": 34.076,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ],
+          [
+            {
+              "case": "ui-800",
+              "median_ms": 33.477,
+              "min_ms": 33.213,
+              "max_ms": 36.979,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            },
+            {
+              "case": "sprites-1024",
+              "median_ms": 32.374,
+              "min_ms": 32.143,
+              "max_ms": 33.393,
+              "draws_per_scene": 2048,
+              "hash": "7BC183A5"
+            },
+            {
+              "case": "mixed-primitives",
+              "median_ms": 446.389,
+              "min_ms": 432.083,
+              "max_ms": 449.215,
+              "draws_per_scene": 2048,
+              "hash": "E37F4E36"
+            },
+            {
+              "case": "ui-after-reset",
+              "median_ms": 33.749,
+              "min_ms": 33.245,
+              "max_ms": 35.466,
+              "draws_per_scene": 2048,
+              "hash": "ACBF7205"
+            }
+          ]
+        ]
+      },
+      "comparison": [
+        {
+          "case": "ui-800",
+          "baseline_ms": 35.606,
+          "optimized_ms": 33.464,
+          "time_reduction_percent": 6.02,
+          "throughput_increase_percent": 6.4,
+          "framebuffer_hash": "ACBF7205"
+        },
+        {
+          "case": "sprites-1024",
+          "baseline_ms": 34.7425,
+          "optimized_ms": 33.0625,
+          "time_reduction_percent": 4.84,
+          "throughput_increase_percent": 5.08,
+          "framebuffer_hash": "7BC183A5"
+        },
+        {
+          "case": "mixed-primitives",
+          "baseline_ms": 438.97,
+          "optimized_ms": 442.125,
+          "time_reduction_percent": -0.72,
+          "throughput_increase_percent": -0.71,
+          "framebuffer_hash": "E37F4E36"
+        },
+        {
+          "case": "ui-after-reset",
+          "baseline_ms": 35.298,
+          "optimized_ms": 33.653999999999996,
+          "time_reduction_percent": 4.66,
+          "throughput_increase_percent": 4.89,
+          "framebuffer_hash": "ACBF7205"
+        }
+      ]
+    }
+  },
+  "validation": {
+    "build_tool_tests": 25,
+    "h700_launcher_tests": 5,
+    "frame_pacing_architectures": [
+      "x86_64",
+      "armhf",
+      "aarch64"
+    ],
+    "frame_pacing_cases": [
+      "50/60/120 Hz",
+      "exact deadline",
+      "fractional intervals",
+      "scheduling jitter",
+      "stall recovery without burst",
+      "rate/frequency changes",
+      "disabled limiter",
+      "reset"
+    ],
+    "renderer_checks": [
+      "texture sampling and blending",
+      "fractional tile seams",
+      "clip/transform changes",
+      "render-target switches",
+      "reset and handle recreation"
+    ],
+    "native_campaign": "new campaign, station, hangar, takeoff, space at 800x600; exit 0",
+    "arm_campaign": "same saved campaign loaded, hangar, takeoff, space at 800x600 on ARMHF/AArch64; exit 0"
+  },
+  "limitations": [
+    "No physical handheld FPS measurements or firmware-driver validation.",
+    "SDL dummy/software and QEMU profiling include host overhead; percentages are not device forecasts.",
+    "Twenty-second samples of a starting campaign do not cover late campaigns, combat, or all firmware workloads.",
+    "Debian 13 cross binaries are for QEMU tests, not deployment to older handheld firmware."
+  ]
+}

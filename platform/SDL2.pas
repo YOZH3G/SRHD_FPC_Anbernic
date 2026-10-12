@@ -206,6 +206,7 @@ function SDL_GetHint(Name: PAnsiChar): PAnsiChar; cdecl; external SDL2Library;
 function SDL_SetHint(Name, Value: PAnsiChar): Integer; cdecl; external SDL2Library;
 function SDL_GetTouchDeviceType(TouchID: Int64): Integer; cdecl; external SDL2Library;
 function SDL_GetPerformanceFrequency: QWord; cdecl; external SDL2Library;
+function SDL_GetPerformanceCounter: QWord; cdecl; external SDL2Library;
 function SDL_GetCPUCount: Integer; cdecl; external SDL2Library;
 function SDL_GetSystemRAM: Integer; cdecl; external SDL2Library;
 procedure SDL_free(Data: Pointer); cdecl; external SDL2Library;
