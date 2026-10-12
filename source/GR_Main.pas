@@ -6136,18 +6136,22 @@ begin
     if PresentationDepth = 0 then
     begin
       // SDL vsync and browser refresh callbacks already pace presentation.
-      // The legacy millisecond gate would discard refreshes: at 120 Hz its
-      // strict comparison requires at least 9 ms instead of 8.33 ms.
+      // Wait for a capped deadline instead of discarding a completed draw and
+      // queuing another one. Yield the CPU without requesting a timer delay:
+      // a 1 ms sleep can overshoot short waits on handheld kernels.
       if PresentWithoutLimit or VSyncEnabled or GameWindowUsesCanvas then
       begin
         PresentationPacer.Reset;
         PresentScreenBuffer;
       end
       else
-        if PresentationPacer.Ready(
+      begin
+        while not PresentationPacer.Ready(
             SDL_GetPerformanceCounter, PerformanceCounterFrequency, PresentationFrameRate
-        ) then
-          PresentScreenBuffer;
+        ) do
+          SysUtils.Sleep(0);
+        PresentScreenBuffer;
+      end;
     end;
   end;
 end;

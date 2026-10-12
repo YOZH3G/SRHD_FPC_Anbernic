@@ -1,0 +1,617 @@
+{
+  "date": "2026-10-12",
+  "baseline_commit": "628ca3a91328633d18a063d48b6a09ab71f8c456",
+  "baseline_release": "anbernic-space-fps-2026.10.12",
+  "physical_hardware_tested": false,
+  "optimized_source_sha256": {
+    "platform/GameGraphics.pas": "91983f6c9a05766e9525e65c2f7e73fbf1e5c25a5a225fb4f5c6ca724e61158e",
+    "source/GR_Main.pas": "6fec9b75e2d2d6daad236ef80b9d5943b46e65dfd321ea902a06dd34773c03b4",
+    "tools/tests/presentation_coverage.pas": "21ebda0127f3929783562af172a735a7794e517695b6c98f1477546a4afd98f1",
+    "tools/tests/presentation_throughput.pas": "6436868d8bd8e5cf55e65f38d8b1a35388f76ba322fc74b0eaf00f2a702a10e4"
+  },
+  "final_capped_game_profiles": {
+    "native": {
+      "executable_sha256": {
+        "baseline": "85ab72cea3f2b9ea51f6122389674fb3f7c670d31f6b058c467acfdd86e317c9",
+        "optimized": "b653397a844119baea67679ffe64c11c45c7c0290cf2d0e2263a8c49627792cf"
+      },
+      "scenario": "capped",
+      "frame_limit_disabled": false,
+      "injected_frame_delay_ms": 0,
+      "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+      "physical_hardware_tested": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.004237,
+            "frames": 851,
+            "fps": 42.541,
+            "geometry_calls": 179878,
+            "geometry_ms_per_frame": 0.033966
+          },
+          {
+            "seconds": 20.004166,
+            "frames": 813,
+            "fps": 40.6415,
+            "geometry_calls": 177486,
+            "geometry_ms_per_frame": 0.036695
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.005371,
+            "frames": 1201,
+            "fps": 60.0339,
+            "geometry_calls": 48848,
+            "geometry_ms_per_frame": 0.007994
+          },
+          {
+            "seconds": 20.005844,
+            "frames": 1201,
+            "fps": 60.0325,
+            "geometry_calls": 48260,
+            "geometry_ms_per_frame": 0.008305
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 41.59125,
+        "optimized": 60.0332
+      },
+      "fps_change_percent": 44.34
+    },
+    "armhf": {
+      "arch": "armhf",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "8aa5e637cbacfbca408ba848065aa77cfc1cc2307e512f3f88407517be9bad4d",
+        "optimized": "7722a66ee50e9bf32e3da76091cd4c9a5d3dce142c78ebbf44c05ed95a2e58c4"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.011533,
+            "frames": 1032,
+            "fps": 51.5703,
+            "geometry_calls": 44988,
+            "geometry_ms_per_frame": 0.180549
+          },
+          {
+            "seconds": 20.023918,
+            "frames": 1023,
+            "fps": 51.0889,
+            "geometry_calls": 45819,
+            "geometry_ms_per_frame": 0.18254
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.019328,
+            "frames": 1119,
+            "fps": 55.896,
+            "geometry_calls": 46420,
+            "geometry_ms_per_frame": 0.174406
+          },
+          {
+            "seconds": 20.024122,
+            "frames": 1136,
+            "fps": 56.7316,
+            "geometry_calls": 46002,
+            "geometry_ms_per_frame": 0.165247
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 51.3296,
+        "optimized": 56.3138
+      },
+      "fps_change_percent": 9.71
+    },
+    "aarch64": {
+      "arch": "arm64",
+      "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+      "physical_hardware_tested": false,
+      "game_fps_measured": true,
+      "frame_limit_disabled": false,
+      "vsync": false,
+      "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+      "executable_sha256": {
+        "baseline": "5a362951704989e40e50990b0dbd72cf61c2d40a0adcf1ed9fd63c90a5831ccc",
+        "optimized": "b2a562291f1f5bdbb2c61f1ce0a1bd84ab392383ea68190a15de27bb6c34a7e4"
+      },
+      "runs": {
+        "baseline": [
+          {
+            "seconds": 20.008388,
+            "frames": 927,
+            "fps": 46.3306,
+            "geometry_calls": 41235,
+            "geometry_ms_per_frame": 0.198384
+          },
+          {
+            "seconds": 20.013491,
+            "frames": 900,
+            "fps": 44.9697,
+            "geometry_calls": 41662,
+            "geometry_ms_per_frame": 0.196094
+          }
+        ],
+        "optimized": [
+          {
+            "seconds": 20.020747,
+            "frames": 957,
+            "fps": 47.8004,
+            "geometry_calls": 38869,
+            "geometry_ms_per_frame": 0.155353
+          },
+          {
+            "seconds": 20.013434,
+            "frames": 953,
+            "fps": 47.618,
+            "geometry_calls": 39014,
+            "geometry_ms_per_frame": 0.159196
+          }
+        ]
+      },
+      "median_fps": {
+        "baseline": 45.65015,
+        "optimized": 47.7092
+      },
+      "fps_change_percent": 4.51
+    }
+  },
+  "clear_only_controls": {
+    "scope": "intermediate build with only redundant window clear removed; not the final pacing implementation",
+    "capped": {
+      "armhf": {
+        "arch": "armhf",
+        "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+        "physical_hardware_tested": false,
+        "game_fps_measured": true,
+        "frame_limit_disabled": false,
+        "vsync": false,
+        "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+        "executable_sha256": {
+          "baseline": "8aa5e637cbacfbca408ba848065aa77cfc1cc2307e512f3f88407517be9bad4d",
+          "optimized": "d0906bbd8583c44e0003ce20f6a159cba7aae46a89c80c1228cae5a9f3ea0394"
+        },
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 20.009068,
+              "frames": 1011,
+              "fps": 50.5271,
+              "geometry_calls": 43981,
+              "geometry_ms_per_frame": 0.184187
+            },
+            {
+              "seconds": 20.020071,
+              "frames": 1067,
+              "fps": 53.2965,
+              "geometry_calls": 45302,
+              "geometry_ms_per_frame": 0.17675
+            }
+          ],
+          "optimized": [
+            {
+              "seconds": 20.024986,
+              "frames": 1043,
+              "fps": 52.0849,
+              "geometry_calls": 46028,
+              "geometry_ms_per_frame": 0.185923
+            },
+            {
+              "seconds": 20.040611,
+              "frames": 1023,
+              "fps": 51.0463,
+              "geometry_calls": 46453,
+              "geometry_ms_per_frame": 0.184733
+            }
+          ]
+        },
+        "median_fps": {
+          "baseline": 51.9118,
+          "optimized": 51.5656
+        },
+        "fps_change_percent": -0.67
+      },
+      "aarch64": {
+        "arch": "arm64",
+        "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+        "physical_hardware_tested": false,
+        "game_fps_measured": true,
+        "frame_limit_disabled": false,
+        "vsync": false,
+        "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+        "executable_sha256": {
+          "baseline": "5a362951704989e40e50990b0dbd72cf61c2d40a0adcf1ed9fd63c90a5831ccc",
+          "optimized": "4a32ac4045863bc7b61f8f1e2e4f67f38ea283079a9a6a47e41802e59c7b1bff"
+        },
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 20.011949,
+              "frames": 933,
+              "fps": 46.6221,
+              "geometry_calls": 41905,
+              "geometry_ms_per_frame": 0.169742
+            },
+            {
+              "seconds": 20.011152,
+              "frames": 930,
+              "fps": 46.4741,
+              "geometry_calls": 40772,
+              "geometry_ms_per_frame": 0.185405
+            }
+          ],
+          "optimized": [
+            {
+              "seconds": 20.012795,
+              "frames": 886,
+              "fps": 44.2717,
+              "geometry_calls": 42049,
+              "geometry_ms_per_frame": 0.216812
+            },
+            {
+              "seconds": 20.018973,
+              "frames": 942,
+              "fps": 47.0554,
+              "geometry_calls": 42866,
+              "geometry_ms_per_frame": 0.159042
+            }
+          ]
+        },
+        "median_fps": {
+          "baseline": 46.548100000000005,
+          "optimized": 45.66355
+        },
+        "fps_change_percent": -1.9
+      }
+    },
+    "uncapped": {
+      "native": {
+        "executable_sha256": {
+          "baseline": "85ab72cea3f2b9ea51f6122389674fb3f7c670d31f6b058c467acfdd86e317c9",
+          "optimized": "f4ca32a774492fd59514722cb8f00575fc7e1d5b5e2c21492523697e9aca10ff"
+        },
+        "scenario": "unbounded",
+        "frame_limit_disabled": true,
+        "injected_frame_delay_ms": 0,
+        "environment": "Native Linux x86_64, SDL dummy/software, one CPU, vsync disabled, same campaign autosave loaded before each run",
+        "physical_hardware_tested": false,
+        "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 20.006462,
+              "frames": 5390,
+              "fps": 269.413,
+              "geometry_calls": 221049,
+              "geometry_ms_per_frame": 0.006766
+            },
+            {
+              "seconds": 20.004814,
+              "frames": 5417,
+              "fps": 270.7848,
+              "geometry_calls": 222197,
+              "geometry_ms_per_frame": 0.008181
+            }
+          ],
+          "optimized": [
+            {
+              "seconds": 20.002798,
+              "frames": 5493,
+              "fps": 274.6116,
+              "geometry_calls": 221859,
+              "geometry_ms_per_frame": 0.006407
+            },
+            {
+              "seconds": 20.003228,
+              "frames": 5464,
+              "fps": 273.1559,
+              "geometry_calls": 225072,
+              "geometry_ms_per_frame": 0.006483
+            }
+          ]
+        },
+        "median_fps": {
+          "baseline": 270.0989,
+          "optimized": 273.88374999999996
+        },
+        "fps_change_percent": 1.4
+      },
+      "armhf": {
+        "arch": "armhf",
+        "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+        "physical_hardware_tested": false,
+        "game_fps_measured": true,
+        "frame_limit_disabled": true,
+        "vsync": false,
+        "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+        "executable_sha256": {
+          "baseline": "8aa5e637cbacfbca408ba848065aa77cfc1cc2307e512f3f88407517be9bad4d",
+          "optimized": "d0906bbd8583c44e0003ce20f6a159cba7aae46a89c80c1228cae5a9f3ea0394"
+        },
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 20.019616,
+              "frames": 1123,
+              "fps": 56.095,
+              "geometry_calls": 45563,
+              "geometry_ms_per_frame": 0.165205
+            },
+            {
+              "seconds": 20.019023,
+              "frames": 1099,
+              "fps": 54.8978,
+              "geometry_calls": 44116,
+              "geometry_ms_per_frame": 0.170295
+            }
+          ],
+          "optimized": [
+            {
+              "seconds": 20.016501,
+              "frames": 1152,
+              "fps": 57.5525,
+              "geometry_calls": 47267,
+              "geometry_ms_per_frame": 0.168163
+            },
+            {
+              "seconds": 20.007656,
+              "frames": 1146,
+              "fps": 57.2781,
+              "geometry_calls": 46576,
+              "geometry_ms_per_frame": 0.164266
+            }
+          ]
+        },
+        "median_fps": {
+          "baseline": 55.496399999999994,
+          "optimized": 57.4153
+        },
+        "fps_change_percent": 3.46
+      },
+      "aarch64": {
+        "arch": "arm64",
+        "environment": "QEMU user, Ubuntu 20.04 ARM sysroot; SDL 2.32.4 built for headless tests, SDL dummy/software, one host CPU, 800x600, same campaign autosave before each run",
+        "physical_hardware_tested": false,
+        "game_fps_measured": true,
+        "frame_limit_disabled": true,
+        "vsync": false,
+        "method": "ABBA, four 20-second space samples; profiler overhead applies to both versions",
+        "executable_sha256": {
+          "baseline": "5a362951704989e40e50990b0dbd72cf61c2d40a0adcf1ed9fd63c90a5831ccc",
+          "optimized": "4a32ac4045863bc7b61f8f1e2e4f67f38ea283079a9a6a47e41802e59c7b1bff"
+        },
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 20.01683,
+              "frames": 1040,
+              "fps": 51.9563,
+              "geometry_calls": 44157,
+              "geometry_ms_per_frame": 0.179344
+            },
+            {
+              "seconds": 20.007528,
+              "frames": 1029,
+              "fps": 51.4306,
+              "geometry_calls": 41814,
+              "geometry_ms_per_frame": 0.172624
+            }
+          ],
+          "optimized": [
+            {
+              "seconds": 20.012888,
+              "frames": 1081,
+              "fps": 54.0152,
+              "geometry_calls": 44496,
+              "geometry_ms_per_frame": 0.175624
+            },
+            {
+              "seconds": 20.007446,
+              "frames": 1096,
+              "fps": 54.7796,
+              "geometry_calls": 44911,
+              "geometry_ms_per_frame": 0.160917
+            }
+          ]
+        },
+        "median_fps": {
+          "baseline": 51.69345,
+          "optimized": 54.397400000000005
+        },
+        "fps_change_percent": 5.23
+      }
+    }
+  },
+  "validation": {
+    "tooling_tests_passed": 30,
+    "frame_pacing": [
+      "50/60/120 Hz",
+      "fractional intervals",
+      "stalls",
+      "reset and frequency/rate changes"
+    ],
+    "pixel_fixtures": [
+      "presentation_coverage",
+      "texture_state",
+      "ui_tile_seams",
+      "clip_transform"
+    ],
+    "architectures": [
+      "native x86_64",
+      "ARMHF",
+      "AArch64"
+    ],
+    "presentation_coverage": [
+      "desktop and native raster",
+      "full output",
+      "window resize",
+      "horizontal and vertical letterboxing",
+      "gamma ramp",
+      "reset"
+    ],
+    "game_scenario": "load same campaign autosave, hangar, takeoff, 20 seconds in space; four ABBA runs per architecture; current captures and exit 0 required"
+  },
+  "limitations": [
+    "SDL dummy/software in cloud; ARM runs use QEMU, not physical handhelds",
+    "No physical GPU/display/audio/controller validation",
+    "One early-campaign scene; late campaign and battle not measured",
+    "FPS report counts the first frame at interval start, so a 60 Hz capped sample can read approximately 60.03 FPS"
+  ],
+  "presentation_throughput": {
+    "environment": "SDL dummy/software, 800x600, one host CPU; ARM via QEMU with Ubuntu 20.04 sysroot",
+    "physical_hardware_tested": false,
+    "scope": "synthetic clear-screen-buffer + direct presentation cycle, no game FPS limiter",
+    "method": "ABBA; each run takes seven samples of 100 frames after ten warmup frames; median of two run medians",
+    "results": {
+      "native": {
+        "runs": {
+          "baseline": [
+            {
+              "median_ms": 0.384376,
+              "min_ms": 0.380455,
+              "max_ms": 0.390696,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 0.382061,
+              "min_ms": 0.37819,
+              "max_ms": 0.385472,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ],
+          "optimized": [
+            {
+              "median_ms": 0.311796,
+              "min_ms": 0.305783,
+              "max_ms": 0.313991,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 0.311228,
+              "min_ms": 0.307369,
+              "max_ms": 0.314198,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ]
+        },
+        "median_ms": {
+          "baseline": 0.3832185,
+          "optimized": 0.311512
+        },
+        "time_reduction_percent": 18.71,
+        "executable_sha256": {
+          "baseline": "356ed6090e783b43c83df17031938da086e60657fe88cc7cf7651828744977e2",
+          "optimized": "993460f4c43d9e2b5108309a5e0991ebafd8311b8cea3f257739f7096f268f0f"
+        }
+      },
+      "armhf": {
+        "runs": {
+          "baseline": [
+            {
+              "median_ms": 1.682973,
+              "min_ms": 1.679705,
+              "max_ms": 1.697776,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 1.720728,
+              "min_ms": 1.709075,
+              "max_ms": 1.731856,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ],
+          "optimized": [
+            {
+              "median_ms": 1.129745,
+              "min_ms": 1.12143,
+              "max_ms": 1.146309,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 1.135813,
+              "min_ms": 1.127857,
+              "max_ms": 1.180871,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ]
+        },
+        "median_ms": {
+          "baseline": 1.7018505,
+          "optimized": 1.132779
+        },
+        "time_reduction_percent": 33.44,
+        "executable_sha256": {
+          "baseline": "34e7c88df2aa287f490dd033ceb45cc489042b1c8c2c10c3f8a514a5dc6cfc1b",
+          "optimized": "c753e0c80ae01c1b46766202e75a4526a6826f41064b4d8c758f4a2edb71463e"
+        }
+      },
+      "arm64": {
+        "runs": {
+          "baseline": [
+            {
+              "median_ms": 1.691084,
+              "min_ms": 1.679108,
+              "max_ms": 1.718792,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 1.675294,
+              "min_ms": 1.671354,
+              "max_ms": 1.707878,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ],
+          "optimized": [
+            {
+              "median_ms": 1.164803,
+              "min_ms": 1.158323,
+              "max_ms": 1.189207,
+              "frames_per_sample": 100,
+              "samples": 7
+            },
+            {
+              "median_ms": 1.180849,
+              "min_ms": 1.162283,
+              "max_ms": 1.23949,
+              "frames_per_sample": 100,
+              "samples": 7
+            }
+          ]
+        },
+        "median_ms": {
+          "baseline": 1.683189,
+          "optimized": 1.1728260000000001
+        },
+        "time_reduction_percent": 30.32,
+        "executable_sha256": {
+          "baseline": "fe63d69ad739abf7f61f475d1a0416b3e3fb9fb830b547d1ffc037a647146c2d",
+          "optimized": "0138e49e5dbb4c84781761d3544b7008e8295a888e79c73b666ea9f4ca5d8bd0"
+        }
+      }
+    }
+  },
+  "maximum_glibc_symbol": {
+    "armhf": "2.4",
+    "arm64": "2.17"
+  }
+}

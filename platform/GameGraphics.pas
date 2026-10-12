@@ -1073,6 +1073,7 @@ var
   Viewport: TRect;
   Destination: TSDL_Rect;
   DestinationPtr: PSDL_Rect;
+  CoversOutput: Boolean;
 begin
   TestCooperativeLevel;
   Screen := ImageOf(ScreenSurface);
@@ -1122,8 +1123,21 @@ begin
     // Desktop SDL transforms Retina mouse events through this logical view.
     Check(SDL_RenderSetLogicalSize(GameSDLRenderer, Screen.Desc.Width, Screen.Desc.Height));
   Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
-  Check(SDL_SetRenderDrawColor(GameSDLRenderer, 0, 0, 0, 255));
-  Check(SDL_RenderClear(GameSDLRenderer));
+  Check(SDL_GetRendererOutputSize(GameSDLRenderer, OutputWidth, OutputHeight));
+  if DestinationPtr <> nil then
+    CoversOutput := (Destination.X = 0) and (Destination.Y = 0)
+        and (Destination.W = OutputWidth) and (Destination.H = OutputHeight)
+  else
+    CoversOutput := QWord(OutputWidth) * Screen.Desc.Height
+        = QWord(OutputHeight) * Screen.Desc.Width;
+  // An unblended full-window copy replaces every output pixel. Clear only
+  // when the fitted image leaves letterbox bars; avoid writing the complete
+  // window twice on handheld software renderers and memory-bound GPUs.
+  if not CoversOutput then
+  begin
+    Check(SDL_SetRenderDrawColor(GameSDLRenderer, 0, 0, 0, 255));
+    Check(SDL_RenderClear(GameSDLRenderer));
+  end;
   if Texture = Screen.Handle then
     Screen.SetBlend(SDL_BLENDMODE_NONE)
   else
@@ -1139,7 +1153,6 @@ begin
   end
   else
   begin
-    Check(SDL_GetRendererOutputSize(GameSDLRenderer, OutputWidth, OutputHeight));
     Scale := Min(OutputWidth / Screen.RasterWidth, OutputHeight / Screen.RasterHeight);
     if (Scale >= 1) and (Scale = Round(Scale)) then
       Filter := SDL_ScaleModeNearest;
