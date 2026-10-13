@@ -19,6 +19,7 @@ var
   Field: TStarFieldGI;
   Image: PSpaceImageGI;
   Gi: array[0..255] of Byte;
+  EmptyGi: TgiHeaderGR;
   Compressed: array[0..511] of Byte;
   Header: PgiHeaderGR;
   Plane: PgiPlaneGR;
@@ -60,8 +61,15 @@ begin
   Inc(Offset, RawSize);
   Entries^[1].DataOffset := Offset; Entries^[1].DataSize := PackedSize;
   Move(Compressed[0], (PByte(Data.RawGaiData) + Offset)^, PackedSize);
-  // Frame 2 has no pixels. Its cached origin remains zero.
+  // Frame 2 is stored but has an empty content rectangle and no planes. Its
+  // cached origin remains zero and warm draws must not decode it again.
   Inc(Offset, PackedSize);
+  EmptyGi := Header^;
+  EmptyGi.Bounds := Types.Rect(7, 11, 7, 11);
+  EmptyGi.PlaneCount := 0;
+  Entries^[2].DataOffset := Offset; Entries^[2].DataSize := SizeOf(EmptyGi);
+  Move(EmptyGi, (PByte(Data.RawGaiData) + Offset)^, SizeOf(EmptyGi));
+  Inc(Offset, SizeOf(EmptyGi));
   Data.SequenceTableData := Pointer(PByte(Data.RawGaiData) + Offset);
   Data.SequenceTableData.SequenceCount := 1;
   PInteger(PByte(Data.SequenceTableData) + 8)^ := 16;
@@ -107,7 +115,7 @@ begin
       Direct3DDevice.Clear(0, nil, D3DCLEAR_TARGET, $FF123456, 1, 0);
       Scene.Draw(Clip);
       if Control.RetainCount <> 1 then raise Exception.Create('Cache retain count changed');
-      if (Cycle = 1) and (CaseIndex mod 3 <> 2) then
+      if Cycle = 1 then
         if Data.DecodedFrameGi.IsEmpty = ExpectWarmDecode then
           raise Exception.CreateFmt('Unexpected warm-cache GI decode in case %d (baseline=%s)',
               [CaseIndex, BoolToStr(ExpectWarmDecode, True)]);
@@ -145,7 +153,7 @@ begin
       Direct3DDevice.Clear(0, nil, D3DCLEAR_TARGET, $FF123456, 1, 0);
       Field.DrawBackground(Clip);
       if (Cycle = 1) and Data.DecodedFrameGi.IsEmpty then
-        raise Exception.Create('Unexpected warm background decode');
+        raise Exception.Create('Missing warm background decode for frame bounds');
       if Field.BackgroundCache.RetainCount <> 1 then
         raise Exception.Create('Background retain count changed');
       if SDL_RenderReadPixels(GameSDLRenderer, @Rect, SDL_PIXELFORMAT_ARGB8888,

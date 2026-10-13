@@ -33,6 +33,9 @@ type
     SkipPalettedColorCacheBuild: Boolean;
     FrameSurfaceCache: TTextureGR;
     CachedFrameOrigins: array of TPoint;
+    // Frames without drawable content; they never get a texture, so remember
+    // them instead of decoding them again on every draw.
+    EmptyFrames: array of Boolean;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
@@ -137,6 +140,7 @@ begin
     FrameSurfaceCache := nil;
     SetLength(CachedFrameOrigins, 0);
   end;
+  SetLength(EmptyFrames, 0);
   inherited Destroy;
 end;
 
@@ -172,12 +176,20 @@ begin
   Texture := FrameSurfaceCache.GetSurface(FrameIndex);
   if Texture = nil then
   begin
+    if (FrameIndex >= 0) and (FrameIndex < Header.FrameCount) then
+    begin
+      if Length(EmptyFrames) < Header.FrameCount then
+        SetLength(EmptyFrames, Header.FrameCount);
+      if EmptyFrames[FrameIndex] then
+        Exit(nil);
+    end;
     Frame := LoadFrameGi(FrameIndex);
     if Frame <> nil then
     begin
       FrameSize := Frame.GetContentSize;
       if (FrameSize.X = 0) or (FrameSize.Y = 0) then
       begin
+        EmptyFrames[FrameIndex] := True;
         Result := nil;
         Exit;
       end;
@@ -198,7 +210,9 @@ begin
       CachedFrameOrigins[FrameIndex].X := Origin.X - Header.Bounds.Left;
       CachedFrameOrigins[FrameIndex].Y := Origin.Y - Header.Bounds.Top;
       FrameSurfaceCache.SetSurface(Texture, FrameIndex);
-    end;
+    end
+    else if (FrameIndex >= 0) and (FrameIndex < Length(EmptyFrames)) then
+      EmptyFrames[FrameIndex] := True;
   end;
   Result := Texture;
 end;
