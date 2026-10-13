@@ -6129,6 +6129,10 @@ begin
 end;
 
 procedure EndFramePresentation;
+const
+  PresentationSleepMarginMs = 2;
+var
+  Counter, Remaining, SleepMargin: QWord;
 begin
   if PresentationDepth > 0 then
   begin
@@ -6137,8 +6141,9 @@ begin
     begin
       // SDL vsync and browser refresh callbacks already pace presentation.
       // Wait for a capped deadline instead of discarding a completed draw and
-      // queuing another one. Yield the CPU without requesting a timer delay:
-      // a 1 ms sleep can overshoot short waits on handheld kernels.
+      // queuing another one. Sleep through most of the wait, but only yield
+      // during the final margin: a timer sleep can overshoot short waits on
+      // handheld kernels, while yielding for a whole frame keeps a core busy.
       if PresentWithoutLimit or VSyncEnabled or GameWindowUsesCanvas then
       begin
         PresentationPacer.Reset;
@@ -6146,10 +6151,20 @@ begin
       end
       else
       begin
-        while not PresentationPacer.Ready(
-            SDL_GetPerformanceCounter, PerformanceCounterFrequency, PresentationFrameRate
-        ) do
-          SysUtils.Sleep(0);
+        SleepMargin := QWord(PerformanceCounterFrequency) * PresentationSleepMarginMs div 1000;
+        while True do
+        begin
+          Counter := SDL_GetPerformanceCounter;
+          if PresentationPacer.Ready(Counter, PerformanceCounterFrequency, PresentationFrameRate) then
+            Break;
+          Remaining := PresentationPacer.Remaining(
+              Counter, PerformanceCounterFrequency, PresentationFrameRate
+          );
+          if Remaining > SleepMargin then
+            SysUtils.Sleep((Remaining - SleepMargin) * 1000 div QWord(PerformanceCounterFrequency))
+          else
+            SysUtils.Sleep(0);
+        end;
         PresentScreenBuffer;
       end;
     end;

@@ -40,5 +40,18 @@ begin
   Require(Pacer.Ready(5034, 0, 50), 'Unavailable counter frequency');
   Pacer.Reset;
   Require(Pacer.Ready(0, 1000, 50), 'Reset retained a future deadline');
-  WriteLn('PASS: 50/60/120 Hz, exact deadlines, jitter, stalls, rate changes and reset');
+  // Remaining must agree with Ready so callers can sleep until the deadline.
+  Pacer.Reset;
+  Require(Pacer.Remaining(0, 1000, 50) = 0, 'Uninitialized pacer reported a wait');
+  Require(Pacer.Ready(0, 1000, 50), 'First frame after reset');
+  Require(Pacer.Remaining(5, 1000, 50) = 15, 'Remaining interval');
+  Require(Pacer.Remaining(19, 1000, 50) = 1, 'Remaining before deadline');
+  Require(Pacer.Remaining(20, 1000, 50) = 0, 'Remaining at deadline');
+  Require(Pacer.Remaining(25, 1000, 50) = 0, 'Remaining after deadline');
+  Require(Pacer.Remaining(5, 1000, 100) = 0, 'Rate change must not wait for the old deadline');
+  Require(Pacer.Remaining(5, 2000, 50) = 0, 'Frequency change must not wait in old units');
+  Require(Pacer.Remaining(5, 1000, 0) = 0, 'Disabled limiter reported a wait');
+  Require(not Pacer.Ready(19, 1000, 50), 'Remaining changed the deadline');
+  Require(Pacer.Ready(20, 1000, 50), 'Deadline after Remaining queries');
+  WriteLn('PASS: 50/60/120 Hz, exact deadlines, jitter, stalls, rate changes, reset and remaining time');
 end.

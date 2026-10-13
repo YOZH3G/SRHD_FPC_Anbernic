@@ -12,6 +12,8 @@ type
   public
     procedure Reset;
     function Ready(Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal): Boolean;
+    // Counter ticks left before Ready can succeed; 0 when it would succeed now.
+    function Remaining(Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal): QWord;
   end;
 
 implementation
@@ -19,6 +21,17 @@ implementation
 procedure TGameFramePacer.Reset;
 begin
   Initialized := False;
+end;
+
+function TGameFramePacer.Remaining(
+    Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal
+): QWord;
+begin
+  if not Initialized or (CounterFrequency = 0) or (TargetFrameRate = 0)
+      or (Frequency <> CounterFrequency) or (FrameRate <> TargetFrameRate)
+      or (Counter >= NextCounter) then
+    Exit(0);
+  Result := NextCounter - Counter;
 end;
 
 function TGameFramePacer.Ready(
