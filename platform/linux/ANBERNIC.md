@@ -9,7 +9,7 @@
 
 | Модель | Прошивка и архив |
 | --- | --- |
-| RG35XX Plus, H, SP, 2024; RG28XX; RG40XX H/V | muOS: `SpaceRangersHD-H700-muOS.zip`; KNULLI: `SpaceRangersHD-H700-KNULLI.zip` |
+| RG35XX Plus, H, SP, 2024; RG28XX; RG34XX SP; RG40XX H/V | muOS: `SpaceRangersHD-H700-muOS.zip`; KNULLI: `SpaceRangersHD-H700-KNULLI.zip`; стоковая прошивка или Stock OS Mod: `SpaceRangersHD-H700-StockOS.zip` |
 | RG353P, RG353PS | ROCKNIX: `SpaceRangersHD-Rockchip-ROCKNIX.zip` |
 | RG353V, RG353VS, RG353M | ArkOS: `SpaceRangersHD-Rockchip-ArkOS.zip`; ROCKNIX: `SpaceRangersHD-Rockchip-ROCKNIX.zip` |
 | RG351P/M/V/MP | ArkOS: `SpaceRangersHD-Rockchip-ArkOS.zip`; AmberELEC: `SpaceRangersHD-Rockchip-AmberELEC.zip` |
@@ -21,8 +21,8 @@ ARMHF и AArch64; запуск выбирает вариант по разряд
 Остальные пакеты требуют AArch64. Один пакет подходит нескольким моделям с одной
 архитектурой и прошивкой; отдельная компиляция для каждого названия не требуется.
 
-RG35XX 2024 использует H700. Оригинальный RG35XX 2022/2023 с GarlicOS 1.x,
-Android-прошивки и штатные прошивки Anbernic этими пакетами не охвачены.
+RG35XX 2024 и RG34XX SP используют H700. Оригинальный RG35XX 2022/2023
+с GarlicOS 1.x, 32-битные стоковые прошивки и Android этими пакетами не охвачены.
 
 ## Требования
 
@@ -66,11 +66,47 @@ SDL2 и звуковые/GPU-драйверы используются из пр
 в `spacerangershd/log.txt`. Перед заменой старого пакета сохраните его профиль
 и используйте чистый каталог библиотек нового пакета.
 
+## Стоковая прошивка Anbernic и Stock OS Mod
+
+Пакет `SpaceRangersHD-H700-StockOS.zip` рассчитан на 64-битную стоковую
+прошивку Anbernic для H700 и на её модификацию
+[Stock OS Mod](https://github.com/cbepx-me/Anbernic-H700-RG-xx-StockOS-Modification).
+PortMaster не нужен: в пакет входит собственный gptokeyb для управления.
+
+1. Распакуйте архив в папку `Roms/APPS` на карте с играми: рядом окажутся
+   `Space Rangers HD.sh` и папка `spacerangershd`.
+2. Скопируйте ресурсы игры в `Roms/APPS/spacerangershd/game/`, как в шаге 4
+   установки выше.
+3. Откройте раздел «Приложения» (App Center) и запустите **Space Rangers HD**.
+
+Меню стоковой прошивки не показывает вывод приложений, поэтому журнал
+запуска пишется в `spacerangershd/log.txt`. Select+Start закрывает игру.
+
+Что учитывает лаунчер:
+
+- Меню запускает приложения с путём к библиотекам, где первой стоит старая
+  SDL 2.0.12 из `/usr/lib`. Лаунчер ставит вперёд SDL 2.28.5 из
+  `/usr/lib/aarch64-linux-gnu` с драйвером Mali; без этого игра не запустится.
+- В прошивке есть PortMaster 6.55 со старым gptokeyb, который не двигает курсор
+  крестовиной, а у RG34XX SP нет стиков. Поэтому используется gptokeyb из
+  пакета, собранный из закреплённой ревизии
+  [PortsMaster/gptokeyb](https://github.com/PortsMaster/gptokeyb) (GPL-2.0).
+  Его лицензия и исходники лежат в `spacerangershd/licenses/`.
+- Номера кнопок встроенного геймпада `ANBERNIC-keys` взяты из настроек
+  RetroArch в прошивке. Select работает как Escape, Menu не назначена.
+
+Проверено на образе RG34XX SP V1.0.6 со Stock OS Mod v3.9.9: под QEMU на
+библиотеках этой прошивки (Ubuntu 22.04, glibc 2.35, SDL 2.28.5) игра проходит
+меню, новую игру, станцию, ангар и вылет; SDL прошивки применяет раскладку
+кнопок; gptokeyb загружается и читает конфигурацию. На настоящей приставке
+экран Mali, звук и кнопки не проверены. Другие модели со стоковой прошивкой H700
+используют ту же систему, но их образы отдельно не проверялись.
+
 ## Управление
 
 Крестовина или левый стик двигают курсор. A/B — левая/правая кнопка мыши;
 Start/R1 — Enter; Select — Escape; X — пробел; Y — Tab; L1 — медленный курсор.
-Select+Start завершает игру через PortMaster. Стики не обязательны.
+Select+Start завершает игру. Стики не обязательны.
 
 ### Экранная клавиатура RU/EN
 

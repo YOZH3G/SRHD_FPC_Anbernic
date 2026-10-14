@@ -20,6 +20,7 @@ MODELS = [
     "RG28XX",
     "RG40XX H",
     "RG40XX V",
+    "RG34XX SP",
 ]
 
 
@@ -32,13 +33,17 @@ def package(
     directory: str | None = None,
 ) -> Path:
     arches = ("armhf", "aarch64") if firmware == "muOS" else ("aarch64",)
+    stock = firmware == "StockOS"
     staging = output / f"{family}-{firmware}"
     if staging.exists():
         raise FileExistsError(f"Remove or choose another staging directory: {staging}")
     port = staging / "spacerangershd"
     port.mkdir(parents=True)
     launcher = staging / "Space Rangers HD.sh"
-    shutil.copy2(ROOT / "platform/linux/Space Rangers HD PortMaster.sh", launcher)
+    shutil.copy2(
+        ROOT / "platform/linux" / ("Space Rangers HD Stock.sh" if stock else "Space Rangers HD PortMaster.sh"),
+        launcher,
+    )
     launcher.chmod(0o755)
     shutil.copy2(ROOT / "platform/linux/rangers.gptk", port / "rangers.gptk")
     licenses = port / "licenses"
@@ -76,6 +81,8 @@ def package(
             if source is None:
                 raise FileNotFoundError(f"Missing SDK library: {name}")
             shutil.copy2(source, library_dir / name)
+        if stock:
+            build_gptokeyb(sdk, triplet, port / f"gptokeyb.{arch}", licenses)
         probe = port / f"check-platform.{arch}"
         subprocess.run(
             [
@@ -92,7 +99,7 @@ def package(
             ],
             check=True,
         )
-        for path in (binary, probe, *library_dir.iterdir()):
+        for path in (binary, probe, *port.glob("gptokeyb.*"), *library_dir.iterdir()):
             # Keep upstream's game debug information and the exact tested binary.
             # Only the helper and native libraries are stripped for packaging.
             if path != binary:
@@ -112,26 +119,32 @@ def package(
                 licenses / f"{package_name}.txt",
             )
     if directory is None:
-        directory = (
-            "/mnt/mmc/ROMS/Ports" if firmware == "muOS" else "/userdata/roms/ports"
-        )
+        directory = {
+            "muOS": "/mnt/mmc/ROMS/Ports",
+            "StockOS": "Roms/APPS",
+        }.get(firmware, "/userdata/roms/ports")
     model_note = (
         "RG35XX 2024 — версия с H700, не оригинальный RG35XX 2022/2023.\n"
         if family == "H700"
         else "Используйте прошивку, предназначенную для конкретной модели.\n"
     )
-    storage_note = (
-        "   На второй карте muOS каталог может быть /mnt/sdcard/ROMS/Ports.\n"
-        if firmware == "muOS"
-        else "   ArkOS: на второй карте /roms2/ports; ROCKNIX: также /storage/roms/ports.\n"
-    )
+    storage_note = {
+        "muOS": "   На второй карте muOS каталог может быть /mnt/sdcard/ROMS/Ports.\n",
+        "KNULLI": "",
+        "StockOS": "   Это папка Roms/APPS на карте с играми (TF1 или TF2).\n"
+        "   Игра появится в разделе «Приложения» (App Center).\n",
+    }.get(firmware, "   ArkOS: на второй карте /roms2/ports; ROCKNIX: также /storage/roms/ports.\n")
     architecture_note = (
         "В пакет muOS входят ARMHF и AArch64; выбор по разрядности userland.\n"
         if firmware == "muOS"
+        else "Подходит стоковая прошивка Anbernic и Stock OS Mod, только 64-битные.\n"
+        "PortMaster не нужен: управление обеспечивает gptokeyb из пакета.\n"
+        if stock
         else "В пакет входит AArch64; требуется 64-битная Linux-прошивка.\n"
     )
     display_note = (
-        "Стики не обязательны. RG28XX: экран 640x480; масштабирование fullscreen.\n"
+        "Стики не обязательны. RG28XX: экран 640x480, RG34XX SP: 720x480;\n"
+        "кадр масштабируется в fullscreen с сохранением пропорций.\n"
         if family == "H700"
         else "Стики не обязательны. Изображение масштабируется в fullscreen.\n"
     )
@@ -143,13 +156,21 @@ def package(
         f"Space Rangers HD FPC — {family} / {firmware}, экспериментальная сборка\n\n"
         "Модели для проверки: " + ", ".join(models) + ".\n" + model_note + "\n"
         "Установка:\n"
-        "1. Установите актуальную прошивку для своей модели и обновите PortMaster.\n"
-        f"2. Распакуйте содержимое архива в {directory}.\n"
+        + (
+            "1. Установите 64-битную стоковую прошивку или Stock OS Mod для своей модели.\n"
+            if stock
+            else "1. Установите актуальную прошивку для своей модели и обновите PortMaster.\n"
+        )
+        + f"2. Распакуйте содержимое архива в {directory}.\n"
         + storage_note
         + "3. Скопируйте в spacerangershd/game ресурсы оригинальной игры:\n"
         "   INSTALL.TXT, INSTALL_ENGLISH.TXT, INSTALL_RUSSIAN.TXT, CFG.TXT,\n"
         "   CFG/, DATA/*.pkg; при необходимости Mods/. Сохраняйте регистр имён.\n"
-        "4. Обновите список игр и запустите Space Rangers HD из раздела Ports.\n\n"
+        + (
+            "4. Запустите Space Rangers HD из раздела «Приложения».\n\n"
+            if stock
+            else "4. Обновите список игр и запустите Space Rangers HD из раздела Ports.\n\n"
+        )
         + architecture_note
         + "Нужны glibc >= 2.29 и системная SDL2 >= 2.26.0.\n"
         "SDL2, ALSA, GPU-драйверы и glibc используются из прошивки.\n"
@@ -161,7 +182,7 @@ def package(
         "Управление:\n"
         "Крестовина/левый стик — курсор; A/B — левая/правая кнопка мыши;\n"
         "Start/R1 — Enter; Select — Escape; X — пробел; Y — Tab;\n"
-        "L1 — медленный курсор; Select+Start — выход через PortMaster.\n"
+        "L1 — медленный курсор; Select+Start — выход из игры.\n"
         "Экранная клавиатура: A на текстовом поле или L2 для активного поля.\n"
         "Y — RU/EN; R2 — регистр; B — стереть; Start/R1 — OK; Select — отмена.\n"
         "Пробел и перемещение каретки доступны экранными кнопками.\n"
@@ -171,8 +192,13 @@ def package(
         "Диагностика по SSH из каталога spacerangershd:\n"
         "  getconf LONG_BIT\n"
         "  getconf GNU_LIBC_VERSION\n"
-        '  LD_LIBRARY_PATH="$PWD/lib/aarch64" ./check-platform.aarch64\n'
-        "  Для 32-битной muOS замените aarch64 на armhf.\n\n"
+        + (
+            '  LD_LIBRARY_PATH="$PWD/lib/aarch64:/usr/lib/aarch64-linux-gnu" ./check-platform.aarch64\n\n'
+            if stock
+            else '  LD_LIBRARY_PATH="$PWD/lib/aarch64" ./check-platform.aarch64\n'
+            "  Для 32-битной muOS замените aarch64 на armhf.\n\n"
+        )
+        + 
         "Основа — актуальная main-ветка автора, с клавиатурой RU/EN и портом Anbernic.\n"
         "Проверки конкретного релиза и хеши бинарников — в описании релиза на GitHub.\n"
         "QEMU позволяет проверить ввод, кампанию, вылет и fallback;\n"
@@ -195,6 +221,7 @@ def package(
                 "minimum_glibc": "2.29",
                 "minimum_system_sdl": "2.26.0",
                 "sdl_source": "firmware",
+                "controls": "bundled gptokeyb" if stock else "PortMaster gptokeyb",
                 "default_renderer": "sdl",
                 "renderer_fallback": "software",
                 "hardware_tested": False,
@@ -227,6 +254,45 @@ def package(
         if zipped.testzip() is not None:
             raise RuntimeError(f"Archive integrity check failed: {archive}")
     return archive
+
+
+def build_gptokeyb(sdk: Path, triplet: str, output: Path, licenses: Path) -> None:
+    """Build the pinned gptokeyb and ship its GPL-2.0 license and exact source."""
+    source = ROOT / "vendor/gptokeyb"
+    root = sdk / "root"
+    subprocess.run(
+        [
+            str(sdk / "bin" / f"{triplet}-clang++"),
+            "-O2",
+            "-std=c++11",
+            f"-I{root}/usr/include/SDL2",
+            f"-I{root}/usr/include/libevdev-1.0",
+            *(
+                str(source / "src" / f"{name}.cpp")
+                for name in (
+                    "analog", "config", "input", "output_uinput",
+                    "xbox360", "keyboard", "util", "gptokeyb",
+                )
+            ),
+            f"-L{root}/usr/lib",
+            f"-L{root}/usr/lib/{triplet}",
+            "-lSDL2",
+            "-levdev",
+            # Firmware libstdc++ versions vary; libevdev and SDL come from the firmware.
+            "-static-libstdc++",
+            "-static-libgcc",
+            "-o",
+            str(output),
+        ],
+        check=True,
+    )
+    shutil.copy2(source / "LICENSE.md", licenses / "gptokeyb-GPL-2.0.txt")
+    with (licenses / "gptokeyb-source.tar.gz").open("wb") as archive:
+        subprocess.run(
+            ["git", "-C", str(source), "archive", "--format=tar.gz", "--prefix=gptokeyb/", "HEAD"],
+            stdout=archive,
+            check=True,
+        )
 
 
 def main() -> None:

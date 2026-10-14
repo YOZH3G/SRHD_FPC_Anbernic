@@ -11,6 +11,8 @@ from package_h700 import MODELS, package
 TARGETS = [
     ("muOS", "H700", MODELS, "/mnt/mmc/ROMS/Ports"),
     ("KNULLI", "H700", MODELS, "/userdata/roms/ports"),
+    # Anbernic's own 64-bit firmware and Stock OS Mod, started from the Apps menu.
+    ("StockOS", "H700", MODELS, "Roms/APPS"),
     (
         "ArkOS",
         "Rockchip",

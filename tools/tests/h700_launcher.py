@@ -91,5 +91,67 @@ class LauncherTests(unittest.TestCase):
         self.assertIn("does not contain an executable for armhf", result.stdout)
 
 
+class StockLauncherTests(unittest.TestCase):
+    """The Apps menu of Anbernic's own firmware, without PortMaster."""
+
+    def run_launcher(self, bits="64", assets=True, shell="sh"):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            port = root / "spacerangershd"
+            (port / "game").mkdir(parents=True)
+            if assets:
+                (port / "game/INSTALL.TXT").touch()
+            (port / "lib/aarch64").mkdir(parents=True)
+            launch = root / "Space Rangers HD.sh"
+            shutil.copy2(ROOT / "platform/linux/Space Rangers HD Stock.sh", launch)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            scripts = {
+                fake_bin / "getconf": f'#!/bin/bash\necho "{bits}"\n',
+                port / "check-platform.aarch64": '#!/bin/bash\necho "PROBE:$LD_LIBRARY_PATH"\n',
+                port / "gptokeyb.aarch64": '#!/bin/bash\necho "GPTOKEYB:$*"\nsleep 5\n',
+                port / "Rangers.aarch64": '#!/bin/bash\nsleep 0.2\necho "EXEC:$0"\n'
+                'echo "ARGS:$*"\necho "CONTROLS:$SDL_GAMECONTROLLERCONFIG"\nexit 23\n',
+            }
+            for path, text in scripts.items():
+                path.write_text(text)
+                path.chmod(0o755)
+            env = os.environ.copy()
+            # The stock menu exports SDL 2.0.12 from /usr/lib ahead of the multiarch SDL.
+            env.update(PATH=f"{fake_bin}:{env['PATH']}", LD_LIBRARY_PATH="/usr/lib32:/usr/lib:/mnt/vendor/lib")
+            env.pop("BASH_VERSION", None)
+            result = subprocess.run(
+                [shell, str(launch)], cwd="/", env=env, capture_output=True, text=True
+            )
+            log = (port / "log.txt").read_text() if (port / "log.txt").exists() else ""
+            return result, log
+
+    def test_menu_shell_starts_game_with_firmware_sdl_and_controls(self):
+        result, log = self.run_launcher()
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        self.assertIn("EXEC:./Rangers.aarch64", log)
+        self.assertIn("--fullscreen", log)
+        self.assertIn("--on-screen-keyboard", log)
+        libraries = next(line for line in log.splitlines() if line.startswith("PROBE:"))
+        self.assertLess(libraries.index("/usr/lib/aarch64-linux-gnu"), libraries.index(":/usr/lib:"))
+        self.assertIn("/spacerangershd/lib/aarch64:", libraries)
+        self.assertIn("GPTOKEYB:-1 Rangers.aarch64 -c", log)
+        self.assertIn("ANBERNIC-keys", log)
+        self.assertIn("back:b6", log)
+        self.assertIn("start:b7", log)
+
+    def test_rejects_32_bit_firmware(self):
+        result, log = self.run_launcher(bits="32")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("64-bit Anbernic stock firmware", log)
+        self.assertNotIn("EXEC:", log)
+
+    def test_missing_assets(self):
+        result, log = self.run_launcher(assets=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Copy the original game resources", log)
+        self.assertNotIn("GPTOKEYB:", log)
+
+
 if __name__ == "__main__":
     unittest.main()

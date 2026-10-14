@@ -20,14 +20,15 @@ Choose your installed firmware first, then check the model:
 
 | Firmware | Models | Package | Architecture |
 | --- | --- | --- | --- |
-| muOS | RG35XX Plus/H/SP/2024, RG28XX, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF and AArch64 |
+| muOS | RG35XX Plus/H/SP/2024, RG28XX, RG34XX SP, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF and AArch64 |
 | KNULLI | the same H700 models | `SpaceRangersHD-H700-KNULLI.zip` | AArch64 |
+| Anbernic stock or Stock OS Mod | the same H700 models, 64-bit firmware | `SpaceRangersHD-H700-StockOS.zip` | AArch64 |
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
 
 RG351P/M on ArkOS require a compatible community release. The original
-RG35XX 2022/2023 and Android are not covered by these Linux packages.
+RG35XX 2022/2023, 32-bit stock firmware and Android are not covered by these packages.
 Package checksums are in the release's `SHA256SUMS`.
 
 ## Install
@@ -42,6 +43,12 @@ Package checksums are in the release's `SHA256SUMS`.
    `CFG.TXT`, `CFG/` and `DATA/` from your installed game into
    `spacerangershd/game/`; `INSTALL.TXT` must be directly inside that folder.
 4. Refresh the game list and launch **Space Rangers HD** from Ports.
+
+**Anbernic stock firmware or Stock OS Mod:** PortMaster is not needed.
+Extract `SpaceRangersHD-H700-StockOS.zip` into `Roms/APPS` on the games card,
+copy the game assets into `Roms/APPS/spacerangershd/game/` and launch
+**Space Rangers HD** from the Apps section. See the
+[full instructions](platform/linux/ANBERNIC.md) (Russian).
 
 Settings and saves live in `spacerangershd/profile/`; the launcher log is
 `spacerangershd/log.txt`. Back up `game/` and `profile/` before updating and do
@@ -58,7 +65,7 @@ come from the firmware; the package includes the other runtime libraries.
 | Select | Escape |
 | X / Y | Space / Tab |
 | L1 | slow cursor |
-| Select + Start | quit through PortMaster |
+| Select + Start | quit the game |
 
 Click a text field with **A** to open the keyboard; **L2** opens it for the
 focused field. While it is open:
@@ -77,7 +84,8 @@ The minimum internal resolution is **800×600**: set `VideoMode=800,600` in
 `profile/CFG.TXT` and keep Mobile UI enabled. Menus, station, shops, equipment,
 galaxy map, journal, save/load and the keyboard fit the frame; the space HUD
 scales separately from the world. Lower values are replaced with 800×600.
-Fullscreen scales the frame to the panel while preserving aspect ratio.
+Fullscreen scales the frame to the panel while preserving aspect ratio: on the
+RG34XX SP's 720×480 panel the 4:3 image fills 640×480 with side bars.
 
 Linux defaults to the hardware-accelerated `--renderer=sdl`. If acceleration
 is unavailable, the game falls back to software drawing automatically;
@@ -119,7 +127,8 @@ under QEMU with the early keyboard release; [recording details](docs/media/READM
 Every release is rebuilt from source. The final binaries for both architectures
 pass the main menu, a new game, station, hangar, takeoff and 20 seconds in space
 under QEMU; glibc imports no newer than 2.29 and launcher scenarios are checked
-too. Release notes list the SHA256 of the verified binaries. RU/EN input and
+too. The stock-firmware package also runs that scenario on the libraries of a
+real RG34XX SP stock firmware image. Release notes list the SHA256 of the verified binaries. RU/EN input and
 the 800×600 screens were verified by dedicated scenarios when introduced.
 
 Not verified: physical handhelds, their GPUs and display rotation, sound and

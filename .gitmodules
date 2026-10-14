@@ -4,3 +4,6 @@
 [submodule "vendor/fpc"]
 	path = vendor/fpc
 	url = https://github.com/pakompom/fpc_sr.git
+[submodule "vendor/gptokeyb"]
+	path = vendor/gptokeyb
+	url = https://github.com/PortsMaster/gptokeyb

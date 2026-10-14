@@ -14,6 +14,9 @@ It is not affiliated with the game's developers or publisher.
 - Windowing, input, and audio device: [SDL](https://libsdl.org/), under its zlib license.
 - Ogg/Vorbis audio decoding: [Xiph.Org libraries](https://xiph.org/), under BSD-style licenses.
 - AVI video decoding: [Xvid](https://www.xvid.com/), under the GNU GPL.
+- Gamepad-to-keyboard/mouse mapping in the Anbernic stock-firmware package:
+  [gptokeyb](https://github.com/PortsMaster/gptokeyb), a separate program under
+  the [GNU GPL 2.0](vendor/gptokeyb/LICENSE.md); its source ships in the package.
 - Compiler and runtime: [Free Pascal](https://www.freepascal.org/), with
   [source and license details](vendor/fpc/PORT.md).
 - Selected fixes adapted from

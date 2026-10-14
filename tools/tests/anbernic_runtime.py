@@ -32,6 +32,16 @@ def main():
         "--video-driver", choices=["dummy", "offscreen"], default="dummy"
     )
     parser.add_argument("--renderer", choices=["sdl", "software"], default="sdl")
+    parser.add_argument(
+        "--firmware-root",
+        type=Path,
+        help="Run on a firmware root filesystem and its own SDL instead of the SDK.",
+    )
+    parser.add_argument(
+        "--package-dir",
+        type=Path,
+        help="Packaged spacerangershd directory to test instead of the build output.",
+    )
     args = parser.parse_args()
     profile = args.profile.resolve()
     if args.scenario not in ("load", "navigation"):
@@ -50,9 +60,20 @@ def main():
     )
     sdk = args.sdk_root.resolve() / sdk_arch / "root"
     work = ROOT / ".local/anbernic" / sdk_arch
+    binary, libraries = work / "Rangers", f"{work}/lib:{sdk}/usr/lib"
+    if args.package_dir:
+        package = args.package_dir.resolve()
+        binary = package / f"Rangers.{args.arch}"
+        libraries = f"{package / 'lib' / args.arch}:{sdk}/usr/lib"
+    if args.firmware_root:
+        # The build output bundles SDK SDL, so test the packaged libraries.
+        assert args.package_dir, "--firmware-root requires --package-dir"
+        sdk = args.firmware_root.resolve()
+        # Firmware SDL comes from the multiarch directory, as the launchers arrange.
+        libraries = str(package / "lib" / args.arch)
     game_log = profile / "########.log"
     variables = {
-        "LD_LIBRARY_PATH": f"{work}/lib:{sdk}/usr/lib:{sdk}/usr/lib/{triple}:{sdk}/lib/{triple}",
+        "LD_LIBRARY_PATH": f"{libraries}:{sdk}/usr/lib/{triple}:{sdk}/lib/{triple}",
         "LD_PRELOAD": str(args.preload.resolve()),
         "SDL_VIDEODRIVER": args.video_driver,
         "SDL_AUDIODRIVER": "dummy",
@@ -77,7 +98,7 @@ def main():
         command.extend(["-E", f"{key}={value}"])
     command.extend(
         [
-            str(work / "Rangers"),
+            str(binary),
             f"--game-dir={args.game_dir.resolve()}",
             f"--user-dir={profile}",
             "--windowed"
@@ -97,9 +118,7 @@ def main():
             {
                 "exit": result.returncode,
                 "seconds": round(time.monotonic() - start, 1),
-                "binary_sha256": hashlib.sha256(
-                    (work / "Rangers").read_bytes()
-                ).hexdigest(),
+                "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
             }
         )
         + "\n"

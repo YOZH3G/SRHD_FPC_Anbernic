@@ -146,7 +146,20 @@ python tools/tests/h700_launcher.py
 python tools/tests/render_reference.py   # after tools/build.py --release
 ```
 
-A release contains exactly the five ZIPs and `SHA256SUMS`; game assets and
+The stock-firmware package (`SpaceRangersHD-H700-StockOS.zip`) also builds the
+pinned `vendor/gptokeyb` submodule, so the AArch64 sysroot needs the Ubuntu 20.04
+`libevdev-dev` headers. To check it against a real stock image, mount the
+image's rootfs read-only and pass it to the runtime scenario:
+
+```sh
+python tools/tests/anbernic_runtime.py --arch aarch64 --scenario flight \
+  --sdk-root /path/to/sdk --qemu /usr/bin/qemu-aarch64 \
+  --game-dir /path/to/licensed-game --profile /path/to/new-profile \
+  --preload /path/to/flight-capture.so \
+  --firmware-root /mnt/stock-rootfs --package-dir /path/to/H700-StockOS/spacerangershd
+```
+
+A release contains exactly the six ZIPs and `SHA256SUMS`; game assets and
 saves are never committed or published.
 ## Nintendo Switch (homebrew)
 
