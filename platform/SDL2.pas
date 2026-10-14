@@ -202,6 +202,7 @@ procedure SDL_SetMainReady; cdecl; external SDL2Library;
 function SDL_InitSubSystem(Flags: Cardinal): Integer; cdecl; external SDL2Library;
 procedure SDL_QuitSubSystem(Flags: Cardinal); cdecl; external SDL2Library;
 function SDL_GetError: PAnsiChar; cdecl; external SDL2Library;
+procedure SDL_ClearError; cdecl; external SDL2Library;
 function SDL_GetHint(Name: PAnsiChar): PAnsiChar; cdecl; external SDL2Library;
 function SDL_SetHint(Name, Value: PAnsiChar): Integer; cdecl; external SDL2Library;
 function SDL_GetTouchDeviceType(TouchID: Int64): Integer; cdecl; external SDL2Library;

@@ -48,6 +48,9 @@ def main():
         profile.mkdir(parents=True, exist_ok=False)
         (profile / "CFG.TXT").write_text(
             f"VideoMode={args.resolution.replace('x', ',')}\nWindow=False\nVSync=False\nMobileUI=2\nSkipIntro=True\nSound=True\nMusic=True\n"
+            # The game's own CFG.TXT asks for the system cursor; framebuffer
+            # drivers (Mali on stock firmware, dummy here) have none.
+            "ShowSystemMouse=True\n"
         )
     else:
         assert (profile / "Save").is_dir(), (

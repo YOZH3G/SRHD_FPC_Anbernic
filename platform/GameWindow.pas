@@ -128,6 +128,7 @@ uses
 
 var
   VideoInitialized: Boolean;
+  SystemCursorAvailable: Boolean;
   DesktopMouseAvailable: Boolean;
   BrowserWindow: Boolean;
   MobileWindow, FullscreenOnlyWindow, AppInBackground: Boolean;
@@ -235,6 +236,31 @@ begin
 {$ENDIF}
 end;
 
+function ProbeSystemCursor: Boolean;
+var
+  Pixel: Cardinal;
+  Surface, Cursor: Pointer;
+begin
+{$IFDEF SWITCH}
+  Result := False;
+{$ELSE}
+  // Framebuffer drivers such as the Mali one on Anbernic stock firmware have
+  // no cursors; the game then draws its own, as with ShowSystemMouse off.
+  Pixel := 0;
+  Result := False;
+  Surface := SDL_CreateRGBSurfaceFrom(@Pixel, 1, 1, 32, 4, $FF0000, $FF00, $FF, $FF000000);
+  if Surface = nil then
+    Exit;
+  Cursor := SDL_CreateColorCursor(Surface, 0, 0);
+  SDL_FreeSurface(Surface);
+  Result := Cursor <> nil;
+  if Result then
+    SDL_FreeCursor(Cursor)
+  else
+    SDL_ClearError;
+{$ENDIF}
+end;
+
 procedure InitializeGameVideo;
 var
   Driver: string;
@@ -294,16 +320,14 @@ begin
     raise Exception.Create('Registering game messages: ' + string(SDL_GetError));
   SDL_AddEventWatch(WatchRendererReset, nil);
   Touch := TGameTouch.Create;
+  SystemCursorAvailable := ProbeSystemCursor;
   VideoInitialized := True;
 end;
 
 function GameWindowHasSystemCursor: Boolean;
 begin
-{$IFDEF SWITCH}
-  Result := False;
-{$ELSE}
-  Result := True;
-{$ENDIF}
+  InitializeGameVideo;
+  Result := SystemCursorAvailable;
 end;
 
 function GamePointerCursorVisible: Boolean;
