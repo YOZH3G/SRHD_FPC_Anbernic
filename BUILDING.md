@@ -161,6 +161,7 @@ python tools/tests/anbernic_runtime.py --arch aarch64 --scenario flight \
 
 A release contains exactly the six ZIPs and `SHA256SUMS`; game assets and
 saves are never committed or published.
+
 ## Nintendo Switch (homebrew)
 
 Requires devkitPro's ARM64/libnx SDK on macOS or Linux.

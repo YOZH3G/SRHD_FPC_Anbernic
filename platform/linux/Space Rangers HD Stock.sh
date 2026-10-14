@@ -18,7 +18,16 @@ binary="Rangers.aarch64"
 # The menu exports /usr/lib first, which holds SDL 2.0.12. The firmware's
 # SDL 2.28 with the Mali video driver is in the multiarch directory.
 export LD_LIBRARY_PATH="$gamedir/lib/aarch64:/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# The multiarch directory also holds Mesa's libEGL and libGLESv2, which cannot
+# drive the Mali GPU; SDL would load them and fail to open its window. Point SDL
+# at the Mali libraries in /usr/lib, as the firmware's own apps use them.
+gpu_dir="${ANBERNIC_GPU_LIBRARY_DIR:-/usr/lib}"
+if [ -e "$gpu_dir/libmali.so.0" ]; then
+    export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$gpu_dir/libEGL.so.1}"
+    export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$gpu_dir/libGLESv2.so.2}"
+fi
 echo "Firmware: Anbernic stock; executable: $binary; SDL: firmware"
+echo "EGL: ${SDL_VIDEO_EGL_DRIVER:-default}; GLES: ${SDL_VIDEO_GL_DRIVER:-default}"
 ./check-platform.aarch64 || exit $?
 if [ ! -f "$gamedir/game/INSTALL.TXT" ]; then
     echo "Copy the original game resources into $gamedir/game (see README.txt)."

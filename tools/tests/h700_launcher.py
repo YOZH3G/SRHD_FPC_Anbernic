@@ -109,9 +109,13 @@ class StockLauncherTests(unittest.TestCase):
         'input_down_btn = "h0down"\ninput_left_btn = "h0left"\ninput_right_btn = "h0right"\n'
     )
 
-    def run_launcher(self, bits="64", assets=True, shell="sh", pad=SP_PAD):
+    def run_launcher(self, bits="64", assets=True, shell="sh", pad=SP_PAD, mali=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            gpu = root / "gpu"
+            gpu.mkdir()
+            if mali:
+                (gpu / "libmali.so.0").touch()
             pad_config = root / "ANBERNIC-keys.cfg"
             if pad is not None:
                 pad_config.write_text(pad)
@@ -129,7 +133,8 @@ class StockLauncherTests(unittest.TestCase):
                 port / "check-platform.aarch64": '#!/bin/bash\necho "PROBE:$LD_LIBRARY_PATH"\n',
                 port / "gptokeyb.aarch64": '#!/bin/bash\necho "GPTOKEYB:$*"\nsleep 5\n',
                 port / "Rangers.aarch64": '#!/bin/bash\nsleep 0.2\necho "EXEC:$0"\n'
-                'echo "ARGS:$*"\necho "CONTROLS:$SDL_GAMECONTROLLERCONFIG"\nexit 23\n',
+                'echo "ARGS:$*"\necho "CONTROLS:$SDL_GAMECONTROLLERCONFIG"\n'
+                'echo "GPU:$SDL_VIDEO_EGL_DRIVER,$SDL_VIDEO_GL_DRIVER"\nexit 23\n',
             }
             for path, text in scripts.items():
                 path.write_text(text)
@@ -140,8 +145,10 @@ class StockLauncherTests(unittest.TestCase):
                 PATH=f"{fake_bin}:{env['PATH']}",
                 LD_LIBRARY_PATH="/usr/lib32:/usr/lib:/mnt/vendor/lib",
                 ANBERNIC_PAD_CONFIG=str(pad_config),
+                ANBERNIC_GPU_LIBRARY_DIR=str(gpu),
             )
-            env.pop("BASH_VERSION", None)
+            for name in ("BASH_VERSION", "SDL_VIDEO_EGL_DRIVER", "SDL_VIDEO_GL_DRIVER"):
+                env.pop(name, None)
             result = subprocess.run(
                 [shell, str(launch)], cwd="/", env=env, capture_output=True, text=True
             )
@@ -163,6 +170,15 @@ class StockLauncherTests(unittest.TestCase):
                      "righttrigger:b11,", "leftstick:b9,", "dpup:h0.1,", "dpleft:h0.8,", "leftx:a0,",
                      "lefty:a1,", "platform:Linux,"):
             self.assertIn(part, controls)
+
+    def test_sdl_uses_mali_gpu_libraries(self):
+        # Mesa's EGL in the multiarch directory comes first on the library path.
+        result, log = self.run_launcher()
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        self.assertRegex(log, r"GPU:/.*/gpu/libEGL\.so\.1,/.*/gpu/libGLESv2\.so\.2\n")
+        result, log = self.run_launcher(mali=False)
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        self.assertIn("GPU:,\n", log)
 
     def test_pad_without_sticks_uses_its_trigger_numbers(self):
         result, log = self.run_launcher(pad=self.NO_STICK_PAD)
