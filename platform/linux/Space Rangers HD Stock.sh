@@ -26,9 +26,47 @@ if [ ! -f "$gamedir/game/INSTALL.TXT" ]; then
 fi
 mkdir -p "$gamedir/profile"
 
-# Built-in pad "ANBERNIC-keys"; indices match the firmware's RetroArch autoconfig.
-# Select is Back, so Select+Start closes the game through gptokeyb.
-export SDL_GAMECONTROLLERCONFIG="19000000010000000100000000010000,ANBERNIC-keys,a:b0,b:b1,x:b3,y:b2,back:b6,guide:b8,start:b7,leftstick:b9,rightstick:b12,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b10,righttrigger:b11,platform:Linux,"
+# Built-in pad "ANBERNIC-keys". Button numbers differ between models (L2/R2 are
+# 9/10 on the RG28XX and 10/11 on the RG34XX SP), so read the firmware's own
+# RetroArch autoconfig. Select is Back, so Select+Start closes the game.
+pad_config="${ANBERNIC_PAD_CONFIG:-/mnt/vendor/deep/retro/autoconfig/udev/ANBERNIC-keys.cfg}"
+pad_value() {
+    local value=""
+    [ -f "$pad_config" ] && value=$(sed -n "s/^input_$1 *= *\"\(.*\)\"/\1/p" "$pad_config" | head -n 1)
+    echo "${value:-$2}"
+}
+pad_button() {
+    local value
+    value=$(pad_value "$2_btn" "$3")
+    case "$value" in
+        h0up) echo "$1:h0.1," ;;
+        h0right) echo "$1:h0.2," ;;
+        h0down) echo "$1:h0.4," ;;
+        h0left) echo "$1:h0.8," ;;
+        ''|*[!0-9]*) ;;
+        *) echo "$1:b$value," ;;
+    esac
+}
+pad_axis() {
+    local value
+    value=$(pad_value "$2_plus_axis" "")
+    value=${value#+}
+    case "$value" in
+        ''|*[!0-9]*) ;;
+        *) echo "$1:a$value," ;;
+    esac
+}
+mapping="19000000010000000100000000010000,ANBERNIC-keys,"
+mapping+="$(pad_button a a 0)$(pad_button b b 1)$(pad_button x x 3)$(pad_button y y 2)"
+mapping+="$(pad_button back select 6)$(pad_button start start 7)"
+mapping+="$(pad_button leftshoulder l 4)$(pad_button rightshoulder r 5)"
+mapping+="$(pad_button lefttrigger l2 9)$(pad_button righttrigger r2 10)"
+mapping+="$(pad_button leftstick l3 '')$(pad_button rightstick r3 '')"
+mapping+="$(pad_button dpup up h0up)$(pad_button dpdown down h0down)"
+mapping+="$(pad_button dpleft left h0left)$(pad_button dpright right h0right)"
+mapping+="$(pad_axis leftx l_x)$(pad_axis lefty l_y)$(pad_axis rightx r_x)$(pad_axis righty r_y)"
+export SDL_GAMECONTROLLERCONFIG="${mapping}platform:Linux,"
+echo "Controls: $SDL_GAMECONTROLLERCONFIG"
 cleanup() {
     if [ -n "${controls_pid:-}" ]; then
         kill "$controls_pid" 2>/dev/null || true

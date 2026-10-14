@@ -22,7 +22,7 @@
 | --- | --- | --- | --- |
 | muOS | RG35XX Plus/H/SP/2024, RG28XX, RG34XX SP, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF и AArch64 |
 | KNULLI | те же модели с H700 | `SpaceRangersHD-H700-KNULLI.zip` | AArch64 |
-| Стоковая Anbernic или Stock OS Mod | те же модели с H700, 64-битная прошивка | `SpaceRangersHD-H700-StockOS.zip` | AArch64 |
+| Стоковая Anbernic или Stock OS Mod (64-бит) | RG28XX, RG34XX, RG34XX SP, RG35XX Plus/2024/H/SP/Pro, RG40XX H/V, RG CubeXX, RG SP | `SpaceRangersHD-H700-StockOS.zip` | AArch64 |
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
@@ -129,7 +129,7 @@ SDL-рендерер оптимизирован без изменения раз
 архитектур под QEMU проходят главное меню, создание новой игры, станция, ангар,
 вылет и 20 секунд космоса; проверяются также импорт символов glibc не новее 2.29
 и сценарии launcher. Пакет для стоковой прошивки дополнительно проходит этот
-сценарий на библиотеках настоящего образа стоковой прошивки RG34XX SP. Описание релиза содержит SHA256 проверенных бинарников.
+сценарий на системных библиотеках образов стоковой прошивки всех 11 моделей H700. Описание релиза содержит SHA256 проверенных бинарников.
 Ввод RU/EN и экраны 800×600 проверены отдельными сценариями при их разработке.
 
 Не проверены: физические приставки, их GPU и поворот дисплея, звук и кнопки,

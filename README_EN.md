@@ -22,7 +22,7 @@ Choose your installed firmware first, then check the model:
 | --- | --- | --- | --- |
 | muOS | RG35XX Plus/H/SP/2024, RG28XX, RG34XX SP, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF and AArch64 |
 | KNULLI | the same H700 models | `SpaceRangersHD-H700-KNULLI.zip` | AArch64 |
-| Anbernic stock or Stock OS Mod | the same H700 models, 64-bit firmware | `SpaceRangersHD-H700-StockOS.zip` | AArch64 |
+| Anbernic stock or Stock OS Mod (64-bit) | RG28XX, RG34XX, RG34XX SP, RG35XX Plus/2024/H/SP/Pro, RG40XX H/V, RG CubeXX, RG SP | `SpaceRangersHD-H700-StockOS.zip` | AArch64 |
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
@@ -127,8 +127,8 @@ under QEMU with the early keyboard release; [recording details](docs/media/READM
 Every release is rebuilt from source. The final binaries for both architectures
 pass the main menu, a new game, station, hangar, takeoff and 20 seconds in space
 under QEMU; glibc imports no newer than 2.29 and launcher scenarios are checked
-too. The stock-firmware package also runs that scenario on the libraries of a
-real RG34XX SP stock firmware image. Release notes list the SHA256 of the verified binaries. RU/EN input and
+too. The stock-firmware package also runs that scenario on the system libraries
+of the stock firmware images for all 11 H700 models. Release notes list the SHA256 of the verified binaries. RU/EN input and
 the 800×600 screens were verified by dedicated scenarios when introduced.
 
 Not verified: physical handhelds, their GPUs and display rotation, sound and

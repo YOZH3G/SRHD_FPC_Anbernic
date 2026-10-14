@@ -94,9 +94,27 @@ class LauncherTests(unittest.TestCase):
 class StockLauncherTests(unittest.TestCase):
     """The Apps menu of Anbernic's own firmware, without PortMaster."""
 
-    def run_launcher(self, bits="64", assets=True, shell="sh"):
+    SP_PAD = (
+        'input_a_btn = "0"\ninput_b_btn = "1"\ninput_y_btn = "2"\ninput_x_btn = "3"\n'
+        'input_l_btn = "4"\ninput_r_btn = "5"\ninput_select_btn = "6"\ninput_start_btn = "7"\n'
+        'input_l2_btn = "10"\ninput_r2_btn = "11"\ninput_l3_btn = "9"\ninput_r3_btn = "12"\n'
+        'input_up_btn = "h0up"\ninput_down_btn = "h0down"\ninput_left_btn = "h0left"\n'
+        'input_right_btn = "h0right"\ninput_l_x_plus_axis = "+0"\ninput_l_y_plus_axis = "+1"\n'
+    )
+    # RG28XX and RG34XX: no sticks, triggers on 9 and 10.
+    NO_STICK_PAD = (
+        'input_a_btn = "0"\ninput_b_btn = "1"\ninput_y_btn = "2"\ninput_x_btn = "3"\n'
+        'input_l_btn = "4"\ninput_r_btn = "5"\ninput_select_btn = "6"\ninput_start_btn = "7"\n'
+        'input_l2_btn = "9"\ninput_r2_btn = "10"\ninput_up_btn = "h0up"\n'
+        'input_down_btn = "h0down"\ninput_left_btn = "h0left"\ninput_right_btn = "h0right"\n'
+    )
+
+    def run_launcher(self, bits="64", assets=True, shell="sh", pad=SP_PAD):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            pad_config = root / "ANBERNIC-keys.cfg"
+            if pad is not None:
+                pad_config.write_text(pad)
             port = root / "spacerangershd"
             (port / "game").mkdir(parents=True)
             if assets:
@@ -118,7 +136,11 @@ class StockLauncherTests(unittest.TestCase):
                 path.chmod(0o755)
             env = os.environ.copy()
             # The stock menu exports SDL 2.0.12 from /usr/lib ahead of the multiarch SDL.
-            env.update(PATH=f"{fake_bin}:{env['PATH']}", LD_LIBRARY_PATH="/usr/lib32:/usr/lib:/mnt/vendor/lib")
+            env.update(
+                PATH=f"{fake_bin}:{env['PATH']}",
+                LD_LIBRARY_PATH="/usr/lib32:/usr/lib:/mnt/vendor/lib",
+                ANBERNIC_PAD_CONFIG=str(pad_config),
+            )
             env.pop("BASH_VERSION", None)
             result = subprocess.run(
                 [shell, str(launch)], cwd="/", env=env, capture_output=True, text=True
@@ -136,9 +158,28 @@ class StockLauncherTests(unittest.TestCase):
         self.assertLess(libraries.index("/usr/lib/aarch64-linux-gnu"), libraries.index(":/usr/lib:"))
         self.assertIn("/spacerangershd/lib/aarch64:", libraries)
         self.assertIn("GPTOKEYB:-1 Rangers.aarch64 -c", log)
-        self.assertIn("ANBERNIC-keys", log)
-        self.assertIn("back:b6", log)
-        self.assertIn("start:b7", log)
+        controls = next(line for line in log.splitlines() if line.startswith("CONTROLS:"))
+        for part in ("ANBERNIC-keys,", "a:b0,", "back:b6,", "start:b7,", "lefttrigger:b10,",
+                     "righttrigger:b11,", "leftstick:b9,", "dpup:h0.1,", "dpleft:h0.8,", "leftx:a0,",
+                     "lefty:a1,", "platform:Linux,"):
+            self.assertIn(part, controls)
+
+    def test_pad_without_sticks_uses_its_trigger_numbers(self):
+        result, log = self.run_launcher(pad=self.NO_STICK_PAD)
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        controls = next(line for line in log.splitlines() if line.startswith("CONTROLS:"))
+        self.assertIn("lefttrigger:b9,", controls)
+        self.assertIn("righttrigger:b10,", controls)
+        self.assertNotIn("leftstick", controls)
+        self.assertNotIn("leftx", controls)
+
+    def test_missing_autoconfig_falls_back_to_buttons_without_sticks(self):
+        result, log = self.run_launcher(pad=None)
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        controls = next(line for line in log.splitlines() if line.startswith("CONTROLS:"))
+        self.assertIn("a:b0,", controls)
+        self.assertIn("lefttrigger:b9,", controls)
+        self.assertIn("dpright:h0.2,", controls)
 
     def test_rejects_32_bit_firmware(self):
         result, log = self.run_launcher(bits="32")
