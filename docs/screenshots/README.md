@@ -8,7 +8,7 @@ renderer и лицензионными ресурсами 2.1.2500, без из�
 All frames come from the real ARMHF/AArch64 builds running under QEMU with the
 SDL software renderer and licensed game assets. No physical handheld was used.
 
-[Русский README](../../README_RU.md) · [English README](../../README.md)
+[Русский README](../../README.md) · [English README](../../README_EN.md)
 
 | Набор | Что показывает |
 | --- | --- |

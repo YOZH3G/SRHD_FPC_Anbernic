@@ -1,143 +1,143 @@
-[Русская версия](README_RU.md)
+[English version](README_EN.md)
 
 # Space Rangers HD — Anbernic Linux / FPC Port
 
-An unofficial Free Pascal port of **Space Rangers HD: A War Apart** for Anbernic
-Linux handhelds, with a built-in Russian/English on-screen keyboard and a UI
-adapted to 800×600. Supply game assets from your own licensed copy; downloads
-contain the port only.
+Неофициальный Free Pascal-порт **«Космических рейнджеров HD: Революция»**
+для портативных приставок Anbernic на Linux, с экранной клавиатурой RU/EN
+и интерфейсом, адаптированным к 800×600. Для запуска нужны ресурсы вашей
+лицензионной копии игры: в архивы входит только порт.
 
-**[Download the latest release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
-· [Installation and troubleshooting](platform/linux/ANBERNIC.md)
-· [Build from source](BUILDING.md)
+**[Скачать последний релиз](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
+· [Подробная установка и диагностика](platform/linux/ANBERNIC.md)
+· [Сборка из исходников](BUILDING.md)
 
-> Status: **experimental**. Builds are verified under QEMU; physical handhelds,
-> their GPUs, sound and controls have not been tested yet.
+> Статус: **экспериментальный**. Сборки проверяются под QEMU; на физических
+> приставках, их GPU, звуке и кнопках порт пока не проверен.
 
-## Choose a package
+## Выбор архива
 
-Choose your installed firmware first, then check the model:
+Сначала выберите установленную прошивку, затем проверьте модель:
 
-| Firmware | Models | Package | Architecture |
+| Прошивка | Модели | Архив | Архитектура |
 | --- | --- | --- | --- |
-| muOS | RG35XX Plus/H/SP/2024, RG28XX, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF and AArch64 |
-| KNULLI | the same H700 models | `SpaceRangersHD-H700-KNULLI.zip` | AArch64 |
+| muOS | RG35XX Plus/H/SP/2024, RG28XX, RG40XX H/V | `SpaceRangersHD-H700-muOS.zip` | ARMHF и AArch64 |
+| KNULLI | те же модели с H700 | `SpaceRangersHD-H700-KNULLI.zip` | AArch64 |
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
 
-RG351P/M on ArkOS require a compatible community release. The original
-RG35XX 2022/2023 and Android are not covered by these Linux packages.
-Package checksums are in the release's `SHA256SUMS`.
+Для RG351P/M на ArkOS нужен подходящий выпуск сообщества. Оригинальный
+RG35XX 2022/2023 и Android этими Linux-пакетами не охвачены.
+Контрольные суммы архивов — в файле `SHA256SUMS` релиза.
 
-## Install
+## Установка
 
-1. Install current **PortMaster**. The firmware must provide **SDL2 ≥ 2.26.0**
-   and **glibc ≥ 2.29**.
-2. Extract the package into the Ports directory: muOS uses
-   `/mnt/mmc/ROMS/Ports` or `/mnt/sdcard/ROMS/Ports`; KNULLI uses
-   `/userdata/roms/ports`; ArkOS/AmberELEC/ROCKNIX usually use `/roms/ports`.
-   See the [full instructions](platform/linux/ANBERNIC.md) for alternate paths.
-3. Keep `Space Rangers HD.sh` beside `spacerangershd/`. Copy `INSTALL*.TXT`,
-   `CFG.TXT`, `CFG/` and `DATA/` from your installed game into
-   `spacerangershd/game/`; `INSTALL.TXT` must be directly inside that folder.
-4. Refresh the game list and launch **Space Rangers HD** from Ports.
+1. Установите актуальный **PortMaster**. В прошивке должны быть
+   **SDL2 ≥ 2.26.0** и **glibc ≥ 2.29**.
+2. Распакуйте архив в каталог Ports: muOS — `/mnt/mmc/ROMS/Ports`
+   или `/mnt/sdcard/ROMS/Ports`; KNULLI — `/userdata/roms/ports`;
+   ArkOS/AmberELEC/ROCKNIX — обычно `/roms/ports`.
+   Другие расположения — в [подробной инструкции](platform/linux/ANBERNIC.md).
+3. Файл `Space Rangers HD.sh` должен лежать рядом с папкой `spacerangershd/`.
+   Скопируйте `INSTALL*.TXT`, `CFG.TXT`, папки `CFG/` и `DATA/` из установленной
+   игры в `spacerangershd/game/`; `INSTALL.TXT` должен лежать прямо в этой папке.
+4. Обновите список игр и запустите **Space Rangers HD** из раздела Ports.
 
-Settings and saves live in `spacerangershd/profile/`; the launcher log is
-`spacerangershd/log.txt`. Back up `game/` and `profile/` before updating and do
-not mix libraries from different port versions. SDL and display/audio drivers
-come from the firmware; the package includes the other runtime libraries.
+Настройки и сохранения — в `spacerangershd/profile/`, журнал запуска —
+`spacerangershd/log.txt`. Перед обновлением сохраните папки `game/` и `profile/`
+и не смешивайте библиотеки из разных версий порта. SDL, драйверы дисплея и звука
+берутся из прошивки; остальные библиотеки включены в архив.
 
-## Controls and RU/EN keyboard
+## Управление и клавиатура RU/EN
 
-| Button | Action |
+| Кнопка | Действие |
 | --- | --- |
-| D-pad / left stick | mouse cursor |
-| A / B | left / right click |
+| Крестовина / левый стик | курсор мыши |
+| A / B | левая / правая кнопка мыши |
 | Start / R1 | Enter |
 | Select | Escape |
-| X / Y | Space / Tab |
-| L1 | slow cursor |
-| Select + Start | quit through PortMaster |
+| X / Y | пробел / Tab |
+| L1 | медленный курсор |
+| Select + Start | выход через PortMaster |
 
-Click a text field with **A** to open the keyboard; **L2** opens it for the
-focused field. While it is open:
+Нажмите **A** на текстовом поле, чтобы открыть клавиатуру; **L2** открывает её
+для активного поля. Пока клавиатура открыта:
 
-- **Y:** Russian/English; **R2:** lower/upper case, including ё/Ё.
-- **A:** press a key; **B:** delete the character before the caret.
-- On-screen Space, `<` and `>` insert a space and move the caret.
-- **Start/R1** or **OK** apply; **Select** or **Cancel** discard edits.
+- **Y** — русский/английский; **R2** — регистр, включая ё/Ё.
+- **A** — нажать экранную клавишу; **B** — удалить символ перед кареткой.
+- Экранные «Пробел», `<` и `>` вставляют пробел и двигают каретку.
+- **Start/R1** или **OK** применяют текст; **Select** или «Отмена» отменяют ввод.
 
-The keyboard respects each field's length and character limits. It is on by
-default in PortMaster; manual launches use `--on-screen-keyboard`.
+Клавиатура соблюдает ограничения длины и символов поля. В PortMaster она
+включена по умолчанию; при ручном запуске используйте `--on-screen-keyboard`.
 
-## Resolution and renderer
+## Разрешение и рендерер
 
-The minimum internal resolution is **800×600**: set `VideoMode=800,600` in
-`profile/CFG.TXT` and keep Mobile UI enabled. Menus, station, shops, equipment,
-galaxy map, journal, save/load and the keyboard fit the frame; the space HUD
-scales separately from the world. Lower values are replaced with 800×600.
-Fullscreen scales the frame to the panel while preserving aspect ratio.
+Минимальное внутреннее разрешение — **800×600**: укажите `VideoMode=800,600`
+в `profile/CFG.TXT` и оставьте включённым «Мобильный интерфейс». Меню, станция,
+магазины, оборудование, карта галактики, журнал, сохранение и клавиатура
+вписываются в кадр; HUD масштабируется отдельно от карты космоса. Меньшие
+значения заменяются на 800×600. Полноэкранный режим масштабирует кадр
+под панель приставки с сохранением пропорций.
 
-Linux defaults to the hardware-accelerated `--renderer=sdl`. If acceleration
-is unavailable, the game falls back to software drawing automatically;
-`--renderer=software` forces it. The selected driver and fallback reason are in
-`spacerangershd/profile/########.log`.
+По умолчанию используется `--renderer=sdl` с аппаратным ускорением. Если оно
+недоступно, игра автоматически переходит на программную отрисовку;
+`--renderer=software` включает её принудительно. Выбранный драйвер и причина
+перехода записываются в `spacerangershd/profile/########.log`.
 
-## Performance
+## Производительность
 
-The SDL renderer is optimized without changing resolution or image quality:
-buffer reuse, texture-state caching, batched points, direct rectangle fills,
-cached space-object textures and a frame limiter that sleeps until the frame is
-due. Pixel identity with the original drawing path is checked on software,
-OpenGL and GLES2.
+SDL-рендерер оптимизирован без изменения разрешения и качества: повторное
+использование буферов, кэш состояния текстур, пакетная отрисовка точек,
+прямая заливка прямоугольников, кэш текстур космических объектов и ограничитель
+кадров, который спит до срока показа. Попиксельное совпадение с исходным путём
+отрисовки проверяется на software, OpenGL и GLES2.
 
-All measurements were taken under QEMU and on x86_64, not on handhelds.
-[Method, results and limitations](docs/performance/README.md) (Russian).
+Все замеры сделаны под QEMU и на x86_64, а не на приставках.
+[Методика, результаты и ограничения](docs/performance/README.md).
 
-## Screenshots and video
+## Скриншоты и видео
 
-Captured from the real ARMHF/AArch64 builds under QEMU with licensed game assets.
+Кадры сняты из настоящих ARMHF/AArch64-сборок под QEMU с ресурсами лицензионной игры.
 
-| Russian keyboard, ARMHF | In space after takeoff, AArch64 |
+| Русская клавиатура, ARMHF | Космос после вылета, AArch64 |
 | --- | --- |
-| ![Russian keyboard on ARMHF](docs/screenshots/armhf/keyboard-ru.png) | ![Ship in space on AArch64](docs/screenshots/aarch64/space.png) |
+| ![Русская клавиатура на ARMHF](docs/screenshots/armhf/keyboard-ru.png) | ![Корабль в космосе на AArch64](docs/screenshots/aarch64/space.png) |
 
-More: [800×600 UI](docs/screenshots/adapted-800x600/README.md),
-[equipment and resolution switching](docs/screenshots/centered-1024/README.md),
-[planet screens](docs/screenshots/planet-layout/README.md),
-[all screenshots](docs/screenshots/README.md).
+Остальные наборы: [интерфейс 800×600](docs/screenshots/adapted-800x600/README.md),
+[оборудование и смена разрешения](docs/screenshots/centered-1024/README.md),
+[планетные экраны](docs/screenshots/planet-layout/README.md),
+[все скриншоты](docs/screenshots/README.md).
 
-[![Watch: main menu to space](docs/media/video-preview.png)](docs/media/aarch64-menu-to-space.mp4)
+[![Смотреть: от главного меню до космоса](docs/media/video-preview.png)](docs/media/aarch64-menu-to-space.mp4)
 
-Real-time AArch64 recording with game audio: main menu, character setup,
-galaxy generation, station, hangar, takeoff and 20 seconds in space. Recorded
-under QEMU with the early keyboard release; [recording details](docs/media/README.md).
+Запись AArch64 в реальном времени со звуком: главное меню, создание персонажа,
+генерация галактики, станция, ангар, вылет и 20 секунд в космосе. Снята под QEMU
+на раннем релизе клавиатуры; [подробности записи](docs/media/README.md).
 
-## What is verified
+## Что проверено
 
-Every release is rebuilt from source. The final binaries for both architectures
-pass the main menu, a new game, station, hangar, takeoff and 20 seconds in space
-under QEMU; glibc imports no newer than 2.29 and launcher scenarios are checked
-too. Release notes list the SHA256 of the verified binaries. RU/EN input and
-the 800×600 screens were verified by dedicated scenarios when introduced.
+Каждый релиз заново собирается из исходников. На итоговых бинарниках обеих
+архитектур под QEMU проходят главное меню, создание новой игры, станция, ангар,
+вылет и 20 секунд космоса; проверяются также импорт символов glibc не новее 2.29
+и сценарии launcher. Описание релиза содержит SHA256 проверенных бинарников.
+Ввод RU/EN и экраны 800×600 проверены отдельными сценариями при их разработке.
 
-Not verified: physical handhelds, their GPUs and display rotation, sound and
-controls, extended play. Device reports are welcome in Issues.
+Не проверены: физические приставки, их GPU и поворот дисплея, звук и кнопки,
+длительное прохождение. Отчёты о работе на устройствах приветствуются в Issues.
 
-## Development and attribution
+## Разработка и авторство
 
-This fork is based on the port author's
-[reference `main`](https://github.com/pakompom/SpaceRangersHD_FPC/tree/main);
-[UPSTREAM.md](platform/linux/UPSTREAM.md) records the revision and migration.
-The upstream port was developed with LLMs through Codex.
+Форк основан на [ветке `main` автора порта](https://github.com/pakompom/SpaceRangersHD_FPC/tree/main);
+ревизия и подробности переноса — в [UPSTREAM.md](platform/linux/UPSTREAM.md).
+Исходный FPC-порт разрабатывался с помощью LLM через Codex.
 
-- `source/`: Pascal game code; `platform/`: compatibility and SDL runtime;
-  `native/`: native libraries; `tools/`: build, packaging and tests.
-- `vendor/fpc/` and `vendor/okgf/`: pinned submodules —
+- `source/` — Pascal-код игры; `platform/` — совместимость и SDL;
+  `native/` — нативные библиотеки; `tools/` — сборка, упаковка и тесты.
+- `vendor/fpc/` и `vendor/okgf/` — закреплённые подмодули:
   `git submodule update --init --recursive`.
-- [Building](BUILDING.md), [development notes](DEVELOPING.md),
-  [behavior changes](CHANGES.md).
-- [License for custom additions](LICENSE) and [rights and attribution](NOTICE.md).
+- [Сборка](BUILDING.md), [особенности разработки](DEVELOPING.md),
+  [изменения поведения](CHANGES.md).
+- [Лицензия собственных доработок](LICENSE), [авторы и права](NOTICE.md).
 
-Unofficial; not affiliated with the game's developers or publisher.
+Проект неофициальный и не связан с разработчиками или издателем игры.
