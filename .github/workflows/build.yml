@@ -86,7 +86,8 @@ jobs:
           python-version: '3.12'
 
       - name: Restore Android release key
-        if: matrix.target == 'android' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # Only upstream holds the release key; forks build with a generated key.
+        if: matrix.target == 'android' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'pakompom/SpaceRangersHD_FPC'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -274,7 +275,8 @@ jobs:
   release:
     name: Publish release
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Anbernic fork releases are published manually from verified firmware packages.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'pakompom/SpaceRangersHD_FPC'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

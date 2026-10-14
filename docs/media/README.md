@@ -4,7 +4,7 @@
 на enhanced-ветке. После переноса на upstream `main` её бинарник не изменён;
 это историческая демонстрация, а не проверка новой сборки с SDL по умолчанию.
 
-[Смотреть MP4](https://github.com/YOZH3G/SpaceRangersHD_FPC/blob/main/docs/media/aarch64-menu-to-space.mp4)
+[Смотреть MP4](aarch64-menu-to-space.mp4)
 · [Сведения о записи](aarch64-menu-to-space.json)
 
 - Платформа: Linux AArch64 через QEMU user-mode, SDL software renderer из SDK.
@@ -31,15 +31,14 @@
 из соответствующего релиза. Компилируется только тестовая библиотека:
 
 ```sh
-source /workspace/.cloud-setup/env.sh
-/workspace/.cloud-setup/anbernic/arm64/bin/aarch64-linux-gnu-clang \
+/path/to/sdk/arm64/bin/aarch64-linux-gnu-clang \
   -D_GNU_SOURCE -shared -fPIC -O2 -Wall -Wextra -Werror \
   tools/tests/linux_video_capture.c -lSDL2 -ldl \
   -o .local/anbernic/resource-tests/video-capture-aarch64.so
 python tools/tests/record_linux_video.py \
   --game-dir /path/to/licensed-game \
-  --sdk-root /workspace/.cloud-setup/anbernic \
-  --qemu /workspace/.cloud-setup/sysroot/usr/bin/qemu-aarch64 \
+  --sdk-root /path/to/sdk \
+  --qemu /usr/bin/qemu-aarch64 \
   --preload .local/anbernic/resource-tests/video-capture-aarch64.so \
   --profile .local/anbernic/resource-tests/aarch64-video-new \
   --output .local/anbernic/aarch64-menu-to-space.mp4

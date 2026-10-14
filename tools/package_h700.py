@@ -174,11 +174,10 @@ def package(
         '  LD_LIBRARY_PATH="$PWD/lib/aarch64" ./check-platform.aarch64\n'
         "  Для 32-битной muOS замените aarch64 на armhf.\n\n"
         "Основа — актуальная main-ветка автора, с клавиатурой RU/EN и портом Anbernic.\n"
-        "Проверки конкретного релиза и хеши бинарников — в RUNTIME-REPORT.md и JSON.\n"
+        "Проверки конкретного релиза и хеши бинарников — в описании релиза на GitHub.\n"
         "QEMU позволяет проверить ввод, кампанию, вылет и fallback;\n"
         "физические GPU, дисплей, звук и контроллеры ещё нужно проверить.\n"
         "Длительное прохождение не проверено.\n\n"
-        "Исходники с локальными изменениями: SpaceRangersHD-Anbernic-sources.zip.\n"
         "Репозиторий: https://github.com/YOZH3G/SRHD_FPC_Anbernic\n",
         encoding="utf-8",
     )

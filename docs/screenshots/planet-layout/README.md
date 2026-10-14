@@ -25,10 +25,7 @@
 планета: SDL software пропускал дробные полосы повторяющейся текстуры.
 Теперь общие границы прямоугольных фрагментов масштабируемого UI округляются
 до физических пикселей. Фильтрация текстур, космос и промежуточные буферы
-сохраняют прежний режим. Текущие кадры ниже сняты после этого исправления.
-
-[Кадр с дефектом](before-seam-fix/800x600/aarch64-fresh-planet.png),
-[его отчёт](before-seam-fix/800x600/aarch64-fresh-validation.json).
+сохраняют прежний режим. Кадры ниже сняты после этого исправления.
 
 `tools/tests/ui_tile_seams.pas` проверяет заполнение панели полосами шириной
 в один логический пиксель при масштабе 800/1024. На ARMHF/AArch64 старый
@@ -59,11 +56,17 @@
 
 [Правительство 800×600](fixed/800x600/aarch64-fresh-government.png),
 [планета 800×600](fixed/800x600/aarch64-fresh-planet.png),
+[ангар](fixed/800x600/aarch64-fresh-hangar.png),
+[оборудование](fixed/800x600/aarch64-fresh-equipment.png),
+[товары](fixed/800x600/aarch64-fresh-goods.png),
+[повторное открытие](fixed/800x600/aarch64-fresh-government-reopened.png),
 [отчёт 800×600](fixed/800x600/aarch64-fresh-validation.json).
 
 [Правительство 1024×768](fixed/1024x768/aarch64-fresh-government.png),
 [планета 1024×768](fixed/1024x768/aarch64-fresh-planet.png),
+[ангар](fixed/1024x768/aarch64-fresh-hangar.png),
+[оборудование](fixed/1024x768/aarch64-fresh-equipment.png),
+[товары](fixed/1024x768/aarch64-fresh-goods.png),
+[повторное открытие](fixed/1024x768/aarch64-fresh-government-reopened.png),
 [отчёт 1024×768](fixed/1024x768/aarch64-fresh-validation.json).
 
-[До исправления, 800×600](before2/800x600/armhf-fresh-government.png).
-Обновления пока не включены в опубликованный релиз.

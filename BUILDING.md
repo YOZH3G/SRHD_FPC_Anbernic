@@ -130,6 +130,24 @@ provided by firmware; OKGF, Ogg/Vorbis and codecs are bundled. The port uses
 upstream's direct Pascal SDL adapters, without the old gamenative/SDL_mixer
 bridge. Launchers select SDL acceleration with automatic software fallback.
 See [Anbernic installation](platform/linux/ANBERNIC.md).
+
+Release packages use an Ubuntu 20.04 (glibc 2.31) sysroot, and every packaged
+ELF must import glibc symbols no newer than 2.29. The sysroot's SDL is only for
+linking and QEMU tests and is never packaged. Before publishing, run the
+resource-backed QEMU scenario on both architectures and the pixel comparison
+with the original drawing path:
+
+```sh
+python tools/tests/anbernic_runtime.py --arch aarch64 --scenario flight \
+  --sdk-root /path/to/sdk --qemu /usr/bin/qemu-aarch64 \
+  --game-dir /path/to/licensed-game --profile /path/to/new-profile \
+  --preload /path/to/flight-capture.so
+python tools/tests/h700_launcher.py
+python tools/tests/render_reference.py   # after tools/build.py --release
+```
+
+A release contains exactly the five ZIPs and `SHA256SUMS`; game assets and
+saves are never committed or published.
 ## Nintendo Switch (homebrew)
 
 Requires devkitPro's ARM64/libnx SDK on macOS or Linux.
