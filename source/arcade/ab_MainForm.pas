@@ -150,6 +150,8 @@ type
     MobileShipStatusBottom: Integer;
     procedure DrawFrame; override;
     procedure UpdateMobileControls;
+    function HandleGamepadArcadeKey(VirtualKey: Cardinal): Boolean;
+    procedure SelectNextPrimaryWeapon;
     procedure ApplyMobileSteering;
     procedure CancelPointerInput; override;
     procedure ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer); override;
@@ -964,6 +966,8 @@ begin
   if (VirtualKey = VK_TAB) and VictoryPanel.Active then
     with GetByName('PanelWinHide') do
       SetActive(not Active);
+  if HandleGamepadArcadeKey(VirtualKey) then
+    Exit;
   if IsVirtualKeyDown(VK_CONTROL) and IsVirtualKeyDown(VK_SHIFT) and IsVirtualKeyDown(VK_MENU) then
   begin
     if (VirtualKey = Ord('K')) and (GetPlayer = nil) and (PlayerArcadeShip <> nil) then
@@ -4120,7 +4124,7 @@ procedure TfAB.UpdateMobileControls;
 var
   Flags, Index: Integer;
 begin
-  if not GameWindowIsMobile then
+  if not GameWindowHasArcadeControls then
     Exit;
   Flags := 0;
   if (ExitCode = 0)
@@ -4163,6 +4167,55 @@ begin
   MobileAxisY := 0;
   MobileButtons := 0;
   SetGameArcadeControls(0);
+end;
+
+function TfAB.HandleGamepadArcadeKey(VirtualKey: Cardinal): Boolean;
+begin
+  // rangers.gptk sends Tab for Y, Enter for Start and R1, F6 for L2. They do
+  // nothing in combat on a keyboard, so they take combat actions on handhelds.
+  Result := False;
+  if not GameWindowHasGamepadArcadeLayout
+      or (ArcadeViewMode <> 0)
+      or VictoryPanel.Active
+      or DefeatPanel.Active
+      or (PlayerArcadeShip = nil)
+      or IsVirtualKeyDown(VK_CONTROL)
+      or IsVirtualKeyDown(VK_MENU) then
+    Exit;
+  Result := True;
+  case VirtualKey of
+    VK_TAB: ToggleAutopilot(nil);
+    VK_RETURN:
+    begin
+      // The pause frees the cursor for the combat panel's buttons.
+      SimulationPaused := not SimulationPaused;
+      UpdateMobileControls;
+    end;
+    VK_F6:
+      if not SimulationPaused then
+        SelectNextPrimaryWeapon;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TfAB.SelectNextPrimaryWeapon;
+var
+  Step, Index: Integer;
+begin
+  for Step := 1 to PlayerArcadeShip.WeaponCount do
+  begin
+    Index := (Max(PlayerArcadeShip.PrimaryWeapon, -1) + Step) mod PlayerArcadeShip.WeaponCount;
+    if PlayerArcadeShip.Weapons[Index].SlotData and EquipmentSecondaryFireFlag = 0 then
+    begin
+      if Index <> PlayerArcadeShip.PrimaryWeapon then
+      begin
+        PlayerArcadeShip.SelectWeapon(Index);
+        UpdateWeaponHighlights(True);
+      end;
+      Exit;
+    end;
+  end;
 end;
 
 procedure TfAB.ProcessWindowMessage(Message, WParam: Cardinal; LParam: Integer);
