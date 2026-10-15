@@ -1,0 +1,180 @@
+name: Anbernic and TrimUI packages
+
+# Builds the ARMHF/AArch64 game, packages the seven firmware ZIPs and checks
+# them. Run it manually with "release" to publish those exact ZIPs. QEMU
+# scenarios that need the licensed game data stay a manual pre-release step.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Create a GitHub release from these packages
+        type: choice
+        options: [none, draft, publish]
+        default: none
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anbernic-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SDK: /home/runner/anbernic-sdk
+  # Inside .local so the clean-tree check of later packages ignores earlier ones.
+  DIST: .local/dist
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  packages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang-19 lld-19 llvm-19 fp-compiler fp-utils \
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf cmake ninja-build make debootstrap \
+            curl qemu-user
+          # FPC's LLVM backend calls the unversioned clang tools.
+          echo /usr/lib/llvm-19/bin >> "$GITHUB_PATH"
+
+      - name: Cache keys
+        id: keys
+        run: |
+          echo "sdk=anbernic-sysroot-${{ hashFiles('tools/anbernic_sdk.sh') }}" >> "$GITHUB_OUTPUT"
+          echo "fpc=anbernic-fpc-${{ hashFiles('tools/anbernic_sdk.sh') }}-$(git rev-parse HEAD:vendor/fpc)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore sysroots
+        id: sysroot-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.SDK }}/arm64
+            ${{ env.SDK }}/armhf
+          key: ${{ steps.keys.outputs.sdk }}
+
+      - name: Build sysroots
+        if: steps.sysroot-cache.outputs.cache-hit != 'true'
+        run: tools/anbernic_sdk.sh "$SDK" sysroot
+
+      - name: Save sysroots
+        if: steps.sysroot-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.SDK }}/arm64
+            ${{ env.SDK }}/armhf
+          key: ${{ steps.keys.outputs.sdk }}
+
+      - name: Restore FPC cross compilers
+        id: fpc-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.SDK }}/fpc
+          key: ${{ steps.keys.outputs.fpc }}
+
+      - name: Build FPC cross compilers
+        if: steps.fpc-cache.outputs.cache-hit != 'true'
+        run: tools/anbernic_sdk.sh "$SDK" fpc
+
+      - name: Save FPC cross compilers
+        if: steps.fpc-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.SDK }}/fpc
+          key: ${{ steps.keys.outputs.fpc }}
+
+      - name: Build game
+        run: |
+          for arch in aarch64 armhf; do
+            sdk_arch=$([ "$arch" = aarch64 ] && echo arm64 || echo armhf)
+            python3 tools/build_linux.py --arch "$arch" --sysroot "$SDK/$sdk_arch/root" \
+              --toolchain "$SDK/$sdk_arch/bin" --fpc-source "$SDK/fpc/$sdk_arch" --rebuild
+          done
+          sha256sum .local/anbernic/*/Rangers
+
+      - name: Package
+        run: python3 tools/package_anbernic.py --sdk-root "$SDK" --output "$DIST"
+
+      - name: Check packages
+        run: |
+          export PATH="$SDK/arm64/bin:$SDK/armhf/bin:$PATH"
+          python3 tools/tests/check_packages.py "$DIST" --commit "$GITHUB_SHA" | tee "$DIST/report.json"
+          python3 tools/tests/h700_launcher.py
+          # The platform probe must load SDL and find a video driver on each architecture.
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy qemu-aarch64 -L "$SDK/arm64/root" \
+            -E LD_LIBRARY_PATH="$PWD/$DIST/H700-muOS/spacerangershd/lib/aarch64:$SDK/arm64/root/usr/lib" \
+            "$DIST"/H700-muOS/spacerangershd/check-platform.aarch64
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy qemu-arm -L "$SDK/armhf/root" \
+            -E LD_LIBRARY_PATH="$PWD/$DIST/H700-muOS/spacerangershd/lib/armhf:$SDK/armhf/root/usr/lib" \
+            "$DIST"/H700-muOS/spacerangershd/check-platform.armhf
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: anbernic-packages
+          path: |
+            ${{ env.DIST }}/*.zip
+            ${{ env.DIST }}/SHA256SUMS
+            ${{ env.DIST }}/report.json
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    needs: packages
+    if: github.event_name == 'workflow_dispatch' && inputs.release != 'none' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: anbernic-packages
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.release }}
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+          short=${GITHUB_SHA::7}
+          tag="anbernic-$(date -u +%Y.%m.%d)-$short"
+          aarch64=$(jq -r '.binaries["Rangers.aarch64"]' report.json)
+          armhf=$(jq -r '.binaries["Rangers.armhf"]' report.json)
+          cat > notes.md <<EOF
+          Сборка из [$short]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA), собрана GitHub Actions ([запуск]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)).
+
+          Семь архивов: **H700-muOS** (ARMHF и AArch64), **H700-KNULLI**, **H700-StockOS**, **TrimUI**, **Rockchip-ArkOS**, **Rockchip-AmberELEC**, **Rockchip-ROCKNIX** (AArch64). Контрольные суммы — **SHA256SUMS**. Требуются системная SDL2 ≥ 2.26.0, glibc ≥ 2.29 и ваши игровые ресурсы. Перед обновлением сохраните \`spacerangershd/game\` и \`spacerangershd/profile\`.
+
+          Автоматически проверено: обе архитектуры собраны из исходников этого коммита; во всех архивах одинаковые бинарники, нет SDL2 и файлов игры; импорт glibc не новее 2.29; проходят проверки launcher; под QEMU загружается SDL. Сценарии с ресурсами игры (меню, новая игра, вылет) в CI не запускаются.
+
+          SHA256 Rangers: AArch64 \`$aarch64\`, ARMHF \`$armhf\`.
+
+          [Инструкции установки и таблица моделей]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/platform/linux/ANBERNIC.md) · [README]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/README.md)
+          EOF
+          flags=(--draft)
+          [ "$MODE" = publish ] && flags=(--latest)
+          gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Build $(date -u +%Y-%m-%d) · Anbernic и TrimUI · $short" --notes-file notes.md "${flags[@]}" \
+            ./*.zip SHA256SUMS
