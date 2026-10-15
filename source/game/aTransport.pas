@@ -80,6 +80,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   EC_Struct,
   aPlayer,
   aGalaxyEvent,
@@ -284,8 +285,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TTransport.NextDay ' + GetFullName(' '));
+      AddGameExceptionContext(E, 'TTransport.NextDay ' + GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -387,8 +388,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TTransport.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TTransport.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

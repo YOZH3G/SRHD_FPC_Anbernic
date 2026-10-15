@@ -84,6 +84,7 @@ const
 implementation
 
 uses
+  GameDiagnostics,
   fEquipmentShop,
   GameInput,
   Math,
@@ -181,7 +182,7 @@ begin
   PlanetPanel.InitializeLayout(Self);
   StationPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fHangar... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fHangar');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -221,7 +222,6 @@ begin
     with FindByNameRecursive('PanelDown') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
-  AppendLogLineThreadSafe('ok');
   ShipInfoWindow := GetByName('InfoShip') as TWindowGI;
   for I := Low(ShipSlots) to High(ShipSlots) do
     ShipSlots[I].ImageControl := GetByName('Ship' + IntToStr(I)) as TGraphBufGI;

@@ -61,6 +61,7 @@ function AcquireCachedGai(Control: TCacheControlEC): TCGaiEC;
 implementation
 
 uses
+  GameDiagnostics,
   EC_Mem,
   EC_Str,
   EC_Struct,
@@ -334,13 +335,14 @@ begin
     System.Move(SourceBuffer.Data^, RawGaiData^, SourceBuffer.DataSize);
     ResidentBytes := SourceBuffer.DataSize;
   except
+    LogCurrentGameException('resources', 'loading GAI image ' + CacheKey + '; using an empty image', gllWarning);
     RawGaiData := nil;
     ResidentBytes := 0;
   end;
   Header := RawGaiData;
   if (SourceBuffer.DataSize < SizeOf(TGaiHeader)) or (RawGaiData = nil) then
   begin
-    AppendLogLineThreadSafe('Error Load Gai');
+    LogGameMessage(gllWarning, 'resources', 'GAI image ' + CacheKey + ' has no usable header; using an empty image');
     Header := AllocClearEC(SizeOf(TGaiHeader));
   end;
   if Header.SequenceTableOffset <> 0 then
@@ -363,20 +365,14 @@ var
   OldHeader: TGaiHeader;
   LayoutSize: TPoint;
 
-  procedure LogGaiRescaleStart;
-  begin
-    AppendLogTextThreadSafe('Rescaling ' + ResourceKey + '... ');
-  end;
-
   procedure LogGaiRescaleDone;
   begin
-    AppendLogLineThreadSafe('ok');
+    LogGameMessage(gllDebug, 'resources', 'Rescaled GAI image ' + ResourceKey);
   end;
 
 begin
   if FindTextOffsetW(ResourceKey, 'Bm.FormAB2.2bg') = 0 then
   begin
-    LogGaiRescaleStart;
     System.Move(SourceBuffer.Data^, Pointer(@OldHeader)^, SizeOf(TGaiHeader));
     if OldHeader.FrameCount <> 1 then
       Exit;

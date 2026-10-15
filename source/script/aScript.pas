@@ -5,6 +5,7 @@ unit aScript;
 interface
 
 uses
+  SysUtils,
   Types,
   GameScriptLibrary,
   Classes,
@@ -581,7 +582,7 @@ var
 
   ScriptRequestThread: TScriptThread;
 
-procedure LogScriptCallHistory;
+procedure AddScriptCallHistory(E: Exception);
 
 procedure ClearPendingScriptRequests;
 
@@ -704,6 +705,7 @@ function GetScriptContextDescription: WideString;
 implementation
 
 uses
+  GameDiagnostics,
 {$IFDEF NATIVE_SCRIPT_MODS}
   NativeScriptLibrary,
 {$ENDIF}
@@ -721,7 +723,6 @@ uses
   EC_CacheBuf,
   GR_Main,
   Globals,
-  SysUtils,
   GlobalsV,
   aConst,
   aKling,
@@ -732,36 +733,42 @@ uses
   aTranclucator,
   aWarrior;
 
-procedure LogScriptCallHistory;
+procedure AddScriptCallHistory(E: Exception);
 var
   I, Position, Count: Integer;
   Cell: TVarEC;
+  Text, Name: UnicodeString;
 begin
-  Count := ScriptCallTraceCount;
-  Position := (ScriptCallTracePosition - 1 + 20) mod 20;
-  Cell := ScriptCallTrace[Position];
-  while (Cell <> nil) and (Cell.ValueKind = vkFunction) do
-  begin
-    Dec(Count);
-    if Count <= 0 then
+  if (E = nil) or (E is EBreakMessageGI) then
+    Exit;
+  try
+    Count := ScriptCallTraceCount;
+    if Count > Length(ScriptCallTrace) then
+      Count := Length(ScriptCallTrace);
+    Position := (ScriptCallTracePosition - Count + Length(ScriptCallTrace)) mod Length(ScriptCallTrace);
+    Text := '';
+    for I := 1 to Count do
     begin
-      AppendLogLineThreadSafe(AnsiString('Non-function error at beginning or after return from user function ' + Cell.Name));
-      Exit;
+      Cell := ScriptCallTrace[Position];
+      if Cell <> nil then
+      begin
+        Name := Copy(Cell.Name, 1, 80);
+        if Length(Text) + Length(Name) > 960 then
+        begin
+          Text := Text + ' > ...';
+          Break;
+        end;
+        if Text <> '' then
+          Text := Text + ' > ';
+        Text := Text + Name;
+      end;
+      Position := (Position + 1) mod Length(ScriptCallTrace);
     end;
-    AppendLogLineThreadSafe(AnsiString('Error in user function ' + Cell.Name));
-    Position := (Position - 1 + 20) mod 20;
-    Cell := ScriptCallTrace[Position];
+    if Text <> '' then
+      AddGameExceptionContext(E, 'Script calls (oldest first): ' + Text);
+  except
+    // Diagnostics must not replace the script's original exception.
   end;
-  AppendLogLineThreadSafe('function call history:');
-  Position := (ScriptCallTracePosition - ScriptCallTraceCount + 20) mod 20;
-  for I := 1 to Count do
-  begin
-    if ScriptCallTrace[Position] <> nil then
-      AppendLogLineThreadSafe(AnsiString(ScriptCallTrace[Position].Name));
-    Position := (Position + 1) mod 20;
-  end;
-  if Galaxy <> nil then
-    AppendLogLineThreadSafe(AnsiString('current turn is ' + IntToWideString(Galaxy.CurrentTurn)));
 end;
 
 procedure ClearPendingScriptRequests;
@@ -855,32 +862,39 @@ var
   Request: PScriptPBRequest;
   Status: Integer;
   Failed: Boolean;
+  BattleFailure: TGameExceptionReport;
 begin
   Result := False;
   if QueuedPlanetaryBattles.Count > 0 then
   begin
     Status := 0;
     Request := QueuedPlanetaryBattles[0];
+    BattleFailure := nil;
     try
-      Failed := False;
-      Status := FRun(Request.MapName, Request.StartText, Request.SuccessText, Request.FailureText, Request.PlaceText);
-    except
-      on E: Exception do
-      begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        Failed := True;
+      try
+        Failed := False;
+        Status := FRun(Request.MapName, Request.StartText, Request.SuccessText, Request.FailureText, Request.PlaceText);
+      except
+        on E: Exception do
+        begin
+          BattleFailure := CaptureGameException('running planetary battle ' + Request.MapName);
+          LogGameException(BattleFailure, 'robots', gllWarning);
+          Failed := True;
+        end;
       end;
-    end;
-    if Failed then
-    begin
-      if ShowMessageBoxGI(
-              TMessageLoopGI(RegisteredScreens[CurrentScreenId]),
-              LocalizedColorText('FormGov.BattlePlanetQuestCrashed'),
-              mbgOK or mbgCancel or mbgQuestion)
-          = mbgResultOK then
-        Status := 3
-      else
-        raise Exception.Create('Error in Matrix.dll');
+      if Failed then
+      begin
+        if ShowMessageBoxGI(
+                TMessageLoopGI(RegisteredScreens[CurrentScreenId]),
+                LocalizedColorText('FormGov.BattlePlanetQuestCrashed'),
+                mbgOK or mbgCancel or mbgQuestion)
+            = mbgResultOK then
+          Status := 3
+        else
+          raise EGameDiagnosticException.Create(BattleFailure.Clone);
+      end;
+    finally
+      BattleFailure.Free;
     end;
     if Status = 0 then
       Exit;
@@ -1093,7 +1107,7 @@ end;
 
 constructor TScriptThread.Create;
 begin
-  inherited Create;
+  inherited Create('script');
 end;
 
 procedure TScriptThread.Execute;
@@ -1219,9 +1233,8 @@ end;
 
 procedure LogScriptStepCount(ExpressionCount: Integer);
 begin
-  AppendLogLineThreadSafe(AnsiString(GetScriptContextDescription + ' code expressions count ' + IntToWideString(ExpressionCount)));
-  if ExpressionCount > 200000 then
-    LogScriptCallHistory;
+  if GameLogEnabled(gllDebug) then
+    LogGameMessage(gllDebug, 'script', 'Executing ' + GetScriptContextDescription + '; expressions=' + IntToWideString(ExpressionCount));
 end;
 
 procedure InitializeScriptEngine;
@@ -1269,9 +1282,9 @@ begin
         ;
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        LogScriptCallHistory;
-        raise Exception.Create(AnsiString('Error in global code of script ' + Template.FileName));
+        AddScriptCallHistory(E);
+        AddGameExceptionContext(E, 'global code of script ' + Template.FileName);
+        raise;
       end;
     end;
     if ScriptTemplateStartRequested then
@@ -2459,18 +2472,12 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(
-          AnsiString(
-              'Error in state code of script '
-                  + ScriptFileName
-                  + ' state #'
-                  + WideString(IntToStr(States.IndexOf(State)))
-                  + '('
-                  + State.Name
-                  + ')'
-          ));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(
+          E,
+          'state code of script ' + ScriptFileName + ' state #' + WideString(IntToStr(States.IndexOf(State))) + '(' + State.Name + ')'
+      );
+      raise;
     end;
   end;
 end;
@@ -2485,9 +2492,8 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      E.Message := AnsiString('Error in turn code of script ' + ScriptFileName) + ': ' + E.Message;
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'turn code of script ' + ScriptFileName);
       raise;
     end;
   end;
@@ -2503,9 +2509,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(AnsiString('Error in dialog code of script ' + ScriptFileName));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'dialog code of script ' + ScriptFileName);
+      raise;
     end;
   end;
 end;
@@ -2525,10 +2531,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(
-          AnsiString('Error in call dialog code of script ' + ScriptFileName + ' (' + TScriptDialog(Dialogs[Index]).Name + ')'));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'call dialog code of script ' + ScriptFileName + ' (' + TScriptDialog(Dialogs[Index]).Name + ')');
+      raise;
     end;
   end;
 end;
@@ -2554,10 +2559,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(
-          AnsiString('Error in call dialog message code of script ' + ScriptFileName + ' (message ' + IntToWideString(Index) + ')'));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'call dialog message code of script ' + ScriptFileName + ' (message ' + IntToWideString(Index) + ')');
+      raise;
     end;
   end;
 end;
@@ -2575,10 +2579,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(
-          AnsiString('Error in call answer code of script ' + ScriptFileName + ' (answer ' + IntToWideString(Index) + ')'));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'call answer code of script ' + ScriptFileName + ' (answer ' + IntToWideString(Index) + ')');
+      raise;
     end;
   end;
 end;
@@ -2596,10 +2599,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      raise Exception.Create(
-          AnsiString('Error in add answer code of script ' + ScriptFileName + ' (answer ' + IntToWideString(Index) + ')'));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'add answer code of script ' + ScriptFileName + ' (answer ' + IntToWideString(Index) + ')');
+      raise;
     end;
   end;
 end;
@@ -3505,9 +3507,9 @@ begin
         ;
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        LogScriptCallHistory;
-        raise Exception.Create(AnsiString('Error in init code of script ' + ScriptFileName));
+        AddScriptCallHistory(E);
+        AddGameExceptionContext(E, 'init code of script ' + ScriptFileName);
+        raise;
       end;
     end;
   Analyzer := TCodeAnalyzerEC.Create;
@@ -3947,18 +3949,23 @@ function TScript.LoadFromFile(FileName: WideString; AnchorStar: TStar; FirstPlan
 var
   Control: TCBufControlEC;
   CachedBuffer: TCBufEC;
-  Failed: Boolean;
 begin
   Control := nil;
   ScriptFileName := FileName;
-  Failed := True;
   try
-    Control := TCBufControlEC.Create;
-    GlobalCache.ResetControl(Control);
-    Control.SetCacheKey(FileName);
-    CachedBuffer := AcquireOrCreateBuffer(Control);
-    Result := LoadFromBuffer(CachedBuffer.Buffer, AnchorStar, FirstPlanet, CreateObjects);
-    Failed := False;
+    try
+      Control := TCBufControlEC.Create;
+      GlobalCache.ResetControl(Control);
+      Control.SetCacheKey(FileName);
+      CachedBuffer := AcquireOrCreateBuffer(Control);
+      Result := LoadFromBuffer(CachedBuffer.Buffer, AnchorStar, FirstPlanet, CreateObjects);
+    except
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'loading script resource ' + FileName);
+        raise;
+      end;
+    end;
   finally
     if Control <> nil then
     begin
@@ -3966,8 +3973,6 @@ begin
       Control.EvictData(TCBufEC);
       Control.Free;
     end;
-    if Failed then
-      AppendLogLineThreadSafe(AnsiString('Failed to load script: ' + FileName));
   end;
 end;
 
@@ -4159,6 +4164,29 @@ begin
     Buffer.AddWideStringZ(EtherIds.GetTextAt(I));
 end;
 
+procedure BindOptionalScriptFunction(Cell: TVarEC; const ScriptName: WideString);
+var
+  ImportName: WideString;
+begin
+  ImportName := Cell.AsString;
+  if ScriptLibraryCache = nil then
+    ScriptLibraryCache := TLibraryCache.Create;
+  try
+    ScriptLibraryCache.InitFunction(Cell);
+  except
+    on E: EScriptImportError do
+    begin
+      LogGameMessage(gllWarning, 'script', ScriptName + ': ' + UnicodeString(E.Message));
+      Cell.ConvertToKind(vkEmpty);
+    end;
+  else
+    begin
+      LogCurrentGameException('script', 'Importing ' + ImportName + '; script=' + ScriptName, gllWarning);
+      Cell.ConvertToKind(vkEmpty);
+    end;
+  end;
+end;
+
 procedure TScript.LoadState(Buffer: TBufEC; Galaxy: TGalaxy);
 var
   I, J, K, Count, SubCount, StateIndex: Integer;
@@ -4184,7 +4212,7 @@ begin
     begin
       Cell := TVarEC.Create(vkEmpty);
       TemporaryCell := True;
-      AppendLogLineThreadSafe(AnsiString('Warning.Script.GameLoad variable not found: ' + Name + ' (' + ScriptFileName + ')'));
+      LogGameMessage(gllWarning, 'script', 'Saved variable not found: ' + Name + '; script=' + ScriptFileName);
     end;
     Kind := TVarKind(Buffer.GetByte);
     // Definition-owned dialog/group handles must not be overwritten by saved pointers.
@@ -4232,14 +4260,7 @@ begin
       Cell.ConvertToKind(vkLibraryFun);
       Name := Buffer.ReadWideString;
       Cell.AsString := Name;
-      if ScriptLibraryCache = nil then
-        ScriptLibraryCache := TLibraryCache.Create;
-      try
-        ScriptLibraryCache.InitFunction(Cell);
-      except
-        AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Name));
-        Cell.ConvertToKind(vkEmpty);
-      end;
+      BindOptionalScriptFunction(Cell, ScriptFileName);
     end
     else
     begin
@@ -4262,7 +4283,7 @@ begin
     begin
       Cell := TVarEC.Create(vkEmpty);
       TemporaryCell := True;
-      AppendLogLineThreadSafe(AnsiString('Warning.Script.GameLoad variable not found: ' + Name + ' (' + ScriptFileName + ')'));
+      LogGameMessage(gllWarning, 'script', 'Saved variable not found: ' + Name + '; script=' + ScriptFileName);
     end;
     Kind := TVarKind(Buffer.GetByte);
     if (Kind = vkLibraryFun) and not TemporaryCell then
@@ -4291,14 +4312,7 @@ begin
       Cell.ConvertToKind(vkLibraryFun);
       Name := Buffer.ReadWideString;
       Cell.AsString := Name;
-      if ScriptLibraryCache = nil then
-        ScriptLibraryCache := TLibraryCache.Create;
-      try
-        ScriptLibraryCache.InitFunction(Cell);
-      except
-        AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Name));
-        Cell.ConvertToKind(vkEmpty);
-      end;
+      BindOptionalScriptFunction(Cell, ScriptFileName);
     end
     else
     begin
@@ -4367,8 +4381,8 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        raise Exception.Create(AnsiString('Failed to load script item <' + Name + '> for script ' + ScriptFileName));
+        AddGameExceptionContext(E, 'Failed to load script item <' + Name + '> for script ' + ScriptFileName);
+        raise;
       end;
     end;
     if ScriptItem.Item <> nil then
@@ -4421,14 +4435,7 @@ begin
       Continue;
     if Cell.AsString = '' then
       Continue;
-    if ScriptLibraryCache = nil then
-      ScriptLibraryCache := TLibraryCache.Create;
-    try
-      ScriptLibraryCache.InitFunction(Cell);
-    except
-      AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
-      Cell.ConvertToKind(vkEmpty);
-    end;
+    BindOptionalScriptFunction(Cell, ScriptFileName);
   end;
   for I := 0 to TurnCode.LocalVar.Count - 1 do
   begin
@@ -4437,14 +4444,7 @@ begin
       Continue;
     if Cell.AsString = '' then
       Continue;
-    if ScriptLibraryCache = nil then
-      ScriptLibraryCache := TLibraryCache.Create;
-    try
-      ScriptLibraryCache.InitFunction(Cell);
-    except
-      AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
-      Cell.ConvertToKind(vkEmpty);
-    end;
+    BindOptionalScriptFunction(Cell, ScriptFileName);
   end;
 end;
 
@@ -4558,7 +4558,7 @@ begin
   if InitNativeScriptFunction(Cell, ModuleHandle, ExportName, Signature) then
     Exit;
 {$ENDIF}
-  raise Exception.Create('Failed to find library function ' + Name + ' in ' + LibraryName);
+  raise EScriptImportError.Create('Library function not found: ' + LibraryName + '.' + Name);
 end;
 
 procedure TLibraryHandler.InitAllFunctions(Scope: TVarArrayEC);
@@ -4625,7 +4625,7 @@ var
     else
       Module := LoadScriptLibrary(Definition.GetParam('Path'));
     if Module = 0 then
-      raise Exception.Create(AnsiString('Failed to load library ' + Name));
+      raise EScriptImportError.Create('Library unavailable: ' + Name);
     Result := TLibraryHandler.Create(Name, Module, Definition);
   end;
 
@@ -4720,13 +4720,8 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      AppendLogLineThreadSafe('Error while executing code from string: ');
-      if Length(SourceText) <= 256 then
-        AppendLogLineThreadSafe(AnsiString(SourceText))
-      else
-        AppendLogLineThreadSafe(AnsiString(Copy(SourceText, 1, 256) + ' ...'));
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'executing script text: ' + Copy(SourceText, 1, 256));
       raise;
     end;
   end;
@@ -4739,23 +4734,30 @@ var
   Analyzer: TCodeAnalyzerEC;
   ErrorText: WideString;
 begin
+  Result := nil;
   Analyzer := TCodeAnalyzerEC.Create;
-  Analyzer.Tokenize(SourceText);
-  Analyzer.RemoveComments;
-  Analyzer.RemoveNewlines;
-  Analyzer.RemoveWhitespace;
-  Analyzer.ValidateDelimiters;
-  Result := TCodeEC.Create;
-  ErrorText := Result.Compile(Analyzer, nil, nil, nil, nil);
-  if ErrorText <> '' then
-  begin
-    AppendLogLineThreadSafe(AnsiString('Compiler. Error=' + ErrorText));
-    AppendLogLineThreadSafe('');
-    AppendLogLineThreadSafe(AnsiString(SourceText));
-    AppendLogLineThreadSafe('');
-    RaiseWideMessage('Compiler. Error=' + ErrorText);
+  try
+    try
+      Analyzer.Tokenize(SourceText);
+      Analyzer.RemoveComments;
+      Analyzer.RemoveNewlines;
+      Analyzer.RemoveWhitespace;
+      Analyzer.ValidateDelimiters;
+      Result := TCodeEC.Create;
+      ErrorText := Result.Compile(Analyzer, nil, nil, nil, nil);
+      if ErrorText <> '' then
+        RaiseWideMessage('Compiler. Error=' + ErrorText);
+    except
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'compiling script text: ' + Copy(SourceText, 1, 256));
+        FreeAndNil(Result);
+        raise;
+      end;
+    end;
+  finally
+    Analyzer.Free;
   end;
-  Analyzer.Free;
 end;
 
 procedure RunScriptCode(ContextName: WideString; Code, ParentCode: TCodeEC);
@@ -4775,14 +4777,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      AppendLogLineThreadSafe('Error while executing code from string: ');
-      if Length(ContextName) <= 128 then
-        AppendLogLineThreadSafe(AnsiString(ContextName))
-      else
-        AppendLogLineThreadSafe(AnsiString(Copy(ContextName, 1, 128) + ' ...'));
-      raise Exception.Create('');
+      AddScriptCallHistory(E);
+      AddGameExceptionContext(E, 'executing script code: ' + Copy(ContextName, 1, 128));
+      raise;
     end;
   end;
 end;
@@ -5138,14 +5135,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      LogScriptCallHistory;
-      AppendLogLineThreadSafe('Error while executing GI code:');
+      AddScriptCallHistory(E);
       Text := Entry.SourceText;
-      if Length(Text) <= 256 then
-        AppendLogLineThreadSafe(AnsiString(Text))
-      else
-        AppendLogLineThreadSafe(AnsiString(Copy(Text, 1, 256) + ' ...'));
+      AddGameExceptionContext(E, 'executing UI script: ' + Copy(Text, 1, 256));
       raise;
     end;
   end;
@@ -5276,9 +5268,7 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        AppendLogLineThreadSafe('Error in script item actcode, item=');
-        AppendLogLineThreadSafe(AnsiString(Item.GetDisplayName + ', script name - ' + Name));
+        AddGameExceptionContext(E, 'script item action: ' + Item.GetDisplayName + ', script=' + Name);
         raise;
       end;
     end;
@@ -5317,9 +5307,7 @@ begin
         except
           on E: Exception do
           begin
-            AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-            AppendLogLineThreadSafe('Error in script ship actcode');
-            AppendLogLineThreadSafe(AnsiString(State.Name + ', script - ' + Script.ScriptFileName));
+            AddGameExceptionContext(E, 'script ship action: state=' + State.Name + ', script=' + Script.ScriptFileName);
             raise;
           end;
         end;
@@ -5419,11 +5407,9 @@ begin
         except
           on E: Exception do
           begin
-            AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-            AppendLogLineThreadSafe('Error in item actcode, item=');
-            AppendLogLineThreadSafe(AnsiString(Item.GetDisplayName));
+            AddGameExceptionContext(E, 'item action: ' + Item.GetDisplayName);
             if Item.ScriptItem <> nil then
-              AppendLogLineThreadSafe(AnsiString('script name - ' + TScriptItem(Item.ScriptItem).Name));
+              AddGameExceptionContext(E, 'script=' + TScriptItem(Item.ScriptItem).Name);
             raise;
           end;
         end;
@@ -5453,9 +5439,8 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        AppendLogLineThreadSafe(AnsiString('Error in actcode, info=' + Info.TypeName));
-        LogScriptCallHistory;
+        AddGameExceptionContext(E, 'custom ship action: type=' + Info.TypeName);
+        AddScriptCallHistory(E);
         raise;
       end;
     end;
@@ -5479,9 +5464,8 @@ begin
         except
           on E: Exception do
           begin
-            AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-            AppendLogLineThreadSafe(AnsiString('Error in actcode, info=' + Info.TypeName));
-            LogScriptCallHistory;
+            AddGameExceptionContext(E, 'custom ship action: type=' + Info.TypeName);
+            AddScriptCallHistory(E);
             raise;
           end;
         end;

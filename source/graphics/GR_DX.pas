@@ -193,6 +193,7 @@ procedure SubtractResidentTextureBytes(ByteCount: Cardinal);
 implementation
 
 uses
+  GameDiagnostics,
   GameSystem,
   EC_Mem,
   GR_Main,
@@ -299,23 +300,32 @@ begin
   ErrorCode := Direct3DDevice.CreateTexture(Width, Height, 1, 0, Format, Pool, Texture, nil);
   if ErrorCode = LongInt($8007000E) then
   begin
-    AppendLogTextThreadSafe('Failed to create texture, trying to free some textures... ');
+    LogGameMessage(
+        gllWarning,
+        'graphics',
+        'Creating texture ' + IntToWideString(Width) + 'x' + IntToWideString(Height) + ' ran out of memory; evicting textures before retry'
+    );
     EvictTextureCaches(True);
     ErrorCode := Direct3DDevice.CreateTexture(Width, Height, 1, 0, Format, Pool, Texture, nil);
     if ErrorCode = 0 then
-      AppendLogLineThreadSafe('success')
+      LogGameMessage(
+          gllInfo,
+          'graphics',
+          'Created texture ' + IntToWideString(Width) + 'x' + IntToWideString(Height) + ' after texture eviction'
+      )
     else
     begin
-      AppendLogLineThreadSafe('fail');
-      LogMemoryUsage;
-      AppendLogLineThreadSafe(
-          'GR_CreateTexture()::CreateTexture('
+      LogGameMessage(
+          gllError,
+          'graphics',
+          'Creating texture '
               + IntToWideString(Width)
-              + ','
+              + 'x'
               + IntToWideString(Height)
-              + ') error='
+              + ' still failed after texture eviction; status='
               + IntToWideString(ErrorCode)
       );
+      LogMemoryUsage;
     end;
   end;
   ClearTexturePixels(Texture);

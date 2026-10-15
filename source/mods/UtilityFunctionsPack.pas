@@ -22,6 +22,7 @@ implementation
 
 {$IFDEF NATIVE_UTILITY_FUNCTIONS_PACK}
 uses
+  GameDiagnostics,
   Classes,
   SysUtils,
   Math,
@@ -1306,7 +1307,7 @@ begin
   end;
   if Script = nil then
   begin
-    AppendDebugLogLine('UtilityFunctions: ShipJoinToScript missing script: ' + UTF8Encode(Path));
+    LogGameMessage(gllWarning, 'script', 'UtilityFunctions.ShipJoinToScript: script not found: ' + Path);
     Exit;
   end;
   Name := UtilityPart(Path, '.', 1, 0);
@@ -1319,7 +1320,7 @@ begin
     end;
   if GroupIndex < 0 then
   begin
-    AppendDebugLogLine('UtilityFunctions: ShipJoinToScript missing group: ' + UTF8Encode(Path));
+    LogGameMessage(gllWarning, 'script', 'UtilityFunctions.ShipJoinToScript: group not found: ' + Path);
     Exit;
   end;
   Group := Script.Groups[GroupIndex];
@@ -1338,7 +1339,7 @@ begin
       UtilityError('Script group has no valid initial state');
     State := Script.States[Group.InitialStateIndex];
     if Name <> '' then
-      AppendDebugLogLine('UtilityFunctions: ShipJoinToScript using default state: ' + UTF8Encode(Path));
+      LogGameMessage(gllWarning, 'script', 'UtilityFunctions.ShipJoinToScript: state not found: ' + Path);
   end;
   Binding := UtilityBinding(Ship);
   OldScript := nil;
@@ -1352,7 +1353,7 @@ begin
         OldScript.Ships.Delete(OldIndex)
       else if OldScript.Ships.Count <> 0 then
       begin
-        AppendDebugLogLine('UtilityFunctions: ShipJoinToScript missing old binding: ' + UTF8Encode(Path));
+        LogGameMessage(gllWarning, 'script', 'UtilityFunctions.ShipJoinToScript: binding not found: ' + Path);
         Exit;
       end;
     end
@@ -1791,7 +1792,8 @@ begin
     end;
   except
     on E: EFCreateError do
-      ; // The original silently leaves unwritable files alone.
+      // File-creation errors are non-fatal for this script function.
+      LogCurrentGameException('script', 'UtilityFunctions.SetParFromTxt: file was not written: ' + Path, gllWarning);
   end;
 end;
 
@@ -1912,7 +1914,7 @@ begin
     SetGameClipboard(UtilityDllText(av[1].GetString));
   except
     on E: Exception do
-      AppendDebugLogLine('UtilityFunctions: clipboard unavailable: ' + E.Message);
+      LogCurrentGameException('clipboard', 'UtilityFunctions.SendStringToClipboard: clipboard is unavailable', gllWarning);
   end;
 end;
 

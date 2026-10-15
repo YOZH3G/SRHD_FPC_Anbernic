@@ -111,6 +111,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   SE_Process,
   Classes,
   GR_Main,
@@ -845,8 +846,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TMissile.StepDay, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TMissile.StepDay; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

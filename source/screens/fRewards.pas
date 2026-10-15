@@ -47,6 +47,7 @@ function RunRewards(ParentLoop: TMessageLoopGI; ReadOnly: Boolean): Boolean;
 implementation
 
 uses
+  GameDiagnostics,
   aGalaxyStruct,
   Classes,
   SysUtils,
@@ -74,7 +75,7 @@ uses
 procedure TfRewards.InitializeLayout;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fRewards... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fRewards');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -83,7 +84,6 @@ begin
     with FindByNameRecursive('RewardPanel') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
   (GetByName('ButExit') as TGraphButtonGI).UpCallback := CloseClicked;
   AwardsPanel := GetByName('PTable') as TPanelScrollBarGI;

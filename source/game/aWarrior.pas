@@ -92,6 +92,7 @@ const
 implementation
 
 uses
+  GameDiagnostics,
   aEFilmEnd,
   aPlayer,
   aKling,
@@ -316,8 +317,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TWarrior.NextDay ' + GetFullName(' '));
+      AddGameExceptionContext(E, 'TWarrior.NextDay ' + GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -478,8 +479,8 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        raise Exception.Create('Error in procedure TWarrior.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+        AddGameExceptionContext(E, 'TWarrior.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+        raise;
       end;
     end;
 end;
@@ -770,8 +771,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TWarrior.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TWarrior.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -1265,8 +1266,8 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        raise Exception.Create('Error in procedure TWarrior.ArmsToTarget ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+        AddGameExceptionContext(E, 'TWarrior.ArmsToTarget ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+        raise;
       end;
     end;
 end;
@@ -1443,8 +1444,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TWarrior.ArmsToTarget ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TWarrior.ArmsToTarget ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

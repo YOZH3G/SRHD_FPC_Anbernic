@@ -403,6 +403,7 @@ procedure PopMessageLoop(Loop: TMessageLoopGI);
 implementation
 
 uses
+  GameDiagnostics,
   GI_Edit,
   GI_OnScreenKeyboard,
   Math,
@@ -451,9 +452,7 @@ begin
   CancelGamePointerInput;
   MessageLoopStack.Delete(MessageLoopStack.Count - 1);
   if MessageLoopStack.Count > 0 then
-    AppendLogLineThreadSafe(
-        'Rangers: resume ' + UTF8Encode(TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName)
-    );
+    LogGameMessage(gllInfo, 'ui', 'Rangers: resume ' + TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName);
 end;
 
 constructor TObjectGI.Create(Owner: TObjectGI);
@@ -1476,14 +1475,15 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
       if Child <> nil then
       begin
-        AppendLogLineThreadSafe('Error in TObjectGI.DrawEx, label = ' + IntToStr(Stage));
-        E.Message := 'obj - ' + Child.ControlName + ' ' + Child.ClassName + ': ' + E.Message;
+        AddGameExceptionContext(
+            E,
+            'TObjectGI.DrawEx; stage=' + IntToStr(Stage) + ', object=' + Child.ControlName + ' (' + Child.ClassName + ')'
+        );
       end
       else
-        E.Message := 'TObjectGI.DrawEx, label = ' + IntToStr(Stage) + ': ' + E.Message;
+        AddGameExceptionContext(E, 'TObjectGI.DrawEx; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -1963,7 +1963,7 @@ var
 begin
   Stage := 0;
   try
-    AppendLogLineThreadSafe('Rangers: run ' + UTF8Encode(RegisteredLoopName));
+    LogGameMessage(gllInfo, 'ui', 'Rangers: run ' + RegisteredLoopName);
     PushMessageLoop(Self);
     try
       ExitCode := 0;
@@ -2131,8 +2131,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TMessageLoopGI.Run, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TMessageLoopGI.Run, ' + RegisteredLoopName + '; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -2149,7 +2148,7 @@ var
 begin
   Stage := 0;
   try
-    AppendLogLineThreadSafe('Rangers: run ' + UTF8Encode(RegisteredLoopName));
+    LogGameMessage(gllInfo, 'ui', 'Rangers: run ' + RegisteredLoopName);
     PushMessageLoop(Self);
     try
       ExitCode := 0;
@@ -2303,8 +2302,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TMessageLoopGI.Run2, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TMessageLoopGI.Run2, ' + RegisteredLoopName + '; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -2339,8 +2337,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TMessageLoopGI.Takt2, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TMessageLoopGI.Takt2, ' + RegisteredLoopName + '; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -2947,10 +2944,9 @@ begin
       ;
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
       if Stage in [31, 32] then
-        AppendLogLineThreadSafe('key=' + IntToWideString(WParam));
-      E.Message := 'Error in procedure TMessageLoopGI.SysMessage, label = ' + IntToStr(Stage) + ': ' + E.Message;
+        AddGameExceptionContext(E, 'key=' + IntToWideString(WParam));
+      AddGameExceptionContext(E, 'TMessageLoopGI.SysMessage; stage=' + IntToStr(Stage));
       raise;
     end;
   end;

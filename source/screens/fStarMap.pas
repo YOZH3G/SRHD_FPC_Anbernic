@@ -299,6 +299,7 @@ function GetTurnFilmFrameInterval(Activity: Cardinal): Integer;
 implementation
 
 uses
+  GameDiagnostics,
   GameWindow,
   GameGraphics,
   GameSystem,
@@ -570,7 +571,7 @@ begin
   HudExtraHeight := HudSize.Y - 768;
   MainPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fStarMap... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fStarMap');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -659,7 +660,6 @@ begin
     with FindByNameRecursive('InfoItem') do
       SetPosition(Classes.Point(LocalPosition.X - ExtraScreenWidth div 2, LocalPosition.Y - ExtraScreenHeight div 2));
   end;
-  AppendLogLineThreadSafe('ok');
   MapControls := GetByName('MainPanel') as TPanelGI;
   PartnerPanel := GetByName('MapPartner') as TPanelGI;
   SecondaryPartnerPanel := GetByName('MapPartner2') as TPanelGI;
@@ -727,6 +727,7 @@ var
   MapIndex: Integer;
   StartText, WinText, LossText, TerronName: WideString;
   BattleFailed: Boolean;
+  BattleFailure: TGameExceptionReport;
 begin
   if (GetPlayer <> nil) and (Byte(GetPlayer.RuinsMode) > 0) then
     GetPlayer.ExitRuinsMode;
@@ -767,25 +768,31 @@ begin
     LoadPanel.OnOpen;
     LoadPanel.SelectBackgroundStyle(3);
     LoadPanel.RefreshBackgroundImages;
+    BattleFailure := nil;
     try
-      BattleFailed := False;
-      PlanetBattleState := FRun(RobotMapDefinitions[MapIndex].Map, StartText, WinText, LossText, TerronName);
-    except
-      on E: Exception do
-      begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        BattleFailed := True;
+      try
+        BattleFailed := False;
+        PlanetBattleState := FRun(RobotMapDefinitions[MapIndex].Map, StartText, WinText, LossText, TerronName);
+      except
+        on E: Exception do
+        begin
+          BattleFailure := CaptureGameException('running planetary battle ' + RobotMapDefinitions[MapIndex].Map);
+          LogGameException(BattleFailure, 'robots', gllWarning);
+          BattleFailed := True;
+        end;
       end;
-    end;
-    if MemorySnapshotActive then
-      RestoreGameFromMemorySnapshot;
-    if BattleFailed then
-    begin
-      if ShowMessageBoxGI(Self, LocalizedColorText('FormGov.BattlePlanetQuestCrashed'), mbgOK or mbgCancel or mbgQuestion)
-          = mbgResultOK then
-        PlanetBattleState := 3
-      else
-        raise Exception.Create('Error in Matrix.dll');
+      if MemorySnapshotActive then
+        RestoreGameFromMemorySnapshot;
+      if BattleFailed then
+      begin
+        if ShowMessageBoxGI(Self, LocalizedColorText('FormGov.BattlePlanetQuestCrashed'), mbgOK or mbgCancel or mbgQuestion)
+            = mbgResultOK then
+          PlanetBattleState := 3
+        else
+          raise EGameDiagnosticException.Create(BattleFailure.Clone);
+      end;
+    finally
+      BattleFailure.Free;
     end;
     if PlanetBattleState <> 0 then
     begin
@@ -1184,8 +1191,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'TfStarMap.AfterRun, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TfStarMap.OnClose; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -1433,7 +1439,7 @@ begin
       PlayerAutomaticControl := False;
       FilmCameraFollow := ViewFollowShip;
       if not PlayerStarDayPrepared then
-        AppendLogLineThreadSafe('Not calc NextDay header');
+        LogGameMessage(gllWarning, 'simulation', 'Player star turn was not prepared');
       GetPlayer.NextDay;
       QueuePlayerStarTurnCalculation;
       Events[0] := TurnCalculationThread.IdleEvent;
@@ -2690,8 +2696,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'TfStarMap.Draw2, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TfStarMap.DrawFrame; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -7181,8 +7186,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in TfStarMap.FilmStep, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TfStarMap.ProcessTurnFilm; stage=' + IntToStr(Stage));
       raise;
     end;
   end;

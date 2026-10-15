@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   aCalc,
   Classes,
   SysUtils,
@@ -99,7 +100,7 @@ begin
   MainPanel.InitializeLayout(Self);
   PlanetPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fPlanet... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPlanet');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Panel := GetByName('MainPanel');
   Panel.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -109,7 +110,6 @@ begin
   Quest := Panel.FindByNameRecursive('QuestInfo');
   // Native layout adds the extra width to both coordinates here.
   Quest.SetPosition(Classes.Point(Quest.LocalPosition.X + ExtraScreenWidth, Quest.LocalPosition.Y + ExtraScreenWidth));
-  AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
 end;
 

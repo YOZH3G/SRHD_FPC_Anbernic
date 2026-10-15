@@ -118,6 +118,7 @@ function ItemMatchesInfoSearch(Item: TItem; Search: WideString): Boolean;
 implementation
 
 uses
+  GameDiagnostics,
   aCalc,
   aScript,
   Classes,
@@ -227,7 +228,7 @@ begin
   PlanetPanel.InitializeLayout(Self);
   StationPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fInfo... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fInfo');
   ViewportRect := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -262,7 +263,6 @@ begin
       end;
     end;
   end;
-  AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
   (GetByName('PM_Ship') as TGraphButtonGI).UpCallback := ShipClicked;
   InfoPanel := GetByName('PanelInfo') as TPanelScrollBarGI;

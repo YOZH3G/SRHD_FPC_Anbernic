@@ -104,6 +104,7 @@ function GetPirateRankSmallImagePath(Rank: TShipRank): WideString;
 implementation
 
 uses
+  GameDiagnostics,
   GI_GI,
   GI_Main,
   GI_Inspection,
@@ -149,7 +150,7 @@ var
   I: Integer;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fScaner... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fScaner');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -167,7 +168,6 @@ begin
     with FindByNameRecursive('RewardWnd') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y));
   end;
-  AppendLogLineThreadSafe('ok');
   BackgroundBuffer := GetByName('BGBuf') as TGraphBufGI;
   ItemInfoWindow := GetByName('PII') as TWindowGI;
   ItemImage := GetByName('InfoImage') as TImageGI;
@@ -433,8 +433,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TfScaner.BeforeRun, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TfScaner.OnOpen; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -1167,8 +1167,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TfScaner.Update, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TfScaner.Update; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

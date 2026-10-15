@@ -91,6 +91,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GameEvents,
   GI_MessageBox,
   GR_DX,
@@ -145,7 +146,7 @@ end;
 procedure TfSaveManager.InitializeLayout;
 begin
   inherited;
-  AppendLogTextThreadSafe('fSaveManager... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fSaveManager');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   GetByName('').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   GetByName('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -155,7 +156,6 @@ begin
   NewSaveSelectedColor := GetStyleColorGI('SaveManager.NewSaveSelected', 87, 149, 175);
   SaveSlotNormalColor := GetStyleColorGI('SaveManager.SlotNormal', 97, 129, 143);
   SaveSlotSelectedColor := GetStyleColorGI('SaveManager.SlotSelected', 65, 121, 145);
-  AppendLogLineThreadSafe('ok');
 end;
 
 procedure TfSaveManager.OnOpen;
@@ -445,6 +445,7 @@ end;
 procedure TfSaveManager.RefreshSlot(SlotIndex: Integer; UnusedEditingFlag: Boolean);
 var
   State: WideString;
+  FailureContext: UnicodeString;
   Color: Cardinal;
 begin
   try
@@ -528,8 +529,10 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe(AnsiString(WideString('Error when loading info from save file ') + PSMSlot(Slots[SlotIndex]).FileName));
+      FailureContext := 'refreshing save slot ' + IntToStr(SlotIndex);
+      if (Slots <> nil) and (SlotIndex >= 0) and (SlotIndex < Slots.Count) and (PSMSlot(Slots[SlotIndex]) <> nil) then
+        FailureContext := FailureContext + '; file=' + PSMSlot(Slots[SlotIndex]).FileName;
+      LogCurrentGameException('save', FailureContext, gllWarning);
     end;
   end;
 end;

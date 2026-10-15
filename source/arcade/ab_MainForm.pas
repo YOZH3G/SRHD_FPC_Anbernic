@@ -241,6 +241,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   EC_Thread,
   GameWindow,
   GI_GI,
@@ -325,7 +326,7 @@ begin
   MobileHudScale := 1;
   MobileShipStatusBottom := 0;
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('ab_MainForm... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout ab_MainForm');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -402,7 +403,6 @@ begin
       end;
     end;
   end;
-  AppendLogLineThreadSafe('ok');
   LoadPanel.InitializeLayout(Self);
   SetHelpCallback(UpdateHelp);
   with GetByName('MainPanel') do
@@ -800,7 +800,7 @@ begin
   if GetPlayer <> nil then
   begin
     RunGlobalScriptsForContext(GetPlayer.CurrentStar, 2);
-    CacheLoader := TCacheLoader.Create;
+    CacheLoader := TCacheLoader.Create('cache-loader');
   end;
   if Galaxy <> nil then
   begin
@@ -3438,10 +3438,9 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('Error in procedure TfAB.TimerTakt, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TfAB.TimerTakt; stage=' + IntToStr(Stage));
       if Obj <> nil then
-        AppendLogLineThreadSafe('Obj ' + Obj.ClassName);
+        AddGameExceptionContext(E, 'object=' + Obj.ClassName);
       raise;
     end;
   end;

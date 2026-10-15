@@ -1,4 +1,4 @@
-unit NoSteamAchievemens;
+unit LocalAchievements;
 
 {$I GameOptions.inc}
 
@@ -6,7 +6,7 @@ interface
 
 uses
   GameSystem,
-  SimpleSteamApi,
+  Achievements,
   EC_BlockPar;
 
 procedure NotifyLocalAchievement(Block: TBlockParEC);
@@ -31,7 +31,6 @@ uses
   EC_Buf,
   GR_Main,
   GI_MessageLoop,
-  Achievements,
   EC_File,
   DateUtils,
   Math,

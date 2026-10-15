@@ -305,6 +305,7 @@ const
 implementation
 
 uses
+  GameDiagnostics,
   SysUtils,
   EC_Mem,
   GR_Main,
@@ -413,23 +414,26 @@ begin
   try
     Obj := TEFilmObj.Create
   except
+    LogCurrentGameException('scene', 'allocating a film object; retrying after texture cache eviction', gllWarning);
     Obj := nil
   end;
   if Obj = nil then
   begin
-    AppendLogTextThreadSafe('Failed to allocate memory for film object, trying to free some textures... ');
     EvictTextureCaches(True);
     try
       Obj := TEFilmObj.Create
     except
-      Obj := nil
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'allocating a film object after texture cache eviction');
+        raise;
+      end;
     end;
     if Obj <> nil then
-      AppendLogLineThreadSafe('success')
+      LogGameMessage(gllInfo, 'scene', 'Film object allocation succeeded after texture cache eviction')
     else
     begin
-      AppendLogLineThreadSafe('fail');
-      raise Exception.Create('Error in TEFilm.ObjAlloc');
+      raise EOutOfMemory.Create('Film object allocation returned nil after texture cache eviction');
     end;
   end;
   if LastObject <> nil then
@@ -1280,16 +1284,14 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('Error in procedure TEFilm.RunOrder, order = ' + IntToStr(Command.Kind) + ', label = ' + IntToStr(ErrorStep));
+      AddGameExceptionContext(E, 'TEFilm.ExecuteCommand, order=' + IntToStr(Command.Kind) + '; stage=' + IntToStr(ErrorStep));
       if Command.Obj <> nil then
       begin
-        AppendLogLineThreadSafe(Command.Obj.KindName);
-        AppendLogLineThreadSafe(Command.Obj.GraphKey);
+        AddGameExceptionContext(E, 'object=' + Command.Obj.KindName + ', graph=' + Command.Obj.GraphKey);
         if Command.Obj.SceneObject <> nil then
-          AppendLogLineThreadSafe(Command.Obj.SceneObject.GraphKey);
+          AddGameExceptionContext(E, 'scene graph=' + Command.Obj.SceneObject.GraphKey);
       end;
-      raise Exception.Create('Error in procedure TEFilm.RunOrder, order = ' + IntToStr(Command.Kind) + ', label = ' + IntToStr(ErrorStep));
+      raise;
     end;
   end;
 end;

@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   aRanger,
   fEquipmentShop,
   fGalaxy2,
@@ -72,10 +73,9 @@ end;
 procedure TfPanelRuins.InitializeLayout(Screen: TMessageLoopGI);
 begin
   Self.Screen := Screen;
-  AppendLogTextThreadSafe('fPanelRuins... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPanelRuins');
   with Self.Screen.GetByName('PanelRuins') do
     SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
-  AppendLogLineThreadSafe('ok');
   (Self.Screen.GetByName('PR_Gov') as TGraphButtonGI).UpCallback := ServicesClicked;
   (Self.Screen.GetByName('PR_Shop') as TGraphButtonGI).UpCallback := EquipmentShopClicked;
   (Self.Screen.GetByName('PR_Goods') as TGraphButtonGI).UpCallback := GoodsShopClicked;

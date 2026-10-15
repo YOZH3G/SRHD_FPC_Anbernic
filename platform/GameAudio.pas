@@ -19,6 +19,7 @@ uses
   SysUtils,
   Math,
   SDL2,
+  GameSDLDiagnostics,
   GameEvents,
   EC_Thread;
 
@@ -120,7 +121,7 @@ end;
 
 constructor TGameAudioMixer.Create(AOwner: TGameSound);
 begin
-  inherited Create;
+  inherited Create('audio-mixer');
   Owner := AOwner;
 end;
 
@@ -143,8 +144,7 @@ begin
     end;
     // SDL owns the queued copy. Never wait for its audio thread while holding
     // the game mixer lock or invoking notification handlers.
-    if SDL_QueueAudio(Owner.Device, @PCM[0], SizeOf(PCM)) < 0 then
-      raise Exception.Create('Cannot queue audio: ' + string(SDL_GetError));
+    CheckGameSDL(SDL_QueueAudio(Owner.Device, @PCM[0], SizeOf(PCM)), 'SDL_QueueAudio');
   end;
 end;
 
@@ -180,8 +180,8 @@ begin
   InitCriticalSection(MixerLock);
   MixerLockReady := True;
   Buffers := TFPList.Create;
-  if SDL_InitSubSystem(SDL_INIT_AUDIO) < 0 then
-    raise Exception.Create(string(SDL_GetError));
+  InstallGameSDLDiagnostics;
+  CheckGameSDL(SDL_InitSubSystem(SDL_INIT_AUDIO), 'SDL_InitSubSystem(audio)');
   Desired := Default(TSDL_AudioSpec);
   Desired.Frequency := 44100;
   Desired.Format := AUDIO_F32SYS;
@@ -191,7 +191,7 @@ begin
   // (about 46 ms at 44.1 kHz), using the same path on every platform.
   Device := SDL_OpenAudioDevice(nil, 0, @Desired, nil, 0);
   if Device = 0 then
-    raise Exception.Create(string(SDL_GetError));
+    RaiseGameSDLError('SDL_OpenAudioDevice(default, 44100 Hz, stereo, float32)');
   Mixer := TGameAudioMixer.Create(Self);
   Mixer.Start;
   SDL_PauseAudioDevice(Device, 0);
@@ -594,13 +594,9 @@ begin
   Sound := nil;
   if Outer <> nil then
     Exit(DSERR_NOAGGREGATION);
-  try
-    Sound := TGameSound.Create;
-    Result := DS_OK;
-  except
-    on E: Exception do
-      Result := DSERR_NODRIVER;
-  end;
+  // Pascal callers handle exceptions despite the HRESULT compatibility signature.
+  Sound := TGameSound.Create;
+  Result := DS_OK;
 end;
 function EnumerateGameSound(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
 begin

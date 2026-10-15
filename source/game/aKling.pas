@@ -168,6 +168,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   GR_Main,
   SE_Hole,
   SysUtils,
@@ -724,8 +725,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.NextDay ' + GetFullName(' '));
+      AddGameExceptionContext(E, 'TKling.NextDay ' + GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -833,8 +834,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TKling.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -916,8 +917,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.MiniBossNextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TKling.MiniBossNextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -977,8 +978,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.BlazerNextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TKling.BlazerNextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -1033,8 +1034,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.KellerNextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TKling.KellerNextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -1068,8 +1069,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TKling.TerronNextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TKling.TerronNextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

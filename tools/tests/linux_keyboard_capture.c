@@ -11,7 +11,7 @@ static int count, current, state;
 static int screen_width = 1024, screen_height = 768;
 static Uint32 next_action;
 static const char *pending_capture;
-static char logbuf[65536];
+static char logbuf[4 << 20]; /* the game log rotates at 4 MiB */
 static void add_key(SDL_Keycode key) { actions[count++] = (Action){.kind=1,.key=key}; }
 static void add_click(int x, int y) { actions[count++] = (Action){.kind=2,.x=x,.y=y}; }
 static void add_capture(const char *name) { actions[count++] = (Action){.kind=3,.text=name}; }

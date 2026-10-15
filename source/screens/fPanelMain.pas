@@ -126,6 +126,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   Math,
   GameWindow,
   GI_GI,
@@ -188,7 +189,7 @@ begin
   ExtraWidth := LayoutWidth - 1024;
   ExtraHeight := LayoutHeight - 768;
   Panel.DisplayScale := Min(GameScreenWidth / LayoutWidth, GameScreenHeight / LayoutHeight);
-  AppendLogTextThreadSafe('fPanelMain... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPanelMain');
   with Panel do
   begin
     SetSize(Classes.Point(LayoutWidth, LayoutHeight));
@@ -246,7 +247,6 @@ begin
         SetPosition(Classes.Point(LocalPosition.X + ExtraWidth, LocalPosition.Y));
     end;
   end;
-  AppendLogLineThreadSafe('ok');
   MessagePanel := Self.Screen.GetByName('PM_PanelMsg') as TPanelGI;
   MessagePanelRestTop := MessagePanel.LocalPosition.Y;
   MessagePanelHiddenTop := LayoutHeight - 5;

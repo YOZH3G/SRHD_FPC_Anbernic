@@ -677,6 +677,7 @@ function MigrateSavedItemType(ItemType: Byte): TItemType;
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   aPlanet,
   aTranclucator,
@@ -4948,7 +4949,7 @@ begin
     Result := 'Bm.ItemsUseless.' + GiResourceSuffix + ConfigBlockName + '_';
   if not CacheDataRoot.FileExistsByPath(Result + 's') then
   begin
-    AppendLogLineThreadSafe(AnsiString('Can not find image for useless item ' + ConfigBlockName + ' changing to Usl_FishCont'));
+    LogGameMessage(gllWarning, 'resources', 'Item image not found: ' + ConfigBlockName + '; using Usl_FishCont');
     Result := 'Bm.ItemsUseless.' + GiResourceSuffix + 'Usl_FishCont_';
   end;
 end;

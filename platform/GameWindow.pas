@@ -64,6 +64,8 @@ procedure OpenGameWindow(Width, Height: Integer; Windowed, VSync: Boolean);
 function GameRendererAccelerated: Boolean;
 function GameRendererName: UnicodeString;
 procedure CloseGameWindow;
+// Best-effort state snapshot: unavailable SDL queries are diagnostic warnings.
+procedure LogGameVideoDiagnostics;
 function PollGameMessage(out Message: TGameMessage): Boolean;
 function PostGameMessage(Message, WParam: Cardinal; LParam: Integer): Boolean;
 function GameWindowFocused: Boolean;
@@ -121,11 +123,28 @@ uses
   Math,
   GameTouch,
   GameSystem,
+  GameDiagnostics,
+  GameSDLDiagnostics,
   URIParser;
+
+type
+  TGameVideoLogSnapshot = record
+    Configuration, RendererDescription, WindowDescription: UnicodeString;
+    Window: PSDL_Window;
+    Renderer: PSDL_Renderer;
+    ModeFlags: Cardinal;
+    TextureGeneration: LongInt;
+  end;
+
+const
+  DiagnosticWindowModeFlags = SDL_WINDOW_FULLSCREEN_DESKTOP or SDL_WINDOW_ALLOW_HIGHDPI or SDL_WINDOW_RESIZABLE;
 
 var
   VideoInitialized: Boolean;
   SystemCursorAvailable: Boolean;
+  VideoFaulted: Boolean;
+  DisplayModeWarningLogged: Boolean;
+  LastVideoLog: TGameVideoLogSnapshot;
   DesktopMouseAvailable: Boolean;
   BrowserWindow: Boolean;
   MobileWindow, FullscreenOnlyWindow, AppInBackground: Boolean;
@@ -189,10 +208,9 @@ begin
   SDL_SetHint('SRHD_ARCADE_CONTROLS', PAnsiChar(Value));
 end;
 
-procedure CheckSDL(Value: Integer);
+procedure LogGameVideo(const Text: UnicodeString);
 begin
-  if Value < 0 then
-    raise Exception.Create(string(SDL_GetError));
+  LogGameMessage(gllInfo, 'video', Text);
 end;
 
 procedure CancelGamePointerInput;
@@ -262,6 +280,7 @@ procedure InitializeGameVideo;
 var
   Driver: string;
   Format: TFormatSettings;
+  Version: TSDL_Version;
 begin
   if VideoInitialized then
     Exit;
@@ -271,6 +290,9 @@ begin
   ClearExceptions(False);
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow, exUnderflow, exPrecision]);
   SDL_SetMainReady;
+  InstallGameSDLDiagnostics;
+  SDL_GetVersion(Version);
+  LogGameVideo(SysUtils.Format('SDL version=%d.%d.%d', [Version.Major, Version.Minor, Version.Patch]));
   // Handle native fingers ourselves; synthesized mouse presses commit game
   // actions before the user can distinguish a tap from a drag.
   SDL_SetHint('SDL_TOUCH_MOUSE_EVENTS', '0');
@@ -289,12 +311,13 @@ begin
   // restoring the default permits SDL to request an IME asynchronously.
   SDL_SetHint('SDL_ENABLE_SCREEN_KEYBOARD', '0');
 {$ENDIF}
-  CheckSDL(SDL_InitSubSystem(SDL_INIT_VIDEO or SDL_INIT_TIMER));
+  CheckGameSDL(SDL_InitSubSystem(SDL_INIT_VIDEO or SDL_INIT_TIMER), 'SDL_InitSubSystem(video/timer)');
   // These desktop backends provide real global coordinates. Other backends
   // (notably Wayland) may return cached window coordinates from the same API.
   // SDL spells its Android backend "Android", unlike the lower-case desktop
   // names. Normalize before selecting mobile sizing and keyboard behavior.
   Driver := LowerCase(string(SDL_GetCurrentVideoDriver));
+  LogGameVideo('SDL video driver=' + Driver);
   DesktopMouseAvailable := (Driver = 'cocoa') or (Driver = 'windows') or (Driver = 'x11');
   BrowserWindow := Driver = 'emscripten';
   MobileWindow := (Driver = 'android') or (Driver = 'uikit');
@@ -312,7 +335,7 @@ begin
   TouchSlop := EnsureRange(StrToIntDef(string(SDL_GetHint('SRHD_TOUCH_SLOP')), 8), 1, 256);
   PostedMessageType := SDL_RegisterEvents(1);
   if PostedMessageType = Cardinal(-1) then
-    raise Exception.Create('Registering game messages: ' + string(SDL_GetError));
+    RaiseGameSDLError('SDL_RegisterEvents(game messages, count=1)');
   SDL_AddEventWatch(WatchRendererReset, nil);
   Touch := TGameTouch.Create;
   SystemCursorAvailable := ProbeSystemCursor;
@@ -472,7 +495,16 @@ begin
   else
   begin
     Mode := Default(TSDL_DisplayMode);
-    SDL_GetCurrentDisplayMode(0, Mode);
+    if SDL_GetCurrentDisplayMode(0, Mode) < 0 then
+    begin
+      Mode := Default(TSDL_DisplayMode);
+      // Zero dimensions select the caller's minimum layout.
+      if not DisplayModeWarningLogged then
+        LogGameMessage(gllWarning, 'video', 'SDL_GetCurrentDisplayMode(display=0): ' + GameSDLErrorMessage);
+      DisplayModeWarningLogged := True;
+    end
+    else
+      DisplayModeWarningLogged := False;
     Result.OutputSize := Types.Point(Mode.W, Mode.H);
 {$IFDEF SWITCH}
     // SDL's Switch backend reports 1080p as its initial desktop mode even
@@ -568,6 +600,77 @@ begin
   end;
 end;
 
+procedure LogGameVideoDiagnostics;
+var
+  RendererInfo: TSDL_RendererInfo;
+  Metrics: TGameDisplayMetrics;
+  OutputWidth, OutputHeight: Integer;
+  RendererSize, Description: UnicodeString;
+  ModeFlags: Cardinal;
+begin
+  if SDL_GetRendererInfo(GameSDLRenderer, RendererInfo) < 0 then
+  begin
+    LogGameMessage(gllWarning, 'video', 'SDL_GetRendererInfo: ' + GameSDLErrorMessage);
+    LastVideoLog.RendererDescription := '';
+  end
+  else
+  begin
+    Description :=
+        'Renderer: name='
+            + UTF8Decode(UTF8String(RendererInfo.Name))
+            + ' flags=$'
+            + IntToHex(RendererInfo.Flags, 8)
+            + ' maximum-texture='
+            + IntToStr(RendererInfo.MaxTextureWidth)
+            + 'x'
+            + IntToStr(RendererInfo.MaxTextureHeight);
+    if (LastVideoLog.Renderer <> GameSDLRenderer)
+        or (LastVideoLog.TextureGeneration <> GameTextureGeneration)
+        or (LastVideoLog.RendererDescription <> Description) then
+      LogGameVideo(Description);
+    LastVideoLog.RendererDescription := Description;
+  end;
+  LastVideoLog.Renderer := GameSDLRenderer;
+  LastVideoLog.TextureGeneration := GameTextureGeneration;
+  if GameSDLWindow = nil then
+  begin
+    Description := 'Window diagnostics unavailable: no SDL window';
+    if LastVideoLog.WindowDescription <> Description then
+      LogGameVideo(Description);
+    LastVideoLog.WindowDescription := Description;
+    LastVideoLog.Window := nil;
+    LastVideoLog.ModeFlags := 0;
+    Exit;
+  end;
+  Metrics := Default(TGameDisplayMetrics);
+  SDL_GetWindowSize(GameSDLWindow, Metrics.WindowSize.X, Metrics.WindowSize.Y);
+  SDL_GetWindowSizeInPixels(GameSDLWindow, Metrics.OutputSize.X, Metrics.OutputSize.Y);
+  if SDL_GetRendererOutputSize(GameSDLRenderer, OutputWidth, OutputHeight) < 0 then
+  begin
+    LogGameMessage(gllWarning, 'video', 'SDL_GetRendererOutputSize: ' + GameSDLErrorMessage);
+    RendererSize := 'unavailable';
+  end
+  else
+    RendererSize := IntToStr(OutputWidth) + 'x' + IntToStr(OutputHeight) + ' pixels';
+  ModeFlags := SDL_GetWindowFlags(GameSDLWindow) and DiagnosticWindowModeFlags;
+  Description :=
+      Format(
+              'Window state: window=%dx%d points drawable=%dx%d pixels ',
+              [Metrics.WindowSize.X, Metrics.WindowSize.Y, Metrics.OutputSize.X, Metrics.OutputSize.Y])
+          + 'renderer='
+          + RendererSize
+          + Format(
+              ' logical=%dx%d high-dpi=%s',
+              [LogicalWidth, LogicalHeight, BoolToStr((ModeFlags and SDL_WINDOW_ALLOW_HIGHDPI) <> 0, True)])
+          + ' mode-flags=$'
+          + IntToHex(ModeFlags, 8);
+  if (LastVideoLog.Window <> GameSDLWindow) or (LastVideoLog.WindowDescription <> Description) then
+    LogGameVideo(Description);
+  LastVideoLog.WindowDescription := Description;
+  LastVideoLog.Window := GameSDLWindow;
+  LastVideoLog.ModeFlags := ModeFlags;
+end;
+
 procedure OpenGameWindow(Width, Height: Integer; Windowed, VSync: Boolean);
 var
   Flags: Cardinal;
@@ -579,137 +682,196 @@ var
   ProbeReady: Boolean;
   Info: TSDL_RendererInfo;
   WindowSize: TPoint;
+  ErrorText, Configuration: UnicodeString;
+  CurrentModeFlags: Cardinal;
 begin
-  InitializeGameVideo;
-  // The browser controls canvas size and fullscreen through CSS and user gestures.
-  if BrowserWindow then
-    Windowed := True;
-  if FullscreenOnlyWindow then
-    Windowed := False;
-  TargetGeneration := GameTargetGeneration;
-  LogicalWidth := Width;
-  LogicalHeight := Height;
-  Created := GameSDLWindow = nil;
-  if Created then
-  begin
-    WindowSize := Types.Point(Width, Height);
-{$IFDEF SWITCH}
-    WindowSize := GetGameDisplayMetrics.OutputSize;
-{$ENDIF}
-    Flags := SDL_WINDOW_ALLOW_HIGHDPI;
-    if BrowserWindow or FullscreenOnlyWindow then
-      Flags := Flags or SDL_WINDOW_RESIZABLE;
-    GameSDLWindow := SDL_CreateWindow('Rangers', SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowSize.X, WindowSize.Y, Flags);
-    if GameSDLWindow = nil then
-      raise Exception.Create(string(SDL_GetError));
-    GameRendererFallback := '';
-    if GameRendererPreference <> grpSoftware then
+  if VideoFaulted then
+    raise Exception.Create('Video initialization cannot be retried after a native graphics fault');
+  try
+    InitializeGameVideo;
+    // The browser controls canvas size and fullscreen through CSS and user gestures.
+    if BrowserWindow then
+      Windowed := True;
+    if FullscreenOnlyWindow then
+      Windowed := False;
+    Configuration :=
+        Format('Configure window: logical=%dx%d windowed=%s vsync=%s', [Width, Height, BoolToStr(Windowed, True), BoolToStr(VSync, True)]);
+    CurrentModeFlags := 0;
+    if GameSDLWindow <> nil then
+      CurrentModeFlags := SDL_GetWindowFlags(GameSDLWindow) and DiagnosticWindowModeFlags;
+    // Suppress duplicate descriptions only. The configuration calls below must
+    // still run to restore SDL state after drawing, device resets and retries.
+    if (LastVideoLog.Configuration <> Configuration)
+        or (LastVideoLog.Window <> GameSDLWindow)
+        or (LastVideoLog.Renderer <> GameSDLRenderer)
+        or (LastVideoLog.ModeFlags <> CurrentModeFlags) then
+      LogGameVideo(Configuration);
+    TargetGeneration := GameTargetGeneration;
+    LogicalWidth := Width;
+    LogicalHeight := Height;
+    if (GameSDLWindow <> nil) and (GameSDLRenderer = nil) then
+      CloseGameWindow;
+    Created := GameSDLWindow = nil;
+    if Created then
     begin
-      Flags := SDL_RENDERER_ACCELERATED or SDL_RENDERER_TARGETTEXTURE;
-      if VSync then
-        Flags := Flags or SDL_RENDERER_PRESENTVSYNC;
-      GameSDLRenderer := SDL_CreateRenderer(GameSDLWindow, -1, Flags);
-      if GameSDLRenderer <> nil then
-      begin
-        // Check the target and geometry operations required by the game before
-        // constructing caches. A driver may advertise acceleration but lack them.
-        Probe := SDL_CreateTexture(GameSDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, Width, Height);
-        ProbeReady := (Probe <> nil) and (SDL_SetRenderTarget(GameSDLRenderer, Probe) = 0);
-        if ProbeReady then
+      try
+        WindowSize := Types.Point(Width, Height);
+{$IFDEF SWITCH}
+        WindowSize := GetGameDisplayMetrics.OutputSize;
+{$ENDIF}
+        Flags := SDL_WINDOW_ALLOW_HIGHDPI;
+        if BrowserWindow or FullscreenOnlyWindow then
+          Flags := Flags or SDL_WINDOW_RESIZABLE;
+        LogGameVideo(Format('SDL_CreateWindow(size=%dx%d points, flags=$%s)', [WindowSize.X, WindowSize.Y, IntToHex(Flags, 8)]));
+        GameSDLWindow := SDL_CreateWindow('Rangers', SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowSize.X, WindowSize.Y, Flags);
+        if GameSDLWindow = nil then
+          RaiseGameSDLError(Format('SDL_CreateWindow(%dx%d points, flags=$%s)', [WindowSize.X, WindowSize.Y, IntToHex(Flags, 8)]));
+        GameRendererFallback := '';
+        ErrorText := '';
+        if GameRendererPreference <> grpSoftware then
         begin
-          FillChar(Vertices, SizeOf(Vertices), 0);
-          Vertices[0].Color.A := 255;
-          Vertices[1].Color.A := 255;
-          Vertices[2].Color.A := 255;
-          Vertices[1].Position.X := 1;
-          Vertices[2].Position.Y := 1;
-          ProbeReady :=
-              (SDL_RenderGeometry(GameSDLRenderer, nil, @Vertices, 3, nil, 0) = 0)
-                  and (SDL_RenderFlush(GameSDLRenderer) = 0)
-                  and (SDL_SetRenderTarget(GameSDLRenderer, nil) = 0);
+          Flags := SDL_RENDERER_ACCELERATED or SDL_RENDERER_TARGETTEXTURE;
+          if VSync then
+            Flags := Flags or SDL_RENDERER_PRESENTVSYNC;
+          LogGameVideo(Format('SDL_CreateRenderer(accelerated, target textures, vsync=%s)', [BoolToStr(VSync, True)]));
+          GameSDLRenderer := SDL_CreateRenderer(GameSDLWindow, -1, Flags);
+          if GameSDLRenderer <> nil then
+          begin
+            // Check the target and geometry operations required by the game before
+            // constructing caches. A driver may advertise acceleration but lack them.
+            Probe := SDL_CreateTexture(GameSDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, Width, Height);
+            ProbeReady := (Probe <> nil) and (SDL_SetRenderTarget(GameSDLRenderer, Probe) = 0);
+            if ProbeReady then
+            begin
+              FillChar(Vertices, SizeOf(Vertices), 0);
+              Vertices[0].Color.A := 255;
+              Vertices[1].Color.A := 255;
+              Vertices[2].Color.A := 255;
+              Vertices[1].Position.X := 1;
+              Vertices[2].Position.Y := 1;
+              ProbeReady :=
+                  (SDL_RenderGeometry(GameSDLRenderer, nil, @Vertices, 3, nil, 0) = 0)
+                      and (SDL_RenderFlush(GameSDLRenderer) = 0)
+                      and (SDL_SetRenderTarget(GameSDLRenderer, nil) = 0);
+            end;
+            if not ProbeReady then
+            begin
+              ErrorText := GameSDLErrorMessage;
+              SDL_DestroyTexture(Probe);
+              SDL_DestroyRenderer(GameSDLRenderer);
+              GameSDLRenderer := nil;
+            end
+            else
+            begin
+              SDL_SetRenderTarget(GameSDLRenderer, nil);
+              SDL_DestroyTexture(Probe);
+            end;
+          end
+          else
+            ErrorText := GameSDLErrorMessage;
+          GameRendererFallback := ErrorText;
+          if GameSDLRenderer = nil then
+            LogGameMessage(gllWarning, 'video', 'Accelerated renderer unavailable; trying software renderer: ' + ErrorText);
         end;
-        if not ProbeReady then
+        if GameSDLRenderer = nil then
         begin
-          GameRendererFallback := UTF8Decode(SDL_GetError);
-          SDL_DestroyTexture(Probe);
-          SDL_DestroyRenderer(GameSDLRenderer);
-          GameSDLRenderer := nil;
+          LogGameVideo('SDL_CreateRenderer(software, target textures)');
+          GameSDLRenderer := SDL_CreateRenderer(GameSDLWindow, -1, SDL_RENDERER_SOFTWARE or SDL_RENDERER_TARGETTEXTURE);
+        end;
+        if GameSDLRenderer = nil then
+          RaiseGameSDLError('SDL_CreateRenderer(software, target textures); accelerated attempt: ' + ErrorText + '; software attempt');
+        // Enable UTF-8 commits without calling SDL_StartTextInput on Android: that
+        // API also requests the soft keyboard. The Java overlay opens it directly.
+{$IFDEF SWITCH}
+        // Switch SDL suppresses touch/mouse polling while text input is active.
+        // The right-stick button opens the software keyboard explicitly.
+        SDL_StopTextInput;
+{$ELSE}
+        if MobileWindow then
+        begin
+          SDL_EventState(SDL_TEXTINPUT, SDL_ENABLE);
+          SDL_EventState(SDL_TEXTEDITING, SDL_ENABLE);
         end
         else
-        begin
-          SDL_SetRenderTarget(GameSDLRenderer, nil);
-          SDL_DestroyTexture(Probe);
+          SDL_StartTextInput;
+{$ENDIF}
+      except
+        if ExceptObject is Exception then
+          AddGameExceptionContext(Exception(ExceptObject), 'Creating game window and renderer');
+        // Native faults leave driver state unspecified. Do not call it again.
+        if GameExceptionPreventsRecovery(ExceptObject) then
+          raise;
+        // Creation may raise through a native driver instead of returning nil.
+        // Never leave a window that makes the next attempt skip renderer creation.
+        try
+          CloseGameWindow;
+        except
+          LogCurrentGameException('video', 'Secondary failure cleaning up window creation');
         end;
-      end
-      else
-        GameRendererFallback := UTF8Decode(SDL_GetError);
+        raise;
+      end;
     end;
-    if GameSDLRenderer = nil then
-      GameSDLRenderer := SDL_CreateRenderer(GameSDLWindow, -1, SDL_RENDERER_SOFTWARE or SDL_RENDERER_TARGETTEXTURE);
-    if GameSDLRenderer = nil then
-    begin
-      SDL_DestroyWindow(GameSDLWindow);
-      GameSDLWindow := nil;
-      raise Exception.Create(string(SDL_GetError));
-    end;
-    // Enable UTF-8 commits without calling SDL_StartTextInput on Android: that
-    // API also requests the soft keyboard. The Java overlay opens it directly.
-{$IFDEF SWITCH}
-    // Switch SDL suppresses touch/mouse polling while text input is active.
-    // The right-stick button opens the software keyboard explicitly.
-    SDL_StopTextInput;
-{$ELSE}
-    if MobileWindow then
-    begin
-      SDL_EventState(SDL_TEXTINPUT, SDL_ENABLE);
-      SDL_EventState(SDL_TEXTEDITING, SDL_ENABLE);
-    end
-    else
-      SDL_StartTextInput;
-{$ENDIF}
-  end;
-  // SDL's browser resize handler follows the canvas CSS size. Keep the selected
-  // game resolution in the renderer instead of replacing the canvas dimensions.
-  if not BrowserWindow and not FullscreenOnlyWindow then
-    SDL_SetWindowSize(GameSDLWindow, Width, Height);
-  Flags := 0;
-  if not Windowed then
-    Flags := SDL_WINDOW_FULLSCREEN_DESKTOP;
+    // SDL's browser resize handler follows the canvas CSS size. Keep the selected
+    // game resolution in the renderer instead of replacing the canvas dimensions.
+    if not BrowserWindow and not FullscreenOnlyWindow then
+      SDL_SetWindowSize(GameSDLWindow, Width, Height);
+    Flags := 0;
+    if not Windowed then
+      Flags := SDL_WINDOW_FULLSCREEN_DESKTOP;
 {$IFNDEF SWITCH}
-  // Switch has one fullscreen surface; desktop fullscreen would force 1080p.
-  CheckSDL(SDL_SetWindowFullscreen(GameSDLWindow, Flags));
+    // Switch has one fullscreen surface; desktop fullscreen would force 1080p.
+    CheckGameSDL(SDL_SetWindowFullscreen(GameSDLWindow, Flags), 'SDL_SetWindowFullscreen(flags=' + IntToStr(Flags) + ')');
 {$ENDIF}
-  // Native raster drawing uses our explicit integer viewport for both input
-  // and presentation, avoiding SDL's separate floor-rounded viewport.
-  PreviousTarget := SDL_GetRenderTarget(GameSDLRenderer);
-  if TargetGeneration <> GameTargetGeneration then
-    PreviousTarget := nil;
-  CheckSDL(SDL_SetRenderTarget(GameSDLRenderer, nil));
-  try
-    if GameWindowUsesNativeRaster then
-      CheckSDL(SDL_RenderSetLogicalSize(GameSDLRenderer, 0, 0))
+    // Native raster drawing uses our explicit integer viewport for both input
+    // and presentation, avoiding SDL's separate floor-rounded viewport.
+    PreviousTarget := SDL_GetRenderTarget(GameSDLRenderer);
+    if TargetGeneration <> GameTargetGeneration then
+      PreviousTarget := nil;
+    CheckGameSDL(SDL_SetRenderTarget(GameSDLRenderer, nil), 'SDL_SetRenderTarget(window)');
+    try
+      if GameWindowUsesNativeRaster then
+        CheckGameSDL(SDL_RenderSetLogicalSize(GameSDLRenderer, 0, 0), 'SDL_RenderSetLogicalSize(0, 0)')
+      else
+        CheckGameSDL(SDL_RenderSetLogicalSize(GameSDLRenderer, Width, Height), Format('SDL_RenderSetLogicalSize(%d, %d)', [Width, Height]));
+    except
+      // A restoration error is secondary; preserve the configuration failure.
+      try
+        CheckGameSDL(SDL_SetRenderTarget(GameSDLRenderer, PreviousTarget), 'SDL_SetRenderTarget(restore after configuration failure)');
+      except
+        if GameExceptionPreventsRecovery(ExceptObject) then
+          VideoFaulted := True;
+        LogCurrentGameException('video', 'Secondary failure restoring renderer target');
+      end;
+      raise;
+    end;
+    CheckGameSDL(SDL_SetRenderTarget(GameSDLRenderer, PreviousTarget), 'SDL_SetRenderTarget(restore)');
+    CheckGameSDL(SDL_GetRendererInfo(GameSDLRenderer, Info), 'SDL_GetRendererInfo');
+    // Software renderers may not support vsync; only accelerated ones must.
+    if (Info.Flags and SDL_RENDERER_ACCELERATED) <> 0 then
+      CheckGameSDL(SDL_RenderSetVSync(GameSDLRenderer, Ord(VSync)), 'SDL_RenderSetVSync(' + IntToStr(Ord(VSync)) + ')')
     else
-      CheckSDL(SDL_RenderSetLogicalSize(GameSDLRenderer, Width, Height));
-  finally
-    CheckSDL(SDL_SetRenderTarget(GameSDLRenderer, PreviousTarget));
-  end;
-  CheckSDL(SDL_GetRendererInfo(GameSDLRenderer, Info));
-  if (Info.Flags and SDL_RENDERER_ACCELERATED) <> 0 then
-    CheckSDL(SDL_RenderSetVSync(GameSDLRenderer, Ord(VSync)))
-  else
-    SDL_RenderSetVSync(GameSDLRenderer, Ord(VSync));
-  SDL_ShowCursor(Ord(CursorCount >= 0));
-  if Created then
-  begin
-    // SDL's Android display mode can precede the first surface dimensions.
-    // Let the game compare Auto again once a real surface exists.
-    HasPendingDisplayChange := GameWindowUsesNativeRaster;
-    // Wayland maps the window only after a buffer is presented. The game waits
-    // for real focus before drawing its loading screen, so supply the first
-    // buffer here to avoid waiting for focus on an invisible surface.
-    CheckSDL(SDL_SetRenderDrawColor(GameSDLRenderer, 0, 0, 0, 255));
-    CheckSDL(SDL_RenderClear(GameSDLRenderer));
-    SDL_RenderPresent(GameSDLRenderer);
+      SDL_RenderSetVSync(GameSDLRenderer, Ord(VSync));
+    SDL_ShowCursor(Ord(CursorCount >= 0));
+    if Created then
+    begin
+      // SDL's Android display mode can precede the first surface dimensions.
+      // Let the game compare Auto again once a real surface exists.
+      HasPendingDisplayChange := GameWindowUsesNativeRaster;
+      // Wayland maps the window only after a buffer is presented. The game waits
+      // for real focus before drawing its loading screen, so supply the first
+      // buffer here to avoid waiting for focus on an invisible surface.
+      CheckGameSDL(SDL_SetRenderDrawColor(GameSDLRenderer, 0, 0, 0, 255), 'SDL_SetRenderDrawColor');
+      CheckGameSDL(SDL_RenderClear(GameSDLRenderer), 'SDL_RenderClear');
+      SDL_RenderPresent(GameSDLRenderer);
+    end;
+    LogGameVideoDiagnostics;
+    LastVideoLog.Configuration := Configuration;
+  except
+    if GameExceptionPreventsRecovery(ExceptObject) then
+      VideoFaulted := True;
+    if ExceptObject is Exception then
+      AddGameExceptionContext(Exception(ExceptObject), 'Configuring game window');
+    raise;
   end;
 end;
 
@@ -731,20 +893,39 @@ begin
 end;
 
 procedure CloseGameWindow;
+var
+  Renderer: PSDL_Renderer;
+  Window: PSDL_Window;
 begin
-  if GameSDLWindow <> nil then
-    SDL_StopTextInput;
-  SDL_DestroyRenderer(GameSDLRenderer);
-  GameSDLRenderer := nil;
-  SDL_DestroyWindow(GameSDLWindow);
-  GameSDLWindow := nil;
-  TextInput := '';
-  TextPosition := 0;
-  CancelGamePointerInput;
-  TouchMouseActive := False;
-  PointerCursorActive := False;
-  HasPendingActivation := False;
-  HasPendingDisplayChange := False;
+  try
+    LastVideoLog := Default(TGameVideoLogSnapshot);
+    Renderer := GameSDLRenderer;
+    Window := GameSDLWindow;
+    // Clear ownership before native teardown, which itself may raise.
+    GameSDLRenderer := nil;
+    GameSDLWindow := nil;
+    TextInput := '';
+    TextPosition := 0;
+    CancelGamePointerInput;
+    TouchMouseActive := False;
+    PointerCursorActive := False;
+    HasPendingActivation := False;
+    HasPendingDisplayChange := False;
+    if VideoFaulted then
+      Exit;
+    if Window <> nil then
+      SDL_StopTextInput;
+    if Renderer <> nil then
+      SDL_DestroyRenderer(Renderer);
+    if Window <> nil then
+      SDL_DestroyWindow(Window);
+  except
+    if GameExceptionPreventsRecovery(ExceptObject) then
+      VideoFaulted := True;
+    if ExceptObject is Exception then
+      AddGameExceptionContext(Exception(ExceptObject), 'Closing game window');
+    raise;
+  end;
 end;
 
 function KeyFromScanCode(ScanCode: Integer): Cardinal;
@@ -1383,7 +1564,7 @@ end;
 
 procedure SetGameClipboard(const Text: UnicodeString);
 begin
-  CheckSDL(SDL_SetClipboardText(PAnsiChar(UTF8Encode(Text))));
+  CheckGameSDL(SDL_SetClipboardText(PAnsiChar(UTF8Encode(Text))), 'SDL_SetClipboardText');
 end;
 
 procedure DiscardGameTextCharacter;
@@ -1461,22 +1642,30 @@ begin
     Buttons[1].Text := 'No';
   end;
   Data.Buttons := @Buttons;
-  CheckSDL(SDL_ShowMessageBox(Data, Result));
+  CheckGameSDL(SDL_ShowMessageBox(Data, Result), 'SDL_ShowMessageBox');
   if Result < 0 then
     Result := Buttons[Data.ButtonCount - 1].ID;
 end;
 
 procedure ShowGameDialog(const Text: UnicodeString);
 begin
-  CheckSDL(SDL_ShowSimpleMessageBox($10, 'Space Rangers', PAnsiChar(UTF8Encode(Text)), GameSDLWindow));
+  CheckGameSDL(SDL_ShowSimpleMessageBox($10, 'Space Rangers', PAnsiChar(UTF8Encode(Text)), GameSDLWindow), 'SDL_ShowSimpleMessageBox');
 end;
 
 finalization
-  CloseGameWindow;
+  try
+    CloseGameWindow;
+  except
+    LogCurrentGameException('video', 'Closing game window during shutdown');
+  end;
   FreeAndNil(Touch);
-  if VideoInitialized then
+  if VideoInitialized and not VideoFaulted then
   begin
-    SDL_DelEventWatch(WatchRendererReset, nil);
-    SDL_QuitSubSystem(SDL_INIT_VIDEO or SDL_INIT_TIMER);
+    try
+      SDL_DelEventWatch(WatchRendererReset, nil);
+      SDL_QuitSubSystem(SDL_INIT_VIDEO or SDL_INIT_TIMER);
+    except
+      LogCurrentGameException('video', 'Shutting down SDL video');
+    end;
   end;
 end.

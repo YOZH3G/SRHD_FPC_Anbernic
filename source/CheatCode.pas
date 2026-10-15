@@ -177,6 +177,7 @@ procedure CheatInfos;
 implementation
 
 uses
+  GameDiagnostics,
   aCalc,
   aKling,
   GI_MessageLoop,
@@ -1926,30 +1927,25 @@ begin
   if Galaxy <> nil then
   begin
     Index := Galaxy.GalaxyEvents.Count - 1;
-    AppendLogLineThreadSafe('----------------------------------------');
-    AppendLogLineThreadSafe('Events:');
-    AppendLogLineThreadSafe('----------------------------------------');
+    LogGameMessage(gllInfo, 'cheat', 'Events:');
     while Index >= 0 do
     begin
       Event := Galaxy.GalaxyEvents[Index];
-      AppendLogLineThreadSafe(AnsiString(Event.EventType));
-      AppendLogLineThreadSafe(AnsiString(FormatGameTurnDate(Event.Turn) + ' (' + IntToStr(Event.Turn) + ')'));
+      LogGameMessage(gllInfo, 'cheat', Event.EventType + '; date=' + FormatGameTurnDate(Event.Turn) + '; turn=' + IntToStr(Event.Turn));
       if Event.TextData <> nil then
       begin
-        AppendLogLineThreadSafe('  Text data:');
+        LogGameMessage(gllInfo, 'cheat', '  Text data:');
         for I := 0 to Event.TextData.Count - 1 do
-          AppendLogLineThreadSafe(AnsiString('  ' + PWideString(Event.TextData[I])^));
+          LogGameMessage(gllInfo, 'cheat', '  ' + PWideString(Event.TextData[I])^);
       end;
       if Event.Data <> nil then
       begin
-        AppendLogLineThreadSafe('  Data:');
+        LogGameMessage(gllInfo, 'cheat', '  Data:');
         for I := 0 to Event.Data.Count - 1 do
-          AppendLogLineThreadSafe('  ' + IntToStr(Integer(Event.Data[I])));
-        AppendLogLineThreadSafe('');
+          LogGameMessage(gllInfo, 'cheat', '  ' + IntToStr(Integer(Event.Data[I])));
       end;
       Dec(Index);
     end;
-    AppendLogLineThreadSafe('----------------------------------------');
   end;
 end;
 
@@ -1981,8 +1977,7 @@ var
 begin
   if Galaxy <> nil then
   begin
-    AppendLogLineThreadSafe('----------------------------------------');
-    AppendLogLineThreadSafe('ShipInfos:');
+    LogGameMessage(gllInfo, 'cheat', 'ShipInfos:');
     for I := 0 to Galaxy.Stars.Count - 1 do
     begin
       Star := Galaxy.Stars[I];
@@ -1997,33 +1992,25 @@ begin
           begin
             if not PrintedHeader then
             begin
-              AppendLogLineThreadSafe('----------------------------------------');
-              AppendLogLineThreadSafe(AnsiString(Ship.GetFullName(' ')));
+              LogGameMessage(gllInfo, 'cheat', 'Ship: ' + Ship.GetFullName(' '));
+              PrintedHeader := True;
             end;
-            PrintedHeader := True;
-            AppendLogLineThreadSafe(
-                AnsiString(
-                    Info.TypeName
-                        + ' '
-                        + IntToStr(Info.Data[1])
-                        + ','
-                        + IntToStr(Info.Data[2])
-                        + ','
-                        + IntToStr(Info.Data[3])
-                        + ',"'
-                        + Info.TextData1
-                        + '","'
-                        + Info.TextData2
-                        + '","'
-                        + Info.TextData3
-                        + '"'
-                )
+            LogGameMessage(
+                gllInfo,
+                'cheat',
+                Info.TypeName
+                    + Format(' %d,%d,%d,"', [Info.Data[1], Info.Data[2], Info.Data[3]])
+                    + Info.TextData1
+                    + '","'
+                    + Info.TextData2
+                    + '","'
+                    + Info.TextData3
+                    + '"'
             );
           end;
         end;
       end;
     end;
-    AppendLogLineThreadSafe('----------------------------------------');
   end;
 end;
 

@@ -224,6 +224,7 @@ procedure DonateMilitaryResearchMaterial(Series: TDominatorSeries; Amount: Integ
 implementation
 
 uses
+  GameDiagnostics,
   BreakMessageGIException,
   aGalaxyEvent,
   Globals,
@@ -1245,7 +1246,7 @@ begin
       Script.PublishCurrentShip(TalkShip);
       Script.CallDialogByVariable(Text);
       if ScriptDialogIndex < 0 then
-        AppendLogLineThreadSafe(AnsiString(Script.ScriptFileName + ' has overriden dialog with ' + Text + ' but it failed to start'));
+        LogGameMessage(gllWarning, 'script', 'Dialog failed to start: ' + Text + '; script=' + Script.ScriptFileName);
     end;
     if ScriptDialogIndex < 0 then
       BuildBuiltinChoices
@@ -1711,6 +1712,7 @@ end;
 procedure TfTalk.CodeMsgOut(KeepGreeting: Boolean);
 var
   Binding: TScriptShip;
+  FailureContext: UnicodeString;
 begin
   ClearScriptDialogRules;
   SkipShipScriptAdvance := False;
@@ -1750,6 +1752,12 @@ begin
       Binding := TScriptShip(TalkShip.ScriptShip);
       if Binding.State.DialogCode <> nil then
       begin
+        FailureContext := 'TfTalk.CodeMsgOut';
+        if CurrentScript <> nil then
+          FailureContext := FailureContext + ', script=' + CurrentScript.ScriptFileName;
+        if Binding.Ship <> nil then
+          FailureContext := FailureContext + ', ship=' + Binding.Ship.GetFullName(' ');
+        FailureContext := FailureContext + ', state=' + Binding.State.Name;
         try
           Binding.State.DialogCode.Run(ScriptProcess);
         except
@@ -1757,18 +1765,9 @@ begin
             ;
           on E: Exception do
           begin
-            AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-            LogScriptCallHistory;
-            raise Exception.Create(
-                AnsiString(
-                    'Error in CodeMsgOut code of script '
-                        + CurrentScript.ScriptFileName
-                        + ' (state #'
-                        + Binding.Ship.GetFullName(' ')
-                        + ' '
-                        + Binding.State.Name
-                        + ')'
-                ));
+            AddScriptCallHistory(E);
+            AddGameExceptionContext(E, FailureContext);
+            raise;
           end;
         end;
         BuildStandardChoices(False);

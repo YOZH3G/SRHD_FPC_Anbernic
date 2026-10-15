@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   aConst,
   aSaveLoad,
   aGalaxyStruct,
@@ -66,7 +67,7 @@ var
   Control: TObjectGI;
 begin
   inherited;
-  AppendLogTextThreadSafe('fGameEnd... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGameEnd');
   ViewportRect :=
       Classes.Rect(
           ExtraScreenWidth div 2,
@@ -180,7 +181,6 @@ begin
       with FindByNameRecursive('GBText') do
         SetSize(Classes.Point(ClientSize.X + ExtraScreenWidth, ClientSize.Y));
     end;
-    AppendLogLineThreadSafe('ok');
   end;
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
   SetHelpCallback(ShowControlHelp);

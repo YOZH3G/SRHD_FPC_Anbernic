@@ -42,7 +42,7 @@ uses
 
 constructor TFileStreamEC.Create(BufferBytes: Integer; const FileName: WideString);
 begin
-  inherited Create;
+  inherited Create('file-stream');
   BufferLock := TCriticalSection.Create;
   SourceFile := TFileEC.Create;
   SourceFile.SetFileName(FileName);

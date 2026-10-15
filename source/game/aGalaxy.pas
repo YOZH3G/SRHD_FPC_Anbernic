@@ -794,6 +794,7 @@ function GetLocalObjectLink(Obj: TObject; Suppress: Boolean): WideString;
 implementation
 
 uses
+  GameDiagnostics,
 {$IFDEF NATIVE_UTILITY_FUNCTIONS_PACK}
   UtilityFunctionsPack,
 {$ENDIF}
@@ -1634,15 +1635,7 @@ begin
       if SavedMods <> SelectedMods then
       begin
         LoadedSaveModSet := SavedMods;
-        AppendLogLineThreadSafe('Warning! Mod sets mismatch:');
-        if SavedMods <> '' then
-          AppendLogLineThreadSafe(AnsiString(' - when this save was made you were using: ' + SavedMods))
-        else
-          AppendLogLineThreadSafe(' - when this save was made you were not using mods');
-        if SelectedMods <> '' then
-          AppendLogLineThreadSafe(AnsiString(' - and now you are using: ' + SelectedMods))
-        else
-          AppendLogLineThreadSafe(' - and now you are not using any mods');
+        LogGameMessage(gllWarning, 'save', 'Mod set differs from saved game; saved=[' + SavedMods + ']; active=[' + SelectedMods + ']');
       end;
     end;
     GenerationSeed := Buffer.GetInt32;
@@ -1857,7 +1850,7 @@ begin
       TemplateIndex := FindScriptTemplateIndex(TemplateName);
       if TemplateIndex < 0 then
       begin
-        AppendLogLineThreadSafe(AnsiString('Warning: Script not found - ' + TemplateName));
+        LogGameMessage(gllWarning, 'save', 'Saved script not found: ' + TemplateName);
         Buffer.GetWord;
         Buffer.GetInt32;
         Buffer.GetInt32;
@@ -2203,12 +2196,16 @@ begin
         Ship := TShip(Star.Ships[TemplateIndex]);
         if (Ship.CurrentPlanet <> nil) and (Ship.CurrentPlanet.CurrentStar <> Star) then
         begin
-          AppendLogLineThreadSafe(
-              AnsiString(
-                  'Warning! ' + Ship.GetFullName(' ') + ' is in system ' + Star.Name + ' while landed on planet ' + Ship.CurrentPlanet.Name
-              )
+          LogGameMessage(
+              gllWarning,
+              'save',
+              'Clearing inconsistent landing state: ship='
+                  + Ship.GetFullName(' ')
+                  + '; star='
+                  + Star.Name
+                  + '; planet='
+                  + Ship.CurrentPlanet.Name
           );
-          AppendLogLineThreadSafe('clearing landing state');
           Ship.CurrentPlanet := nil;
         end;
         if Ship.TypeId = stWarrior then
@@ -2495,9 +2492,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(
-          AnsiString('Error in procedure ' + DecodeTextW('TAGSallbanxuy..MLFovasdi') + ', label = ' + IntToStr(Stage))); // 'TGalaxy.Load'
+      AddGameExceptionContext(E, DecodeTextW('TAGSallbanxuy..MLFovasdi') + '; stage=' + IntToStr(Stage)); // 'TGalaxy.Load'
+      raise;
     end;
   end;
 end;
@@ -2800,7 +2796,7 @@ begin
           try
             Script.Free;
           except
-            AppendLogLineThreadSafe('Error Galaxy.Script.Free');
+            LogCurrentGameException('script', 'freeing a completed galaxy script', gllWarning);
           end;
           Stage := 7;
           for J := 0 to ScriptTemplates.Count - 1 do
@@ -2873,8 +2869,7 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        E.Message := 'Error in procedure TGalaxy.NextDay label = ' + IntToStr(Stage) + ': ' + E.Message;
+        AddGameExceptionContext(E, 'TGalaxy.NextDay; stage=' + IntToStr(Stage));
         raise;
       end;
     end;
@@ -5245,8 +5240,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TStar.Load, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TStar.Load; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -5608,8 +5603,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TStar.DropMineral ' + Name);
+      AddGameExceptionContext(E, 'TStar.DropMineral ' + Name);
+      raise;
     end;
   end;
 end;
@@ -5704,8 +5699,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TStar.NextDay.DelTarget ' + Name);
+      AddGameExceptionContext(E, 'TStar.NextDay.DelTarget ' + Name);
+      raise;
     end;
   end;
 end;
@@ -5754,8 +5749,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TStar.NextDay.DelTargetShip ' + Name);
+      AddGameExceptionContext(E, 'TStar.NextDay.DelTargetShip ' + Name);
+      raise;
     end;
   end;
 end;
@@ -5784,8 +5779,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TStar.NextDay.DelTargetItem ' + Name);
+      AddGameExceptionContext(E, 'TStar.NextDay.DelTargetItem ' + Name);
+      raise;
     end;
   end;
 end;
@@ -6346,8 +6341,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('Error in procedure TStar.ScriptShipsAndItemsAct label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TStar.ScriptShipsAndItemsAct; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -15788,8 +15782,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(AnsiString(E.ClassName + ' ' + E.Message));
-      raise Exception.Create('Error in procedure TStar.NextDay ' + WideString(Self.Name) + ' label = ' + SysUtils.IntToStr(Stage));
+      AddGameExceptionContext(E, 'TStar.NextDay ' + WideString(Self.Name) + '; stage=' + SysUtils.IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -15836,7 +15830,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     OriginalState := Ord(Control.Active);
@@ -15859,7 +15853,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     Control.SetActive(Self.State > 0);
@@ -15908,7 +15902,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceStateOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     Control.SetActive(Self.State > 0);
@@ -15934,7 +15928,7 @@ begin
     if Control <> nil then
     begin
       if not (Control is TLabelGI) then
-        AppendLogLineThreadSafe(AnsiString('Object is not a label - ' + ControlPath))
+        LogGameMessage(gllWarning, 'script', 'Object is not a label - ' + ControlPath)
       else
         (Control as TLabelGI).SetText(OriginalText);
     end;
@@ -15955,7 +15949,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     if not (Control is TLabelGI) then
@@ -15976,7 +15970,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     if not (Control is TLabelGI) then
@@ -16017,7 +16011,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceTextOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     if not (Control is TLabelGI) then
@@ -16067,7 +16061,7 @@ begin
       else if Control is TImageGI then
         (Control as TImageGI).SetImagePath(OriginalImagePath)
       else
-        AppendLogLineThreadSafe(AnsiString('Object is not an image - ' + ControlPath));
+        LogGameMessage(gllWarning, 'script', 'Object is not an image - ' + ControlPath);
     end;
   end;
   inherited Destroy;
@@ -16086,10 +16080,10 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(
-        AnsiString(
-            'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
-        )
+    LogGameMessage(
+        gllWarning,
+        'script',
+        'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
     )
   else
   begin
@@ -16141,10 +16135,10 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(
-        AnsiString(
-            'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
-        )
+    LogGameMessage(
+        gllWarning,
+        'script',
+        'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
     )
   else
   begin
@@ -16211,10 +16205,10 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(
-        AnsiString(
-            'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
-        )
+    LogGameMessage(
+        gllWarning,
+        'script',
+        'TInterfaceImageOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName + ' (' + Self.ImagePath + ')'
     )
   else
   begin
@@ -16284,7 +16278,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     OriginalPosition.X := Control.LocalPosition.X;
@@ -16308,7 +16302,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     Position.X := DeltaX + OriginalPosition.X;
@@ -16354,7 +16348,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfacePosOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     Control.SetPosition(Classes.Point(Position.X, Position.Y));
@@ -16396,7 +16390,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     OriginalSize.X := Control.ClientSize.X;
@@ -16423,7 +16417,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     if Width > 0 then
@@ -16469,7 +16463,7 @@ begin
     raise Exception.Create(AnsiString('ML not found - ' + Self.FormName));
   Control := Form.FindControlByPath(Self.ControlPath);
   if Control = nil then
-    AppendLogLineThreadSafe(AnsiString('TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName))
+    LogGameMessage(gllWarning, 'script', 'TInterfaceSizeOverride: object not found - ' + Self.ControlPath + ' on form ' + Self.FormName)
   else
   begin
     Control.SetSize(Classes.Point(Size.X, Size.Y));

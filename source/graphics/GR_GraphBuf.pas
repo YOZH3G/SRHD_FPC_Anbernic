@@ -217,6 +217,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   EC_OKGF,
   EC_Mem,
   GR_DX,
@@ -1686,6 +1687,7 @@ begin
       Image.Free;
     end;
   except
+    LogCurrentGameException('graphics', 'encoding JPEG screenshot ' + FileName, gllWarning);
   end;
 end;
 
@@ -2343,10 +2345,15 @@ begin
             GameScreenHeight
         );
       except
-        raise Exception.Create('Error in TGraphBufGR.LoadFromScreen()::OKGR_Copy_XY_XY_WORD');
+        on E: Exception do
+        begin
+          AddGameExceptionContext(E, 'copying screen pixels');
+          raise;
+        end;
       end;
     end;
   except
+    LogCurrentGameException('graphics', 'capturing the screen', gllWarning);
     Clear;
     AllocateNative(GameScreenWidth, GameScreenHeight);
   end;

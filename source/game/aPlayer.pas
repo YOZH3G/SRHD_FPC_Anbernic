@@ -260,6 +260,7 @@ procedure SetPlayer(Player: TPlayer; Galaxy: TGalaxy);
 implementation
 
 uses
+  GameDiagnostics,
   GI_MessageLoop,
   aNormalShip,
   SysUtils,
@@ -267,7 +268,6 @@ uses
   EC_Str,
   Math,
   Globals,
-  SimpleSteamApi,
   aScript,
   aKling,
   fEquipmentShop,
@@ -1910,8 +1910,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TPlayer.NextDay, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TPlayer.NextDay; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

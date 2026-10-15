@@ -37,7 +37,7 @@ static const size_t settings_step = 1;
 static size_t step;
 static int frames, finished;
 static Uint32 changed_at, last_key, last_expose, matched_at;
-static char logbuf[131072];
+static char logbuf[4 << 20]; /* the game log rotates at 4 MiB */
 static int mouse_x = 400, mouse_y = 300, screen_width = 800;
 
 static void press(SDL_Keycode key) {

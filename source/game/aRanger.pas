@@ -212,6 +212,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   TextQuest,
   EC_Cache,
   EC_CacheBuf,
@@ -717,8 +718,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TRanger.NextDay ' + GetFullName(' '));
+      AddGameExceptionContext(E, 'TRanger.NextDay ' + GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -984,8 +985,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TRanger.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TRanger.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

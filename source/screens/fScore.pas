@@ -104,6 +104,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GI_Main,
   aKling,
   SysUtils,
@@ -115,7 +116,6 @@ uses
   GlobalsV,
   Globals,
   aGalaxy,
-  SimpleSteamApi,
   aConst,
   aMyFunction,
   aRanger,
@@ -473,10 +473,8 @@ begin
   Encoded := TBufEC.Create;
   Seed := RandomIntRange(0, 2000000000);
   SaveToBuffer(Buffer);
-  if SteamInitialized then
-    Buffer.AddAnsiStringZ(IntToStr(SteamUserId))
-  else
-    Buffer.AddAnsiStringZ(IntToStr(0));
+  // Preserve the score export's external-account field for file compatibility.
+  Buffer.AddAnsiStringZ('0');
   Buffer.CompressZlibPayloadInPlace(False);
   Buffer.ApplyDatXorCipher(Seed);
   Encoded.AddIntegerValue(3);
@@ -1234,7 +1232,7 @@ end;
 procedure TfScore.InitializeLayout;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fScore... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fScore');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -1245,7 +1243,6 @@ begin
     with FindByNameRecursive('PanelWin') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
-  AppendLogLineThreadSafe('ok');
   SetHelpCallback(ShowControlHelp);
   (GetByName('ButClear') as TGraphButtonGI).UpCallback := DeleteEntryClicked;
   (GetByName('ButExit') as TGraphButtonGI).UpCallback := CloseClicked;

@@ -129,6 +129,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   GI_MessageBox,
   aGalaxyEvent,
   fEquipmentShop,
@@ -253,7 +254,7 @@ begin
   MainPanel.InitializeLayout(Self);
   PlanetPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fGov... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGov');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -270,7 +271,6 @@ begin
       LayoutPortrait('Gov' + OwnerInfo[Owner].InternalName, Self);
     PrepareDialoguePanel(FindByNameRecursive('PanelTalk'), MainPanel.ContentLayoutHeight, MainPanel.ContentBounds);
   end;
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
   with GetByName('UserMsgAdd') as TGraphButtonGI do
     UpCallback := AddMessageClicked;
@@ -347,6 +347,7 @@ var
   Event: TGalaxyEvent;
   Stage: Integer;
   Failed: Boolean;
+  BattleFailure: TGameExceptionReport;
   Portrait: TObjectGI;
 begin
   Stage := 0;
@@ -497,27 +498,34 @@ begin
       LoadPanel.SelectBackgroundStyle(3);
       LoadPanel.RefreshBackgroundImages;
       Stage := 10;
+      BattleFailure := nil;
       try
-        Failed := False;
-        PendingTransition := FRun(RobotMapDefinitions[MapIndex].Map, Text, WinText, LossText, TerronName);
-      except
-        on E: Exception do
-        begin
-          AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-          Failed := True;
+        try
+          Failed := False;
+          PendingTransition := FRun(RobotMapDefinitions[MapIndex].Map, Text, WinText, LossText, TerronName);
+        except
+          on E: Exception do
+          begin
+            BattleFailure := CaptureGameException('Running government planetary battle ' + RobotMapDefinitions[MapIndex].Map);
+            // Record before restoration, which can itself fail.
+            LogGameException(BattleFailure, 'robots', gllWarning);
+            Failed := True;
+          end;
         end;
-      end;
-      Stage := 11;
-      if MemorySnapshotActive then
-        RestoreGameFromMemorySnapshot;
-      Stage := 12;
-      if Failed then
-      begin
-        if ShowMessageBoxGI(Self, LocalizedColorText('FormGov.BattlePlanetQuestCrashed'), mbgOK or mbgCancel or mbgQuestion)
-            = mbgResultOK then
-          PendingTransition := 3
-        else
-          raise Exception.Create('Error in Matrix.dll');
+        Stage := 11;
+        if MemorySnapshotActive then
+          RestoreGameFromMemorySnapshot;
+        Stage := 12;
+        if Failed then
+        begin
+          if ShowMessageBoxGI(Self, LocalizedColorText('FormGov.BattlePlanetQuestCrashed'), mbgOK or mbgCancel or mbgQuestion)
+              = mbgResultOK then
+            PendingTransition := 3
+          else
+            raise EGameDiagnosticException.Create(BattleFailure.Clone);
+        end;
+      finally
+        BattleFailure.Free;
       end;
       if PendingTransition = 0 then
         Exit;
@@ -702,8 +710,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TfGov.BeforeRun, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'Opening government screen at stage ' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -1214,7 +1221,7 @@ begin
       begin
         Script.CallDialogByVariable(Text);
         if ScriptDialogIndex < 0 then
-          AppendLogLineThreadSafe(AnsiString(Script.ScriptFileName + ' has overriden dialog with ' + Text + ' but it failed to start'));
+          LogGameMessage(gllWarning, 'script', 'Dialog failed to start: ' + Text + '; script=' + Script.ScriptFileName);
       end;
       if ScriptDialogIndex < 0 then
         AddBuiltinGovernmentChoices
@@ -1607,7 +1614,7 @@ begin
       ReplaceTextToken(DialogText, '<Planet>', GetPlayer.CurrentPlanet.Name, TextHighlightColorTag);
       ReplaceTextToken(DialogText, '<Player>', GetPlayer.Name, TextHighlightColorTag);
       ClearDialogChoices;
-      if (RobotInterface <> nil) and (RobotInterface.Support() = 0) then
+      if (RobotInterface = nil) or (RobotInterface.Support() = 0) then
         AddChoice(LocalizedColorText('FormGov.I_QuestAccept'), MapId, ShowPlanetBattleSupport)
       else
         AddChoice(LocalizedColorText('FormGov.I_QuestAccept'), 0, ScriptDialogBlockCallback);

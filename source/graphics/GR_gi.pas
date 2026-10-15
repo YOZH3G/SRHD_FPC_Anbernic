@@ -147,6 +147,7 @@ procedure PrepareRawGiColorCache(Data: Pointer);
 implementation
 
 uses
+  GameDiagnostics,
   Classes,
   EC_Mem,
   EC_OKGF,
@@ -685,7 +686,7 @@ begin
     end;
   end
   else
-    AppendLogLineThreadSafe('Error in TgiGR.DrawRGBA()::FZag.format=' + IntToWideString(Header.Format));
+    LogGameMessage(gllWarning, 'renderer', 'Unsupported GI image format=' + IntToWideString(Header.Format));
 end;
 
 procedure TgiGR.DecodeToPixels(Destination: Pointer; PitchBytes, Width, Height: Integer; Keep16BitPixels: Boolean);

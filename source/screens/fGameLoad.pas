@@ -41,6 +41,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GI_MessageBox,
   aGalaxyStruct,
   SysUtils,
@@ -86,7 +87,7 @@ end;
 procedure TfGameLoad.InitializeLayout;
 begin
   inherited;
-  AppendLogTextThreadSafe('fGameLoad... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGameLoad');
   ViewportRect :=
       Classes.Rect(
           ExtraScreenWidth div 2,
@@ -95,7 +96,6 @@ begin
           ViewportRect.Top + ExtraScreenHeight div 2
       );
   GetByName('PanelLoad').Parent.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-  AppendLogLineThreadSafe('ok');
   LoadPanel.InitializeLayout(Self);
 end;
 
@@ -116,7 +116,7 @@ begin
     Galaxy.Free;
   Galaxy := nil;
   AssetPreloadStarted := False;
-  LoadThread := TThreadGameLoad.Create;
+  LoadThread := TThreadGameLoad.Create('game-loader');
   LoadThread.SetPriority(ThreadPriorityBelowNormal);
   LoadThread.Start;
   ProgressTimer := ScheduleCallbackTimer(20, 20, UpdateLoadingProgress);

@@ -63,6 +63,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   EC_Struct,
   SysUtils,
@@ -103,12 +104,18 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('self=' + UIntToStr(PtrUInt(Self)));
-      AppendLogLineThreadSafe('FGBC=' + UIntToStr(PtrUInt(ImageCache)));
-      AppendLogLineThreadSafe('FRBC=' + UIntToStr(PtrUInt(RotationCache)));
-      AppendLogLineThreadSafe('FIR=' + UIntToStr(PtrUInt(RotatedImage)));
-      raise Exception.Create('Error in procedure TRotateImage5GI.Create, label = ' + IntToStr(RotateImageConstructionStage));
+      AddGameExceptionContext(
+          E,
+          'TRotateImage5GI.Create; stage='
+              + IntToStr(RotateImageConstructionStage)
+              + ', image cache=$'
+              + IntToHex(PtrUInt(ImageCache), SizeOf(Pointer) * 2)
+              + ', rotation cache=$'
+              + IntToHex(PtrUInt(RotationCache), SizeOf(Pointer) * 2)
+              + ', rotated image=$'
+              + IntToHex(PtrUInt(RotatedImage), SizeOf(Pointer) * 2)
+      );
+      raise;
     end;
   end;
   RotateImageConstructionStage := -1;
@@ -197,7 +204,11 @@ begin
               + IntToStr(Pivot.Y)
       );
     except
-      raise Exception.Create('Error in TRotateImage5GI.SetImage');
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'TRotateImage5GI.SetImage ' + Path);
+        raise;
+      end;
     end;
     Radius := SquaredDistanceToPoint(Pivot, 0, 0);
     Radius := Max(Radius, SquaredDistanceToPoint(Pivot, ImageSize.X, ImageSize.Y));
@@ -283,7 +294,7 @@ begin
             Direct3DDevice.SetRenderTarget(0, OldSurface);
             Texture.GetSurfaceLevel(0, OldSurface);
             if Direct3DDevice.GetRenderTargetData(Surface, OldSurface) <> 0 then
-              AppendLogLineThreadSafe('GetRenderTargetData fail');
+              LogGameMessage(gllWarning, 'renderer', 'Reading rotated image pixels failed');
             OldSurface := nil;
             Surface := nil;
             Texture.LockRect(0, Locked, nil, 0);

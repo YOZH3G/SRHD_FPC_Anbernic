@@ -84,6 +84,7 @@ procedure ProcessSystemLiberationRewards(SourceShip: TNormalShip; Star: TStar);
 implementation
 
 uses
+  GameDiagnostics,
   EC_Str,
   aGalaxyEvent,
   Classes,
@@ -283,8 +284,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TNormalShip.NextDay ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TNormalShip.NextDay ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

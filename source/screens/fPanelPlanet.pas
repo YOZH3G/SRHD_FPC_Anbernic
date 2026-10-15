@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   Classes,
   Types,
@@ -65,10 +66,9 @@ var
   Panel: TObjectGI;
 begin
   Self.Screen := Screen;
-  AppendLogTextThreadSafe('fPanelPlanet... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPanelPlanet');
   Panel := Self.Screen.GetByName('PanelPlanet');
   Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth, Panel.LocalPosition.Y + ExtraScreenHeight));
-  AppendLogLineThreadSafe('ok');
   (Self.Screen.GetByName('PP_Hangar') as TGraphButtonGI).UpCallback := HangarClicked;
   (Self.Screen.GetByName('PP_Shop') as TGraphButtonGI).UpCallback := EquipmentShopClicked;
   (Self.Screen.GetByName('PP_Goods') as TGraphButtonGI).UpCallback := GoodsShopClicked;

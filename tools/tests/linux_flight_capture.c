@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 static int state, frames;
-static char logbuf[65536];
+static char logbuf[4 << 20]; /* the game log rotates at 4 MiB */
 static Uint32 last_key, space_start;
 static void press(SDL_Keycode key) {
  SDL_Event e; memset(&e,0,sizeof(e)); e.type=SDL_KEYDOWN;

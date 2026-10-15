@@ -74,6 +74,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   Globals,
   GR_Main,
   EC_Buf,
@@ -119,7 +120,7 @@ var
 begin
   inherited InitializeLayout;
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fLoadRobot... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fLoadRobot');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Root := GetByName('');
   Root.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -129,7 +130,6 @@ begin
     Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, (GameScreenHeight - Panel.ClientSize.Y) div 2))
   else
     Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, Panel.LocalPosition.Y + ExtraScreenHeight div 2));
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := KeyDown;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := CloseClick;
   (GetByName('ButCancel') as TGraphButtonGI).UpCallback := CloseClick;

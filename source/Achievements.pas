@@ -7,9 +7,25 @@ interface
 uses
   EC_BlockPar,
   EC_Buf,
-  SimpleSteamApi;
+  WStringUtils;
 
 type
+
+  PointerToTAchievementData = ^TAchievementData;
+
+  TAchievementData = record
+    Name: PStartupWideString;
+    Description: PStartupWideString;
+    Achieved: Boolean;
+    HasProgress: Boolean;
+    Reserved0C: Integer;
+    MaxValue: Integer;
+    Value: Integer;
+    IconPath: PStartupWideString;
+    Date: Int64;
+  end;
+
+  PAchievementData = PointerToTAchievementData;
 
   TAchievementInfo = record
     Key: AnsiString;
@@ -156,9 +172,6 @@ type
     procedure CheckTranclucatorFleetAchievement;
   end;
 
-  {$Z1}
-  TAchievementBackend = (achSteam = 1, achSteamWithoutAchievements = 2, achLocal = 3);
-
 var
 
   AchievementDefinitions: TBlockParEC = nil;
@@ -166,8 +179,6 @@ var
 function GetCurrentAchievementProgress(Key: WideString; StoredValue: Integer): Integer;
 
 procedure InitializeAchievementDefinitions;
-
-function GetAchievementBackend: TAchievementBackend;
 
 function GetAvailableAchievementCount: Integer;
 
@@ -191,8 +202,7 @@ uses
   aTranclucator,
   SysUtils,
   Math,
-  WStringUtils,
-  NoSteamAchievemens,
+  LocalAchievements,
   GlobalsV,
   aPlayer,
   aGalaxy,
@@ -652,28 +662,9 @@ begin
   end;
 end;
 
-function GetAchievementBackend: TAchievementBackend;
-begin
-  if SteamInitialized then
-  begin
-    if SteamAchievementsCount > 0 then
-      Result := achSteam
-    else
-      Result := achSteamWithoutAchievements;
-  end
-  else
-    Result := achLocal;
-end;
-
 function GetAvailableAchievementCount: Integer;
 begin
-  case GetAchievementBackend of
-    achSteam: Result := Min(High(AchievementDefinitionTable), SteamAchievementsCount);
-    achLocal: Result := High(AchievementDefinitionTable);
-    achSteamWithoutAchievements: Result := 0;
-  else
-    Result := 0;
-  end;
+  Result := High(AchievementDefinitionTable);
 end;
 
 function TryUnlockAchievement(Key: WideString): Boolean;
@@ -692,13 +683,7 @@ begin
   Block := AchievementDefinitions.FindBlock(Key);
   if Block = nil then
     Exit;
-  case GetAchievementBackend of
-    achSteam: Result := SteamUnlockAchievement(StrToInt(AnsiString(Block.GetParam('Num'))));
-    achLocal: Result := UnlockLocalAchievement(Block);
-    achSteamWithoutAchievements: Result := False;
-  else
-    Result := False;
-  end;
+  Result := UnlockLocalAchievement(Block);
   if Result and (GetPlayer <> nil) then
     GetPlayer.AwardedAchievementKeys.AddChildBlock(Key);
 end;
@@ -726,13 +711,7 @@ begin
     Increment := Amount
   else
     Increment := Data.MaxValue - Data.Value;
-  case GetAchievementBackend of
-    achSteam: Result := SteamIncreaseStat(StrToInt(AnsiString(Block.GetParam('Num'))), Increment);
-    achLocal: Result := IncreaseLocalAchievementProgress(Block, Increment);
-    achSteamWithoutAchievements: Result := False;
-  else
-    Result := False;
-  end;
+  Result := IncreaseLocalAchievementProgress(Block, Increment);
   FreeAchievementData(Data);
   Data := GetAchievementData(Key);
   if (GetPlayer <> nil) and Data.Achieved then
@@ -768,13 +747,7 @@ begin
     FreeAchievementData(Data);
     Exit;
   end;
-  case GetAchievementBackend of
-    achSteam: Result := SteamIncreaseStat(StrToInt(AnsiString(Block.GetParam('Num'))), Increment);
-    achLocal: Result := IncreaseLocalAchievementProgress(Block, Increment);
-    achSteamWithoutAchievements: Result := False;
-  else
-    Result := False;
-  end;
+  Result := IncreaseLocalAchievementProgress(Block, Increment);
   FreeAchievementData(Data);
   Data := GetAchievementData(Key);
   if (GetPlayer <> nil) and Data.Achieved then
@@ -791,27 +764,21 @@ begin
   if Block <> nil then
   begin
     Result := CreateAchievementData;
-    case GetAchievementBackend of
-      achSteam: SteamAchievementData(StrToInt(AnsiString(Block.GetParam('Num'))), Result);
-      achLocal: GetLocalAchievementData(Key, Result);
-    end;
-    TruncateStartupWideString(Result.Name);
-    TruncateStartupWideString(Result.Description);
-    TruncateStartupWideString(Result.IconPath);
+    GetLocalAchievementData(Key, Result);
   end;
 end;
 
 function CreateAchievementData: PAchievementData;
 begin
   New(Result);
-  Result.Name := AllocateStartupWideString(255);
-  Result.Description := AllocateStartupWideString(255);
+  Result.Name := AllocateStartupWideString(0);
+  Result.Description := AllocateStartupWideString(0);
   Result.Achieved := False;
   Result.HasProgress := False;
   Result.Reserved0C := 0;
   Result.MaxValue := 0;
   Result.Value := 0;
-  Result.IconPath := AllocateStartupWideString(255);
+  Result.IconPath := AllocateStartupWideString(0);
   Result.Date := 0;
 end;
 

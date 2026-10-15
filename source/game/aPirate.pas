@@ -90,6 +90,7 @@ const
 implementation
 
 uses
+  GameDiagnostics,
   aPlayer,
   Achievements,
   aGalaxyEvent,
@@ -316,8 +317,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TPirate.NextDay ' + GetFullName(' '));
+      AddGameExceptionContext(E, 'TPirate.NextDay ' + GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -598,8 +599,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TPirate.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TPirate.NextDayLogic ' + GetFullName(' ') + '; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

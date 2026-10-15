@@ -96,7 +96,7 @@ RG34XX SP's 720×480 panel the 4:3 image fills 640×480 with side bars.
 Linux defaults to the hardware-accelerated `--renderer=sdl`. If acceleration
 is unavailable, the game falls back to software drawing automatically;
 `--renderer=software` forces it. The selected driver and fallback reason are in
-`spacerangershd/profile/########.log`.
+`spacerangershd/profile/rangers-fpc.log`.
 
 ## Performance
 

@@ -363,6 +363,7 @@ function CompareStoredItems(Left: PStorageEntry; Right: PStorageEntry; Sort: TPl
 implementation
 
 uses
+  GameDiagnostics,
   GI_GI,
   aCalc,
   fCount2,
@@ -934,7 +935,7 @@ begin
     RemoteHoldRows := 5;
   end;
   MainPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fShip2... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fShip2');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -967,7 +968,6 @@ begin
     with FindByNameRecursive('CustomBridgeInto') as TGraphButtonGI do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
-  AppendLogLineThreadSafe('ok');
   BackgroundBuffer := GetByName('BGBuf') as TGraphBufGI;
   ItemInfoWindow := GetByName('PII') as TWindowGI;
   ItemImage := GetByName('InfoImage') as TImageGI;

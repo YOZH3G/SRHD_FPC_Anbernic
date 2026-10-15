@@ -133,6 +133,7 @@ function GetShopItemIconName(Item: TItem): WideString;
 implementation
 
 uses
+  GameDiagnostics,
   GI_LayoutMetrics,
   GI_Main,
   GI_Inspection,
@@ -469,7 +470,7 @@ begin
   Expansion := MeasureShopExpansion(GameScreenWidth);
   ExtraWidth := Expansion.Width;
   ShopVisibleColumnCount := Expansion.Columns;
-  AppendLogTextThreadSafe('fEquipmentShop... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fEquipmentShop');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -496,7 +497,6 @@ begin
     end;
   end;
   MainPanel.FitContent(GetByName('PanelShop'));
-  AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
   (GetByName('PM_Ship') as TGraphButtonGI).UpCallback := ShipClicked;
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;

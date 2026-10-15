@@ -214,7 +214,7 @@ begin
   // or its external validation state; character filters run on the original sender.
   Target.SetText(Buffer.Text);
   Target.SetCaretPosition(Buffer.CaretPosition);
-  Target.DispatchNamedEvent(4, 0, 0);
+  Target.DispatchNamedEvent(nceTextChanged, 0, 0);
   if Assigned(Target.ChangedCallback) then
     Target.ChangedCallback(Target);
 end;

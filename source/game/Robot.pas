@@ -202,6 +202,8 @@ procedure InitializeRobotRuntime;
 
 procedure FinalizeRobotRuntime;
 
+function CheckRobotRuntimeAvailable: Boolean;
+
 procedure RobotPlaySound(Name: PWideChar); stdcall;
 
 function RobotCreateSound(Name: PWideChar; Group: Integer; Looping: Integer): TSoundBufferControl; stdcall;
@@ -258,6 +260,7 @@ function FRun(
 implementation
 
 uses
+  GameDiagnostics,
   GameSystem,
   GR_Main,
   GlobalsV,
@@ -288,16 +291,11 @@ begin
 end;
 
 procedure InitializeRobotRuntime;
-var
-  GetInterface: TGetRobotInterface;
-  OverrideName: WideString;
-  Callbacks: PRobotCallbacks;
 begin
   FinalizeRobotRuntime;
   if IsInstallFeatureEnabled('Robot') then
   begin
-    Callbacks := @RobotCallbacks;
-    FillChar(Callbacks^, SizeOf(TRobotCallbacks), 0);
+    FillChar(RobotCallbacks, SizeOf(RobotCallbacks), 0);
     RobotCallbacks.PlaySound := RobotPlaySound;
     RobotCallbacks.CreateSound := RobotCreateSound;
     RobotCallbacks.FreeSound := RobotFreeSound;
@@ -314,48 +312,30 @@ begin
     RobotCallbacks.ReleaseTextures := RobotReleaseTextures;
     RobotCallbacks.GetMusicVolume := RobotGetMusicVolume;
     RobotCallbacks.SetMusicVolume := RobotSetMusicVolume;
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-    if DirectXVersion >= $90000 then
-    begin
-      if LanguageDataConfig.GetBlock('RobotsMap').CountParams('MatrixOverride') > 0 then
-      begin
-        OverrideName := LanguageDataConfig.GetBlock('RobotsMap').GetParam('MatrixOverride');
-        RobotModule := LoadLibrary(UTF8Encode(OverrideName));
-      end
-      else
-        RobotModule := LoadLibrary('MatrixGame.dll');
-      if RobotModule <> 0 then
-      begin
-        GetInterface := GetProcAddress(RobotModule, 'GetRobotInterface');
-        if GetInterface() = nil then
-        begin
-          FreeLibrary(RobotModule);
-          RobotModule := 0;
-        end
-        else
-        begin
-          RobotInterface := GetInterface();
-          RobotInterface.Initialize(@RobotCallbacks);
-          AppendLogLineThreadSafe('Load MatrixGame.dll .... ok');
-          AppendLogLineThreadSafe(AnsiString('Robot.Support()=' + IntToWideString(RobotInterface.Support())));
-        end;
-      end;
-    end;
-{$ENDIF}
   end;
 end;
 
-procedure FinalizeRobotRuntime;
+function CheckRobotRuntimeAvailable: Boolean;
 begin
-  if RobotInterface <> nil then
-  begin
-    RobotInterface.Finalize;
-    RobotInterface := nil;
-    if RobotModule <> 0 then
-    begin
-      FreeLibrary(RobotModule);
-      RobotModule := 0;
-    end;
+  // Standalone battles require an engine; quest battles use FRun's fallback.
+  Result := (RobotInterface <> nil) and (RobotInterface.Support() = 0);
+end;
+
+procedure FinalizeRobotRuntime;
+var
+  Instance: PRobotInterfacePrefix;
+  Module: TLibHandle;
+begin
+  Instance := RobotInterface;
+  Module := RobotModule;
+  RobotInterface := nil;
+  RobotModule := 0;
+  try
+    if (Instance <> nil) and Assigned(Instance.Finalize) then
+      Instance.Finalize;
+  finally
+    if Module <> 0 then
+      FreeLibrary(Module);
   end;
 end;
 
@@ -727,51 +707,45 @@ var
   SavedDirectory: AnsiString;
   SavedSoundVolume, SavedMusicVolume: Single;
   Failed: Boolean;
+  FailureReport: TGameExceptionReport;
+  PendingFailure: EGameDiagnosticException;
   CursorState: TCursorStateGI;
   Memory: TMemoryStatusEx;
 begin
-  if MusicEnabled and MusicManager.HasSelectedMusic then
-    MusicManager.RequestFadeOut;
-  AppendLogLineThreadSafe('Preparing to start planetary battle');
-  SavedDirectory := GetCurrentDir;
-  LooseFileRoot := SavedDirectory + '\';
+  // Until a replacement robot engine is integrated, complete battles as victories.
+  if RobotInterface = nil then
+  begin
+    FillChar(RobotBattleStatistics, SizeOf(RobotBattleStatistics), 0);
+    Exit(3);
+  end;
+  FailureReport := nil;
   try
-    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).CaptureCursorState(@CursorState);
-    if InstallConfig.CountParams('RobotPath') > 0 then
-    begin
-      SetCurrentDir(NativeGamePath(AnsiString(InstallConfig.GetParam('RobotPath'))));
-      GetCurrentDir;
-    end;
-    RobotSetProgress(0);
-    Memory.Length := SizeOf(Memory);
-    QueryGameMemory(Memory);
-    if MemorySnapshotActive or (Galaxy <> nil) or ((Int64(Memory.AvailPhys) shr 30) <= 0) then
-      GlobalCache.TrimToBudget(0);
-    Result := 1;
-    SavedSoundVolume := SoundVolume;
-    SavedMusicVolume := MusicVolume;
-    SoundVolume := RobotSoundVolume;
-    MusicVolume := RobotMusicVolume;
-    RobotSettings.Brightness := RobotBrightness / 2 + 0.5;
-    RobotSettings.Contrast := RobotContrast / 2 + 0.5;
-    RobotSettings.ColorDepth := 32;
-    if Direct3DPresentParameters.Windowed then
-    begin
-      if AlternateViewportEnabled then
+    if MusicEnabled and MusicManager.HasSelectedMusic then
+      MusicManager.RequestFadeOut;
+    LogGameMessage(gllInfo, 'robots', 'Preparing planetary battle: ' + MapName);
+    SavedDirectory := GetCurrentDir;
+    LooseFileRoot := SavedDirectory + '\';
+    try
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).CaptureCursorState(@CursorState);
+      if InstallConfig.CountParams('RobotPath') > 0 then
       begin
-        RobotSettings.ScreenWidth := PresentationWidth;
-        RobotSettings.ScreenHeight := PresentationHeight;
-      end
-      else
-      begin
-        RobotSettings.ScreenWidth := GameScreenWidth;
-        RobotSettings.ScreenHeight := GameScreenHeight;
+        SetCurrentDir(NativeGamePath(AnsiString(InstallConfig.GetParam('RobotPath'))));
+        GetCurrentDir;
       end;
-      RobotSettings.RefreshRate := 0;
-    end
-    else
-    begin
-      if RobotDisplayModes[SelectedRobotDisplayMode].Width = 0 then
+      RobotSetProgress(0);
+      Memory.Length := SizeOf(Memory);
+      QueryGameMemory(Memory);
+      if MemorySnapshotActive or (Galaxy <> nil) or ((Int64(Memory.AvailPhys) shr 30) <= 0) then
+        GlobalCache.TrimToBudget(0);
+      Result := 1;
+      SavedSoundVolume := SoundVolume;
+      SavedMusicVolume := MusicVolume;
+      SoundVolume := RobotSoundVolume;
+      MusicVolume := RobotMusicVolume;
+      RobotSettings.Brightness := RobotBrightness / 2 + 0.5;
+      RobotSettings.Contrast := RobotContrast / 2 + 0.5;
+      RobotSettings.ColorDepth := 32;
+      if Direct3DPresentParameters.Windowed then
       begin
         if AlternateViewportEnabled then
         begin
@@ -783,109 +757,134 @@ begin
           RobotSettings.ScreenWidth := GameScreenWidth;
           RobotSettings.ScreenHeight := GameScreenHeight;
         end;
-        RobotSettings.RefreshRate := GameDisplayModes[SelectedGameDisplayMode].RefreshRate;
+        RobotSettings.RefreshRate := 0;
       end
       else
       begin
-        RobotSettings.ScreenWidth := RobotDisplayModes[SelectedRobotDisplayMode].Width;
-        RobotSettings.ScreenHeight := RobotDisplayModes[SelectedRobotDisplayMode].Height;
-        RobotSettings.RefreshRate := RobotDisplayModes[SelectedRobotDisplayMode].RefreshRate;
-      end;
-    end;
-    RobotSettings.VSync := RobotVSync;
-    RobotSettings.FSAASamples := RobotFSAASamples;
-    RobotSettings.Anisotropy := RobotAnisotropy;
-    RobotSettings.MaxDistance := RobotMaxDistance / 100;
-    RobotBattleStatistics.SignedTimeMs := 0;
-    RobotBattleStatistics.RobotsBuilt := 0;
-    RobotBattleStatistics.RobotsDestroyed := 0;
-    RobotBattleStatistics.TurretsBuilt := 0;
-    RobotBattleStatistics.TurretsDestroyed := 0;
-    RobotBattleStatistics.BuildingsDestroyed := 0;
-    RobotSettings.Direct3D := Pointer(Direct3D);
-    RobotSettings.Device := Pointer(Direct3DDevice);
-    AppendLogLineThreadSafe('Starting planetary battle');
-    RobotBattleActive := True;
-    Failed := False;
-    try
-      if RobotInterface <> nil then
-      begin
-        if LanguageDataConfig.GetBlock('RobotsMap').CountParams('CfgOverride') > 0 then
-          Result :=
-              RobotInterface.Run(
-                  HInstance,
-                  MainWindowHandle,
-                  PWideChar(MapName),
-                  @RobotSettings,
-                  PWideChar(LanguageDataConfig.GetBlock('RobotsMap').GetParam('CfgOverride')),
-                  PWideChar(StartText),
-                  PWideChar(WinText),
-                  PWideChar(LossText),
-                  PWideChar(TerronName),
-                  @RobotBattleStatistics
-              )
+        if RobotDisplayModes[SelectedRobotDisplayMode].Width = 0 then
+        begin
+          if AlternateViewportEnabled then
+          begin
+            RobotSettings.ScreenWidth := PresentationWidth;
+            RobotSettings.ScreenHeight := PresentationHeight;
+          end
+          else
+          begin
+            RobotSettings.ScreenWidth := GameScreenWidth;
+            RobotSettings.ScreenHeight := GameScreenHeight;
+          end;
+          RobotSettings.RefreshRate := GameDisplayModes[SelectedGameDisplayMode].RefreshRate;
+        end
         else
-          Result :=
-              RobotInterface.Run(
-                  HInstance,
-                  MainWindowHandle,
-                  PWideChar(MapName),
-                  @RobotSettings,
-                  PWideChar(LanguageInstallConfig.GetParam('Lang')),
-                  PWideChar(StartText),
-                  PWideChar(WinText),
-                  PWideChar(LossText),
-                  PWideChar(TerronName),
-                  @RobotBattleStatistics
-              );
+        begin
+          RobotSettings.ScreenWidth := RobotDisplayModes[SelectedRobotDisplayMode].Width;
+          RobotSettings.ScreenHeight := RobotDisplayModes[SelectedRobotDisplayMode].Height;
+          RobotSettings.RefreshRate := RobotDisplayModes[SelectedRobotDisplayMode].RefreshRate;
+        end;
       end;
-    except
-      on E: Exception do
+      RobotSettings.VSync := RobotVSync;
+      RobotSettings.FSAASamples := RobotFSAASamples;
+      RobotSettings.Anisotropy := RobotAnisotropy;
+      RobotSettings.MaxDistance := RobotMaxDistance / 100;
+      RobotBattleStatistics.SignedTimeMs := 0;
+      RobotBattleStatistics.RobotsBuilt := 0;
+      RobotBattleStatistics.RobotsDestroyed := 0;
+      RobotBattleStatistics.TurretsBuilt := 0;
+      RobotBattleStatistics.TurretsDestroyed := 0;
+      RobotBattleStatistics.BuildingsDestroyed := 0;
+      RobotSettings.Direct3D := Pointer(Direct3D);
+      RobotSettings.Device := Pointer(Direct3DDevice);
+      LogGameMessage(gllInfo, 'robots', 'Starting planetary battle');
+      RobotBattleActive := True;
+      Failed := False;
+      try
+        if RobotInterface <> nil then
+        begin
+          if LanguageDataConfig.GetBlock('RobotsMap').CountParams('CfgOverride') > 0 then
+            Result :=
+                RobotInterface.Run(
+                    HInstance,
+                    MainWindowHandle,
+                    PWideChar(MapName),
+                    @RobotSettings,
+                    PWideChar(LanguageDataConfig.GetBlock('RobotsMap').GetParam('CfgOverride')),
+                    PWideChar(StartText),
+                    PWideChar(WinText),
+                    PWideChar(LossText),
+                    PWideChar(TerronName),
+                    @RobotBattleStatistics
+                )
+          else
+            Result :=
+                RobotInterface.Run(
+                    HInstance,
+                    MainWindowHandle,
+                    PWideChar(MapName),
+                    @RobotSettings,
+                    PWideChar(LanguageInstallConfig.GetParam('Lang')),
+                    PWideChar(StartText),
+                    PWideChar(WinText),
+                    PWideChar(LossText),
+                    PWideChar(TerronName),
+                    @RobotBattleStatistics
+                );
+        end;
+      except
+        on E: Exception do
+        begin
+          FailureReport := CaptureGameException('Running planetary battle');
+          LogGameException(FailureReport, 'robots');
+          Failed := True;
+        end;
+      end;
+      if Result >= 100 then
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        Failed := True;
+        Dec(Result, 100);
+        if Result >= 1 then
+          LogGameMessage(gllWarning, 'robots', 'Planetary battle engine reported an error during shutdown');
+        if Result = 0 then
+          Failed := True;
       end;
+      RobotBattleActive := False;
+      LogGameMessage(gllInfo, 'robots', 'Planetary battle finished with result ' + IntToStr(Result));
+      GR_DXReset;
+      SetGameWindowTitle('Rangers');
+      ApplyGammaRamp(DisplayBrightness, DisplayContrast);
+      SoundVolume := SavedSoundVolume;
+      MusicVolume := SavedMusicVolume;
+      MusicVolumeScale := 1;
+      if (Result = 0) and not Failed then
+      begin
+        ExitScreenLoop := True;
+        RequestedScreenId := screenNone;
+        TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
+        Result := 0;
+        Exit;
+      end;
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RestoreCursorState(@CursorState);
+      if ShowSystemMouse then
+        while ShowGameCursor(True) < 0 do
+      else
+        while ShowGameCursor(False) >= 0 do
+          ;
+      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).InvalidateViewport;
+    finally
+      SetCurrentDir(NativeGamePath(SavedDirectory));
+      LooseFileRoot := '';
     end;
-    if Result >= 100 then
+    if MusicEnabled and MusicManager.HasSelectedMusic then
+      MusicManager.RequestFadeOut;
+    if Failed then
     begin
-      Dec(Result, 100);
-      if Result >= 1 then
-        AppendLogLineThreadSafe('Warning! There was an error on exit from planetary battle!');
-      if Result = 0 then
-        Failed := True;
+      if FailureReport = nil then
+        raise EGameDiagnosticException.Create('The planetary battle engine reported a failure during shutdown');
+      PendingFailure := EGameDiagnosticException.Create(FailureReport);
+      FailureReport := nil;
+      raise PendingFailure;
     end;
-    RobotBattleActive := False;
-    AppendLogLineThreadSafe('Planetary battle finished');
-    GR_DXReset;
-    SetGameWindowTitle('Rangers');
-    ApplyGammaRamp(DisplayBrightness, DisplayContrast);
-    SoundVolume := SavedSoundVolume;
-    MusicVolume := SavedMusicVolume;
-    MusicVolumeScale := 1;
-    if (Result = 0) and not Failed then
-    begin
-      ExitScreenLoop := True;
-      RequestedScreenId := screenNone;
-      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RequestClose(1);
-      Result := 0;
-      Exit;
-    end;
-    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RestoreCursorState(@CursorState);
-    if ShowSystemMouse then
-      while ShowGameCursor(True) < 0 do
-    else
-      while ShowGameCursor(False) >= 0 do
-        ;
-    TMessageLoopGI(RegisteredScreens[CurrentScreenId]).InvalidateViewport;
   finally
-    SetCurrentDir(NativeGamePath(SavedDirectory));
-    LooseFileRoot := '';
+    FailureReport.Free;
   end;
-  AppendLogLineThreadSafe('Cleanup after planetary battle finished');
-  if MusicEnabled and MusicManager.HasSelectedMusic then
-    MusicManager.RequestFadeOut;
-  if Failed then
-    raise Exception.Create('Error in GIRobot.FRun');
 end;
 
 end.

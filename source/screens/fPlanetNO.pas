@@ -108,6 +108,7 @@ const
 implementation
 
 uses
+  GameDiagnostics,
   fGalaxy2,
   GameInput,
   aTranclucator,
@@ -180,7 +181,7 @@ begin
   inherited InitializeLayout;
   MainPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fPlanetNO... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPlanetNO');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -214,7 +215,6 @@ begin
     with FindByNameRecursive('QuestInfo') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenWidth));
   end;
-  AppendLogLineThreadSafe('ok');
   with GetByName('MainPanel') do
   begin
     MouseMoveCallback := MainPanelMouseMove;

@@ -244,7 +244,6 @@ begin
     begin
       Exit;
     end;
-    AppendLogLineThreadSafe('Test');
     Y := Top;
     while (Y < Bottom) do
     begin

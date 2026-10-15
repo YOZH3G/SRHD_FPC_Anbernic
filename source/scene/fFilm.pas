@@ -91,6 +91,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GameEvents,
   aGalaxyStruct,
   SysUtils,
@@ -138,7 +139,7 @@ var
   Graph: TGraphBufGI;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fFilm... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fFilm');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Main := GetByName('MainPanel');
   Main.Parent.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -170,7 +171,6 @@ begin
   StarM := Main.FindByNameRecursive('StarFieldM');
   StarM.SetOrigin(Classes.Point(GameScreenWidth shr 1, GameScreenHeight shr 1));
   StarM.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-  AppendLogLineThreadSafe('ok');
   CenterShipButton := GetByName('CenterShip') as TGraphButtonGI;
   CenterShipButton.DownCallback := CenterShipClicked;
   SpacePanel := GetByName('MainPanel') as TPanelGI;
@@ -206,7 +206,7 @@ begin
     Loader.Free;
     Loader := nil;
   end;
-  Loader := TfFilmLoader.Create;
+  Loader := TfFilmLoader.Create('film-loader');
   Loader.SetPriority(ThreadPriorityLowest);
   PanTimer := ScheduleCallbackTimer(ScrollTime, ScrollTime, PanView);
   ContentPanel.KeyDownCallback := KeyDown;

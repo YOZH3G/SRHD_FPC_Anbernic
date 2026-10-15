@@ -138,6 +138,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   Classes,
   SysUtils,
   aPlanet,
@@ -384,8 +385,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TEObjInfo.LoadFromStar, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TEObjInfo.LoadFromStar; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

@@ -56,6 +56,7 @@ uses
   aCalc,
   Types,
   GameSystem,
+  GameDiagnostics,
   SysUtils,
   Math,
   Globals,
@@ -127,8 +128,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Player-star turn failed, stage = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'Player-star turn; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -196,12 +196,11 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
       FailureContext := 'Turn calculation failed, job = ' + IntToStr(Ord(Job));
       if Galaxy <> nil then
         FailureContext :=
             FailureContext + ', seed = ' + IntToStr(Integer(Galaxy.GenerationSeed)) + ', turn = ' + IntToStr(Galaxy.CurrentTurn);
-      E.Message := FailureContext + ': ' + E.Message;
+      AddGameExceptionContext(E, FailureContext);
       raise;
     end;
   end;

@@ -34,7 +34,7 @@ def main():
         "LD_PRELOAD": str(args.preload.resolve()),
         "SDL_VIDEODRIVER": "dummy",
         "SDL_AUDIODRIVER": "dummy",
-        "SR_TEST_LOG": str(profile / "Rangers.log"),
+        "SR_TEST_LOG": str(profile / "rangers-fpc.log"),
         "SR_VIDEO_AUDIO": str(audio),
     }
     command = [str(args.qemu.resolve()), "-L", str(sdk)]

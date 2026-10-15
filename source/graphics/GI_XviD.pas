@@ -100,6 +100,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   Types,
   SysUtils,
   Direct3D9,
@@ -179,7 +180,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+      LogCurrentGameException('video', 'opening movie ' + FileName, gllWarning);
       Result := False;
       ImageClose;
     end;
@@ -195,7 +196,7 @@ begin
     Status := XvidDecore(DecoderHandle, 1, nil, nil);
     DecoderHandle := nil;
     if Status <> 0 then
-      AppendLogLineThreadSafe('Error XvidClose: xvid_decore_func - XVID_DEC_DESTROY = ' + IntToStr(Status));
+      LogGameMessage(gllWarning, 'video', 'Xvid decoder shutdown failed; status=' + IntToStr(Status));
   end;
   FreeAndNil(AviFile);
 end;

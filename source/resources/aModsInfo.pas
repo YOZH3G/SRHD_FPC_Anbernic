@@ -60,8 +60,6 @@ var
 
   ModInfosInitialized: Boolean = False;
 
-function FindOrInsertModFolder(Folder: WideString): Integer;
-
 function LoadModInfo(Folder: WideString; Info: TModInfo): Boolean;
 
 procedure ScanModFolders(Folder: WideString; Prefix: WideString);
@@ -73,7 +71,6 @@ procedure ClearModInfoState;
 implementation
 
 uses
-  Types,
   SysUtils,
   EC_Str,
   EC_Expression,
@@ -169,133 +166,109 @@ begin
   Result := TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, VariantIndex, ','))]);
 end;
 
-function FindOrInsertModFolder(Folder: WideString): Integer;
+// Exact lookup of a backslash-separated folder key. If absent, Index is the
+// insertion position; lookup never changes the list or reserves a nil entry.
+function FindModFolder(const Folder: WideString; out Index: Integer): Boolean;
 var
   Left, Right, Middle, Comparison: Integer;
-  Info: TModInfo;
 begin
-  if ModInfos.Count < 1 then
-  begin
-    ModInfos.Add(nil);
-    Result := 0;
-    Exit;
-  end;
   Left := 0;
-  Info := TModInfo(ModInfos[0]);
-  Comparison := CompareScriptNames(PWideChar(Folder), PWideChar(Info.Folder));
-  if Comparison = 0 then
+  Right := ModInfos.Count;
+  while Left < Right do
   begin
-    Result := 0;
-    Exit;
-  end;
-  if Comparison < 0 then
-  begin
-    ModInfos.Insert(0, nil);
-    Result := 0;
-    Exit;
-  end;
-  Right := ModInfos.Count - 1;
-  Info := TModInfo(ModInfos[Right]);
-  Comparison := CompareScriptNames(PWideChar(Folder), PWideChar(Info.Folder));
-  if Comparison = 0 then
-  begin
-    Result := Right;
-    Exit;
-  end;
-  if Comparison > 0 then
-  begin
-    ModInfos.Add(nil);
-    Result := Right + 1;
-    Exit;
-  end;
-  while True do
-  begin
-    if Right - Left < 2 then
-    begin
-      ModInfos.Insert(Right, nil);
-      Result := Right;
-      Exit;
-    end;
-    Middle := (Left + Right) div 2;
-    Info := TModInfo(ModInfos[Middle]);
-    Comparison := CompareScriptNames(PWideChar(Folder), PWideChar(Info.Folder));
+    Middle := Left + (Right - Left) div 2;
+    // Preserve the original UI order and the load order of equal-priority mods.
+    Comparison := CompareScriptNames(PWideChar(Folder), PWideChar(TModInfo(ModInfos[Middle]).Folder));
     if Comparison = 0 then
     begin
-      Result := Middle;
-      Exit;
+      Index := Middle;
+      Exit(True);
     end;
     if Comparison < 0 then
       Right := Middle
     else
-      Left := Middle;
+      Left := Middle + 1;
   end;
+  Index := Left;
+  Result := False;
+end;
+
+function FindSavedModFolder(const Root: WideString; var Folder: WideString; out Index: Integer): Boolean;
+var
+  I: Integer;
+  Info: TModInfo;
+begin
+  // Names saved by the manager usually already have the discovered spelling.
+  if FindModFolder(Folder, Index) then
+    Exit(True);
+  // Resolve saved spelling exactly as resource loading does. Distinct physical
+  // case-only folders must remain distinct entries on case-sensitive storage.
+  Folder := ResolveGameRelativePath(Root, Folder);
+  if FindModFolder(Folder, Index) then
+    Exit(True);
+  // Missing entries have no on-disk spelling; coalesce repeated saved aliases.
+  // Existing folders use only their resolved identity, including nested mods
+  // that were hidden from scanning by an enclosing mod.
+  if not DirectoryExists(NativeGamePath(Root + '\' + Folder)) then
+    for I := 0 to ModInfos.Count - 1 do
+    begin
+      Info := TModInfo(ModInfos[I]);
+      if Info.MissingFolder and SameGamePathName(Info.Folder, Folder) then
+      begin
+        Index := I;
+        Exit(True);
+      end;
+    end;
+  Result := False;
 end;
 
 function LoadModInfo(Folder: WideString; Info: TModInfo): Boolean;
 var
-  SavedDir: AnsiString;
+  MetadataPath: WideString;
   HasCommonResources, HasForeignResources, HasLanguageResources: Boolean;
   Block: TBlockParEC;
   Language, Languages: WideString;
   I, Count: Integer;
 
+  function ModPath(const RelativePath: WideString): UnicodeString;
+  begin
+    Result := NativeGamePath(Folder + '\' + RelativePath);
+  end;
+
   function HasOtherLanguageResources: Boolean;
   var
-    FileName: WideString;
-
-    FindData: TSearchRec;
+    FileName: UnicodeString;
+    FindData: TUnicodeSearchRec;
   begin
     Result := False;
-
-    // Preserve Windows' case-insensitive extension matching on Unix too.
-    if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
-    begin
-      repeat
-        if ((FindData.Attr and faDirectory) = 0) and SameText(ExtractFileExt(FindData.Name), '.txt') then
-        begin
-          FileName := WideString(FindData.Name);
-          FileName := LowerCaseWideString(FileName);
-          if (FileName <> LowerCaseWideString('install_' + SelectedLanguage + '.txt'))
-              and (Length(FileName) > 12)
-              and (FindTextOffsetW(FileName, 'install_') = 0) then
-          begin
-            Result := True;
-            SysUtils.FindClose(FindData);
-            Exit;
-          end;
-        end;
-      until SysUtils.FindNext(FindData) <> 0;
-      SysUtils.FindClose(FindData);
-    end;
-    if DirectoryExists(NativeGamePath(AnsiString(Folder + '\CFG'))) then
-    begin
+    if SysUtils.FindFirst(ModPath('*'), faAnyFile, FindData) = 0 then
       try
-        if not SetCurrentDir(NativeGamePath(AnsiString(Folder + '\CFG'))) then
-          Exit;
-
-        if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
-        begin
-          repeat
-            if (FindData.Attr and faDirectory) <> 0 then
-            begin
-              FileName := WideString(FindData.Name);
-              if (FileName <> '.')
-                  and (FileName <> '..')
-                  and (LowerCaseWideString(FileName) <> LowerCaseWideString(LanguageInstallConfig.GetParam('Lang')))
-                  and SysUtils.FileExists(NativeGamePath(AnsiString(FileName + '\Lang.dat'))) then
-              begin
-                Result := True;
-                SysUtils.FindClose(FindData);
-                Exit;
-              end;
-            end;
-          until SysUtils.FindNext(FindData) <> 0;
-          SysUtils.FindClose(FindData);
-        end;
+        repeat
+          FileName := FindData.Name;
+          if ((FindData.Attr and faDirectory) = 0)
+              and (Length(FileName) > 12)
+              and SameGamePathName(Copy(FileName, 1, 8), 'install_')
+              and SameGamePathName(ExtractFileExt(FileName), '.txt')
+              and not SameGamePathName(FileName, 'install_' + SelectedLanguage + '.txt') then
+            Exit(True);
+        until SysUtils.FindNext(FindData) <> 0;
       finally
-        SetCurrentDir(NativeGamePath(AnsiString(Folder)));
+        SysUtils.FindClose(FindData);
       end;
-    end;
+    if SysUtils.FindFirst(ModPath('CFG\*'), faAnyFile, FindData) = 0 then
+      try
+        repeat
+          FileName := FindData.Name;
+          if ((FindData.Attr and faDirectory) <> 0)
+              and (FileName <> '.')
+              and (FileName <> '..')
+              and not SameGamePathName(FileName, Language)
+              and SysUtils.FileExists(ModPath('CFG\' + FileName + '\Lang.dat')) then
+            Exit(True);
+        until SysUtils.FindNext(FindData) <> 0;
+      finally
+        SysUtils.FindClose(FindData);
+      end;
   end;
 
 begin
@@ -303,22 +276,25 @@ begin
   HasLanguageResources := False;
   HasCommonResources := False;
   Block := nil;
-  SavedDir := GetCurrentDir;
+  // Every lookup is rooted in this mod; discovery must never change the
+  // process CWD used by resource loaders and directory enumerators.
+  Folder := ExpandFileName(NativeGamePath(Folder));
+  if not DirectoryExists(Folder) then
+    Exit(False);
   try
-    if not SetCurrentDir(NativeGamePath(AnsiString(Folder))) then
-      Exit(False);
-    if SysUtils.FileExists('install.txt')
-        or SysUtils.FileExists(NativeGamePath('CFG\Main.dat'))
-        or SysUtils.FileExists(NativeGamePath('CFG\CacheData.dat')) then
+    if SysUtils.FileExists(ModPath('install.txt'))
+        or SysUtils.FileExists(ModPath('CFG\Main.dat'))
+        or SysUtils.FileExists(ModPath('CFG\CacheData.dat')) then
       HasCommonResources := True;
     Language := LanguageInstallConfig.GetParam('Lang');
-    if SysUtils.FileExists(NativeGamePath(AnsiString('install_' + SelectedLanguage + '.txt')))
-        or SysUtils.FileExists(NativeGamePath(AnsiString('CFG\' + Language + '\Lang.dat'))) then
+    if SysUtils.FileExists(ModPath('install_' + SelectedLanguage + '.txt'))
+        or SysUtils.FileExists(ModPath('CFG\' + Language + '\Lang.dat')) then
       HasLanguageResources := True;
     if not HasCommonResources and not HasLanguageResources then
       HasForeignResources := HasOtherLanguageResources;
     Result := (HasCommonResources or HasLanguageResources) or HasForeignResources;
-    if not SysUtils.FileExists('ModuleInfo.txt') then
+    MetadataPath := ModPath('ModuleInfo.txt');
+    if not SysUtils.FileExists(MetadataPath) then
     begin
       if not Result then
         Exit;
@@ -332,7 +308,7 @@ begin
     end;
     Block := TBlockParEC.Create;
     try
-      Block.LoadFromTextFileWithEncodingProbe('ModuleInfo.txt', False);
+      Block.LoadFromTextFileWithEncodingProbe(PWideChar(MetadataPath), False, Folder);
       if not Result then
       begin
         if Block.CountParams('NoNormalResources') <= 0 then
@@ -428,7 +404,6 @@ begin
       Info.Priority := 0;
     end;
   finally
-    SetCurrentDir(NativeGamePath(SavedDir));
     if Block <> nil then
       Block.Free;
   end;
@@ -441,15 +416,13 @@ var
 
   Info: TModInfo;
   Index: Integer;
-  FindData: TSearchRec;
+  FindData: TUnicodeSearchRec;
 begin
   // Searching an explicit path cannot fall back to the current directory when
   // Mods is missing or unreadable. Recursive scans leave the caller's CWD alone.
   if SysUtils.FindFirst(NativeGamePath(Folder + '\*'), faAnyFile, FindData) = 0 then
   begin
-    Info := nil;
     try
-      Info := TModInfo.Create;
       repeat
         if (FindData.Attr and faDirectory) <> 0 then
         begin
@@ -457,31 +430,29 @@ begin
           if (FileName <> '.') and (FileName <> '..') then
           begin
             Path := Folder + '\' + FileName;
-            if LoadModInfo(Path, Info) then
-            begin
-              Info.Folder := Prefix + FileName;
-              Index := FindOrInsertModFolder(Info.Folder);
-              if Info.Name <> '' then
+            Info := TModInfo.Create;
+            try
+              if LoadModInfo(Path, Info) then
               begin
-                if ModIdCounts.CountParams(Info.Name) <= 0 then
-                  ModIdCounts.AddParam(Info.Name, '1')
-                else
-                  ModIdCounts.SetOrAddParam(Info.Name, '0');
+                Info.Folder := Prefix + FileName;
+                if not FindModFolder(Info.Folder, Index) then
+                begin
+                  ModInfos.Insert(Index, Info);
+                  Info := nil; // ModInfos owns it after successful insertion.
+                end;
+              end
+              else
+              begin
+                ChildPrefix := Prefix + FileName + '\';
+                ScanModFolders(Path, ChildPrefix);
               end;
-              ModInfos[Index] := Info;
-              Info := nil;
-              Info := TModInfo.Create;
-            end
-            else
-            begin
-              ChildPrefix := Prefix + FileName + '\';
-              ScanModFolders(Path, ChildPrefix);
+            finally
+              Info.Free;
             end;
           end;
         end;
       until SysUtils.FindNext(FindData) <> 0;
     finally
-      Info.Free;
       SysUtils.FindClose(FindData);
     end;
   end;
@@ -505,7 +476,7 @@ begin
     ModConflictIndex := TBlockParEC.Create;
   if ModDependencyIndex = nil then
     ModDependencyIndex := TBlockParEC.Create;
-  Folder := WideString(GetCurrentDir) + '\Mods';
+  Folder := NativeGamePath(WideString(GetCurrentDir) + '\Mods');
   ScanModFolders(Folder, '');
   if SelectedMods <> '' then
   begin
@@ -517,38 +488,39 @@ begin
       Name := TrimWideString(ExtractDelimitedPartW(Names, I, ','));
       if Name <> '' then
       begin
-        Index := FindOrInsertModFolder(Name);
-        if ModInfos[Index] <> nil then
-        begin
-          Info := TModInfo(ModInfos[Index]);
-          SelectedModInfos.Add(Info);
-          Info.Selected := True;
-        end
-        else
+        if not FindSavedModFolder(Folder, Name, Index) then
         begin
           Info := TModInfo.Create;
-          ModInfos[Index] := Info;
-          SelectedModInfos.Add(Info);
-          if DirectoryExists(NativeGamePath(AnsiString(Folder + '\' + Name))) and LoadModInfo(Folder + '\' + Name, Info) then
-          begin
+          try
             Info.Folder := Name;
-            if Info.Name <> '' then
-            begin
-              if ModIdCounts.CountParams(Info.Name) <= 0 then
-                ModIdCounts.AddParam(Info.Name, '1')
-              else
-                ModIdCounts.SetOrAddParam(Info.Name, '0');
-            end;
-          end
-          else
-          begin
-            Info.Folder := Name;
-            Info.MissingFolder := True;
-            Info.Selected := True;
+            Info.MissingFolder := not LoadModInfo(Folder + '\' + Name, Info);
+            ModInfos.Insert(Index, Info);
+          except
+            Info.Free;
+            raise;
           end;
+        end
+        else
+          Info := TModInfo(ModInfos[Index]);
+        // Selection is independent of how the entry was found (including
+        // missing folders). Repeated saved names must not duplicate the order.
+        if not Info.Selected then
+        begin
+          Info.Selected := True;
+          SelectedModInfos.Add(Info);
         end;
       end;
     end;
+  end;
+  // Count accepted entries once, after both discovery and selection recovery.
+  for I := 0 to ModInfos.Count - 1 do
+  begin
+    Info := TModInfo(ModInfos[I]);
+    if Info.Name <> '' then
+      if ModIdCounts.CountParams(Info.Name) <= 0 then
+        ModIdCounts.AddParam(Info.Name, '1')
+      else
+        ModIdCounts.SetOrAddParam(Info.Name, '0');
   end;
   for I := 0 to ModInfos.Count - 1 do
   begin

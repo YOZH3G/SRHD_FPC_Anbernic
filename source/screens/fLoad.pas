@@ -76,6 +76,7 @@ procedure LoadPendingAssets(PendingLoads: TList);
 implementation
 
 uses
+  GameDiagnostics,
   GameEvents,
   fPanelMain,
   EC_CacheGAI,
@@ -283,7 +284,7 @@ var
   Root: TObjectGI;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fLoad... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fLoad');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Root := GetByName('');
   Root.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -291,7 +292,6 @@ begin
   with Root.FindByNameRecursive('Intro') as TgaiGI do
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Root.FindByNameRecursive('Film').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-  AppendLogLineThreadSafe('ok');
   LoadPanel.InitializeLayout(Self);
 end;
 

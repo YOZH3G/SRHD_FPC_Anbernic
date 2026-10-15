@@ -30,11 +30,15 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   Math,
   GR_Main,
   GI_Main,
   EC_Cache;
+
+var
+  HardwareDrawWarningLogged: Boolean = False;
 
 constructor TInfiniteImageGI.Create(Owner: TObjectGI);
 begin
@@ -91,17 +95,10 @@ begin
     StartY := Floor((ClipRect.Top - AbsolutePosition.Y) / Height) * Height + AbsolutePosition.Y;
     if HardwareRenderingEnabled then
     begin
-      Y := StartY;
-      while Y < ClipRect.Bottom do
+      if not HardwareDrawWarningLogged then
       begin
-        X := StartX;
-        while X < ClipRect.Right do
-        begin
-          { This native path only logs; it does not draw a hardware tile. }
-          AppendLogLineThreadSafe('InfiniteImageDraw');
-          Inc(X, Width);
-        end;
-        Inc(Y, Height);
+        HardwareDrawWarningLogged := True;
+        LogGameMessage(gllWarning, 'renderer', 'InfiniteImage hardware drawing unsupported: ' + ImageCache.CacheKey);
       end;
     end
     else

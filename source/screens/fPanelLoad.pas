@@ -67,6 +67,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   Classes,
   GR_Main,
   Globals,
@@ -92,7 +93,7 @@ var
   Panel: TObjectGI;
 begin
   Self.Screen := Screen;
-  AppendLogTextThreadSafe('fPanelLoad... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPanelLoad');
   if not LayoutAdjusted then
   begin
     Panel := Self.Screen.GetByName('PanelLoad');
@@ -117,7 +118,6 @@ begin
       SetActive(False);
     LayoutAdjusted := True;
   end;
-  AppendLogLineThreadSafe('ok');
   for I := 0 to GetProgressSegmentCount - 1 do
   begin
     ProgressSegments[I] := Self.Screen.GetByName('PLB' + IntToStr(I + 1)) as TImageGI;

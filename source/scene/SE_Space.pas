@@ -144,6 +144,7 @@ procedure ReleaseSpaceObject(var Obj);
 implementation
 
 uses
+  GameDiagnostics,
   GameInput,
   SysUtils,
   GameSystem,
@@ -363,7 +364,7 @@ begin
         end;
     except
       on E: Exception do
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+        LogCurrentGameException('audio', 'playing random scene sound; graph=' + GraphKey, gllWarning);
     end;
   end;
 end;

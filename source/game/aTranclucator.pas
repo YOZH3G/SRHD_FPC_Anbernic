@@ -100,6 +100,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   EC_Struct,
   Classes,
   SysUtils,
@@ -427,9 +428,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(
-          AnsiString('Error in procedure TTranclucator.NextDayLogic ' + GetFullName(' ') + ' label = ' + WideString(IntToStr(Stage))));
+      AddGameExceptionContext(E, 'TTranclucator.NextDayLogic ' + GetFullName(' ') + '; stage=' + WideString(IntToStr(Stage)));
+      raise;
     end;
   end;
 end;

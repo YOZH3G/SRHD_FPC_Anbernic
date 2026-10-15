@@ -54,6 +54,7 @@ function ReadDoubleEC(Source: Pointer): Double; cdecl;
 implementation
 
 uses
+  GameDiagnostics,
   GR_DX,
   GR_Main,
   SysUtils;
@@ -65,14 +66,14 @@ begin
   Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, ByteCount);
   if Memory = nil then
   begin
-    AppendLogTextThreadSafe('Failed to allocate memory, trying to free some textures... ');
+    LogGameMessage(gllWarning, 'memory', 'AllocEC failed for ' + IntToStr(ByteCount) + ' bytes; evicting textures before retry');
     EvictTextureCaches(True);
     Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, ByteCount);
     if Memory <> nil then
-      AppendLogLineThreadSafe('success')
+      LogGameMessage(gllInfo, 'memory', 'AllocEC succeeded for ' + IntToStr(ByteCount) + ' bytes after texture eviction')
     else
     begin
-      AppendLogLineThreadSafe('fail');
+      LogGameMessage(gllError, 'memory', 'AllocEC retry failed for ' + IntToStr(ByteCount) + ' bytes after texture eviction');
       LogMemoryUsage;
       raise Exception.Create('AllocEC. size=' + SysUtils.IntToStr(ByteCount));
     end;
@@ -87,14 +88,14 @@ begin
   Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, GameHeap.HEAP_ZERO_MEMORY, ByteCount);
   if Memory = nil then
   begin
-    AppendLogTextThreadSafe('Failed to allocate memory, trying to free some textures... ');
+    LogGameMessage(gllWarning, 'memory', 'AllocClearEC failed for ' + IntToStr(ByteCount) + ' bytes; evicting textures before retry');
     EvictTextureCaches(True);
     Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, GameHeap.HEAP_ZERO_MEMORY, ByteCount);
     if Memory <> nil then
-      AppendLogLineThreadSafe('success')
+      LogGameMessage(gllInfo, 'memory', 'AllocClearEC succeeded for ' + IntToStr(ByteCount) + ' bytes after texture eviction')
     else
     begin
-      AppendLogLineThreadSafe('fail');
+      LogGameMessage(gllError, 'memory', 'AllocClearEC retry failed for ' + IntToStr(ByteCount) + ' bytes after texture eviction');
       LogMemoryUsage;
       raise Exception.Create('AllocClearEC. size=' + SysUtils.IntToStr(ByteCount));
     end;
@@ -118,14 +119,14 @@ begin
     Memory := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, Data, ByteCount);
     if Memory = nil then
     begin
-      AppendLogTextThreadSafe('Failed to allocate memory, trying to free some textures... ');
+      LogGameMessage(gllWarning, 'memory', 'ReAllocREC failed for ' + IntToStr(ByteCount) + ' bytes; evicting textures before retry');
       EvictTextureCaches(True);
       Memory := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, Data, ByteCount);
       if Memory <> nil then
-        AppendLogLineThreadSafe('success')
+        LogGameMessage(gllInfo, 'memory', 'ReAllocREC succeeded for ' + IntToStr(ByteCount) + ' bytes after texture eviction')
       else
       begin
-        AppendLogLineThreadSafe('fail');
+        LogGameMessage(gllError, 'memory', 'ReAllocREC retry failed for ' + IntToStr(ByteCount) + ' bytes after texture eviction');
         LogMemoryUsage;
         raise Exception.Create('ReAllocREC. size=' + SysUtils.IntToStr(ByteCount));
       end;
@@ -136,14 +137,14 @@ begin
     Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, ByteCount);
     if Memory = nil then
     begin
-      AppendLogTextThreadSafe('Failed to allocate memory, trying to free some textures... ');
+      LogGameMessage(gllWarning, 'memory', 'ReAllocREC failed for ' + IntToStr(ByteCount) + ' bytes; evicting textures before retry');
       EvictTextureCaches(True);
       Memory := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, ByteCount);
       if Memory <> nil then
-        AppendLogLineThreadSafe('success')
+        LogGameMessage(gllInfo, 'memory', 'ReAllocREC succeeded for ' + IntToStr(ByteCount) + ' bytes after texture eviction')
       else
       begin
-        AppendLogLineThreadSafe('fail');
+        LogGameMessage(gllError, 'memory', 'ReAllocREC retry failed for ' + IntToStr(ByteCount) + ' bytes after texture eviction');
         LogMemoryUsage;
         raise Exception.Create('ReAllocREC. size=' + SysUtils.IntToStr(ByteCount));
       end;

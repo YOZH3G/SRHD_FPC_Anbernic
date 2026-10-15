@@ -6,6 +6,7 @@ interface
 
 uses
   GameEvents,
+  GameDiagnostics,
   EC_Data,
   EC_Buf,
   EC_Struct,
@@ -50,7 +51,8 @@ type
     CacheKey: WideString;
     ResidentBytes: Integer;
     LoadCompleteEvent: TGameEventHandle;
-    LoadFailure: string;
+    LoadFailure: TGameExceptionReport;
+    procedure CheckLoadFailure;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); virtual;
     procedure LoadFromKey(const Key: WideString); virtual;
     constructor Create;
@@ -174,7 +176,10 @@ begin
   if HardwareRenderingEnabled and not TextureManagerDisabled then
     EvictTextureCaches(False);
   if RetainCount > 0 then
-    Inc(RetainCount)
+  begin
+    BoundData.CheckLoadFailure;
+    Inc(RetainCount);
+  end
   else
   begin
     GlobalCache.CacheLock.Enter;
@@ -187,7 +192,7 @@ begin
           Data := CreateData;
           Data.CacheKey := CacheKey;
           if CacheLoadLoggingEnabled then
-            AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
+            LogGameMessage(gllDebug, 'resources', 'Loading ' + Data.CacheKey);
           Data.LoadCompleteEvent := CreateGameEvent(True, False);
           Data.AppendControl(Self);
           BoundData := Data;
@@ -213,7 +218,8 @@ begin
             except
               on E: Exception do
               begin
-                Data.LoadFailure := E.ClassName + ': ' + E.Message;
+                AddGameExceptionContext(E, 'Loading cached resource ' + CacheKey);
+                Data.LoadFailure := CaptureGameException('');
                 raise;
               end;
             end;
@@ -241,8 +247,7 @@ begin
       else
         RetainCount := 1;
       // All waiters observe the loader's failure instead of using partial data.
-      if BoundData.LoadFailure <> '' then
-        raise Exception.Create(BoundData.LoadFailure);
+      BoundData.CheckLoadFailure;
       GlobalCache.TouchData(BoundData);
     finally
       GlobalCache.CacheLock.Leave;
@@ -259,7 +264,10 @@ begin
   if HardwareRenderingEnabled then
     EvictTextureCaches(False);
   if RetainCount > 0 then
-    Inc(RetainCount)
+  begin
+    BoundData.CheckLoadFailure;
+    Inc(RetainCount);
+  end
   else
   begin
     GlobalCache.CacheLock.Enter;
@@ -272,7 +280,7 @@ begin
           Data := CreateData;
           Data.CacheKey := CacheKey;
           if CacheLoadLoggingEnabled then
-            AppendLogLineThreadSafe('Cache Add=' + Data.CacheKey);
+            LogGameMessage(gllDebug, 'resources', 'Loading ' + Data.CacheKey);
           Data.AppendControl(Self);
           Data.LoadCompleteEvent := CreateGameEvent(True, False);
           BoundData := Data;
@@ -285,7 +293,8 @@ begin
             except
               on E: Exception do
               begin
-                Data.LoadFailure := E.ClassName + ': ' + E.Message;
+                AddGameExceptionContext(E, 'Loading cached resource ' + CacheKey);
+                Data.LoadFailure := CaptureGameException('');
                 raise;
               end;
             end;
@@ -312,8 +321,7 @@ begin
       else
         RetainCount := 1;
       // All waiters observe the loader's failure instead of using partial data.
-      if BoundData.LoadFailure <> '' then
-        raise Exception.Create(BoundData.LoadFailure);
+      BoundData.CheckLoadFailure;
       GlobalCache.TouchData(BoundData);
     finally
       GlobalCache.CacheLock.Leave;
@@ -352,6 +360,12 @@ begin
   GlobalCache.CacheLock.Leave;
 end;
 
+procedure TCacheDataEC.CheckLoadFailure;
+begin
+  if LoadFailure <> nil then
+    raise EGameDiagnosticException.Create(LoadFailure.Clone);
+end;
+
 constructor TCacheDataEC.Create;
 begin
   inherited Create;
@@ -362,6 +376,7 @@ begin
   // Keep the completion event alive while other cache users can wait on it.
   // The original closed it immediately after signalling, racing those waiters.
   CloseGameEvent(LoadCompleteEvent);
+  LoadFailure.Free;
   while FirstBoundControl <> nil do
     UnlinkControl(LastBoundControl);
   inherited Destroy;

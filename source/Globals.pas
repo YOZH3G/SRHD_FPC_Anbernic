@@ -730,6 +730,8 @@ implementation
 
 uses
   GameWindow,
+  GameDiagnostics,
+  BreakMessageGIException,
   aPacket,
   aSaveLoad,
   aScript,
@@ -762,7 +764,7 @@ begin
   TalkCompletedEvent := CreateGameEvent(False, False);
   ScriptUiRequestEvent := CreateGameEvent(True, False);
   ScriptUiAbortEvent := CreateGameEvent(True, False);
-  TurnCalculationThread := TThreadCalc.Create;
+  TurnCalculationThread := TThreadCalc.Create('turn');
   TurnCalculationThread.SetPriority(ThreadPriorityBelowNormal);
   ScriptTemplates := TList.Create;
   GlobalScriptVariables := TVarArrayEC.Create;
@@ -888,7 +890,7 @@ begin
   // must work again once the previous UI has been released.
   if ScriptRequestThread <> nil then
     ScriptRequestThread.SetStopRequested(False);
-  CacheLoader := TCacheLoader.Create;
+  CacheLoader := TCacheLoader.Create('cache-loader');
   InitializeSaveWriter;
   RangerFontName := 'Font.2Ranger';
   MiniFontName := 'Font.2Mini';
@@ -1144,7 +1146,7 @@ begin
             WarningText := WarningText + ', ' + ScriptVariableTypeNames[Other.RealVType] + ' will be discarded';
             GlobalScriptVariables.Remove(Other);
           end;
-          AppendLogLineThreadSafe(AnsiString(WarningText));
+          LogGameMessage(gllWarning, 'script', WarningText);
         end
         else
         begin
@@ -1956,29 +1958,41 @@ begin
 end;
 
 procedure RunMainScreenStateLoop;
+var
+  LastLoggedScreen: TGameScreenId;
+  ScreenName: string;
 begin
-  while True do
+  LastLoggedScreen := screenNone;
+  while not ExitScreenLoop and (RequestedScreenId <> screenNone) do
   begin
-    if ExitScreenLoop then
-      Break;
-    if (RequestedScreenId = screenStarMap) or (RequestedScreenId = screenFilm) or (RequestedScreenId = screenArcadeBattle) then
-    begin
-      CurrentScreenId := RequestedScreenId;
-      RequestedScreenId := screenNone;
-      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RunContinuous;
-      PreviousScreenId := CurrentScreenId;
-      CurrentScreenId := screenNone;
-    end
-    else
-    begin
-      if RequestedScreenId = screenNone then
-        Exit;
-      CurrentScreenId := RequestedScreenId;
-      RequestedScreenId := screenNone;
-      TMessageLoopGI(RegisteredScreens[CurrentScreenId]).Run;
-      PreviousScreenId := CurrentScreenId;
-      CurrentScreenId := screenNone;
+    CurrentScreenId := RequestedScreenId;
+    RequestedScreenId := screenNone;
+    ScreenName := 'screen #' + IntToStr(Ord(CurrentScreenId));
+    try
+      if RegisteredScreens[CurrentScreenId] <> nil then
+        ScreenName := RegisteredScreens[CurrentScreenId].ClassName;
+      // Film and loading screens also run between ordinary turns.
+      if not (CurrentScreenId in [screenFilm, screenLoad, screenLoadRobot, screenLoadQuest, screenLoadArcade])
+          and (CurrentScreenId <> LastLoggedScreen) then
+      begin
+        LogGameMessage(gllInfo, 'ui', 'Screen=' + ScreenName);
+        LastLoggedScreen := CurrentScreenId;
+      end;
+      if CurrentScreenId in [screenStarMap, screenFilm, screenArcadeBattle] then
+        TMessageLoopGI(RegisteredScreens[CurrentScreenId]).RunContinuous
+      else
+        TMessageLoopGI(RegisteredScreens[CurrentScreenId]).Run;
+    except
+      on E: EBreakMessageGI do
+        raise;
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'Running ' + ScreenName);
+        raise;
+      end;
     end;
+    PreviousScreenId := CurrentScreenId;
+    CurrentScreenId := screenNone;
   end;
 end;
 

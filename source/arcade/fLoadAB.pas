@@ -60,6 +60,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   GR_Main,
   SysUtils,
@@ -95,14 +96,13 @@ var
   Root, Panel: TObjectGI;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fLoadAB... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fLoadAB');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Root := GetByName('');
   Root.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Root.FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Panel := Root.FindByNameRecursive('MainPanel');
   Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, Panel.LocalPosition.Y + ExtraScreenHeight div 2));
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := ArenaListKeyDown;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := ReturnToMenu;
   (GetByName('ButCancel') as TGraphButtonGI).UpCallback := ReturnToMenu;

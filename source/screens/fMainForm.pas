@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   aGalaxy,
   aSaveLoad,
   Classes,
@@ -170,7 +171,7 @@ begin
     LayoutExtraHeight := 0;
   end;
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fMainForm... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fMainForm');
   WideLayout := (GameScreenWidth >= 1600) and not GameMobileUiEnabled;
   with GetByName('LVersion') as TLabelGI do
   begin
@@ -346,10 +347,9 @@ begin
   end
   else
     FitMobileMenu;
-  AppendLogLineThreadSafe('ok');
   with GetByName('LoadRobot') as TGraphButtonGI do
   begin
-    SetActive(RobotInterface <> nil);
+    SetActive(CheckRobotRuntimeAvailable);
     UpCallback := RobotBattleClicked;
   end;
   with GetByName('LoadQuest') as TGraphButtonGI do
@@ -586,11 +586,7 @@ begin
     TGraphButtonGI(GetByName('LoadQuest')).ExecuteOnPressCode;
     TextQuestClicked(nil);
   end
-  else if (Key = Ord('R'))
-      and IsInstallFeatureEnabled('Robot')
-      and (RobotInterface <> nil)
-      and (RobotInterface.Support = 0)
-      and (FindControlByPath('PanelRL') = nil) then
+  else if (Key = Ord('R')) and IsInstallFeatureEnabled('Robot') and CheckRobotRuntimeAvailable and (FindControlByPath('PanelRL') = nil) then
   begin
     TGraphButtonGI(GetByName('LoadRobot')).ExecuteOnPressCode;
     RobotBattleClicked(nil);
@@ -709,6 +705,8 @@ end;
 
 procedure TfMainForm.RobotBattleClicked(Sender: TObjectGI);
 begin
+  if not CheckRobotRuntimeAvailable then
+    Exit;
   SetCursorActive(False);
   Present;
   CaptureScreenBackground(True, 0);

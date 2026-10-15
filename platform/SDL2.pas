@@ -77,6 +77,9 @@ type
   PSDL_Texture = Pointer;
   PSDL_Mutex = Pointer;
   PSDL_Cond = Pointer;
+  TSDL_Version = packed record
+    Major, Minor, Patch: Byte;
+  end;
   TSDL_Rect = record
     X, Y, W, H: Integer;
   end;
@@ -165,6 +168,7 @@ type
   PSDL_Event = ^TSDL_Event;
   TSDL_EventFilter = function(UserData: Pointer; Event: PSDL_Event): Integer; cdecl;
   TSDL_AudioCallback = procedure(UserData: Pointer; Stream: PByte; Length: Integer); cdecl;
+  TSDL_LogOutputFunction = procedure(UserData: Pointer; Category, Priority: Integer; Message: PAnsiChar); cdecl;
   TSDL_AudioSpec = record
     Frequency: Integer;
     Format: Word;
@@ -193,10 +197,15 @@ function SDL_GetRendererInfo(Renderer: PSDL_Renderer; out Info: TSDL_RendererInf
 function SDL_GetNumRenderDrivers: Integer; cdecl; external SDL2Library;
 function SDL_GetRenderDriverInfo(Index: Integer; out Info: TSDL_RendererInfo): Integer; cdecl; external SDL2Library;
 procedure SDL_SetMainReady; cdecl; external SDL2Library;
+procedure SDL_GetVersion(out Version: TSDL_Version); cdecl; external SDL2Library;
 function SDL_InitSubSystem(Flags: Cardinal): Integer; cdecl; external SDL2Library;
 procedure SDL_QuitSubSystem(Flags: Cardinal); cdecl; external SDL2Library;
 function SDL_GetError: PAnsiChar; cdecl; external SDL2Library;
 procedure SDL_ClearError; cdecl; external SDL2Library;
+procedure SDL_LogGetOutputFunction(out Callback: TSDL_LogOutputFunction; out UserData: Pointer); cdecl; external SDL2Library;
+procedure SDL_LogSetOutputFunction(Callback: TSDL_LogOutputFunction; UserData: Pointer); cdecl; external SDL2Library;
+function SDL_LogGetPriority(Category: Integer): Integer; cdecl; external SDL2Library;
+procedure SDL_LogSetPriority(Category, Priority: Integer); cdecl; external SDL2Library;
 function SDL_GetHint(Name: PAnsiChar): PAnsiChar; cdecl; external SDL2Library;
 function SDL_SetHint(Name, Value: PAnsiChar): Integer; cdecl; external SDL2Library;
 function SDL_GetTouchDeviceType(TouchID: Int64): Integer; cdecl; external SDL2Library;

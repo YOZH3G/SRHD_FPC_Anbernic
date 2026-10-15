@@ -56,6 +56,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GlobalsV,
   EC_Struct,
   SysUtils,
@@ -153,7 +154,11 @@ begin
               + IntToStr(Pivot.Y)
       );
     except
-      raise Exception.Create('Error in TRotateImageGaiGI.SetImage');
+      on E: Exception do
+      begin
+        AddGameExceptionContext(E, 'TRotateImageGaiGI.SetImage ' + Path);
+        raise;
+      end;
     end;
     Self.ImageSize := ImageSize;
     Radius := SquaredDistanceToPoint(Pivot, 0, 0);

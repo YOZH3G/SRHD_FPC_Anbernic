@@ -141,7 +141,7 @@ begin
   FrameLock := TCriticalSection.Create;
   FrameImage := TgiGR.Create;
   ImageFile := TFileEC.Create;
-  LoaderThread := TGAIFileThreadGI.Create;
+  LoaderThread := TGAIFileThreadGI.Create('animation-loader');
   LoaderThread.Owner := Self;
   LoaderThread.SetPriority(ThreadPriorityLowest);
   ImageKindX := ikxCenter;

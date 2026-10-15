@@ -642,6 +642,7 @@ procedure RegisterExpressionBuiltins(Scope: TVarArrayEC);
 implementation
 
 uses
+  GameDiagnostics,
 {$IFDEF NATIVE_SCRIPT_MODS}
   NativeScriptLibrary,
 {$ENDIF}
@@ -4913,7 +4914,8 @@ begin
             ScriptCallTrace[ScriptCallTracePosition] := Callee;
             ScriptCallTraceCount := Min(20, ScriptCallTraceCount + 1);
             ScriptCallTracePosition := (ScriptCallTracePosition + 1) mod 20;
-            raise ExceptionExpressionEC.Create('Error in function ' + Callee.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
+            AddGameExceptionContext(E, 'script function ' + Callee.Name);
+            raise;
           end;
         end;
         Invocation.Free;

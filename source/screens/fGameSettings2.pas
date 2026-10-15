@@ -122,6 +122,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   fGameSettings,
   Classes,
   GameInput,
@@ -175,7 +176,7 @@ begin
   end;
   LayoutExtraWidth := LayoutWidth - 1024;
   LayoutExtraHeight := LayoutHeight - 768;
-  AppendLogTextThreadSafe('fGameSettings2... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGameSettings2');
   for Race := oiMaloc to oiGaal do
   begin
     I := -1;
@@ -223,7 +224,6 @@ begin
       SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight));
     end;
   end;
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
   GetByName('MainPanel').LeftButtonDownCallback := PlayerNameMouseDown;
   SetHelpCallback(ShowControlHelp);
@@ -1517,7 +1517,7 @@ begin
         NewGameGenerationThread.Free;
         NewGameGenerationThread := nil;
       end;
-      NewGameGenerationThread := TThreadCreateNewGame.Create;
+      NewGameGenerationThread := TThreadCreateNewGame.Create('generation');
       NewGameGenerationThread.PlayerName := TrimWideString((GetByName('PlayerName') as TEditGI).Text);
       PrepareNewGameGeneration;
       RequestedScreenId := screenIntroduction;

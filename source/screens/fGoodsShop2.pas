@@ -92,6 +92,7 @@ function RunGoodsShop(ParentLoop: TMessageLoopGI): Boolean;
 implementation
 
 uses
+  GameDiagnostics,
   GI_GI,
   ThreadCalc,
   aCalc,
@@ -173,7 +174,7 @@ begin
   StationPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
   SetHelpCallback(ShowControlHelp);
-  AppendLogTextThreadSafe('fGoodsShop2... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGoodsShop2');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -196,7 +197,6 @@ begin
     FindByNameRecursive('BGShrLight').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   end;
   MainPanel.FitContent(GetByName('GoodsPanel'));
-  AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
   (GetByName('PM_Ship') as TGraphButtonGI).UpCallback := ShipClicked;
   (GetByName('PM_Gal') as TGraphButtonGI).UpCallback := GalaxyClicked;

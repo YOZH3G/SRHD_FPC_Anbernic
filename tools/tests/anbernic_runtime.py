@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import struct
 import time
@@ -79,7 +80,7 @@ def main():
         sdk = args.firmware_root.resolve()
         # Firmware SDL comes from the multiarch directory, as the launchers arrange.
         libraries = str(package / "lib" / args.arch)
-    game_log = profile / "########.log"
+    game_log = profile / "rangers-fpc.log"
     firmware_dirs = (args.firmware_library_dirs or f"usr/lib/{triple}:lib/{triple}").split(":")
     variables = {
         "LD_LIBRARY_PATH": ":".join([libraries, *(f"{sdk}/{folder}" for folder in firmware_dirs)]),
@@ -135,7 +136,7 @@ def main():
     assert result.returncode == 0, f"Game exited {result.returncode}; see {profile}"
     log = game_log.read_text(errors="replace")
     if args.resolution != "1024x768":
-        assert f"Display Mode={args.resolution}" in log, (
+        assert f"Configure window: logical={args.resolution} " in log, (
             "Game rejected the internal mode"
         )
         expected_size = tuple(int(part) for part in args.resolution.split("x"))
@@ -143,11 +144,7 @@ def main():
             width, height = struct.unpack_from("<ii", path.read_bytes(), 18)
             assert (width, abs(height)) == expected_size, f"Wrong capture size: {path}"
     fallback = "SDL acceleration unavailable; using software:" in log
-    renderer = next(
-        line.split("=", 1)[1]
-        for line in log.splitlines()
-        if line.startswith("SDL renderer=")
-    )
+    renderer = re.search(r"SDL renderer=(\S+)", log).group(1)
     if args.video_driver == "dummy":
         assert renderer == "software", "No software SDL renderer"
         if args.renderer == "sdl":

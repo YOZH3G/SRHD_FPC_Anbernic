@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   SysUtils,
   EC_Cache,
   EC_Mem,
@@ -251,7 +252,11 @@ begin
                 + IntToStr(Cardinal(LightImage.Bitmap.Height shr 1))
         );
       except
-        raise Exception.Create('Error in TPlanetGI.SetImage');
+        on E: Exception do
+        begin
+          AddGameExceptionContext(E, 'TPlanetGI.SetImage light rotation; image=' + ImagePath + '; light map=' + LightMapPath);
+          raise;
+        end;
       end;
       Ex_OKGR_LightBuf_LoadFromPalBuf(
           SourceLightBuffer,
@@ -384,7 +389,11 @@ begin
                 + IntToStr(Cardinal(LightImage.Bitmap.Height shr 1))
         );
       except
-        raise Exception.Create('Error in TPlanetGI.SetImageEx');
+        on E: Exception do
+        begin
+          AddGameExceptionContext(E, 'TPlanetGI.SetImageWithRadius light rotation; image=' + ImagePath + '; light map=' + LightMapPath);
+          raise;
+        end;
       end;
       Ex_OKGR_LightBuf_LoadFromPalBuf(
           SourceLightBuffer,
@@ -451,7 +460,14 @@ begin
                 + IntToStr(Cardinal(LightImage.Bitmap.Height shr 1))
         );
       except
-        raise Exception.Create('Error in TPlanetGI.SetImageSputnik');
+        on E: Exception do
+        begin
+          AddGameExceptionContext(
+              E,
+              'TPlanetGI.SetImageFromTemplate light rotation; template=' + TemplateKey + '; light map=' + SatelliteLightMapPath
+          );
+          raise;
+        end;
       end;
       Ex_OKGR_LightBuf_LoadFromPalBuf(
           SourceLightBuffer,

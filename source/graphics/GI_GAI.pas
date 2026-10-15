@@ -101,6 +101,7 @@ procedure LoadGaiFrameToGraphBuf(const Path: WideString; GraphBuf: TGraphBufGR; 
 implementation
 
 uses
+  GameDiagnostics,
   GR_Sound,
   EC_Struct,
   Direct3D9,
@@ -746,7 +747,7 @@ begin
         begin
           MainImageCache.Release;
           SequenceFrameCount := 0;
-          AppendLogLineThreadSafe('TgaiGI.AfterLoad. Anim not found.');
+          LogGameMessage(gllWarning, 'resources', 'Animation not found: ' + GetImagePath + '; sequence=' + IntToStr(SequenceIndex));
           Exit;
         end;
         SequenceFrameCount := Image.GetSequenceFrameCount(SequenceIndex);

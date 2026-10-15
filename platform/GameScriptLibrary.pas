@@ -5,6 +5,12 @@ unit GameScriptLibrary;
 
 interface
 
+uses
+  GameDiagnostics;
+
+type
+  EScriptImportError = class(EGameDiagnosticException);
+
 function LoadScriptLibrary(const FileName: UnicodeString): Cardinal;
 function FreeScriptLibrary(Handle: Cardinal): Boolean;
 
@@ -25,7 +31,7 @@ begin
 {$ENDIF}
   // Even Win32 FPC objects do not have the original Delphi layout/VMT ABI.
   // Never substitute the original DLL when its portable implementation is off.
-  raise Exception.Create('Native script library is disabled or unavailable: ' + FileName);
+  raise EScriptImportError.Create('Native script library is disabled or unavailable: ' + FileName);
 end;
 
 function FreeScriptLibrary(Handle: Cardinal): Boolean;

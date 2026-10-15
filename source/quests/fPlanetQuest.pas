@@ -151,6 +151,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   aSaveLoad,
   GameInput,
   GameWindow,
@@ -1058,7 +1059,7 @@ begin
   MobileStatsExpanded := False;
   ChoicePadding := 10;
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fPlanetQuest... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fPlanetQuest');
   ViewportRect := Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -1121,7 +1122,6 @@ begin
     with FindByNameRecursive('ParamsShowWindowParent') do
       SetPosition(Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y));
   end;
-  AppendLogLineThreadSafe('ok');
   ParameterPanelOrigin := GetByName('ParamsShowWindowParent').LocalPosition;
   InitializeMobileLayout;
   SetHelpCallback(ShowControlHelp);
@@ -1737,8 +1737,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TfPlanetQuest.BeforeRun, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TfPlanetQuest.OnOpen; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;

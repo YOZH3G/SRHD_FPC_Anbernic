@@ -32,6 +32,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   Classes,
   GameEvents,
   SysUtils,
@@ -98,9 +99,12 @@ var
   OwnerId: TOwnerId;
   NameLists: array[TOwnerId] of TList;
   FailureContext: string;
+  DifficultyText: UnicodeString;
+  StartedAt: QWord;
 
 begin
   Stage := 0;
+  StartedAt := GetTickCount64;
   try
     if IsStopRequested then
       Exit;
@@ -234,6 +238,25 @@ begin
         Galaxy.CustomRules.OldMissileBonuses := ParseEnabledNameGI(GetParamByPathOrMarker('OldMissileBonuses'));
       end;
     end;
+    DifficultyText := '';
+    for Skill := Low(DifficultyLevels) to High(DifficultyLevels) do
+    begin
+      if DifficultyText <> '' then
+        DifficultyText := DifficultyText + ',';
+      DifficultyText := DifficultyText + IntToStr(DifficultyLevels[Skill]);
+    end;
+    LogGameMessage(
+        gllInfo,
+        'game',
+        'Generating new game; seed='
+            + IntToStr(Integer(Galaxy.GenerationSeed))
+            + '; stars='
+            + IntToStr(GalaxyStarCount)
+            + '; difficulty=['
+            + DifficultyText
+            + ']; custom rules='
+            + BoolToStr(Galaxy.CustomRules.Enabled, True)
+    );
     Galaxy.GenerationMachineHash := ComputeMachineFingerprintCRC;
     Galaxy.InitializeCampaignState;
     NewGameGenerationStage := 1;
@@ -710,7 +733,11 @@ begin
     end;
     if GetPlayer.DockedTo = nil then
     begin
-      AppendLogLineThreadSafe('Galaxy create exception, not found rc, seed = ' + IntToStr(Integer(Galaxy.GenerationSeed)));
+      LogGameMessage(
+          gllWarning,
+          'game',
+          'New game has no ranger center in the starting star; choosing a planet; seed=' + IntToStr(Integer(Galaxy.GenerationSeed))
+      );
       if GetPlayer.CurrentStar.ControlFaction <> sfDominators then
         for I := 0 to GetPlayer.CurrentStar.Planets.Count - 1 do
           if TPlanet(GetPlayer.CurrentStar.Planets[I]).OwnerId <> oiUninhabited then
@@ -827,14 +854,24 @@ begin
     GetPlayer.RefreshStorageBubbles;
     RunGlobalScriptsForContext(GetPlayer.CurrentStar, 0);
     NewGameGenerationStage := 8;
+    LogGameMessage(
+        gllInfo,
+        'game',
+        'New game ready; seed='
+            + IntToStr(Integer(Galaxy.GenerationSeed))
+            + '; turn='
+            + IntToStr(Galaxy.CurrentTurn)
+            + '; elapsed='
+            + IntToStr(GetTickCount64 - StartedAt)
+            + ' ms'
+    );
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      FailureContext := 'Galaxy generation failed, stage = ' + IntToStr(Stage);
+      FailureContext := 'Generating galaxy; stage=' + IntToStr(Stage);
       if Galaxy <> nil then
         FailureContext := FailureContext + ', seed = ' + IntToStr(Integer(Galaxy.GenerationSeed));
-      E.Message := FailureContext + ': ' + E.Message;
+      AddGameExceptionContext(E, FailureContext);
       raise;
     end;
   end;

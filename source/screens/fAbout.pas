@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GI_Main,
   Classes,
   EC_BlockPar,
@@ -54,7 +55,7 @@ var
   Shift: Integer;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fAbout... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fAbout');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -105,7 +106,6 @@ begin
       SetSize(Classes.Point(ClientSize.X, ClientSize.Y + ExtraScreenHeight));
     end;
   end;
-  AppendLogLineThreadSafe('ok');
   ViewportPanel := GetByName('PAbout') as TPanelGI;
   CreditsPanel := GetByName('PAboutI') as TPanelGI;
   with GetByName('MainPanel') do

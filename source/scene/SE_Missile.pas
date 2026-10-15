@@ -39,6 +39,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   GI_Main,
   aMyFunction,
   SysUtils,
@@ -84,17 +85,22 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('TMissileSE.Connect');
-      AppendLogLineThreadSafe(GraphKey);
-      AppendLogLineThreadSafe('lastLabel=' + IntToWideString(RotateImageConstructionStage));
-      AppendLogLineThreadSafe('self=' + UIntToStr(PtrUInt(Self)));
-      AppendLogLineThreadSafe('sp=' + UIntToStr(PtrUInt(ASpace)));
-      AppendLogLineThreadSafe('FSpace=' + UIntToStr(PtrUInt(Space)));
-      AppendLogLineThreadSafe('FImage=' + UIntToStr(PtrUInt(Image)));
+      AddGameExceptionContext(
+          E,
+          'TMissileSE.AttachToSpace; stage='
+              + IntToStr(Stage)
+              + ', graph='
+              + GraphKey
+              + ', image construction stage='
+              + IntToStr(RotateImageConstructionStage)
+              + ', space=$'
+              + IntToHex(PtrUInt(Space), SizeOf(Pointer) * 2)
+              + ', image=$'
+              + IntToHex(PtrUInt(Image), SizeOf(Pointer) * 2)
+      );
       if Space <> nil then
-        AppendLogLineThreadSafe('PGI=' + UIntToStr(PtrUInt(Space.MapPanel)));
-      raise Exception.Create('Error in procedure TMissileSE.Connect, label = ' + IntToStr(Stage));
+        AddGameExceptionContext(E, 'map panel=$' + IntToHex(PtrUInt(Space.MapPanel), SizeOf(Pointer) * 2));
+      raise;
     end;
   end;
 end;

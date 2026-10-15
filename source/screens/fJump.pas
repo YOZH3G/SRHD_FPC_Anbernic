@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   EC_Cache,
   EC_Struct,
   aGalaxyStruct,
@@ -83,14 +84,13 @@ procedure TfJump.InitializeLayout;
 begin
   inherited InitializeLayout;
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fJump... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fJump');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('') do
   begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('Film').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   end;
-  AppendLogLineThreadSafe('ok');
   RestoreOrdersOnArrival := False;
 end;
 

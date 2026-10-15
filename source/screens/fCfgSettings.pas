@@ -99,9 +99,9 @@ function EstimateCpuClockMHz: Double;
 implementation
 
 uses
+  GameDiagnostics,
   GameWindow,
   GameSystem,
-  SimpleSteamApi,
   aGalaxyStruct,
   GameInput,
   Classes,
@@ -149,7 +149,7 @@ end;
 procedure TfCfgSettings.InitializeLayout;
 begin
   inherited InitializeLayout;
-  AppendLogTextThreadSafe('fCfgSettings... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fCfgSettings');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -188,7 +188,6 @@ begin
     with FirstChild.NextSibling do
       SetDepth(Depth - 2);
   end;
-  AppendLogLineThreadSafe('ok');
   with GetByName('Cancel') as TGraphButtonGI do
     UpCallback := CancelClicked;
   (GetByName('Ok') as TGraphButtonGI).UpCallback := ApplyClicked;
@@ -279,7 +278,7 @@ var
 begin
   if IsInstallFeatureEnabled('Robot') then
   begin
-    RobotAvailability := 1;
+    RobotAvailability := 0;
     if RobotInterface <> nil then
       RobotAvailability := RobotInterface.Support;
   end
@@ -314,7 +313,7 @@ begin
       Break;
     end;
   end;
-  if not SteamInitialized and (RequestedLanguage = '') then
+  if RequestedLanguage = '' then
   begin
     AddOptionLabel('Lang', LocalizedText('FormCfgSettings.Lang'), True);
     if (AvailableLanguageCodes <> '') and (CountDelimitedPartsW(AvailableLanguageCodes, ',') > 0) then
@@ -1913,7 +1912,7 @@ begin
   RestartNeeded := False;
   ResetNeeded := False;
   ActiveGroupIndex := 0;
-  if not SteamInitialized and (RequestedLanguage = '') then
+  if RequestedLanguage = '' then
   begin
     Language := ExtractDelimitedPartW(AvailableLanguageCodes, GetOptionValue('Lang'), ',');
     // With no enumerated languages, the UI displays SelectedLanguage itself.

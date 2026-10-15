@@ -107,6 +107,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   CrcUnit,
   EC_Mem,
   EC_OKGF,
@@ -459,7 +460,7 @@ begin
   if IsNan(Result) then
   begin
     Result := 0;
-    AppendLogLineThreadSafe('Warning! NaN encountered, replaced with zero.');
+    LogGameMessage(gllWarning, 'resources', 'NaN in serialized data; replaced with zero');
   end;
 end;
 
@@ -470,7 +471,7 @@ begin
   if IsNan(Result) then
   begin
     Result := 0;
-    AppendLogLineThreadSafe('Warning! NaN encountered, replaced with zero.');
+    LogGameMessage(gllWarning, 'resources', 'NaN in serialized data; replaced with zero');
   end;
   Inc(Position, SizeOf(Result));
 end;
@@ -814,6 +815,7 @@ begin
         SysUtils.Sleep(1);
     end;
   except
+    LogCurrentGameException('resources', 'reading resource ' + SourceFile.FileName + '; returning an empty buffer', gllWarning);
     Clear;
   end;
   SourceFile.ReleaseHandle;
@@ -830,6 +832,7 @@ begin
     SetSize(ByteCount);
     SourceFile.ReadBuffer(Data, ByteCount);
   except
+    LogCurrentGameException('resources', 'reading resource ' + SourceFile.FileName + '; returning an empty buffer', gllWarning);
     Clear;
   end;
   SourceFile.ReleaseHandle;

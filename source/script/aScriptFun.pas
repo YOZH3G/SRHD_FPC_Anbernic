@@ -1310,6 +1310,7 @@ procedure InitializeScriptBuiltinsAndConstants(Scope: TVarArrayEC);
 implementation
 
 uses
+  GameDiagnostics,
 {$IFDEF NATIVE_UTILITY_FUNCTIONS_PACK}
   UtilityFunctionsPack,
 {$ENDIF}
@@ -1553,7 +1554,10 @@ begin
       raise;
     end;
     on E: Exception do
-      raise ExceptionExpressionEC.Create('Error in function ' + Value.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
+    begin
+      AddGameExceptionContext(E, 'script function ' + Value.Name);
+      raise;
+    end;
   end;
   { Native exceptions bypass context restoration; only EBreakMessageGI frees CallCode. }
   CurrentScript := SavedScript;
@@ -3095,8 +3099,10 @@ begin
   if Ship = nil then
     Exit;
   if Ship.CurrentPlanet <> nil then
-    AppendLogLineThreadSafe(
-        AnsiString('Warning! ' + GetScriptContextDescription + ' orders ship ' + Ship.GetFullName(' ') + ' to jump while landed on planet!')
+    LogGameMessage(
+        gllWarning,
+        'script',
+        GetScriptContextDescription + ' orders ship ' + Ship.GetFullName(' ') + ' to jump while landed on a planet'
     );
   SavedOrderLock := Ship.AbsoluteScriptOrder;
   Ship.AbsoluteScriptOrder := 0;
@@ -4744,16 +4750,16 @@ begin
   if (Ship <> GetPlayer) and (Ship.ScriptShip <> nil) then
   begin
     if TScriptShip(Ship.ScriptShip).Script <> CurrentScript then
-      AppendLogLineThreadSafe(
-          AnsiString(
-              'Warning.Script ShipJoin ('
-                  + CurrentScript.ScriptFileName
-                  + '): ship '
-                  + Ship.GetFullName(' ')
-                  + ' was already in another script ('
-                  + TScriptShip(Ship.ScriptShip).Script.ScriptFileName
-                  + ')'
-          )
+      LogGameMessage(
+          gllWarning,
+          'script',
+          'ShipJoin ('
+              + CurrentScript.ScriptFileName
+              + '): ship '
+              + Ship.GetFullName(' ')
+              + ' was already in another script ('
+              + TScriptShip(Ship.ScriptShip).Script.ScriptFileName
+              + ')'
       );
     TScriptShip(Ship.ScriptShip).Script.UnbindShip(Ship);
     Ship.ScriptShip := nil;
@@ -6054,7 +6060,7 @@ end;
 
 procedure SF_RobotSupport(av: array of TVarEC; code: TCodeEC);
 begin
-  av[0].AsInteger := Ord((RobotInterface <> nil) and (RobotInterface.Support() = 0));
+  av[0].AsInteger := Ord((RobotInterface = nil) or (RobotInterface.Support() = 0));
 end;
 
 procedure SF_StarShips(av: array of TVarEC; code: TCodeEC);
@@ -7657,8 +7663,10 @@ begin
         Exit;
       Item := Ship.Inventory[Index];
       if (av[2].ValueKind = vkDword) and (av[2].AsDword = 0) and (Item is THull) then
-        AppendLogLineThreadSafe(
-            'Warning, GetItemFromShip received 0 from dword-type variable and will remove hull from ship '
+        LogGameMessage(
+            gllWarning,
+            'script',
+            'GetItemFromShip received 0 from dword-type variable and will remove hull from ship '
                 + Ship.GetFullName(' ')
                 + ' ('
                 + GetScriptContextDescription
@@ -8547,6 +8555,7 @@ end;
 procedure SF_SFT(av: array of TVarEC; code: TCodeEC);
 var
   I: Integer;
+  ScriptPrefix: WideString;
 
   procedure LogArray(Prefix: WideString; Value: TVarEC); { Nested in SF_SFT; Value must resolve to an array. }
   var
@@ -8562,19 +8571,22 @@ var
       else
         Path := Prefix + IntToWideString(I);
       if Item.ValueKind <> vkArray then
-        AppendLogLineThreadSafe(AnsiString(Path + ']=' + Item.AsString))
+        LogGameMessage(gllInfo, 'script', ScriptPrefix + Path + ']=' + Item.AsString)
       else
         LogArray(Path + ',', Item);
     end;
   end;
 begin
-  if High(av) < 1 then
+  if (High(av) < 1) or not GameLogEnabled(gllInfo) then
     Exit;
+  ScriptPrefix := '';
+  if CurrentScript <> nil then
+    ScriptPrefix := CurrentScript.ScriptFileName + ': ';
   for I := 1 to High(av) do
     if av[I].ValueKind = vkArray then
       LogArray(av[I].Name + '[', av[I])
     else
-      AppendLogLineThreadSafe(AnsiString(av[I].AsString));
+      LogGameMessage(gllInfo, 'script', ScriptPrefix + av[I].AsString);
 end;
 
 procedure SF_StartTextQuest(av: array of TVarEC; code: TCodeEC);
@@ -15785,13 +15797,8 @@ begin
         ;
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        LogScriptCallHistory;
-        AppendLogLineThreadSafe('Error while executing code from string: ');
-        if Length(SourceText) <= 256 then
-          AppendLogLineThreadSafe(AnsiString(SourceText))
-        else
-          AppendLogLineThreadSafe(AnsiString(Copy(SourceText, 1, 256) + ' ...'));
+        AddScriptCallHistory(E);
+        AddGameExceptionContext(E, 'executing script text: ' + Copy(SourceText, 1, 256));
         raise;
       end;
     end;
@@ -15822,15 +15829,13 @@ begin
     Block := Block.FindBlockByPath(ExtractDelimitedPartW(Path, I, '.'));
     if Block = nil then
     begin
-      AppendLogLineThreadSafe(
-          AnsiString('Warning.Script SF_GenerateCodeStringFromBlock - cant find block ' + av[1].AsString + ' [' + IntToStr(I) + ']')
-      );
+      LogGameMessage(gllWarning, 'script', 'GenerateCodeStringFromBlock: cannot find block ' + av[1].AsString + ' [' + IntToStr(I) + ']');
       Exit;
     end;
   end;
   av[0].AsString := Block.ConcatenateValues;
   if av[0].AsString = '' then
-    AppendLogLineThreadSafe(AnsiString('Warning.Script SF_GenerateCodeStringFromBlock - no code at ' + av[1].AsString));
+    LogGameMessage(gllWarning, 'script', 'GenerateCodeStringFromBlock: no code at ' + av[1].AsString);
 end;
 
 procedure SF_ItemOnUseCode(av: array of TVarEC; code: TCodeEC);
@@ -16761,7 +16766,7 @@ begin
       raise Exception.Create('ML not found - ' + FormName);
     Control := Form.FindControlByPath(Path);
     if Control = nil then
-      AppendLogLineThreadSafe(AnsiString('Object not found - ' + Path))
+      LogGameMessage(gllWarning, 'script', 'UI object not found: ' + FormName + '.' + Path)
     else
     begin
       av[0].AsInteger := Ord(Control.Active);
@@ -16821,7 +16826,7 @@ begin
       raise Exception.Create('ML not found - ' + FormName);
     Control := Form.FindControlByPath(Path);
     if Control = nil then
-      AppendLogLineThreadSafe(AnsiString('Object not found - ' + Path))
+      LogGameMessage(gllWarning, 'script', 'UI object not found: ' + FormName + '.' + Path)
     else
     begin
       if not (Control is TLabelGI) then
@@ -16877,7 +16882,7 @@ begin
       raise Exception.Create('ML not found - ' + FormName);
     Control := Form.FindControlByPath(Path);
     if Control = nil then
-      AppendLogLineThreadSafe(AnsiString('Object not found - ' + Path))
+      LogGameMessage(gllWarning, 'script', 'UI object not found: ' + FormName + '.' + Path)
     else
     begin
       if Control is TgaiGI then
@@ -16969,7 +16974,7 @@ begin
       raise Exception.Create('ML not found - ' + FormName);
     Control := Form.FindControlByPath(Path);
     if Control = nil then
-      AppendLogLineThreadSafe(AnsiString('Object not found - ' + Path))
+      LogGameMessage(gllWarning, 'script', 'UI object not found: ' + FormName + '.' + Path)
     else
     begin
       Control.SetPosition(Point(X, Y));
@@ -17020,7 +17025,7 @@ begin
       raise Exception.Create('ML not found - ' + FormName);
     Control := Form.FindControlByPath(Path);
     if Control = nil then
-      AppendLogLineThreadSafe(AnsiString('Object not found - ' + Path))
+      LogGameMessage(gllWarning, 'script', 'UI object not found: ' + FormName + '.' + Path)
     else
     begin
       Control.SetSize(Point(X, Y));

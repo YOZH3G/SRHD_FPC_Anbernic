@@ -7,6 +7,7 @@ interface
 uses
   SyncObjs,
   DirectSound,
+  GameDiagnostics,
   EC_FileStream,
   CTypes,
   Vorbis;
@@ -21,10 +22,11 @@ type
     Bitstream: Integer;
     Opened: Boolean;
     Source: TFileStreamEC;
-    ReadFailure: string;
+    ReadFailure: TGameExceptionReport;
     constructor Create(SharedLock: PCriticalSection);
     destructor Destroy; override;
     procedure CloseStream;
+    procedure CheckReadFailure;
   end;
 
 const
@@ -53,13 +55,25 @@ begin
   // to the game's signed stream length before narrowing native size_t values.
   Count := Min(Count, csize_t(High(Integer)) div Size);
   try
+    if TOggWorker(Source).ReadFailure <> nil then
+      Exit;
     Result := TOggWorker(Source).Source.Read(Buffer, Size * Count) div Size;
   except
     // Save the failure and raise after libvorbis returns to Pascal. Unwinding
     // through its C callback would skip the decoder's cleanup.
-    on E: Exception do
-      TOggWorker(Source).ReadFailure := E.ClassName + ': ' + E.Message;
+    try
+      if TOggWorker(Source).ReadFailure = nil then
+        TOggWorker(Source).ReadFailure := CaptureGameException('Vorbis source read callback');
+    except
+      // Even an allocation failure while capturing diagnostics must not cross C.
+    end;
   end;
+end;
+
+procedure TOggWorker.CheckReadFailure;
+begin
+  if ReadFailure <> nil then
+    raise EGameDiagnosticException.Create(ReadFailure.Clone);
 end;
 
 constructor TOggWorker.Create(SharedLock: PCriticalSection);
@@ -70,7 +84,11 @@ end;
 
 destructor TOggWorker.Destroy;
 begin
-  CloseStream;
+  try
+    CloseStream;
+  finally
+    ReadFailure.Free;
+  end;
   inherited Destroy;
 end;
 
@@ -100,13 +118,12 @@ begin
   Decoder.Lock^.Enter;
   try
     Decoder.Source := Stream;
-    Decoder.ReadFailure := '';
+    FreeAndNil(Decoder.ReadFailure);
     Result := ov_open_callbacks(Decoder, Decoder.VorbisState, nil, 0, Callbacks);
     Decoder.Opened := Result = 0;
-    if Decoder.ReadFailure <> '' then
-      raise Exception.Create(Decoder.ReadFailure);
+    Decoder.CheckReadFailure;
     if Result <> 0 then
-      raise Exception.Create('Error open audiofile: ' + IntToStr(Result));
+      raise Exception.Create('ov_open_callbacks: Vorbis open failed (status=' + IntToStr(Result) + ')');
     Decoder.Opened := True;
     Decoder.Bitstream := 0;
     Info := ov_info(Decoder.VorbisState, -1);
@@ -139,10 +156,9 @@ begin
       // Decode directly into the bounded destination. The original passed the
       // full remaining length for a fixed 4096-byte scratch buffer.
       Count := ov_read(Decoder.VorbisState, PByte(Buffer) + Total, Remaining, False, SizeOf(SmallInt), True, @Decoder.Bitstream);
-      if Decoder.ReadFailure <> '' then
-        raise Exception.Create(Decoder.ReadFailure);
+      Decoder.CheckReadFailure;
       if Count < 0 then
-        raise Exception.Create('Vorbis decode error: ' + IntToStr(Count));
+        raise Exception.Create('ov_read: Vorbis decode failed (status=' + IntToStr(Count) + ')');
       if Count = 0 then
         Break;
       Inc(Total, Count);

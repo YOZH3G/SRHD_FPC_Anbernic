@@ -125,6 +125,8 @@ begin
   Image.TemplateIndex := 0;
   Image.PixelPosition := Point(10, 10);
   Image.ImageSize := Point(24, 24);
+  // AllocateImage does not clear new entries; the game sets every field it draws with.
+  Image.ImageOffset := Point(0, 0);
   Rect.X := 0;
   Rect.Y := 0;
   Rect.W := 64;

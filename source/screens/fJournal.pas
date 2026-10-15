@@ -58,6 +58,7 @@ function RunJournal(ParentLoop: TMessageLoopGI): Boolean;
 implementation
 
 uses
+  GameDiagnostics,
   ThreadCalc,
   aCalc,
   aScript,
@@ -105,7 +106,7 @@ procedure TfJournal.InitializeLayout;
 begin
   inherited InitializeLayout;
   MainPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fJournal... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fJournal');
   ViewportRect := Types.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -114,7 +115,6 @@ begin
     with FindByNameRecursive('ButFormClose').Parent do
       SetPosition(Types.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
-  AppendLogLineThreadSafe('ok');
   InfoPanel := GetByName('PanelInfo') as TPanelScrollBarGI;
 end;
 

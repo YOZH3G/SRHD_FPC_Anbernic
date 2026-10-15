@@ -118,6 +118,7 @@ uses
   SysUtils,
   GR_Main,
   GameSystem,
+  GameDiagnostics,
   EC_Cache,
   EC_CacheSound,
   EC_Str,
@@ -159,8 +160,15 @@ begin
     DSERR_OBJECTNOTFOUND: Result := 'DSERR_OBJECTNOTFOUND';
     DSERR_FXUNAVAILABLE: Result := 'DSERR_FXUNAVAILABLE';
   else
-    Result := 'unrecognized DirectSound error ' + CardinalToHexWideString(Code);
+    Result := 'unknown audio status $' + IntToHex(Cardinal(Code), 8);
   end;
+end;
+
+procedure CheckSoundStatus(Status: Integer; const Operation: UnicodeString);
+begin
+  if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
+    raise EGameDiagnosticException.Create(
+        'Audio ' + Operation + ': ' + SoundErrorText(Status) + ' (status=$' + IntToHex(Cardinal(Status), 8) + ')');
 end;
 
 constructor TSoundBufferControl.Create;
@@ -361,11 +369,7 @@ begin
     finally
       SoundManager.Lock.Leave;
     end;
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.Init');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'CreateSoundBuffer(effect)');
   finally
     SoundManager.Lock.Leave;
   end;
@@ -396,17 +400,9 @@ begin
     finally
       SoundManager.Lock.Leave;
     end;
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.InitStream 1');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'CreateSoundBuffer(stream)');
     Status := DirectBuffer.QueryInterface(IDirectSoundNotify, Notify);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.InitStream 2');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'QueryInterface(stream notifications)');
     Positions := AllocClearEC(Length(ChunkEvents) * SizeOf(TDSPositionNotify));
     Position := Positions;
     for i := Low(ChunkEvents) to High(ChunkEvents) do
@@ -418,20 +414,14 @@ begin
         Position.Offset := i * ChunkBytes - 1;
       Position := AddPointerOffset(Position, SizeOf(TDSPositionNotify));
     end;
-    Status := Notify.SetNotificationPositions(Length(ChunkEvents), Positions);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.InitStream 3');
+    try
+      Status := Notify.SetNotificationPositions(Length(ChunkEvents), Positions);
+      CheckSoundStatus(Status, 'SetNotificationPositions(stream)');
+    finally
       FreeEC(Positions);
-      raise Exception.Create(SoundErrorText(Status));
     end;
-    FreeEC(Positions);
     Status := DirectBuffer.GetFormat(@WaveFormat, SizeOf(WaveFormat), nil);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.InitStream 4');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'GetFormat(stream)');
     ClearBuf;
     SetVolume(MusicVolume * MusicVolumeScale);
     SetVolumeScale(1);
@@ -454,21 +444,13 @@ begin
     if DirectBuffer = nil then
       Exit;
     Status := DirectBuffer.Lock(0, 0, @Data, @Bytes, nil, nil, DSBLOCK_ENTIREBUFFER);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.ClearBuf 1');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'Lock(clear buffer)');
     if WaveFormat.BitsPerSample = 8 then
       System.FillChar(Pointer(Data)^, Bytes, UnsignedPcmSilence)
     else
       FillChar(Data^, Bytes, 0);
     Status := DirectBuffer.Unlock(Data, Bytes, nil, 0);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.ClearBuf 2');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'Unlock(clear buffer)');
   finally
     SoundManager.Lock.Leave;
   end;
@@ -489,18 +471,10 @@ begin
     Dest := nil;
     Bytes := 0;
     Status := DirectBuffer.Lock(0, ByteCount, @Dest, @Bytes, nil, nil, DSBLOCK_ENTIREBUFFER);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.Write 1');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'Lock(write effect)');
     System.Move(Pointer(Data)^, Pointer(Dest)^, ByteCount);
     Status := DirectBuffer.Unlock(Dest, Bytes, nil, 0);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.Write 2');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'Unlock(write effect)');
   finally
     SoundManager.Lock.Leave;
   end;
@@ -575,34 +549,29 @@ begin
     end;
     ReadBytes := WantedBytes;
     Temp := AllocEC(ReadBytes);
-    if ReadVorbisSamples(Decoder, Temp, ReadBytes) = 0 then
-      ReadBytes := 0;
-    if ReadBytes > 0 then
-    begin
-      Dest := nil;
-      LockedBytes := 0;
-      Status := DirectBuffer.Lock(Offset, ReadBytes, @Dest, @LockedBytes, nil, nil, 0);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
+    try
+      if ReadVorbisSamples(Decoder, Temp, ReadBytes) = 0 then
+        ReadBytes := 0;
+      if ReadBytes > 0 then
       begin
-        AppendLogLineThreadSafe('Error in TSoundBuffer.WriteStream 1');
-        raise Exception.Create(SoundErrorText(Status));
+        Dest := nil;
+        LockedBytes := 0;
+        Status := DirectBuffer.Lock(Offset, ReadBytes, @Dest, @LockedBytes, nil, nil, 0);
+        CheckSoundStatus(Status, 'Lock(write stream)');
+        System.Move(Pointer(Temp)^, Pointer(Dest)^, ReadBytes);
+        if BufferBytes > ReadBytes then
+        begin
+          if WaveFormat.BitsPerSample = 8 then
+            System.FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, UnsignedPcmSilence)
+          else
+            FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, 0);
+        end;
+        Status := DirectBuffer.Unlock(Dest, LockedBytes, nil, 0);
+        CheckSoundStatus(Status, 'Unlock(write stream)');
       end;
-      System.Move(Pointer(Temp)^, Pointer(Dest)^, ReadBytes);
-      if BufferBytes > ReadBytes then
-      begin
-        if WaveFormat.BitsPerSample = 8 then
-          System.FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, UnsignedPcmSilence)
-        else
-          FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, 0);
-      end;
-      Status := DirectBuffer.Unlock(Dest, LockedBytes, nil, 0);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundBuffer.WriteStream 2');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+    finally
+      FreeEC(Temp);
     end;
-    FreeEC(Temp);
   finally
     SoundManager.Lock.Leave;
   end;
@@ -626,20 +595,12 @@ begin
         Status := DirectBuffer.Play(0, 0, DSBPLAY_LOOPING)
       else
         Status := DirectBuffer.Play(0, 0, 0);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundBuffer.Play 1');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'Play(effect)');
     end
     else
     begin
       Status := DirectBuffer.Play(0, 0, DSBPLAY_LOOPING);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundBuffer.Play 2');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'Play(stream)');
     end;
     Started := True;
   finally
@@ -706,11 +667,7 @@ begin
     if DirectBuffer = nil then
       Exit;
     Status := DirectBuffer.GetStatus(Flags);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.IsPlaying');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'GetStatus(buffer)');
   finally
     SoundManager.Lock.Leave;
   end;
@@ -726,6 +683,7 @@ procedure TSoundBuffer.SetVolume(Value: Single);
 var
   Status: Integer;
   Minimum: Single;
+  Operation: UnicodeString;
 begin
   SoundManager.Lock.Enter;
   try
@@ -739,13 +697,10 @@ begin
       Status := DirectBuffer.SetVolume(Round((0 - Minimum) * (Volume * VolumeScale) + Minimum));
     if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
     begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.SetVolume');
-      AppendLogLineThreadSafe('volume = ' + FloatToWideString(Value) + '*' + FloatToWideString(VolumeScale));
+      Operation := 'SetVolume(value=' + FloatToStr(Value) + ', scale=' + FloatToStr(VolumeScale) + ')';
       if Controller <> nil then
-        AppendLogLineThreadSafe('Path=' + Controller.SoundPath)
-      else
-        AppendLogLineThreadSafe('control missing');
-      raise Exception.Create(SoundErrorText(Status));
+        Operation := Operation + ' for ' + Controller.SoundPath;
+      CheckSoundStatus(Status, Operation);
     end;
   finally
     SoundManager.Lock.Leave;
@@ -787,11 +742,7 @@ begin
     else if Pan > DSBPAN_RIGHT then
       Pan := DSBPAN_RIGHT;
     Status := DirectBuffer.SetPan(Pan);
-    if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-    begin
-      AppendLogLineThreadSafe('Error in TSoundBuffer.SetPan');
-      raise Exception.Create(SoundErrorText(Status));
-    end;
+    CheckSoundStatus(Status, 'SetPan(buffer)');
   finally
     SoundManager.Lock.Leave;
   end;
@@ -802,7 +753,7 @@ var
   Text: WideString;
 begin
   Text := SysUtils.Format('- %s', [Description]);
-  AppendLogLineThreadSafe(Text);
+  LogGameMessage(gllInfo, 'audio', 'Available device: ' + AnsiString(Description));
   if FindTextOffsetW(Text, 'Xonar') >= 0 then
     XonarSoundDevice := True;
   Result := True;
@@ -824,26 +775,14 @@ begin
     try
       DirectSoundEnumerateA(EnumerateSoundDevice, nil);
       Status := DirectSoundCreate(nil, DirectSound, nil);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundControl.Create 1');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'CreateDevice');
       Status := DirectSound.SetCooperativeLevel(MainWindowHandle, DSSCL_PRIORITY);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundControl.Create 2');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'SetCooperativeLevel');
       FillChar(Desc, SizeOf(Desc), 0);
       Desc.Size := SizeOf(Desc);
       Desc.Flags := DSBCAPS_PRIMARYBUFFER or DSBCAPS_LOCSOFTWARE;
       Status := DirectSound.CreateSoundBuffer(Desc, PrimaryBuffer, nil);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundControl.Create 3');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'CreateSoundBuffer(primary)');
       FillChar(WaveFormat, SizeOf(WaveFormat), 0);
       WaveFormat.FormatTag := 1;
       WaveFormat.Channels := 2;
@@ -852,21 +791,15 @@ begin
       WaveFormat.BlockAlign := (WaveFormat.BitsPerSample shr 3) * WaveFormat.Channels;
       WaveFormat.AverageBytesPerSecond := WaveFormat.SamplesPerSecond * WaveFormat.BlockAlign;
       Status := PrimaryBuffer.SetFormat(@WaveFormat);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundControl.Create 4');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'SetFormat(primary)');
       Status := PrimaryBuffer.GetFormat(@WaveFormat, SizeOf(WaveFormat), nil);
-      if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
-      begin
-        AppendLogLineThreadSafe('Error in TSoundControl.Create 5');
-        raise Exception.Create(SoundErrorText(Status));
-      end;
+      CheckSoundStatus(Status, 'GetFormat(primary)');
       if WaveFormat.FormatTag <> 1 then
-        AppendLogLineThreadSafe('Sound format changed to ' + IntToStr(WaveFormat.FormatTag));
-      AppendLogLineThreadSafe(
-          'Selected interface: '
+        LogGameMessage(gllWarning, 'audio', 'Requested PCM format replaced with tag ' + IntToStr(WaveFormat.FormatTag));
+      LogGameMessage(
+          gllInfo,
+          'audio',
+          'Output format: '
               + IntToWideString(WaveFormat.Channels)
               + ' channels at '
               + IntToWideString(WaveFormat.SamplesPerSecond)
@@ -875,16 +808,15 @@ begin
               + ' bit '
       );
       if (WaveFormat.BitsPerSample shr 3) * WaveFormat.Channels <> WaveFormat.BlockAlign then
-        AppendLogLineThreadSafe('BlockAlign is ' + IntToStr(WaveFormat.BlockAlign));
+        LogGameMessage(gllWarning, 'audio', 'Unexpected block alignment: ' + IntToStr(WaveFormat.BlockAlign));
       if WaveFormat.SamplesPerSecond * WaveFormat.BlockAlign <> WaveFormat.AverageBytesPerSecond then
-        AppendLogLineThreadSafe('AvgBytesPerSec is ' + IntToStr(WaveFormat.AverageBytesPerSecond));
-      AppendLogLineThreadSafe('Initializing sound.... ok!');
+        LogGameMessage(gllWarning, 'audio', 'Unexpected bytes per second: ' + IntToStr(WaveFormat.AverageBytesPerSecond));
     except
+      LogCurrentGameException('audio', 'Initialization failed; continuing without sound or music', gllWarning);
       PrimaryBuffer := nil;
       DirectSound := nil;
       SoundEnabled := False;
       MusicEnabled := False;
-      AppendLogLineThreadSafe('Initializing sound.... failed!');
     end;
   end;
 end;

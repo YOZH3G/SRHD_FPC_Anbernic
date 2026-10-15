@@ -46,6 +46,7 @@ function RunSelectFaceDialog(Parent: TMessageLoopGI): Boolean;
 implementation
 
 uses
+  GameDiagnostics,
   GI_MessageBox,
   Classes,
   GameInput,
@@ -84,7 +85,7 @@ begin
     until GameDataConfig.GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName).CountParams(Face) <= 0;
     LastPortraitByRace[Race] := I - 1;
   end;
-  AppendLogTextThreadSafe('fSelectFace... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fSelectFace');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -93,7 +94,6 @@ begin
     with FindByNameRecursive('PlayerName').Parent do
       SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   end;
-  AppendLogLineThreadSafe('ok');
   Control := FindControlByPath('SubPanel');
   if (Control <> nil) and (ExtraScreenHeight < 0) then
   begin

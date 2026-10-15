@@ -34,6 +34,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   EC_Cache,
   EC_Str,
   GI_MessageBox,
@@ -62,7 +63,7 @@ uses
 procedure TfGameMenu.InitializeLayout;
 begin
   inherited;
-  AppendLogTextThreadSafe('fGameMenu... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGameMenu');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -72,7 +73,6 @@ begin
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
   FitMobileControl(GetByName('Resume').Parent, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12));
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').LeftButtonUpCallback := BackgroundMouseUp;
   with GetByName('Resume') as TGraphButtonGI do
     UpCallback := ResumeClicked;

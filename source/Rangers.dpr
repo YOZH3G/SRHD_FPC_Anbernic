@@ -38,6 +38,8 @@ uses
   DateUtils,
   GameWindow,
   GameSystem,
+  GameDiagnostics,
+  GameBuildInfo,
   GlobalsV,
   EC_Struct,
   Direct3D9,
@@ -111,8 +113,7 @@ uses
   GI_MessageLoop,
   SE_SoundRnd,
   WStringUtils,
-  NoSteamAchievemens,
-  SimpleSteamApi,
+  LocalAchievements,
   GI_MessageBox,
   SE_Gate,
   aCalc,
@@ -321,16 +322,8 @@ type
     procedure ApplicationDeactivated(Sender: TObject);
   end;
 
-  TSteamCallbacksThread = class(TThreadEC)
-  public
-
-    procedure Execute; override;
-  end;
-
 var
-  SteamCallbackThread: TSteamCallbacksThread = nil;
   ApplicationEvents: TAD;
-  StartupTime: SysUtils.TSystemTime;
   ArgumentIndex: Integer;
 {$IFDEF MSWINDOWS}
   WineModule: HMODULE;
@@ -341,28 +334,10 @@ var
   WineGetBuildId: TWineGetBuildId;
   WineHostOS: PAnsiChar;
   WineHostVersion: PAnsiChar;
-  LanguageBuffer: PStartupWideString;
   LanguageFileName: AnsiString;
   LanguageLine: AnsiString;
   StartupText: WideString;
   LanguageFile: TextFile;
-
-procedure TSteamCallbacksThread.Execute;
-var
-  CurrentTick, LastCallbackTick: Cardinal;
-begin
-  LastCallbackTick := GameTickCount;
-  while not IsStopRequested do
-  begin
-    CurrentTick := GameTickCount;
-    if CurrentTick - LastCallbackTick > 200 then
-    begin
-      SteamRunCallbacks;
-      LastCallbackTick := CurrentTick;
-    end;
-    SysUtils.Sleep(100);
-  end;
-end;
 
 procedure HandleApplicationActivated;
 var
@@ -481,7 +456,28 @@ begin
   end;
 end;
 
-procedure RunGame;
+procedure PresentGameFailure(Report: TGameExceptionReport);
+var
+  Summary: UnicodeString;
+begin
+  Summary := UnicodeString(Copy(GameExceptionSummary(Report), 1, 2500));
+  if GameDiagnosticsAvailable then
+    Summary := Summary + LineEnding + LineEnding + 'Details: ' + GameDiagnosticsPath
+  else
+    Summary := Summary + LineEnding + LineEnding + 'The diagnostic log could not be written.';
+  try
+    GameMessageBox(Summary, 'Space Rangers HD — error', $10);
+  except
+    LogCurrentGameException('diagnostics', 'Unable to display the error dialog');
+  end;
+end;
+
+procedure RunGameSession;
+var
+  FailureReport: TGameExceptionReport;
+  Attempt: Integer;
+  WorkersStopped, RetryRequested: Boolean;
+  RetryPrompt: UnicodeString;
 begin
 {$IF Defined(WASI) or Defined(ANDROID)}
   SetMultiByteConversionCodePage(CP_UTF8);
@@ -502,295 +498,229 @@ begin
   OnGameActivated := ApplicationEvents.ApplicationActivated;
   OnGameDeactivated := ApplicationEvents.ApplicationDeactivated;
   for ArgumentIndex := 1 to ParamCount do
-    if Copy(ParamStr(ArgumentIndex), 1, 11) = '--user-dir=' then
-      SetGameUserDirectory(UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt)))
-    else if ParamStr(ArgumentIndex) = '--experimental-low-res' then
-      GameCompactLayoutEnabled := True
-    else if ParamStr(ArgumentIndex) = '--renderer=sdl' then
-      GameRendererPreference := grpSDL
-    else if ParamStr(ArgumentIndex) = '--renderer=software' then
-      GameRendererPreference := grpSoftware
-    else if ParamStr(ArgumentIndex) = '--on-screen-keyboard' then
-      OnScreenKeyboardEnabled := True
-    else if ParamStr(ArgumentIndex) = '--no-on-screen-keyboard' then
-      OnScreenKeyboardEnabled := False;
-  if not LockGameInstance then
-    GameMessageBox('Please terminate already running instance of the game!', 'Space Rangers', $10)
-  else
-  begin
-    for ArgumentIndex := 1 to ParamCount do
-      if LowerCase(ParamStr(ArgumentIndex)) = 'savemergedcfg' then
-        DumpLoadedConfig := True;
-    // The executable can live in an app bundle; resources are selected explicitly.
-    for ArgumentIndex := 1 to ParamCount do
-      if Copy(ParamStr(ArgumentIndex), 1, 11) = '--game-dir=' then
-        SetGameDirectory(UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt)));
-    Randomize;
-    repeat
+    if LowerCase(ParamStr(ArgumentIndex)) = 'savemergedcfg' then
+      DumpLoadedConfig := True;
+  // The executable can live in an app bundle; resources are selected explicitly.
+  for ArgumentIndex := 1 to ParamCount do
+    if Copy(ParamStr(ArgumentIndex), 1, 11) = '--game-dir=' then
+      SetGameDirectory(UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt)));
+  Randomize;
+  Attempt := 0;
+  repeat
+    Inc(Attempt);
+    FailureReport := nil;
+    LogGameMessage(gllInfo, 'startup', 'Starting attempt ' + IntToStr(Attempt));
+    try
       try
-        try
-          PostLoadScreenId := screenMainMenu;
-          CreateStartupLogFile;
-          SelectedLanguage := '';
-          AvailableLanguageCodes := '';
-          RequestedLanguage := '';
-          for ArgumentIndex := 1 to ParamCount do
-            if Copy(ParamStr(ArgumentIndex), 1, 11) = '--language=' then
-              RequestedLanguage := UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt))
-            else if (ParamStr(ArgumentIndex) = '--language') and (ArgumentIndex < ParamCount) then
-              RequestedLanguage := UTF8Decode(ParamStr(ArgumentIndex + 1));
-          InitializeAchievementDefinitions;
-          if not SkipModsOnReload then
-            InitializePlatformRuntimeAndMainWindow;
-          SteamInitialized := False;
-          if InstallConfig.CountParamsByPath('GameDistributor') > 0 then
+        ExitCode := 0;
+        PostLoadScreenId := screenMainMenu;
+        if SkipModsOnReload then
+          LogGameMessage(gllWarning, 'startup', 'Retrying with mods disabled');
+        SelectedLanguage := '';
+        AvailableLanguageCodes := '';
+        RequestedLanguage := '';
+        for ArgumentIndex := 1 to ParamCount do
+          if Copy(ParamStr(ArgumentIndex), 1, 11) = '--language=' then
+            RequestedLanguage := UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt))
+          else if (ParamStr(ArgumentIndex) = '--language') and (ArgumentIndex < ParamCount) then
+            RequestedLanguage := UTF8Decode(ParamStr(ArgumentIndex + 1));
+        InitializeAchievementDefinitions;
+        if not SkipModsOnReload then
+          InitializePlatformRuntimeAndMainWindow;
+        if InstallConfig.CountParamsByPath('GameDistributor') > 0 then
+          LogGameMessage(gllInfo, 'startup', 'Game data distributor=' + InstallConfig.GetParamByPathOrMarker('GameDistributor'));
+        SelectedLanguage := 'english';
+        AvailableLanguageCodes := CollectInstallLanguageCodes;
+        LanguageFileName := AnsiString(GetGameUserDirectory + 'Lang.txt');
+        if FileExists(NativeGamePath(LanguageFileName)) then
+        begin
+          AssignFile(LanguageFile, NativeGamePath(LanguageFileName));
+          Reset(LanguageFile);
+          while not Eof(LanguageFile) do
           begin
-            StartupText := WideString(LowerCase(AnsiString(InstallConfig.GetParamByPathOrMarker('GameDistributor'))));
-            if StartupText = 'steam' then
-            begin
-              AppendLogLineThreadSafe('GameDistributor=Steam');
-              try
-                LoadSteamApi;
-                SetLength(SelectedLanguage, 255);
-                SetLength(AvailableLanguageCodes, 255);
-                SteamInitialized := SteamInit(SelectedLanguage, AvailableLanguageCodes);
-                if not SteamInitialized then
-                  AppendLogLineThreadSafe('Steam not initialized');
-              except
-                on E: Exception do
-                  AppendLogLineThreadSafe('Steam: ' + E.Message);
-              end;
-            end
-            else if StartupText = 'gog' then
-              AppendLogLineThreadSafe('GameDistributor=GOG')
-            else
-              AppendLogLineThreadSafe(
-                  AnsiString('GameDistributor=Unknown(' + InstallConfig.GetParamByPathOrMarker('GameDistributor') + ')')
-              );
-          end
-          else
-            AppendLogLineThreadSafe('GameDistributor=None');
-          if SteamInitialized then
-          begin
-            LanguageBuffer := @SelectedLanguage;
-            TruncateStartupWideString(LanguageBuffer);
-            LanguageBuffer := @AvailableLanguageCodes;
-            TruncateStartupWideString(LanguageBuffer);
-          end
-          else
-          begin
-            SelectedLanguage := 'english';
-            AvailableLanguageCodes := CollectInstallLanguageCodes;
-            LanguageFileName := AnsiString(GetGameUserDirectory + 'Lang.txt');
-            if FileExists(NativeGamePath(LanguageFileName)) then
-            begin
-              AssignFile(LanguageFile, NativeGamePath(LanguageFileName));
-              Reset(LanguageFile);
-              while not Eof(LanguageFile) do
-              begin
-                Readln(LanguageFile, LanguageLine);
-                StartupText := WideString(LanguageLine);
-                if CountDelimitedPartsW(StartupText, '=') > 1 then
-                  if ExtractDelimitedPartW(StartupText, 0, '=') = 'Lang' then
-                    SelectedLanguage := TrimWideString(ExtractDelimitedPartW(StartupText, 1, '='));
-              end;
-              CloseFile(LanguageFile);
-            end;
+            Readln(LanguageFile, LanguageLine);
+            StartupText := WideString(LanguageLine);
+            if CountDelimitedPartsW(StartupText, '=') > 1 then
+              if ExtractDelimitedPartW(StartupText, 0, '=') = 'Lang' then
+                SelectedLanguage := TrimWideString(ExtractDelimitedPartW(StartupText, 1, '='));
           end;
-          LoadLanguageAndPackages;
-          if SteamInitialized then
-          begin
-            InitializeSteamAchievements;
-            SteamInitialized := SteamLocal(214730);
-          end;
-          InitializeScriptHostRuntime;
-          LoadLocalAchievements;
-          RunningUnderWine := False;
+          CloseFile(LanguageFile);
+        end;
+        LoadLanguageAndPackages;
+        InitializeScriptHostRuntime;
+        LoadLocalAchievements;
+        RunningUnderWine := False;
 {$IFDEF MSWINDOWS}
-          WineModule := Windows.LoadLibrary('ntdll.dll');
-          if WineModule > 32 then
+        WineModule := Windows.LoadLibrary('ntdll.dll');
+        if WineModule > 32 then
+        begin
+          WineGetVersion := GetProcAddress(WineModule, 'wine_get_version');
+          @WineGetHostVersion := GetProcAddress(WineModule, 'wine_get_host_version');
+          WineNtToUnixFileName := GetProcAddress(WineModule, 'wine_nt_to_unix_file_name');
+          @WineGetBuildId := GetProcAddress(WineModule, 'wine_get_build_id');
+          RunningUnderWine :=
+              (WineGetVersion <> nil) or Assigned(WineGetHostVersion) or (WineNtToUnixFileName <> nil) or Assigned(WineGetBuildId);
+          if RunningUnderWine then
           begin
-            WineGetVersion := GetProcAddress(WineModule, 'wine_get_version');
-            @WineGetHostVersion := GetProcAddress(WineModule, 'wine_get_host_version');
-            WineNtToUnixFileName := GetProcAddress(WineModule, 'wine_nt_to_unix_file_name');
-            @WineGetBuildId := GetProcAddress(WineModule, 'wine_get_build_id');
-            RunningUnderWine :=
-                (WineGetVersion <> nil) or Assigned(WineGetHostVersion) or (WineNtToUnixFileName <> nil) or Assigned(WineGetBuildId);
-            if RunningUnderWine then
+            LogGameMessage(gllInfo, 'system', 'Compatibility runtime=Wine/Proton');
+            if Assigned(WineGetHostVersion) then
             begin
-              AppendLogLineThreadSafe('----------------------------------');
-              AppendLogLineThreadSafe('NOTICE: Game is launched under Wine or Proton!');
-              AppendLogLineThreadSafe('NOTICE: Game may work as it does on Windows - or be funky, bug out and crash.');
-              AppendLogLineThreadSafe('NOTICE: Please refer to https://www.protondb.com/app/214730 if you having any issues');
-              AppendLogLineThreadSafe(
-                  'NOTICE: MacOS users may try to ask for help on https://www.reddit.com/r/macgaming/ or https://www.reddit.com/r/wine_gaming/'
-              );
-              AppendLogLineThreadSafe('----------------------------------');
-              if Assigned(WineGetHostVersion) then
-              begin
-                WineGetHostVersion(WineHostOS, WineHostVersion);
-                AppendLogTextThreadSafe('Host OS=');
-                // Native startup reports Darwin as Linux; retain that behavior.
-                if AnsiString(WineHostOS) = 'Darwin' then
-                  AppendLogTextThreadSafe('Linux')
-                else
-                  AppendLogTextThreadSafe(AnsiString(WineHostOS));
-                AppendLogLineThreadSafe(' ' + AnsiString(ShortString(WineHostVersion)));
-              end
-              else
-                AppendLogLineThreadSafe('Can''t detect host OS, wine_get_host_version() not found');
-              if Assigned(WineGetBuildId) then
-                AppendLogLineThreadSafe('Wine=' + AnsiString(WineGetBuildId()))
-              else
-                AppendLogLineThreadSafe('Can''t detect Wine build version, wine_get_build_id() not found');
+              WineGetHostVersion(WineHostOS, WineHostVersion);
+              LogGameMessage(gllInfo, 'system', 'Host=' + AnsiString(WineHostOS) + ' ' + AnsiString(WineHostVersion));
             end;
-            FreeLibrary(WineModule);
+            if Assigned(WineGetBuildId) then
+              LogGameMessage(gllInfo, 'system', 'Wine build=' + AnsiString(WineGetBuildId()));
           end;
+          FreeLibrary(WineModule);
+        end;
 {$ENDIF}
-          DateTimeToSystemTime(LocalTimeToUniversal(Now), StartupTime);
-          AppendOptionalDebugLogLine(
-              Format(
-                  '=== Start %d-%.2d-%.2d %.2d.%.2d.%.2d.%.3d',
-                  [
-                      StartupTime.wYear,
-                      StartupTime.wMonth,
-                      StartupTime.wDay,
-                      StartupTime.wHour,
-                      StartupTime.wMinute,
-                      StartupTime.wSecond,
-                      StartupTime.wMilliseconds
-                  ]
-              )
-          );
-          while True do
+        while True do
+        begin
+          if ReloadScriptTemplates or ReloadModsRequested then
+            LoadDatConfigAndModOverrides;
+          if ReloadModsRequested then
           begin
-            if ReloadScriptTemplates or ReloadModsRequested then
-              LoadDatConfigAndModOverrides;
-            if ReloadModsRequested then
-            begin
-              LoadSelectedModInstallBlocks;
-              if not LoadConfiguredPackages then
-                raise Exception.Create('Error while openning package files');
-              ReloadModsRequested := False;
-            end;
-            InitializeRuntimeAndSettings;
-            InitializeGlobalUiRuntime;
-            InitializeRobotRuntime;
-            if SteamCallbackThread = nil then
-              SteamCallbackThread := TSteamCallbacksThread.Create;
-            if not SteamCallbackThread.IsRunning and SteamInitialized then
-              SteamCallbackThread.Start;
-
-            if Galaxy <> nil then
-            begin
-              Galaxy.RefreshAllShipDerivedState;
-              Galaxy.ReapplyInterfaceOverrides;
-              Galaxy.BindScriptImports;
-            end;
-            if BuildVersionMismatch then
-              Break;
-            RequestedScreenId := screenLoad;
-            ScreenLoadMode := 0;
-            if PostLoadScreenId = screenArcadeBattle then
-              PostLoadScreenId := screenMainMenu;
-            if ScreenUsesCompositeLoadAssets(PostLoadScreenId) then
-              ScreenLoadMode := 3;
-            RunMainScreenStateLoop;
-            // Stop calculation before releasing the UI and its script resources.
-            if TurnCalculationThread <> nil then
-            begin
-              TurnCalculationThread.RequestStop;
-              TurnCalculationThread.WaitForIdle(INFINITE);
-            end;
-            if Galaxy <> nil then
-            begin
-              GR_Main.CCInterface.GetProtectedStateXorSeed;
-              Galaxy.RestoreProtectedState;
-              Galaxy.ClearIntegrityStatus;
-            end;
-            FinalizeRobotRuntime;
-            FinalizeGlobalUiRuntime;
-            FinalizeRuntimeAndSettings;
-            if ((RequestedScreenId = screenNone) and (PostLoadScreenId = screenNone)) or ExitScreenLoop then
-            begin
-              FreeDatConfigRoots;
-              Break;
-            end;
-            if ReloadModsRequested then
-            begin
-              ResetScriptHostRuntimeState;
-              ResetInstalledPackageState;
-              FreeDatConfigRoots;
-              ClearModInfoState;
-              SkipModsOnReload := False;
-            end;
+            LoadSelectedModInstallBlocks;
+            if not LoadConfiguredPackages then
+              raise Exception.Create('Cannot open the configured game packages');
+            ReloadModsRequested := False;
           end;
-          SkipModsOnReload := False;
+          InitializeRuntimeAndSettings;
+          InitializeGlobalUiRuntime;
+          InitializeRobotRuntime;
+
           if Galaxy <> nil then
           begin
-            if IsTurnCalculationRunning then
-              WaitForTurnCalculation;
-            Galaxy.Free;
-            Galaxy := nil;
-            if MemorySnapshotBuffer <> nil then
-              MemorySnapshotBuffer.Free;
-            MemorySnapshotBuffer := nil;
-            MemorySnapshotActive := False;
+            Galaxy.RefreshAllShipDerivedState;
+            Galaxy.ReapplyInterfaceOverrides;
+            Galaxy.BindScriptImports;
           end;
-          FreeAllRandomSounds;
-          // Join the callback worker before unloading the code it can still call.
-          FreeAndNil(SteamCallbackThread);
-          UnloadSteamApi;
-          FinalizeScriptHostRuntime;
-          FinalizePlatformRuntime;
-          if StartupCleanupObject <> nil then
+          if BuildVersionMismatch then
+            raise Exception.Create('Game data compatibility mismatch; expected version ' + GameVersionText);
+          RequestedScreenId := screenLoad;
+          ScreenLoadMode := 0;
+          if PostLoadScreenId = screenArcadeBattle then
+            PostLoadScreenId := screenMainMenu;
+          if ScreenUsesCompositeLoadAssets(PostLoadScreenId) then
+            ScreenLoadMode := 3;
+          RunMainScreenStateLoop;
+          // Stop calculation before releasing the UI and its script resources.
+          if TurnCalculationThread <> nil then
           begin
-            StartupCleanupObject.Free;
-            StartupCleanupObject := nil;
+            TurnCalculationThread.RequestStop;
+            TurnCalculationThread.WaitForIdle(INFINITE);
           end;
-          PurgeCacheDirectoryFiles;
-        except
-          ExitScreenLoop := True;
+          if Galaxy <> nil then
+          begin
+            GR_Main.CCInterface.GetProtectedStateXorSeed;
+            Galaxy.RestoreProtectedState;
+            Galaxy.ClearIntegrityStatus;
+          end;
+          FinalizeRobotRuntime;
+          FinalizeGlobalUiRuntime;
+          FinalizeRuntimeAndSettings;
+          if ((RequestedScreenId = screenNone) and (PostLoadScreenId = screenNone)) or ExitScreenLoop then
+          begin
+            FreeDatConfigRoots;
+            Break;
+          end;
+          if ReloadModsRequested then
+          begin
+            ResetScriptHostRuntimeState;
+            ResetInstalledPackageState;
+            FreeDatConfigRoots;
+            ClearModInfoState;
+            SkipModsOnReload := False;
+          end;
+        end;
+        SkipModsOnReload := False;
+        if Galaxy <> nil then
+        begin
+          if IsTurnCalculationRunning then
+            WaitForTurnCalculation;
+          Galaxy.Free;
+          Galaxy := nil;
+          if MemorySnapshotBuffer <> nil then
+            MemorySnapshotBuffer.Free;
+          MemorySnapshotBuffer := nil;
+          MemorySnapshotActive := False;
+        end;
+        FreeAllRandomSounds;
+        FinalizeScriptHostRuntime;
+        FinalizePlatformRuntime;
+        if StartupCleanupObject <> nil then
+        begin
+          StartupCleanupObject.Free;
+          StartupCleanupObject := nil;
+        end;
+        PurgeCacheDirectoryFiles;
+      except
+        // Own the original report before cleanup can raise another exception.
+        FailureReport := CaptureGameException('Game session attempt ' + IntToStr(Attempt));
+        LogGameException(FailureReport, 'game');
+        ExitScreenLoop := True;
+        WorkersStopped := False;
+        try
           StopGalaxyWorkers;
-          // Startup can retry without mods. A partially generated or simulated
-          // galaxy must never be reused by that recovery path.
-          if (Galaxy = nil)
-              and (NewGameGenerationThread = nil)
-              and not (ExceptObject is EWorkerFailure)
-              and not SuppressModRetryPrompt
-              and (SelectedMods <> '')
-              and not SkipModsOnReload then
-            if GameMessageBox('Failed to launch, do you want to try restarting without mods?', 'Exception:', $1 or $10) = 1 then
+          WorkersStopped := True;
+        except
+          LogCurrentGameException('shutdown', 'Stopping workers after the game failure');
+        end;
+        // Startup can retry without mods. A partially generated or simulated
+        // galaxy must never be reused by that recovery path.
+        if WorkersStopped
+            and (Galaxy = nil)
+            and (NewGameGenerationThread = nil)
+            and not (ExceptObject is EWorkerFailure)
+            // Native faults may leave library state unsafe for an in-process retry.
+            and not GameExceptionPreventsRecovery(ExceptObject)
+            and not SuppressModRetryPrompt
+            and (SelectedMods <> '')
+            and not SkipModsOnReload then
+        begin
+          RetryRequested := False;
+          try
+            RetryPrompt :=
+                'Failed to launch: '
+                    + UnicodeString(Copy(GameExceptionSummary(FailureReport), 1, 500))
+                    + LineEnding
+                    + LineEnding
+                    + 'Try restarting without mods?';
+            if GameDiagnosticsAvailable then
+              RetryPrompt := RetryPrompt + LineEnding + 'Details: ' + GameDiagnosticsPath;
+            if GameMessageBox(RetryPrompt, 'Space Rangers HD', $1 or $10) = 1 then
             begin
+              // Retire audio/cache/UI users before closing the packages they
+              // read. This mirrors normal mod reload teardown; a cleanup
+              // failure cancels recovery and preserves the original report.
+              FinalizeRobotRuntime;
+              FinalizeGlobalUiRuntime;
+              FinalizeRuntimeAndSettings;
+              FreeAllRandomSounds;
               ResetScriptHostRuntimeState;
+              FreeDatConfigRoots;
               ResetInstalledPackageState;
+              FreeAndNil(ModInstallConfigs);
+              FreeAndNil(ModLanguageInstallConfigs);
+              FreeAndNil(LanguageInstallConfig);
               ClearModInfoState;
-              SkipModsOnReload := True;
-              ExitScreenLoop := False;
-              raise;
+              RetryRequested := True;
             end;
-          SkipModsOnReload := False;
-          if ExceptObject is EWorkerFailure then
-          begin
-            AppendLogLineThreadSafe(Exception(ExceptObject).Message);
-            AppendLogLineThreadSafe(EWorkerFailure(ExceptObject).WorkerBacktrace);
-            try
-              GameMessageBox(
-                  'The game stopped because a background task failed.'
-                      + LineEnding
-                      + LineEnding
-                      + UnicodeString(Exception(ExceptObject).Message),
-                  'Space Rangers',
-                  $10
-              );
-            except
-              on DialogException: Exception do
-                AppendLogLineThreadSafe('Error dialog: ' + DialogException.Message);
-            end;
+          except
+            LogCurrentGameException('startup', 'Preparing a retry without mods');
           end;
+          if RetryRequested then
+          begin
+            SkipModsOnReload := True;
+            ExitScreenLoop := False;
+            raise;
+          end;
+        end;
+        SkipModsOnReload := False;
+        // Do not destroy shared objects if worker shutdown itself failed.
+        if WorkersStopped then
           try
             FreeAndNil(NewGameGenerationThread);
-            FreeAndNil(SteamCallbackThread);
             FinalizeSaveWriter(False);
             if Galaxy <> nil then
             begin
@@ -814,26 +744,81 @@ begin
           except
             // Damaged/partially initialized state may also fail destruction.
             // Keep the original failure; all galaxy workers are already idle.
-            on CleanupException: Exception do
-              AppendLogLineThreadSafe('Error during cleanup: ' + CleanupException.Message);
+            LogCurrentGameException('shutdown', 'Cleanup after the game failure');
           end;
-          raise;
-        end;
-      except
-        on StartupException: Exception do
-        begin
-          AppendLogLineThreadSafe('Exception ' + StartupException.ClassName + ' with message ' + StartupException.Message);
-          // The launcher runs this executable directly; report failures there
-          // as well as in the game log, and return a failing process status.
-          WriteLn(StdErr, StartupException.ClassName, ': ', StartupException.Message);
-          if StartupException is EWorkerFailure then
-            WriteLn(StdErr, EWorkerFailure(StartupException).WorkerBacktrace);
-          DumpExceptionBackTrace(StdErr);
-          ExitCode := 1;
-        end;
+        raise;
       end;
-    until not SkipModsOnReload;
+    except
+      if FailureReport = nil then
+        FailureReport := CaptureGameException('Game session attempt ' + IntToStr(Attempt));
+      LogGameException(FailureReport, 'game');
+      ExitCode := 1;
+      if not SkipModsOnReload then
+        PresentGameFailure(FailureReport);
+    end;
+    FreeAndNil(FailureReport);
+  until not SkipModsOnReload;
+end;
+
+procedure RunGame;
+var
+  Report: TGameExceptionReport;
+  InstanceLocked: Boolean;
+begin
+  InstanceLocked := False;
+  ExitCode := 0;
+  // The profile directory selects the instance lock and the log location.
+  for ArgumentIndex := 1 to ParamCount do
+    if Copy(ParamStr(ArgumentIndex), 1, 11) = '--user-dir=' then
+      SetGameUserDirectory(UTF8Decode(Copy(ParamStr(ArgumentIndex), 12, MaxInt)))
+    else if ParamStr(ArgumentIndex) = '--experimental-low-res' then
+      GameCompactLayoutEnabled := True
+    else if ParamStr(ArgumentIndex) = '--renderer=sdl' then
+      GameRendererPreference := grpSDL
+    else if ParamStr(ArgumentIndex) = '--renderer=software' then
+      GameRendererPreference := grpSoftware
+    else if ParamStr(ArgumentIndex) = '--on-screen-keyboard' then
+      OnScreenKeyboardEnabled := True
+    else if ParamStr(ArgumentIndex) = '--no-on-screen-keyboard' then
+      OnScreenKeyboardEnabled := False;
+  try
+    // A second instance must not rotate or overwrite the running game's log.
+    InstanceLocked := LockGameInstance;
+    if not InstanceLocked then
+    begin
+      GameMessageBox('Space Rangers HD is already running.', 'Space Rangers HD', $10);
+      ExitCode := 1;
+      Exit;
+    end;
+    InitializeGameDiagnostics(GameUserDirectory);
+    OnGameNativeExceptionDetails := @GameNativeExceptionDetails;
+    LogGameMessage(
+        gllInfo,
+        'startup',
+        'SpaceRangersHD_FPC revision=' + GameBuildRevision + ' source=' + GameBuildSourceState + ' profile=' + GameBuildProfile
+    );
+    LogGameMessage(gllInfo, 'startup', 'Target=' + GameBuildTarget + ' backend=' + GameBuildBackend + ' compiler=' + GameBuildCompiler);
+    LogGameMessage(gllInfo, 'startup', 'FPC revision=' + GameBuildCompilerRevision + ' source=' + GameBuildCompilerSourceState);
+{$IFDEF MSWINDOWS}
+    LogGameMessage(gllInfo, 'startup', 'Executable image base=$' + IntToHex(PtrUInt(GetModuleHandle(nil)), SizeOf(Pointer) * 2));
+{$ENDIF}
+    RunGameSession;
+  except
+    // Covers failures before assets/configuration or a native window exists.
+    Report := CaptureGameException('Application startup');
+    try
+      if not GameDiagnosticsAvailable then
+      begin
+        InitializeGameDiagnostics(UnicodeString(GetTempDir(False)) + 'rangers-fpc-startup-' + IntToStr(GetProcessID));
+      end;
+      LogGameException(Report, 'startup');
+      ExitCode := 1;
+      PresentGameFailure(Report);
+    finally
+      Report.Free;
+    end;
   end;
+  // The logger closes after SDL/graphics unit finalization.
 end;
 
 {$IFDEF ANDROID}
@@ -850,18 +835,10 @@ begin
   AndroidGameStarted := True;
   System.argc := ArgumentCount;
   System.argv := Arguments;
-  try
-    RunGame;
-  except
-    on E: Exception do
-    begin
-      WriteLn(StdErr, E.ClassName, ': ', E.Message);
-      DumpExceptionBackTrace(StdErr);
-      ExitCode := 1;
-    end;
-  end;
-  Flush(StdErr);
-  Flush(StdOut);
+  RunGame;
+  // Android keeps this library loaded, then discards its private game process;
+  // unit finalization is not a reliable completion boundary on that platform.
+  CloseGameDiagnostics;
   Result := ExitCode;
 end;
 

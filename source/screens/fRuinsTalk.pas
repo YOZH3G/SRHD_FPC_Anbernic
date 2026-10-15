@@ -391,6 +391,7 @@ function ApplyRecentDominionOrderSurcharge(Cost: Single): Integer;
 implementation
 
 uses
+  GameDiagnostics,
   Achievements,
   aKling,
   aPirate,
@@ -502,7 +503,7 @@ begin
   MainPanel.InitializeLayout(Self);
   StationPanel.InitializeLayout(Self);
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fRuinsTalk... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fRuinsTalk');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Panel := GetByName('MainPanel');
   Panel.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -517,7 +518,6 @@ begin
   end;
   PrepareDialoguePanel(Panel.FindByNameRecursive('PanelTalk'), MainPanel.ContentLayoutHeight, MainPanel.ContentBounds);
   Panel.FindByNameRecursive('Film').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-  AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
   (GetByName('PM_Ship') as TGraphButtonGI).UpCallback := ShipClicked;
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
@@ -776,8 +776,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TfRuinsTalk.BeforeRun, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TfRuinsTalk.OnOpen; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -1087,8 +1086,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TfRuinsTalk.A_Start, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TfRuinsTalk.ClearChoices; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -1477,8 +1476,10 @@ begin
         else if MainDataConfig.GetBlock('Music').CountBlocks(GetPlayer.DockedTo.GetTypeNameKey) > 0 then
           MusicManager.PlayCategory(GetPlayer.DockedTo.GetTypeNameKey)
         else
-          AppendLogLineThreadSafe(
-              AnsiString('No music found for custom ' + Name + ', or for base type ' + GetPlayer.DockedTo.GetTypeNameKey)
+          LogGameMessage(
+              gllWarning,
+              'audio',
+              'No music found for custom ' + Name + ', or for base type ' + GetPlayer.DockedTo.GetTypeNameKey
           );
       end
       else
@@ -1528,8 +1529,7 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message := 'Error in procedure TfRuinsTalk.I_Start, label = ' + IntToStr(Stage) + ': ' + E.Message;
+      AddGameExceptionContext(E, 'TfRuinsTalk.I_Start; stage=' + IntToStr(Stage));
       raise;
     end;
   end;
@@ -2043,7 +2043,7 @@ begin
           Script.PublishCurrentShip(GetPlayer.DockedTo);
           Script.CallDialogByVariable(Text);
           if ScriptDialogIndex < 0 then
-            AppendLogLineThreadSafe(Script.ScriptFileName + ' has overriden dialog with ' + Text + ' but it failed to start');
+            LogGameMessage(gllWarning, 'script', 'Dialog failed to start: ' + Text + '; script=' + Script.ScriptFileName);
         end;
         if ScriptDialogIndex < 0 then
         begin
@@ -2124,14 +2124,14 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
+      AddGameExceptionContext(E, 'TfRuinsTalk.M_Main; stage=' + IntToStr(Stage));
       if Galaxy = nil then
-        AppendLogLineThreadSafe('Galaxy=nil')
+        AddGameExceptionContext(E, 'galaxy=nil')
       else if GetPlayer = nil then
-        AppendLogLineThreadSafe('Player=nil')
+        AddGameExceptionContext(E, 'player=nil')
       else if GetPlayer.DockedTo = nil then
-        AppendLogLineThreadSafe('CurShip=nil');
-      raise Exception.Create('Error in procedure TfRuinsTalk.M_Main, label = ' + IntToStr(Stage));
+        AddGameExceptionContext(E, 'docked ship=nil');
+      raise;
     end;
   end;
 end;

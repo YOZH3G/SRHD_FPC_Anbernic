@@ -42,6 +42,7 @@ type
 implementation
 
 uses
+  GameDiagnostics,
   SysUtils,
   EC_Mem,
   GR_Main,
@@ -189,15 +190,17 @@ begin
     except
       on E: Exception do
       begin
-        AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-        AppendLogLineThreadSafe('Error in Event.Step');
+        AddGameExceptionContext(E, 'TEFilmEnd.AdvanceEffects');
         if Entry.SceneObject <> nil then
-          AppendLogLineThreadSafe('event ' + Entry.SceneObject.ClassName + ' ' + Entry.SceneObject.GraphKey);
+          AddGameExceptionContext(E, 'effect=' + Entry.SceneObject.ClassName + ', graph=' + Entry.SceneObject.GraphKey);
         if Entry.RelatedObject1 <> nil then
-          AppendLogLineThreadSafe('obj ' + Entry.RelatedObject1.ClassName + ' ' + Entry.RelatedObject1.GraphKey);
+          AddGameExceptionContext(E, 'related object=' + Entry.RelatedObject1.ClassName + ', graph=' + Entry.RelatedObject1.GraphKey);
         if Entry.RelatedObject2 <> nil then
-          AppendLogLineThreadSafe('obj2 ' + Entry.RelatedObject2.ClassName + ' ' + Entry.RelatedObject2.GraphKey);
-        raise Exception.Create('Error in TEFilmEnd.Run');
+          AddGameExceptionContext(
+              E,
+              'second related object=' + Entry.RelatedObject2.ClassName + ', graph=' + Entry.RelatedObject2.GraphKey
+          );
+        raise;
       end;
     end;
     if not Entry.SceneObject.IsAttachedToSpace then

@@ -74,6 +74,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   EC_CacheBitmap,
   Classes,
   EC_BlockPar,
@@ -126,7 +127,7 @@ var
 begin
   inherited InitializeLayout;
   LoadPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fLoadQuest... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fLoadQuest');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   Root := GetByName('');
   Root.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
@@ -137,7 +138,6 @@ begin
   else
     Panel.SetPosition(Classes.Point(ExtraScreenWidth div 2 + Panel.LocalPosition.X, ExtraScreenHeight div 2 + Panel.LocalPosition.Y));
   FitMobileControl(Panel, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12));
-  AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := QuestListKeyDown;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := ReturnToMenu;
   (GetByName('ButCancel') as TGraphButtonGI).UpCallback := ReturnToMenu;

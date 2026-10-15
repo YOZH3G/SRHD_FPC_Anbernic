@@ -209,6 +209,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   GI_Tail,
   GR_Main,
   Globals,
@@ -1972,8 +1973,8 @@ begin
   except
     on E: SysUtils.Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise SysUtils.Exception.Create('Error in procedure TPlanet.Load, label = ' + SysUtils.IntToStr(Stage));
+      AddGameExceptionContext(E, 'TPlanet.Load; stage=' + SysUtils.IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -2842,8 +2843,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TPlanet.NextDay');
+      AddGameExceptionContext(E, 'TPlanet.NextDay');
+      raise;
     end;
   end;
 end;
@@ -3269,8 +3270,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TPlanet.StepDayStart, label = ' + IntToStr(Stage));
+      AddGameExceptionContext(E, 'TPlanet.StepDayStart; stage=' + IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -4837,16 +4838,18 @@ begin
   except
     on E: SysUtils.Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise SysUtils.Exception.Create(
-          'Error in procedure TPlanet.RelationToRanger '
+      AddGameExceptionContext(
+          E,
+          'TPlanet.RelationToRanger '
               + Name
               + ' planet owner = '
               + SysUtils.IntToStr(Ord(OwnerId))
               + ' i = '
               + SysUtils.IntToStr(RangerIndex)
               + ' count = '
-              + SysUtils.IntToStr(RangerRelations.Count));
+              + SysUtils.IntToStr(RangerRelations.Count)
+      );
+      raise;
     end;
   end;
 end;

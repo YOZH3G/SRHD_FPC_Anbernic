@@ -54,6 +54,7 @@ var
 implementation
 
 uses
+  GameDiagnostics,
   aConst,
   aGalaxyStruct,
   Classes,
@@ -81,7 +82,7 @@ var
   I: Integer;
 begin
   inherited;
-  AppendLogTextThreadSafe('fIntroduction... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fIntroduction');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -117,7 +118,6 @@ begin
   end;
   IntroductionBlinkColorA := GetStyleColorGI('Introduction.BlinkColorA', 27, 68, 98);
   IntroductionBlinkColorB := GetStyleColorGI('Introduction.BlinkColorB', 93, 152, 166);
-  AppendLogLineThreadSafe('ok');
 end;
 
 procedure TfIntroduction.OnOpen;

@@ -784,6 +784,7 @@ function CalculateRoundedFuelCost(Amount: Integer; OwnerId: TOwnerId): Integer;
 implementation
 
 uses
+  GameDiagnostics,
   GameWindow,
   SE_Process,
   aCalc,
@@ -1220,7 +1221,7 @@ begin
     else
     begin
       Buffer.AddDWord(0);
-      AppendDebugLogLine('Error [t_JumpHole]: Hole not found, id = ' + IntToStr(Id) + ', Name = ' + Name);
+      LogGameMessage(gllWarning, 'save', 'Missing jump-hole target; ship id=' + IntToStr(Id) + ', name=' + Name);
     end;
   end
   else if Order = soTeleport then
@@ -1476,7 +1477,7 @@ begin
       Block := LanguageDataConfig.GetBlock('ShipInfo').GetBlock('AddInfo').GetBlock('CustomInfos').FindBlock(Info.TypeName);
       if Block = nil then
       begin
-        AppendLogLineThreadSafe('Warning! Ship info ' + Info.TypeName + ' not found, deleting.');
+        LogGameMessage(gllWarning, 'save', 'Discarding unknown ship type: ' + Info.TypeName);
         Dispose(Info);
       end
       else
@@ -2434,8 +2435,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create('Error in procedure TShip.NextDay ' + GetFullName(' ') + ' label = ' + SysUtils.IntToStr(Stage));
+      AddGameExceptionContext(E, 'TShip.NextDay ' + GetFullName(' ') + '; stage=' + SysUtils.IntToStr(Stage));
+      raise;
     end;
   end;
 end;
@@ -5858,9 +5859,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe('Error in procedure TShip.ChanceToWin ' + GetFullName(' '));
-      raise Exception.Create('vs ' + Target.GetFullName(' '));
+      AddGameExceptionContext(E, 'TShip.ChanceToWin ' + GetFullName(' ') + ' vs ' + Target.GetFullName(' '));
+      raise;
     end;
   end;
 end;
@@ -6254,6 +6254,23 @@ begin
   end;
 end;
 
+function GoodsLocationError(Ship: TShip; Good: Byte; Location: TObject; const Operation: UnicodeString): Exception;
+var
+  LocationText: UnicodeString;
+begin
+  if Location = nil then
+    LocationText := 'nil'
+  else if Location is TShip then
+    LocationText := UnicodeString(Location.ClassName) + ' (' + TShip(Location).GetFullName(' ') + ')'
+  else
+    LocationText := UnicodeString(Location.ClassName);
+  Result := Exception.Create('No valid goods trade location');
+  AddGameExceptionContext(
+      Result,
+      Operation + '; ship=' + Ship.GetFullName(' ') + ', good=' + IntToStr(Good) + ', location=' + LocationText
+  );
+end;
+
 function TShip.GetLocationGoodsEntry(Good: Byte): PGoodsTradePriceEntry;
 begin
   if IsOnPlanet then
@@ -6266,12 +6283,7 @@ begin
     Result := PGoodsTradePriceEntry(@GoodsShopScreen.TradeRows[Good])
   else
   begin
-    AppendLogLineThreadSafe(AnsiString('Error in ShopGoods, ship = ' + GetFullName(' ')));
-    if DockedTo = nil then
-      AppendLogLineThreadSafe('FCurShip is nil')
-    else
-      AppendLogLineThreadSafe(AnsiString('FCurShip is ' + DockedTo.GetFullName(' ') + ' (' + DockedTo.ClassName + ')'));
-    raise Exception.Create('Error in TShip.ShopGoods');
+    raise GoodsLocationError(Self, Good, DockedTo, 'TShip.GetLocationGoodsEntry');
   end;
 end;
 
@@ -6287,14 +6299,7 @@ begin
   else if Location is TRuins then
     Entry := @TRuins(Location).ShopGoods[Good];
   if Entry = nil then
-  begin
-    AppendLogLineThreadSafe(AnsiString('Error in ShopGoodsPurchasePrice, ship = ' + GetFullName(' ')));
-    if Location = nil then
-      AppendLogLineThreadSafe('obj is nil')
-    else
-      AppendLogLineThreadSafe('obj is ' + Location.ClassName);
-    raise Exception.Create('Error in TShip.ShopGoodsPurchasePrice');
-  end;
+    raise GoodsLocationError(Self, Good, Location, 'TShip.ShopGoodsPurchasePrice');
   Result := Max(1, Entry.PurchasePrice);
 end;
 
@@ -6310,14 +6315,7 @@ begin
   else if Location is TRuins then
     Entry := @TRuins(Location).ShopGoods[Good];
   if Entry = nil then
-  begin
-    AppendLogLineThreadSafe(AnsiString('Error in ShopGoodsSellPrice, ship = ' + GetFullName(' ')));
-    if Location = nil then
-      AppendLogLineThreadSafe('obj is nil')
-    else
-      AppendLogLineThreadSafe('obj is ' + Location.ClassName);
-    raise Exception.Create('Error in TShip.ShopGoodsSellPrice');
-  end;
+    raise GoodsLocationError(Self, Good, Location, 'TShip.ShopGoodsSellPrice');
   Result :=
       Max(
           1,
@@ -9146,20 +9144,23 @@ begin
   CanDrop := InNormalSpace and not (TypeId in [rstRangerCenter..rstCustomStation]);
   if (CargoFreeSpace < 0) and NoDrop and CanDrop then
   begin
-    if ScriptShip = nil then
-      AppendLogLineThreadSafe(AnsiString('Warning! Ship ' + GetFullName(' ') + ' is overloaded but cant drop anything with NoDrop flag'))
-    else
-      AppendLogLineThreadSafe(
-          AnsiString(
-              'Warning! Ship '
-                  + GetFullName(' ')
-                  + ' ('
-                  + TScriptShip(ScriptShip).Script.ScriptFileName
-                  + ' '
-                  + TScriptShip(ScriptShip).State.Name
-                  + ') is overloaded but cant drop anything with NoDrop flag'
-          )
-      );
+    if GameLogEnabled(gllDebug) then
+    begin
+      if ScriptShip = nil then
+        LogGameMessage(gllDebug, 'simulation', 'Skipping cargo discard for overloaded ship ' + GetFullName(' ') + ': NoDrop is set')
+      else
+        LogGameMessage(
+            gllDebug,
+            'simulation',
+            'Skipping cargo discard for overloaded ship '
+                + GetFullName(' ')
+                + ' ('
+                + TScriptShip(ScriptShip).Script.ScriptFileName
+                + ' '
+                + TScriptShip(ScriptShip).State.Name
+                + '): NoDrop is set'
+        );
+    end;
   end
   else
     while CargoFreeSpace < 0 do
@@ -12617,8 +12618,8 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(AnsiString('Error in procedure TShip.RepulsionShip ' + Name));
+      AddGameExceptionContext(E, 'TShip.RepulsionShip ' + Name);
+      raise;
     end;
   end;
 end;
@@ -15197,10 +15198,10 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
       if ScriptShip <> nil then
-        raise Exception.Create(
-            'Error in procedure TShip.ScriptNextDay '
+        AddGameExceptionContext(
+            E,
+            'TShip.ScriptNextDay '
                 + GetFullName(' ')
                 + ' Id = '
                 + IntToWideString(Id)
@@ -15210,19 +15211,23 @@ begin
                 + IntToWideString(TScriptShip(ScriptShip).State.StateKind)
                 + ' order = '
                 + IntToWideString(Ord(Order))
-                + ' label = '
-                + SysUtils.IntToStr(Stage))
+                + '; stage='
+                + SysUtils.IntToStr(Stage)
+        )
       else
-        raise Exception.Create(
-            'Error in procedure TShip.ScriptNextDay '
+        AddGameExceptionContext(
+            E,
+            'TShip.ScriptNextDay '
                 + GetFullName(' ')
                 + ' Id = '
                 + IntToWideString(Id)
                 + ' not in script now'
                 + ' order = '
                 + IntToWideString(Ord(Order))
-                + ' label = '
-                + SysUtils.IntToStr(Stage));
+                + '; stage='
+                + SysUtils.IntToStr(Stage)
+        );
+      raise;
     end;
   end;
 end;
@@ -16623,40 +16628,41 @@ begin
   except
     on E: Exception do
     begin
-      AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      AppendLogLineThreadSafe(
-          'Error in procedure TShip.ScriptItemsAct ship='
+      AddGameExceptionContext(
+          E,
+          'TShip.ScriptItemsAct, ship='
               + GetFullName(' ')
-              + ' acttype='
+              + ', action='
               + ScriptActionTypeNames[ActionType]
-              + ' label = '
+              + '; stage='
               + SysUtils.IntToStr(Stage)
       );
       if Stage = 4 then
-        AppendLogLineThreadSafe(Info.TypeName);
-      AppendLogLineThreadSafe(
-          SysUtils.IntToStr(ScriptActionTypeStack.Count)
-              + ','
+        AddGameExceptionContext(E, 'custom ship type=' + Info.TypeName);
+      AddGameExceptionContext(
+          E,
+          'script stack counts: action='
+              + SysUtils.IntToStr(ScriptActionTypeStack.Count)
+              + ', object1='
               + SysUtils.IntToStr(ScriptActionObject1Stack.Count)
-              + ','
+              + ', object2='
               + SysUtils.IntToStr(ScriptActionObject2Stack.Count)
-              + ','
+              + ', parameter='
               + SysUtils.IntToStr(ScriptActionParamStack.Count)
-              + ','
+              + ', ship='
               + SysUtils.IntToStr(ScriptActionShipStack.Count)
-              + ','
+              + ', item info='
               + SysUtils.IntToStr(ScriptItemInfoContextStack.Count)
-              + ','
+              + ', item='
               + SysUtils.IntToStr(ScriptItemContextStack.Count)
       );
       if ScriptShip <> nil then
       begin
         with ScriptShip as TScriptShip do
-        begin
-          AppendLogLineThreadSafe('script - ' + Script.ScriptFileName);
-          AppendLogLineThreadSafe('state #' + SysUtils.IntToStr(Script.States.IndexOf(State)));
-          AppendLogLineThreadSafe('(' + State.Name + ')');
-        end;
+          AddGameExceptionContext(
+              E,
+              'script=' + Script.ScriptFileName + ', state=' + SysUtils.IntToStr(Script.States.IndexOf(State)) + ' (' + State.Name + ')'
+          );
       end;
       raise;
     end;

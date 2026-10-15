@@ -65,6 +65,7 @@ uses
   GlobalsV,
   Types,
   SysUtils,
+  GameDiagnostics,
   DirectSound,
   EC_Str,
   EC_BlockPar,
@@ -76,7 +77,7 @@ const
 
 constructor TMusicUnit.Create;
 begin
-  inherited Create;
+  inherited Create('music');
   Buffer := nil;
   DecodeLock := nil;
   // The controller can signal this while the worker clears a finished track.
@@ -129,25 +130,33 @@ end;
 
 procedure TMusicUnit.LoadFile(const FileName: WideString; Deferred: Boolean);
 begin
-  if GetFileName <> FileName then
-  begin
-    RequestedFileName := FileName;
-    if IsRunning then
+  try
+    if GetFileName <> FileName then
     begin
-      RequestStop;
-      SetGameEvent(StartPlaybackEvent);
-      WaitForIdle(INFINITE);
+      RequestedFileName := FileName;
+      if IsRunning then
+      begin
+        RequestStop;
+        SetGameEvent(StartPlaybackEvent);
+        WaitForIdle(INFINITE);
+      end;
+      Clear;
+      Stream := TFileStreamEC.Create($400FF, FileName);
+      // No playback is active here; discard signals belonging to the previous track.
+      ResetGameEvent(StartPlaybackEvent);
+      DeferredPlayback := Deferred;
+      if Deferred then
+        SetPriority(ThreadPriorityLowest)
+      else
+        SetPriority(ThreadPriorityAboveNormal);
+      Start;
     end;
-    Clear;
-    Stream := TFileStreamEC.Create($400FF, FileName);
-    // No playback is active here; discard signals belonging to the previous track.
-    ResetGameEvent(StartPlaybackEvent);
-    DeferredPlayback := Deferred;
-    if Deferred then
-      SetPriority(ThreadPriorityLowest)
-    else
-      SetPriority(ThreadPriorityAboveNormal);
-    Start;
+  except
+    on E: Exception do
+    begin
+      AddGameExceptionContext(E, 'Preparing music stream ' + FileName);
+      raise;
+    end;
   end;
 end;
 
@@ -171,61 +180,80 @@ end;
 procedure TMusicUnit.Execute;
 var
   Ended: Boolean;
+  StartupFailed: Boolean;
   Format: TSoundWaveFormat;
   Chunk: Integer;
 begin
+  StartupFailed := False;
   // Always wake the controller, including when opening the decoder fails or
   // releasing the failed stream raises during cleanup.
   try
-    if OpenVorbisStream(Decoder, Format, Stream) = 0 then
-      Exit;
     try
-      Buffer.InitStream(MusicChunkBytes, @Format);
-      if not Buffer.WriteStream(SoundStreamPrimeAll, Decoder) then
+      if OpenVorbisStream(Decoder, Format, Stream) = 0 then
         Exit;
-      if DeferredPlayback then
-      begin
-        WaitGameEvent(StartPlaybackEvent, INFINITE);
-        if IsStopRequested then
+      try
+        Buffer.InitStream(MusicChunkBytes, @Format);
+        if not Buffer.WriteStream(SoundStreamPrimeAll, Decoder) then
           Exit;
-        SetPriority(ThreadPriorityAboveNormal);
-        SysUtils.Sleep(100);
-        SysUtils.Sleep(100);
-      end;
-      Ended := False;
-      if IsIntroTrack then
-        Buffer.SetVolumeScale(1)
-      else
-        Buffer.SetVolumeScale(0);
-      if not IsIntroTrack then
-        Buffer.StartVolumeRamp(100, 0.1);
-      Buffer.Play(False);
-      repeat
-        Chunk := Buffer.WaitForChunk;
-      until Chunk <> 0;
-      while not Ended do
-      begin
-        if ImmediateStop then
-          Break;
-        if IsStopRequested then
+        if DeferredPlayback then
         begin
-          SetStopRequested(False);
-          if not IsIntroTrack then
-            Buffer.StartVolumeRamp(100, -0.1);
+          WaitGameEvent(StartPlaybackEvent, INFINITE);
+          if IsStopRequested then
+            Exit;
+          SetPriority(ThreadPriorityAboveNormal);
+          SysUtils.Sleep(100);
+          SysUtils.Sleep(100);
         end;
-        Ended := not Buffer.WriteStream(Chunk, Decoder);
-        if Stream.EndOfFile then
-          if Stream.FillAvailable + Stream.ReadAvailable <= MusicEndFadeThresholdBytes then
-            RequestStop;
-        Chunk := Buffer.WaitForChunk;
-        if Chunk < 0 then
-          Break;
+        Ended := False;
+        if IsIntroTrack then
+          Buffer.SetVolumeScale(1)
+        else
+          Buffer.SetVolumeScale(0);
+        if not IsIntroTrack then
+          Buffer.StartVolumeRamp(100, 0.1);
+        Buffer.Play(False);
+        repeat
+          Chunk := Buffer.WaitForChunk;
+        until Chunk <> 0;
+        while not Ended do
+        begin
+          if ImmediateStop then
+            Break;
+          if IsStopRequested then
+          begin
+            SetStopRequested(False);
+            if not IsIntroTrack then
+              Buffer.StartVolumeRamp(100, -0.1);
+          end;
+          Ended := not Buffer.WriteStream(Chunk, Decoder);
+          if Stream.EndOfFile then
+            if Stream.FillAvailable + Stream.ReadAvailable <= MusicEndFadeThresholdBytes then
+              RequestStop;
+          Chunk := Buffer.WaitForChunk;
+          if Chunk < 0 then
+            Break;
+        end;
+      except
+        LogCurrentGameException('audio', 'Music playback stopped: ' + RequestedFileName, gllWarning);
       end;
     except
+      StartupFailed := True;
+      if ExceptObject is Exception then
+        AddGameExceptionContext(Exception(ExceptObject), 'Opening music stream ' + RequestedFileName);
+      raise;
     end;
   finally
     try
-      Clear;
+      if StartupFailed then
+      begin
+        try
+          Clear;
+        except
+          LogCurrentGameException('audio', 'Music cleanup after startup failure');
+        end;
+      end
+      else
+        Clear;
     finally
       SetGameEvent(CompletionEvent);
     end;
@@ -234,7 +262,7 @@ end;
 
 constructor TMusicControl.Create;
 begin
-  inherited Create;
+  inherited Create('music-control');
   Current := nil;
   Queued := nil;
   ControlLock := TCriticalSection.Create;
@@ -254,7 +282,6 @@ begin
       raise Exception.Create('CreateEvent');
     if MusicEnabled then
       Start;
-    AppendLogLineThreadSafe('Pre-fetching music.... ok!');
   end;
 end;
 
@@ -351,6 +378,7 @@ begin
       Queued.WaitForIdle(INFINITE);
     end;
     Queued.LoadFile(FileName, True);
+    LogGameMessage(gllDebug, 'audio', 'Queued music playback: ' + FileName);
     if Current.IsRunning then
       Current.RequestStop
     else
@@ -456,11 +484,11 @@ begin
         if Weight < 0 then
         begin
           Result := TrimWideString(LowerCaseWideString(Block.GetParamValue(Index)));
-          AppendLogLineThreadSafe(AnsiString(Result));
           Exit;
         end;
       end;
   except
+    LogCurrentGameException('audio', 'Selecting music category ' + Category, gllWarning);
     Result := '';
   end;
 end;

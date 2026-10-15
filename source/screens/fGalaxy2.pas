@@ -113,6 +113,7 @@ procedure CaptureGalaxyPreview(ParentLoop: TMessageLoopGI);
 implementation
 
 uses
+  GameDiagnostics,
   GI_GI,
   ThreadCalc,
   aCalc,
@@ -182,7 +183,7 @@ begin
   TouchStar := nil;
   StarInfoScroll := nil;
   MainPanel.InitializeLayout(Self);
-  AppendLogTextThreadSafe('fGalaxy2... ');
+  LogGameMessage(gllDebug, 'ui', 'Initializing layout fGalaxy2');
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
   with GetByName('MainPanel') do
   begin
@@ -191,7 +192,6 @@ begin
     with FindByNameRecursive('ButExit').Parent do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
-  AppendLogLineThreadSafe('ok');
   with GetByName('MainPanel') do
   begin
     KeyDownCallback := MainPanelKeyDown;

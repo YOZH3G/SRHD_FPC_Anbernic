@@ -10,7 +10,7 @@
 static int stage;
 static Uint32 stage_tick, last_key, last_capture;
 static volatile int recording;
-static char logbuf[65536];
+static char logbuf[4 << 20]; /* the game log rotates at 4 MiB */
 static void press(SDL_Keycode key) {
     SDL_Event e = {0};
     e.type = SDL_KEYDOWN;
