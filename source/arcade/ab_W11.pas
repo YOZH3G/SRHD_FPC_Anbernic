@@ -83,13 +83,7 @@ begin
   begin
     Heading := WrapHeadingDegrees(State.BearingDegrees + 90);
     HeadingDelta := HeadingDifferenceDegrees(Heading, State.BearingDegrees);
-    AdvanceSphericalBearingState(
-        State.LongitudeDegrees,
-        State.PolarAngleDegrees,
-        Heading,
-        SphereRadius,
-        Offset
-    );
+    AdvanceSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, Heading, SphereRadius, Offset);
     State.BearingDegrees := WrapHeadingDegrees(Heading + HeadingDelta);
   end;
   Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w11_f', 'GAI,Bm.AB.w11_s', False);
@@ -164,12 +158,7 @@ begin
           Break;
         Entry := nil;
       end;
-      TrailPosition :=
-          MakeVector3D(
-              Sample * Delta.X + Position.X,
-              Sample * Delta.Y + Position.Y,
-              Sample * Delta.Z + Position.Z
-          );
+      TrailPosition := MakeVector3D(Sample * Delta.X + Position.X, Sample * Delta.Y + Position.Y, Sample * Delta.Z + Position.Z);
       if Entry = nil then
       begin
         Entry := ab_WorldImage_Create(TrailPosition, 'GAI,Bm.AB.w11a_f', 'GAI,Bm.AB.w11a_s', False);

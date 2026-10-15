@@ -135,8 +135,7 @@ end;
 
 procedure SF_FillBonus(av: array of TVarEC; Code: TCodeEC);
 const
-  HullNames: array[0..6] of WideString =
-      ('Ranger', 'Warrior', 'Pirate', 'Transport', 'Liner', 'Diplomat', 'Flagman');
+  HullNames: array[0..6] of WideString = ('Ranger', 'Warrior', 'Pirate', 'Transport', 'Liner', 'Diplomat', 'Flagman');
   HullBits: array[0..6] of Integer = (1, 2, 4, 8, 16, 32, 2048);
 var
   Bonus: PSearchBonus;
@@ -184,16 +183,8 @@ end;
 
 procedure SF_FillRequest(av: array of TVarEC; Code: TCodeEC);
 const
-  EquipmentNames: array[42..49] of WideString = (
-      'Hulls',
-      'FuelTanks',
-      'Engines',
-      'Radars',
-      'Scanners',
-      'Droids',
-      'Grippers',
-      'ShieldGenerators'
-  );
+  EquipmentNames: array[42..49] of WideString =
+      ('Hulls', 'FuelTanks', 'Engines', 'Radars', 'Scanners', 'Droids', 'Grippers', 'ShieldGenerators');
 var
   Name, Text: WideString;
   Kind, I: Integer;
@@ -255,9 +246,7 @@ begin
     if Request.Bonus = -1 then
     begin
       if Request.BonusLevel <> 0 then
-        if (Bonus = nil)
-            or (Bonus.Kind = 2)
-            or ((Request.BonusLevel > 1) and (Bonus.Level < Request.BonusLevel)) then
+        if (Bonus = nil) or (Bonus.Kind = 2) or ((Request.BonusLevel > 1) and (Bonus.Level < Request.BonusLevel)) then
           Exit;
     end
     else if (Request.Bonus = -2) and (Bonus <> nil) and (Bonus.Kind <> 2) then
@@ -268,9 +257,7 @@ begin
   if (Bonus = nil) or (Bonus.Kind = 2) then
     Exit;
   if Request.BonusLevel <> 0 then
-    Result :=
-        (Bonus.Group = Selected.Group)
-            and ((Request.BonusLevel <= 1) or (Bonus.Level >= Request.BonusLevel))
+    Result := (Bonus.Group = Selected.Group) and ((Request.BonusLevel <= 1) or (Bonus.Level >= Request.BonusLevel))
   else
     Result := (Bonus = Selected) or ((Selected.Group <> '') and (Bonus.Group = Selected.Group));
 end;
@@ -369,8 +356,7 @@ begin
   else if (Kind <> Request.ItemType) and (Kind <> -1) then
     Exit;
   if Request.Weight <> 0 then
-    if ((Kind = 42) and (Item.Weight < Request.Weight))
-        or ((Kind <> 42) and (Item.Weight > Request.Weight)) then
+    if ((Kind = 42) and (Item.Weight < Request.Weight)) or ((Kind <> 42) and (Item.Weight > Request.Weight)) then
       Exit;
   if (Request.Price <> 0) and (Item.Cost > Request.Price) then
     Exit;
@@ -535,11 +521,7 @@ var
 begin
   RequireInitialized;
   ResultCount := 0;
-  if (Galaxy = nil)
-      or not IsLiveGameObject(Galaxy)
-      or Galaxy.Destroying
-      or (av[1].GetDword <> PtrUInt(Galaxy))
-      or (Galaxy.Stars = nil) then
+  if (Galaxy = nil) or not IsLiveGameObject(Galaxy) or Galaxy.Destroying or (av[1].GetDword <> PtrUInt(Galaxy)) or (Galaxy.Stars = nil) then
     SearchError('Invalid or inactive galaxy');
   Origin := TStar(av[2].GetDword);
   if (Origin = nil) or (Galaxy.Stars.IndexOf(Origin) < 0) then
@@ -554,9 +536,7 @@ begin
       Star := Origin.StarDistances[I].Star;
       if (Star = nil) or (Galaxy.Stars.IndexOf(Star) < 0) then
         SearchError('Invalid cached star');
-      if (Request.ExcludeConstellation20 <> 0)
-          and (Star.Constellation <> nil)
-          and (Star.Constellation.Id = 20) then
+      if (Request.ExcludeConstellation20 <> 0) and (Star.Constellation <> nil) and (Star.Constellation.Id = 20) then
         Continue;
       if (DllText(Star.Status.CustomFaction) = '') and (Star.Planets <> nil) then
         for J := 0 to Star.Planets.Count - 1 do
@@ -575,8 +555,7 @@ begin
           if not IsLiveGameObject(Obj) or not (Obj is TRuins) then
             Continue;
           Station := TRuins(Obj);
-          if (Ord(Station.TypeId) in [6..13])
-              and (DllText(Station.TypeNameOverrideKey) <> 'SSB') then
+          if (Ord(Station.TypeId) in [6..13]) and (DllText(Station.TypeNameOverrideKey) <> 'SSB') then
             SearchShop(Station.EquipmentShop, Station, Station.Id);
         end;
     end;
@@ -635,11 +614,7 @@ begin
       'void,FillAutoSearchBonusArray,int,str,str,str,str,int,str,str,int,str,str,str,str,str,str,str,str,int,int,int,int,int,int,int,int,int,str,int',
       @SF_FillBonus
   );
-  RegisterNativeScriptFunction(
-      'AutoSearch',
-      'void,FillAutoSearchDamageSetArray,int,int',
-      @SF_FillDamageSet
-  );
+  RegisterNativeScriptFunction('AutoSearch', 'void,FillAutoSearchDamageSetArray,int,int', @SF_FillDamageSet);
   RegisterNativeScriptFunction(
       'AutoSearch',
       'void,FillAutoSearchRequestList,str,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,str,int,int,int,int,int',

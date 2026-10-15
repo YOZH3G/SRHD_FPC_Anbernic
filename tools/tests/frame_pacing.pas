@@ -1,13 +1,16 @@
 program FramePacing;
 {$MODE DELPHI}
-uses SysUtils, GameFramePacing;
+uses
+  SysUtils,
+  GameFramePacing;
 var
   Pacer: TGameFramePacer;
   Tick, Count, Rate: Integer;
 
 procedure Require(Value: Boolean; const Message: string);
 begin
-  if not Value then raise Exception.Create(Message);
+  if not Value then
+    raise Exception.Create(Message);
 end;
 
 begin
@@ -18,7 +21,8 @@ begin
     // A deliberately coarse counter exposes loss of fractional intervals.
     // The old millisecond gate cannot submit 60 or 120 frames in this window.
     for Tick := 0 to 999 do
-      if Pacer.Ready(Tick, 1000, Rate) then Inc(Count);
+      if Pacer.Ready(Tick, 1000, Rate) then
+        Inc(Count);
     Require(Count = Rate, 'Fractional refresh rate drift');
   end;
   Pacer.Reset;

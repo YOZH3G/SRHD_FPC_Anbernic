@@ -112,10 +112,7 @@ begin
   while Node <> nil do
   begin
     with Node.Bounds do
-      if (Rect.Left >= Left)
-          and (Rect.Right <= Right)
-          and (Rect.Top >= Top)
-          and (Rect.Bottom <= Bottom) then
+      if (Rect.Left >= Left) and (Rect.Right <= Right) and (Rect.Top >= Top) and (Rect.Bottom <= Bottom) then
         Exit;
     Node := Node.Prev;
   end;
@@ -123,10 +120,7 @@ begin
   while Node <> nil do
   begin
     with Node.Bounds do
-      if (Left >= Rect.Left)
-          and (Right <= Rect.Right)
-          and (Top >= Rect.Top)
-          and (Bottom <= Rect.Bottom) then
+      if (Left >= Rect.Left) and (Right <= Rect.Right) and (Top >= Rect.Top) and (Bottom <= Rect.Bottom) then
       begin
         Removed := Node;
         Node := Node.Prev;
@@ -151,15 +145,9 @@ begin
     ExistingRight := Node.Bounds.Right;
     ExistingTop := Node.Bounds.Top;
     ExistingBottom := Node.Bounds.Bottom;
-    if (Left >= ExistingLeft)
-        and (Right <= ExistingRight)
-        and (Top >= ExistingTop)
-        and (Bottom <= ExistingBottom) then
+    if (Left >= ExistingLeft) and (Right <= ExistingRight) and (Top >= ExistingTop) and (Bottom <= ExistingBottom) then
       Exit;
-    if (Left < ExistingRight)
-        and (Right > ExistingLeft)
-        and (Top < ExistingBottom)
-        and (Bottom > ExistingTop) then
+    if (Left < ExistingRight) and (Right > ExistingLeft) and (Top < ExistingBottom) and (Bottom > ExistingTop) then
       Break;
     Node := Node.Prev;
   end;

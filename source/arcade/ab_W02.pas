@@ -113,8 +113,7 @@ begin
     Enemy := (SourceObject as TabShip).FindNearestEnemyWithBearing(Self, Bearing);
     if (Enemy <> nil) and (Bearing.Distance < 300) then
     begin
-      State.BearingDegrees :=
-          WrapHeadingDegrees(State.BearingDegrees + Bearing.BearingDeltaDegrees);
+      State.BearingDegrees := WrapHeadingDegrees(State.BearingDegrees + Bearing.BearingDeltaDegrees);
       Thrust := 2;
       MaxSpeed := 2;
     end

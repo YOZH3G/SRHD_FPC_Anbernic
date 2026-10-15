@@ -126,19 +126,9 @@ begin
   Root.FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Panel := Root.FindByNameRecursive('MainPanel');
   if ExtraScreenHeight < 0 then
-    Panel.SetPosition(
-        Classes.Point(
-            Panel.LocalPosition.X + ExtraScreenWidth div 2,
-            (GameScreenHeight - Panel.ClientSize.Y) div 2
-        )
-    )
+    Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, (GameScreenHeight - Panel.ClientSize.Y) div 2))
   else
-    Panel.SetPosition(
-        Classes.Point(
-            Panel.LocalPosition.X + ExtraScreenWidth div 2,
-            Panel.LocalPosition.Y + ExtraScreenHeight div 2
-        )
-    );
+    Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, Panel.LocalPosition.Y + ExtraScreenHeight div 2));
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := KeyDown;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := CloseClick;
@@ -198,65 +188,20 @@ begin
       WinText := LocalizedText('FormLoadRobot.StdVictory');
       LossText := LocalizedText('FormLoadRobot.StdDefeat');
     end;
-    ReplaceTextToken(
-        StartText,
-        '<Star>',
-        LocalizedText('FormLoadRobot.PStar'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        StartText,
-        '<Planet>',
-        LocalizedText('FormLoadRobot.PPlanet'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        StartText,
-        '<Player>',
-        LocalizedText('FormLoadRobot.PPlayer'),
-        TextHighlightColorTag
-    );
+    ReplaceTextToken(StartText, '<Star>', LocalizedText('FormLoadRobot.PStar'), TextHighlightColorTag);
+    ReplaceTextToken(StartText, '<Planet>', LocalizedText('FormLoadRobot.PPlanet'), TextHighlightColorTag);
+    ReplaceTextToken(StartText, '<Player>', LocalizedText('FormLoadRobot.PPlayer'), TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(StartText);
     StartText := WideString(IntToStr(Difficulty)) + StartText;
     StartText := WideString(IntToStr(2)) + StartText;
     StartText := WideString(IntToStr(3)) + StartText;
-    ReplaceTextToken(
-        WinText,
-        '<Star>',
-        LocalizedText('FormLoadRobot.PStar'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        WinText,
-        '<Planet>',
-        LocalizedText('FormLoadRobot.PPlanet'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        WinText,
-        '<Player>',
-        LocalizedText('FormLoadRobot.PPlayer'),
-        TextHighlightColorTag
-    );
+    ReplaceTextToken(WinText, '<Star>', LocalizedText('FormLoadRobot.PStar'), TextHighlightColorTag);
+    ReplaceTextToken(WinText, '<Planet>', LocalizedText('FormLoadRobot.PPlanet'), TextHighlightColorTag);
+    ReplaceTextToken(WinText, '<Player>', LocalizedText('FormLoadRobot.PPlayer'), TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(WinText);
-    ReplaceTextToken(
-        LossText,
-        '<Star>',
-        LocalizedText('FormLoadRobot.PStar'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        LossText,
-        '<Planet>',
-        LocalizedText('FormLoadRobot.PPlanet'),
-        TextHighlightColorTag
-    );
-    ReplaceTextToken(
-        LossText,
-        '<Player>',
-        LocalizedText('FormLoadRobot.PPlayer'),
-        TextHighlightColorTag
-    );
+    ReplaceTextToken(LossText, '<Star>', LocalizedText('FormLoadRobot.PStar'), TextHighlightColorTag);
+    ReplaceTextToken(LossText, '<Planet>', LocalizedText('FormLoadRobot.PPlanet'), TextHighlightColorTag);
+    ReplaceTextToken(LossText, '<Player>', LocalizedText('FormLoadRobot.PPlayer'), TextHighlightColorTag);
     ExpandLocalizedTextMarkupAndPrefixLines(LossText);
     TerronName := LocalizedText('FormLoadRobot.PPlace');
     LoadPanel.OnOpen;
@@ -272,17 +217,9 @@ begin
         begin
           LoadCompletionData;
           if Difficulty = 1 then
-            RecordCompletion(
-                RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id,
-                -RobotBattleStatistics.SignedTimeMs div 1000,
-                2
-            )
+            RecordCompletion(RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id, -RobotBattleStatistics.SignedTimeMs div 1000, 2)
           else
-            RecordCompletion(
-                RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id,
-                -RobotBattleStatistics.SignedTimeMs div 1000,
-                1
-            );
+            RecordCompletion(RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id, -RobotBattleStatistics.SignedTimeMs div 1000, 1);
           SaveCompletionData;
         end;
       end;
@@ -346,18 +283,13 @@ begin
     if FindTextOffsetW(KeyHistory, 'WIN') >= 0 then
     begin
       KeyHistory := '';
-      if (SelectedIndex >= 0)
-          and (SelectedIndex <= High(Entries))
-          and (Entries[SelectedIndex].MapIndex >= 0) then
+      if (SelectedIndex >= 0) and (SelectedIndex <= High(Entries)) and (Entries[SelectedIndex].MapIndex >= 0) then
       begin
         LoadCompletionData;
-        while (Entries[SelectedIndex].MapIndex >= 0)
-            and (Entries[SelectedIndex].MapIndex <= High(RobotMapDefinitions)) do
+        while (Entries[SelectedIndex].MapIndex >= 0) and (Entries[SelectedIndex].MapIndex <= High(RobotMapDefinitions)) do
         begin
           MapId := RobotMapDefinitions[Entries[SelectedIndex].MapIndex].Id;
-          if (MapId >= 0)
-              and (MapId < (High(CompletionData) + 1) div 2)
-              and (CompletionData[MapId * 2 + 1] <> 0) then
+          if (MapId >= 0) and (MapId < (High(CompletionData) + 1) div 2) and (CompletionData[MapId * 2 + 1] <> 0) then
             Break;
           RecordCompletion(MapId, 0, 1);
           SaveCompletionData;
@@ -410,8 +342,7 @@ begin
     EntryMouseLeave(nil);
     if SelectedIndex >= 0 then
     begin
-      if (SelectedIndex < High(Entries))
-          and (Entries[SelectedIndex + 1].Access <= UnlockedAccess) then
+      if (SelectedIndex < High(Entries)) and (Entries[SelectedIndex + 1].Access <= UnlockedAccess) then
         SelectEntry(SelectedIndex + 1);
     end
     else if (High(Entries) + 1 > 0) and (Entries[0].Access <= UnlockedAccess) then
@@ -445,17 +376,13 @@ begin
   if Delta = WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end
   else if Delta = -WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end;
 end;
@@ -517,12 +444,10 @@ begin
     if InstallConfig.CountParams('RobotPath') > 0 then
       Path := InstallConfig.GetParam('RobotPath');
     // Match the extension separately: Unix masks do not fold case as Windows did.
-    if SysUtils.FindFirst(UTF8Encode(NativeGamePath(Path + 'Matrix\Map\*')), faAnyFile, FindData)
-        = 0 then
+    if SysUtils.FindFirst(UTF8Encode(NativeGamePath(Path + 'Matrix\Map\*')), faAnyFile, FindData) = 0 then
     begin
       repeat
-        if ((FindData.Attr and faDirectory) = 0)
-            and SameText(ExtractFileExt(FindData.Name), '.cmap') then
+        if ((FindData.Attr and faDirectory) = 0) and SameText(ExtractFileExt(FindData.Name), '.cmap') then
         begin
           Path := TrimWideString(LowerCaseWideString(WideString(FindData.Name)));
           I := 0;
@@ -619,9 +544,7 @@ begin
       else
         SetImagePath('GI,Bm.FormLoadRobot.' + GiResourceSuffix + 'IconKellerD');
       SetSize(GetContentSize);
-      SetPosition(
-          Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2)
-      );
+      SetPosition(Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2));
       SetActive(True);
       RightEdge := RightEdge - ClientSize.X - 1;
     end;
@@ -634,9 +557,7 @@ begin
       else
         SetImagePath('GI,Bm.FormLoadRobot.' + GiResourceSuffix + 'IconTerronD');
       SetSize(GetContentSize);
-      SetPosition(
-          Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2)
-      );
+      SetPosition(Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2));
       SetActive(True);
       RightEdge := RightEdge - ClientSize.X - 1;
     end;
@@ -649,9 +570,7 @@ begin
       else
         SetImagePath('GI,Bm.FormLoadRobot.' + GiResourceSuffix + 'IconBlazerD');
       SetSize(GetContentSize);
-      SetPosition(
-          Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2)
-      );
+      SetPosition(Classes.Point(RightEdge - ClientSize.X, Panel.ClientSize.Y div 2 - ClientSize.Y div 2));
       SetActive(True);
       RightEdge := RightEdge - ClientSize.X - 1;
     end;
@@ -672,12 +591,7 @@ begin
           else
             SetImagePath('GI,Bm.FormRewards.' + GiResourceSuffix + '_13');
           SetSize(GetContentSize);
-          SetPosition(
-              Classes.Point(
-                  Panel.ClientSize.X - ClientSize.X - GiScalePixels(10),
-                  Panel.ClientSize.Y div 2 - ClientSize.Y div 2
-              )
-          );
+          SetPosition(Classes.Point(Panel.ClientSize.X - ClientSize.X - GiScalePixels(10), Panel.ClientSize.Y div 2 - ClientSize.Y div 2));
           SetActive(True);
         end;
     end;
@@ -725,9 +639,7 @@ begin
       if (MapIndex >= 0) and (MapIndex <= High(RobotMapDefinitions)) then
       begin
         MapId := RobotMapDefinitions[MapIndex].Id;
-        if (MapId >= 0)
-            and (MapId < (High(CompletionData) + 1) div 2)
-            and (CompletionData[MapId * 2 + 1] <> 0) then
+        if (MapId >= 0) and (MapId < (High(CompletionData) + 1) div 2) and (CompletionData[MapId * 2 + 1] <> 0) then
         begin
           RightEdge := CompletionData[MapId * 2];
           Hours := RightEdge div 3600;
@@ -750,9 +662,7 @@ begin
       if Entries[Index].Length < 0 then
         SetText('')
       else
-        SetText(
-            LocalizedText(WideString('FormLoadRobot.Length' + IntToStr(Entries[Index].Length)))
-        );
+        SetText(LocalizedText(WideString('FormLoadRobot.Length' + IntToStr(Entries[Index].Length))));
     until True;
     if Entries[Index].Access <= UnlockedAccess then
       SetTextColor(RobotMapNameColor)
@@ -946,18 +856,8 @@ begin
       SetActive(True);
       Text := RobotMapDefinitions[Entries[SelectedIndex].MapIndex].GovTextStart;
       ReplaceTextToken(Text, '<Star>', LocalizedText('FormLoadRobot.PStar'), BrightBlueColorTag);
-      ReplaceTextToken(
-          Text,
-          '<Planet>',
-          LocalizedText('FormLoadRobot.PPlanet'),
-          BrightBlueColorTag
-      );
-      ReplaceTextToken(
-          Text,
-          '<Player>',
-          LocalizedText('FormLoadRobot.PPlayer'),
-          BrightBlueColorTag
-      );
+      ReplaceTextToken(Text, '<Planet>', LocalizedText('FormLoadRobot.PPlanet'), BrightBlueColorTag);
+      ReplaceTextToken(Text, '<Player>', LocalizedText('FormLoadRobot.PPlayer'), BrightBlueColorTag);
       ReplaceTextToken(Text, '<Money>', WideString(IntToStr(1000)), BrightBlueColorTag);
       SetText(Text);
       Text := RobotMapDefinitions[Entries[SelectedIndex].MapIndex].FromAuthor;
@@ -970,11 +870,9 @@ begin
     SetScrollOffset(Classes.Point(0, 0));
     UpdateScrollRanges;
     VerticalScrollBar.SetActive(
-        FindByNameRecursive('MessageText').Active
-            and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
+        FindByNameRecursive('MessageText').Active and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
     );
-    VerticalScrollBar
-        .SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
+    VerticalScrollBar.SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
     VerticalScrollBar.SetLargeChange(ClientSize.Y);
     VerticalScrollBar.SetPageSize(ClientSize.Y);
   end;
@@ -1090,8 +988,7 @@ begin
       begin
         MapId := RobotMapDefinitions[MapIndex].Id;
         if (MapId >= 0) and (MapId < (High(CompletionData) + 1) div 2) then
-          if (MapId < (High(CompletionData) + 1) div 2)
-              and (CompletionData[MapId * 2 + 1] <> 0) then
+          if (MapId < (High(CompletionData) + 1) div 2) and (CompletionData[MapId * 2 + 1] <> 0) then
             Inc(Completed);
       end;
       Inc(Count);

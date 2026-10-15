@@ -97,12 +97,8 @@ begin
   for I := Low(ColorTable^) to High(ColorTable^) do
     for J := Low(TMovingStarPalette) to High(TMovingStarPalette) do
       WriteWordEC(
-          AddPointerOffset(
-              ColorTable,
-              I * Length(ColorTable^[I]) * SizeOf(Word) + J * SizeOf(Word)
-          ),
-          CurrentPixelFormat
-              .PackNormalizedRgb(Random * 0.5 + 0.5, Random * 0.5 + 0.5, Random * 0.5 + 0.5)
+          AddPointerOffset(ColorTable, I * Length(ColorTable^[I]) * SizeOf(Word) + J * SizeOf(Word)),
+          CurrentPixelFormat.PackNormalizedRgb(Random * 0.5 + 0.5, Random * 0.5 + 0.5, Random * 0.5 + 0.5)
       );
   SeedStars;
 end;
@@ -198,11 +194,7 @@ begin
   Star.PaletteIndex := 0;
   Star.Color :=
       ReadWordEC(
-          AddPointerOffset(
-              ColorTable,
-              Star.PaletteIndex * Length(ColorTable^[0]) * SizeOf(Word)
-                  + Round(Star.ColorPosition) * SizeOf(Word)
-          )
+          AddPointerOffset(ColorTable, Star.PaletteIndex * Length(ColorTable^[0]) * SizeOf(Word) + Round(Star.ColorPosition) * SizeOf(Word))
       );
 end;
 
@@ -237,10 +229,7 @@ begin
     Y := Round(Star.Position.Y);
     Star.PixelPosition.X := X;
     Star.PixelPosition.Y := Y;
-    if (X < HitTestBounds.Left)
-        or (X >= HitTestBounds.Right)
-        or (Y < HitTestBounds.Top)
-        or (Y >= HitTestBounds.Bottom) then
+    if (X < HitTestBounds.Left) or (X >= HitTestBounds.Right) or (Y < HitTestBounds.Top) or (Y >= HitTestBounds.Bottom) then
       InitializeStar(Star);
     if Star.ColorPosition < High(TMovingStarPalette) then
     begin
@@ -254,8 +243,7 @@ begin
           ReadWordEC(
               AddPointerOffset(
                   ColorTable,
-                  Star.PaletteIndex * Length(ColorTable^[0]) * SizeOf(Word)
-                      + Round(Star.ColorPosition) * SizeOf(Word)
+                  Star.PaletteIndex * Length(ColorTable^[0]) * SizeOf(Word) + Round(Star.ColorPosition) * SizeOf(Word)
               )
           );
     end;
@@ -282,8 +270,7 @@ begin
     Speed := Sqrt(Star.Velocity.X * Star.Velocity.X + Star.Velocity.Y * Star.Velocity.Y);
     Star.Velocity.X := Speed * DX;
     Star.Velocity.Y := Speed * DY;
-    Speed :=
-        Sqrt(Star.Acceleration.X * Star.Acceleration.X + Star.Acceleration.Y * Star.Acceleration.Y);
+    Speed := Sqrt(Star.Acceleration.X * Star.Acceleration.X + Star.Acceleration.Y * Star.Acceleration.Y);
     Star.Acceleration.X := Speed * DX;
     Star.Acceleration.Y := Speed * DY;
     Star := AddPointerOffset(Star, SizeOf(TMovingStarPixel));
@@ -318,12 +305,8 @@ begin
         CurrentFocusDistance := Max(TargetFocusDistance, CurrentFocusDistance - 90)
       else if TargetFocusDistance > CurrentFocusDistance then
         CurrentFocusDistance := Min(TargetFocusDistance, CurrentFocusDistance + 60);
-      FocusPoint.X :=
-          Sin(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance
-              + Cardinal(GameScreenWidth) / 2;
-      FocusPoint.Y :=
-          Cardinal(GameScreenHeight) / 2
-              - Cos(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance;
+      FocusPoint.X := Sin(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance + Cardinal(GameScreenWidth) / 2;
+      FocusPoint.Y := Cardinal(GameScreenHeight) / 2 - Cos(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance;
       RedirectStars;
     end;
     AdvanceStars;
@@ -405,8 +388,7 @@ begin
     I := StarCount;
     while I > 0 do
     begin
-      Star.ByteOffset :=
-          Star.PixelPosition.X * 2 + Star.PixelPosition.Y * ScreenRenderBuffer.PitchBytes;
+      Star.ByteOffset := Star.PixelPosition.X * 2 + Star.PixelPosition.Y * ScreenRenderBuffer.PitchBytes;
       if BGImage then
         Star.SavedPixel := ReadWordEC(AddPointerOffset(Buffer, Star.ByteOffset));
       Star := AddPointerOffset(Star, SizeOf(TMovingStarPixel));
@@ -432,12 +414,7 @@ begin
   begin
     while Count > 0 do
     begin
-      QueueDrawPoint(
-          Pixel.PixelPosition.X,
-          Pixel.PixelPosition.Y,
-          Color565ToArgb(Pixel.Color),
-          255
-      );
+      QueueDrawPoint(Pixel.PixelPosition.X, Pixel.PixelPosition.Y, Color565ToArgb(Pixel.Color), 255);
       Pixel := AddPointerOffset(Pixel, SizeOf(TMovingStarPixel));
       Dec(Count);
     end;

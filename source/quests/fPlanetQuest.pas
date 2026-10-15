@@ -263,24 +263,13 @@ end;
 
 function TQuestTextGI.GetLocalBounds: TRect;
 begin
-  Result :=
-      Rect(
-          LocalPosition.X,
-          LocalPosition.Y,
-          LocalPosition.X + Ceil(ClientSize.X * DisplayScale),
-          LocalPosition.Y + LayoutHeight
-      );
+  Result := Rect(LocalPosition.X, LocalPosition.Y, LocalPosition.X + Ceil(ClientSize.X * DisplayScale), LocalPosition.Y + LayoutHeight);
 end;
 
 procedure TQuestTextGI.UpdateHitTestBounds;
 begin
   if FixedBlock and (DisplayScale <> 1) and (Parent <> nil) then
-    AbsolutePosition :=
-        ScaledChildPosition(
-            Parent.GetChildAbsolutePosition(LocalPosition, PositionModeW),
-            Point(0, 0),
-            DisplayScale
-        );
+    AbsolutePosition := ScaledChildPosition(Parent.GetChildAbsolutePosition(LocalPosition, PositionModeW), Point(0, 0), DisplayScale);
   inherited UpdateHitTestBounds;
 end;
 
@@ -294,10 +283,7 @@ begin
   inherited Destroy;
 end;
 
-function TfPlanetQuest.GetTextBeforeDelimiter(
-    const Text: WideString;
-    Delimiter: WideChar
-): WideString;
+function TfPlanetQuest.GetTextBeforeDelimiter(const Text: WideString; Delimiter: WideChar): WideString;
 var
   I, N: Integer;
   S: WideString;
@@ -313,10 +299,7 @@ begin
   Result := S;
 end;
 
-function TfPlanetQuest.GetTextAfterComma(
-    const Text: WideString;
-    IgnoredDelimiter: WideChar
-): WideString;
+function TfPlanetQuest.GetTextAfterComma(const Text: WideString; IgnoredDelimiter: WideChar): WideString;
 var
   I, N: Integer;
   S: WideString;
@@ -376,10 +359,7 @@ begin
     if not StandaloneQuestMode then
       if QuestId >= FirstLicensedQuestId then
         if (LanguageDataConfig.GetBlock('PlanetQuest').CountBlocks('PlanetQuestLic') <= 0)
-            or (LanguageDataConfig
-                    .GetBlock('PlanetQuest')
-                    .GetBlock('PlanetQuestLic')
-                    .GetParamOrMarker(IntToStr(QuestId))
+            or (LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuestLic').GetParamOrMarker(IntToStr(QuestId))
                 <> ScriptDwordToHex(Data.Buffer.ComputeCrc32 xor $FFFFFFFF)) then
           GR_Main.CCInterface.SetTamperDetected(True);
   finally
@@ -490,8 +470,7 @@ begin
   Highlight.SetDepth(3);
   Highlight.SetPosition(Classes.Point(0, 0));
   Highlight.SetSize(Classes.Point(Owner.ClientSize.X, 20));
-  Path :=
-      'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Line';
+  Path := 'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Line';
   if CacheDataRoot.FileExistsByPath(Path) then
     Highlight.SetImagePath('GI,' + Path)
   else
@@ -514,9 +493,7 @@ begin
   TextLabel.CreateEmbeddedControl := CreateChoiceInlineObject;
   TextLabel.SetTextAlignY(tayCenterEx);
   TextLabel.SetTextColor(GetTextColor(QuestStyleIndex));
-  Panel.SetSize(
-      Classes.Point(Panel.ClientSize.X, GiScalePixelsEx(2, 1) * 2 + TextLabel.ClientSize.Y)
-  );
+  Panel.SetSize(Classes.Point(Panel.ClientSize.X, GiScalePixelsEx(2, 1) * 2 + TextLabel.ClientSize.Y));
   TextLabel.SetSize(Classes.Point(TextLabel.ClientSize.X, Panel.ClientSize.Y));
   Highlight.SetSize(Panel.ClientSize);
   Inc(NextChoiceTop, Panel.ClientSize.Y);
@@ -525,11 +502,7 @@ begin
   Inc(ChoiceCount);
 end;
 
-procedure TfPlanetQuest.AddDisabledChoice(
-    Text: WideString;
-    Value: Integer;
-    Callback: TQuestChoiceEvent
-);
+procedure TfPlanetQuest.AddDisabledChoice(Text: WideString; Value: Integer; Callback: TQuestChoiceEvent);
 var
   Owner: TPanelScrollBarGI;
   Skip: Integer;
@@ -564,8 +537,7 @@ begin
   Highlight.SetDepth(3);
   Highlight.SetPosition(Classes.Point(0, 0));
   Highlight.SetSize(Classes.Point(Owner.ClientSize.X, 20));
-  Path :=
-      'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Line';
+  Path := 'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Line';
   if CacheDataRoot.FileExistsByPath(Path) then
     Highlight.SetImagePath('GI,' + Path)
   else
@@ -589,9 +561,7 @@ begin
   TextLabel.CreateEmbeddedControl := CreateChoiceInlineObject;
   TextLabel.SetTextAlignY(tayCenterEx);
   TextLabel.SetTextColor(GetDisabledTextColor(QuestStyleIndex));
-  Panel.SetSize(
-      Classes.Point(Panel.ClientSize.X, GiScalePixelsEx(2, 1) * 2 + TextLabel.ClientSize.Y)
-  );
+  Panel.SetSize(Classes.Point(Panel.ClientSize.X, GiScalePixelsEx(2, 1) * 2 + TextLabel.ClientSize.Y));
   TextLabel.SetSize(Panel.ClientSize);
   Highlight.SetSize(Panel.ClientSize);
   Inc(NextChoiceTop, Panel.ClientSize.Y);
@@ -606,8 +576,7 @@ var
 begin
   Result := TPanelGI.Create(Sender);
   Image := TImageGI.Create(Result);
-  Path :=
-      'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Answer';
+  Path := 'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Answer';
   if Sender.UserState = 1 then
   begin
     if CacheDataRoot.FileExistsByPath(Path + 'H') then
@@ -704,17 +673,13 @@ begin
     if GetByName('ActionListWindow').ContainsPoint(Point) then
     begin
       Panel1 := GetByName('ActionListWindow') as TPanelScrollBarGI;
-      Panel1.SetScrollOffset(
-          Classes.Point(0, Panel1.ScrollOffset.Y - Panel1.VerticalScrollBar.SmallChange)
-      );
+      Panel1.SetScrollOffset(Classes.Point(0, Panel1.ScrollOffset.Y - Panel1.VerticalScrollBar.SmallChange));
       Panel1.PanelScrollChanged(nil);
     end
     else
     begin
       Panel2 := GetByName('MessageWindow') as TPanelScrollBarGI;
-      Panel2.SetScrollOffset(
-          Classes.Point(0, Panel2.ScrollOffset.Y - Panel2.VerticalScrollBar.SmallChange)
-      );
+      Panel2.SetScrollOffset(Classes.Point(0, Panel2.ScrollOffset.Y - Panel2.VerticalScrollBar.SmallChange));
       Panel2.PanelScrollChanged(nil);
     end;
   end
@@ -723,17 +688,13 @@ begin
     if GetByName('ActionListWindow').ContainsPoint(Point) then
     begin
       Panel3 := GetByName('ActionListWindow') as TPanelScrollBarGI;
-      Panel3.SetScrollOffset(
-          Classes.Point(0, Panel3.ScrollOffset.Y + Panel3.VerticalScrollBar.SmallChange)
-      );
+      Panel3.SetScrollOffset(Classes.Point(0, Panel3.ScrollOffset.Y + Panel3.VerticalScrollBar.SmallChange));
       Panel3.PanelScrollChanged(nil);
     end
     else
     begin
       Panel4 := GetByName('MessageWindow') as TPanelScrollBarGI;
-      Panel4.SetScrollOffset(
-          Classes.Point(0, Panel4.ScrollOffset.Y + Panel4.VerticalScrollBar.SmallChange)
-      );
+      Panel4.SetScrollOffset(Classes.Point(0, Panel4.ScrollOffset.Y + Panel4.VerticalScrollBar.SmallChange));
       Panel4.PanelScrollChanged(nil);
     end;
   end;
@@ -779,12 +740,7 @@ begin
         begin
           Control.UserValue := Page;
           if Page > 1 then
-            Control.SetPosition(
-                Classes.Point(
-                    Control.LocalPosition.X,
-                    -Control.LocalPosition.Y - Control.ClientSize.Y - ExtraOffset
-                )
-            );
+            Control.SetPosition(Classes.Point(Control.LocalPosition.X, -Control.LocalPosition.Y - Control.ClientSize.Y - ExtraOffset));
           Inc(LineCount, (Control as TLabelGI).GetRenderedLineCount);
           if LineCount > 5 then
           begin
@@ -822,12 +778,7 @@ begin
         Step := Round(Min(1.0, (Control.UserIndex - Control.LocalPosition.Y) / 100) * 30);
         if Step < 1 then
           Step := 1;
-        Control.SetPosition(
-            Classes.Point(
-                Control.LocalPosition.X,
-                Min(Control.UserIndex, Control.LocalPosition.Y + Step)
-            )
-        );
+        Control.SetPosition(Classes.Point(Control.LocalPosition.X, Min(Control.UserIndex, Control.LocalPosition.Y + Step)));
       end;
     Control := Control.NextSibling;
   end;
@@ -937,11 +888,7 @@ begin
     Control.SetPosition(
         Classes.Point(
             Window.WorkSubRect.Left,
-            (Window.ClientSize.Y
-                        - Window.WorkSubRect.Top
-                        - Window.WorkSubRect.Bottom
-                        - ParameterPanelHeight)
-                    div 2
+            (Window.ClientSize.Y - Window.WorkSubRect.Top - Window.WorkSubRect.Bottom - ParameterPanelHeight) div 2
                 + (Window.WorkSubRect.Top + Y)
         )
     );
@@ -951,19 +898,9 @@ begin
     Control := Control.NextSibling;
   end;
   if GameScreenHeight - GiScalePixels(30) < Window.LocalPosition.Y + Window.ClientSize.Y then
-    Window.SetPosition(
-        Classes.Point(
-            Window.LocalPosition.X,
-            GameScreenHeight - GiScalePixels(30) - Window.ClientSize.Y
-        )
-    );
+    Window.SetPosition(Classes.Point(Window.LocalPosition.X, GameScreenHeight - GiScalePixels(30) - Window.ClientSize.Y));
   if GameScreenWidth - GiScalePixels(10) < Window.LocalPosition.X + Window.ClientSize.X then
-    Window.SetPosition(
-        Classes.Point(
-            GameScreenWidth - GiScalePixels(10) - Window.ClientSize.X,
-            Window.LocalPosition.Y
-        )
-    );
+    Window.SetPosition(Classes.Point(GameScreenWidth - GiScalePixels(10) - Window.ClientSize.X, Window.LocalPosition.Y));
   LayoutMobilePage;
 end;
 
@@ -1081,10 +1018,7 @@ begin
         if TagIndex >= 0 then
         begin
           Inc(TagIndex, 6);
-          while (TagIndex < TextLength)
-              and ((Text[TagIndex + 1] = ' ')
-                  or (Text[TagIndex + 1] = #9)
-                  or (Text[TagIndex + 1] = #13)) do
+          while (TagIndex < TextLength) and ((Text[TagIndex + 1] = ' ') or (Text[TagIndex + 1] = #9) or (Text[TagIndex + 1] = #13)) do
             Inc(TagIndex);
           if TagIndex < TextLength then
             if Text[TagIndex + 1] = #10 then
@@ -1168,40 +1102,18 @@ begin
       with FindByNameRecursive('MessageWindow') as TPanelScrollBarGI do
       begin
         SetPosition(Point(LocalPosition.X + Shift, LocalPosition.Y));
-        SetSize(
-            Point(ClientSize.X + (ExtraScreenWidth - Shift), ClientSize.Y + ExtraScreenHeight div 2)
-        );
+        SetSize(Point(ClientSize.X + (ExtraScreenWidth - Shift), ClientSize.Y + ExtraScreenHeight div 2));
         TObjectGI(VerticalScrollbar)
-            .SetPosition(
-                Point(
-                    VerticalScrollbar.LocalPosition.X + ExtraScreenWidth,
-                    VerticalScrollbar.LocalPosition.Y
-                ));
-        VerticalScrollbar.SetSize(
-            Point(
-                VerticalScrollbar.ClientSize.X,
-                VerticalScrollbar.ClientSize.Y + ExtraScreenHeight div 2
-            )
-        );
+            .SetPosition(Point(VerticalScrollbar.LocalPosition.X + ExtraScreenWidth, VerticalScrollbar.LocalPosition.Y));
+        VerticalScrollbar.SetSize(Point(VerticalScrollbar.ClientSize.X, VerticalScrollbar.ClientSize.Y + ExtraScreenHeight div 2));
       end;
       with FindByNameRecursive('ActionListWindow') as TPanelScrollBarGI do
       begin
         SetPosition(Point(LocalPosition.X + Shift, LocalPosition.Y + ExtraScreenHeight div 2));
-        SetSize(
-            Point(ClientSize.X + (ExtraScreenWidth - Shift), ClientSize.Y + ExtraScreenHeight div 2)
-        );
+        SetSize(Point(ClientSize.X + (ExtraScreenWidth - Shift), ClientSize.Y + ExtraScreenHeight div 2));
         TObjectGI(VerticalScrollbar)
-            .SetPosition(
-                Point(
-                    VerticalScrollbar.LocalPosition.X + ExtraScreenWidth,
-                    VerticalScrollbar.LocalPosition.Y
-                ));
-        VerticalScrollbar.SetSize(
-            Point(
-                VerticalScrollbar.ClientSize.X,
-                VerticalScrollbar.ClientSize.Y + ExtraScreenHeight div 2
-            )
-        );
+            .SetPosition(Point(VerticalScrollbar.LocalPosition.X + ExtraScreenWidth, VerticalScrollbar.LocalPosition.Y));
+        VerticalScrollbar.SetSize(Point(VerticalScrollbar.ClientSize.X, VerticalScrollbar.ClientSize.Y + ExtraScreenHeight div 2));
       end;
     end;
     with FindByNameRecursive('LabelHelp') do
@@ -1280,9 +1192,7 @@ begin
   with GetByName('QuestPanel') do
   begin
     DisplayScale := MobileTextScale;
-    SetSize(
-        Point(Ceil(GameScreenWidth / MobileTextScale), Ceil(GameScreenHeight / MobileTextScale))
-    );
+    SetSize(Point(Ceil(GameScreenWidth / MobileTextScale), Ceil(GameScreenHeight / MobileTextScale)));
   end;
   LayoutMobilePage;
 end;
@@ -1342,13 +1252,7 @@ begin
   ExitHeight := Min(Ceil(GetGameMobileUiScale(44)), GameScreenHeight div 6 - 20);
   ExitScale := ExitHeight / Max(1, Control.ClientSize.Y);
   Width := Round(Control.ClientSize.X * ExitScale);
-  ExitBounds :=
-      Rect(
-          GameScreenWidth - 12 - Width,
-          GameScreenHeight - 12 - ExitHeight,
-          GameScreenWidth - 12,
-          GameScreenHeight - 12
-      );
+  ExitBounds := Rect(GameScreenWidth - 12 - Width, GameScreenHeight - 12 - ExitHeight, GameScreenWidth - 12, GameScreenHeight - 12);
   MobileSidebarBounds.Bottom := ExitBounds.Top - FooterGap;
   PlaceControlAtScreen(Control, ExitBounds.TopLeft, ExitScale);
   Control.HitKind := gbhRect;
@@ -1454,12 +1358,7 @@ var
   HasStats, HasPicture, CanEnlarge: Boolean;
   Child: TObjectGI;
 
-  procedure PlaceScrollPanel(
-      Panel: TPanelScrollBarGI;
-      Frame, Insets: TRect;
-      Story: Boolean;
-      MeasureWidthOnly: Boolean = False
-  );
+  procedure PlaceScrollPanel(Panel: TPanelScrollBarGI; Frame, Insets: TRect; Story: Boolean; MeasureWidthOnly: Boolean = False);
   var
     Left, Top, Right, Bottom: Integer;
   begin
@@ -1494,8 +1393,7 @@ begin
   Window := GetByName('ParamsShowWindowParent') as TWindowGI;
   Picture := GetByName('PQI') as TGraphBufGI;
   HasStats := GetByName('ParamsShowWindow').FirstChild <> nil;
-  HasPicture :=
-      (CurrentPicture <> '') and (Picture.GraphBuf.Width > 0) and (Picture.GraphBuf.Height > 0);
+  HasPicture := (CurrentPicture <> '') and (Picture.GraphBuf.Width > 0) and (Picture.GraphBuf.Height > 0);
   // Reserve only the width the current state needs. Illustrations can use a
   // modest thumbnail; short statistics must not permanently take a third of a page.
   SidebarWidth := 0;
@@ -1514,13 +1412,7 @@ begin
   Window.SetActive(HasStats);
   MobileStatsToggle.SetActive(False);
   (GetByName('QuestPanel') as TPanelGI).SetActive(not MobileStatsExpanded);
-  ExpandedStatsBounds :=
-      Rect(
-          12,
-          Max(12, Ceil(56 * GetGameMobileUiScale)),
-          GameScreenWidth - 12,
-          MobileSidebarBounds.Bottom
-      );
+  ExpandedStatsBounds := Rect(12, Max(12, Ceil(56 * GetGameMobileUiScale)), GameScreenWidth - 12, MobileSidebarBounds.Bottom);
   StatsBounds := MobileSidebarBounds;
   if MobileStatsExpanded then
     StatsBounds := ExpandedStatsBounds;
@@ -1542,14 +1434,12 @@ begin
             MobileTextScale,
             Min(
                 (ExpandedStatsBounds.Right - ExpandedStatsBounds.Left) / Window.ClientSize.X,
-                (ExpandedStatsBounds.Bottom - ExpandedStatsBounds.Top - ActionHeight)
-                    / Window.ClientSize.Y
+                (ExpandedStatsBounds.Bottom - ExpandedStatsBounds.Top - ActionHeight) / Window.ClientSize.Y
             )
         );
     // The whole state is already visible. Offer magnification only when its
     // text is small and the larger view materially improves readability.
-    CanEnlarge :=
-        (CompactScale < GetGameMobileUiScale(0.9)) and (ExpandedScale >= CompactScale * 1.25);
+    CanEnlarge := (CompactScale < GetGameMobileUiScale(0.9)) and (ExpandedScale >= CompactScale * 1.25);
     MobileStatsToggle.SetActive(CanEnlarge or MobileStatsExpanded);
     if LowerCaseWideString(SelectedLanguage) = 'russian' then
     begin
@@ -1572,25 +1462,15 @@ begin
       ActionHeight := 0;
     StatsTop := StatsBounds.Bottom - Ceil(Window.ClientSize.Y * Scale) - ActionHeight;
     if MobileStatsExpanded then
-      StatsTop :=
-          (StatsBounds.Top + StatsBounds.Bottom - Ceil(Window.ClientSize.Y * Scale) - ActionHeight)
-              div 2;
-    StatsPosition :=
-        Point(
-            (StatsBounds.Left + StatsBounds.Right - Ceil(Window.ClientSize.X * Scale)) div 2,
-            StatsTop
-        );
+      StatsTop := (StatsBounds.Top + StatsBounds.Bottom - Ceil(Window.ClientSize.Y * Scale) - ActionHeight) div 2;
+    StatsPosition := Point((StatsBounds.Left + StatsBounds.Right - Ceil(Window.ClientSize.X * Scale)) div 2, StatsTop);
     PlaceControlAtScreen(Window, StatsPosition, Scale);
     if MobileStatsToggle.Active then
     begin
-      MobileStatsToggle
-          .SetSize(Point(Min(152, Floor(Window.ClientSize.X * Scale / ActionScale)), 32));
+      MobileStatsToggle.SetSize(Point(Min(152, Floor(Window.ClientSize.X * Scale / ActionScale)), 32));
       PlaceControlAtScreen(
           MobileStatsToggle,
-          Point(
-              StatsPosition.X,
-              StatsTop + Ceil(Window.ClientSize.Y * Scale) + Ceil(4 * ActionScale)
-          ),
+          Point(StatsPosition.X, StatsTop + Ceil(Window.ClientSize.Y * Scale) + Ceil(4 * ActionScale)),
           ActionScale
       );
     end;
@@ -1612,16 +1492,11 @@ begin
             MobileSidebarBounds.Right - MobileSidebarBounds.Left,
             Floor((PictureHeight - 20) * Picture.GraphBuf.Width / Picture.GraphBuf.Height) + 20
         );
-    PictureHeight :=
-        Min(
-            PictureHeight,
-            Floor((PictureWidth - 20) * Picture.GraphBuf.Height / Picture.GraphBuf.Width) + 20
-        );
+    PictureHeight := Min(PictureHeight, Floor((PictureWidth - 20) * Picture.GraphBuf.Height / Picture.GraphBuf.Width) + 20);
     // Preserve the original gold corner shapes; omit a thumbnail too small for them.
     if (PictureWidth >= 100) and (PictureHeight >= 102) then
     begin
-      PictureFrame.Left :=
-          (MobileSidebarBounds.Left + MobileSidebarBounds.Right - PictureWidth) div 2;
+      PictureFrame.Left := (MobileSidebarBounds.Left + MobileSidebarBounds.Right - PictureWidth) div 2;
       PictureFrame.Top := MobileSidebarBounds.Top;
       PictureFrame.Right := PictureFrame.Left + PictureWidth;
       PictureFrame.Bottom := PictureFrame.Top + PictureHeight;
@@ -1641,14 +1516,10 @@ begin
     ReflowMobileChoices;
   // Match PlaceScrollPanel's rounded endpoints, not just their distance.
   // A height rounded independently can lose one source pixel and enable scrolling.
-  ChoiceBottom :=
-      Floor((ChoicesFrame.Bottom - MobileArtwork.ChoiceInsets.Bottom) / Double(MobileTextScale));
+  ChoiceBottom := Floor((ChoicesFrame.Bottom - MobileArtwork.ChoiceInsets.Bottom) / Double(MobileTextScale));
   MinChoiceHeight :=
-      ChoicesFrame.Bottom
-          - Floor((ChoiceBottom - NextChoiceTop - Padding * 2) * Double(MobileTextScale))
-          + MobileArtwork.ChoiceInsets.Top;
-  ChoiceHeight :=
-      Min(Max(80, MinChoiceHeight), (MobileTextBounds.Bottom - MobileTextBounds.Top) * 2 div 5);
+      ChoicesFrame.Bottom - Floor((ChoiceBottom - NextChoiceTop - Padding * 2) * Double(MobileTextScale)) + MobileArtwork.ChoiceInsets.Top;
+  ChoiceHeight := Min(Max(80, MinChoiceHeight), (MobileTextBounds.Bottom - MobileTextBounds.Top) * 2 div 5);
   ChoicesFrame.Top := ChoicesFrame.Bottom - ChoiceHeight;
   TextFrame.Bottom := ChoicesFrame.Top - Gap;
   MobileArtwork.SetLayout(TextFrame, ChoicesFrame, PictureFrame, QuestStyleIndex);
@@ -1661,41 +1532,23 @@ begin
     if Child is TQuestTextGI then
     begin
       if PageAnimationTimer <> nil then
-        ContentHeight :=
-            Max(
-                ContentHeight,
-                Max(Child.LocalPosition.Y, Child.UserIndex) + TQuestTextGI(Child).LayoutHeight
-            )
+        ContentHeight := Max(ContentHeight, Max(Child.LocalPosition.Y, Child.UserIndex) + TQuestTextGI(Child).LayoutHeight)
       else
-        ContentHeight :=
-            Max(ContentHeight, Child.LocalPosition.Y + TQuestTextGI(Child).LayoutHeight);
+        ContentHeight := Max(ContentHeight, Child.LocalPosition.Y + TQuestTextGI(Child).LayoutHeight);
     end
     else
       ContentHeight := Max(ContentHeight, Child.LocalPosition.Y + Child.ClientSize.Y);
     Child := Child.NextSibling;
   end;
   if not MessagePanel.UnlimitedWorld then
-    MessagePanel.SetScrollOffset(
-        Point(
-            0,
-            EnsureRange(
-                MessagePanel.ScrollOffset.Y,
-                0,
-                Max(0, ContentHeight - MessagePanel.ClientSize.Y)
-            )
-        )
-    );
+    MessagePanel.SetScrollOffset(Point(0, EnsureRange(MessagePanel.ScrollOffset.Y, 0, Max(0, ContentHeight - MessagePanel.ClientSize.Y))));
   MessagePanel.SetVerticalScrollbarEnabled(ContentHeight > MessagePanel.ClientSize.Y);
   ChoicesPanel.SetVerticalScrollbarEnabled(NextChoiceTop > ChoicesPanel.ClientSize.Y);
   Inner := MobileArtwork.PictureInnerBounds;
   Picture.SetActive(HasPicture and (Inner.Right > Inner.Left) and (Inner.Bottom > Inner.Top));
   if Picture.Active then
   begin
-    PictureScale :=
-        Min(
-            (Inner.Right - Inner.Left) / Picture.GraphBuf.Width,
-            (Inner.Bottom - Inner.Top) / Picture.GraphBuf.Height
-        );
+    PictureScale := Min((Inner.Right - Inner.Left) / Picture.GraphBuf.Width, (Inner.Bottom - Inner.Top) / Picture.GraphBuf.Height);
     Picture.SetSize(Point(Picture.GraphBuf.Width, Picture.GraphBuf.Height));
     PlaceControlAtScreen(
         Picture,
@@ -1747,8 +1600,7 @@ begin
                     .GetBlock('PlanetQuestLic')
                     .GetParamOrMarker(IntToStr(GetPlayer.CurrentPlanet.TextQuestId))
                 = PlanetQuestScreen.GetQuestContentHash(GetPlayer.CurrentPlanet.TextQuestId))) then
-      MoneyLimitComplement :=
-          (Galaxy.ComputeScaledBigMoney(oiHuman) + GetPlayer.Money) xor $FFFFFFFF
+      MoneyLimitComplement := (Galaxy.ComputeScaledBigMoney(oiHuman) + GetPlayer.Money) xor $FFFFFFFF
     else if (GetPlayer <> nil) and (QueuedTextQuests.Count = 0) then
       MoneyLimitComplement := (GetPlayer.Money + 50000) xor $FFFFFFFF
     else
@@ -1837,8 +1689,7 @@ begin
               Quest.FromStarText.Text := GovernmentQuest.Planet.CurrentStar.Name;
               Quest.RangerText.Text := GetPlayer.Name;
               for J := 1 to Quest.GetParameterCount do
-                if Quest.GetParameter(J).Enabled
-                    and (Quest.GetParameter(J).NameText.Text = 'GRewardMoney') then
+                if Quest.GetParameter(J).Enabled and (Quest.GetParameter(J).NameText.Text = 'GRewardMoney') then
                 begin
                   Quest.GetParameter(J).Value := GovernmentQuest.RewardMoney;
                   Break;
@@ -1887,8 +1738,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(
-          'Error in procedure TfPlanetQuest.BeforeRun, label = ' + IntToStr(Stage));
+      raise Exception.Create('Error in procedure TfPlanetQuest.BeforeRun, label = ' + IntToStr(Stage));
     end;
   end;
 end;
@@ -2034,17 +1884,13 @@ begin
   (GetByName('AnimTextOff') as TGraphButtonGI).SetActive(not QuestPageAnimationEnabled);
   for I := 1 to QuestStyleCount do
     (GetByName('Style' + IntToStr(I)) as TGraphButtonGI).SetDisabled(QuestStyleIndex = I - 1);
-  (GetByName('BGStyle') as TImageGI)
-      .SetImagePath(
-          'GI,Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1));
+  (GetByName('BGStyle') as TImageGI).SetImagePath('GI,Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1));
   (GetByName('MessageWindow') as TPanelScrollBarGI)
       .VerticalScrollbar
-      .SetConfigPath(
-          'Style.ScrollBar.' + GiResourceSuffix + 'PQS' + IntToWideString(QuestStyleIndex + 1));
+      .SetConfigPath('Style.ScrollBar.' + GiResourceSuffix + 'PQS' + IntToWideString(QuestStyleIndex + 1));
   (GetByName('ActionListWindow') as TPanelScrollBarGI)
       .VerticalScrollbar
-      .SetConfigPath(
-          'Style.ScrollBar.' + GiResourceSuffix + 'PQS' + IntToWideString(QuestStyleIndex + 1));
+      .SetConfigPath('Style.ScrollBar.' + GiResourceSuffix + 'PQS' + IntToWideString(QuestStyleIndex + 1));
   Control := GetByName('MessageWindow').FirstChild;
   while Control <> nil do
   begin
@@ -2052,13 +1898,7 @@ begin
       with Control as TLabelGI do
       begin
         SetTextColor(GetTextColor(QuestStyleIndex));
-        SetText(
-            ReplaceAllWideString(
-                GetText,
-                GetTextColorTag(PreviousStyleIndex),
-                GetTextColorTag(QuestStyleIndex)
-            )
-        );
+        SetText(ReplaceAllWideString(GetText, GetTextColorTag(PreviousStyleIndex), GetTextColorTag(QuestStyleIndex)));
       end;
     Control := Control.NextSibling;
   end;
@@ -2069,12 +1909,7 @@ begin
     begin
       with Control.FirstChild as TImageGI do
       begin
-        Path :=
-            'Bm.FormPQuest2.'
-                + GiResourceSuffix
-                + 'S'
-                + IntToWideString(QuestStyleIndex + 1)
-                + 'Line';
+        Path := 'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Line';
         if CacheDataRoot.FileExistsByPath(Path) then
           SetImagePath('GI,' + Path)
         else
@@ -2088,23 +1923,12 @@ begin
           SetTextColor(GetDisabledTextColor(QuestStyleIndex))
         else
           SetTextColor(GetTextColor(QuestStyleIndex));
-        SetText(
-            ReplaceAllWideString(
-                GetText,
-                GetTextColorTag(PreviousStyleIndex),
-                GetTextColorTag(QuestStyleIndex)
-            )
-        );
+        SetText(ReplaceAllWideString(GetText, GetTextColorTag(PreviousStyleIndex), GetTextColorTag(QuestStyleIndex)));
       end;
       if Control.FirstChild.NextSibling.FirstChild <> nil then
         with Control.FirstChild.NextSibling.FirstChild.FirstChild as TImageGI do
         begin
-          Path :=
-              'Bm.FormPQuest2.'
-                  + GiResourceSuffix
-                  + 'S'
-                  + IntToWideString(QuestStyleIndex + 1)
-                  + 'Answer';
+          Path := 'Bm.FormPQuest2.' + GiResourceSuffix + 'S' + IntToWideString(QuestStyleIndex + 1) + 'Answer';
           if Control.FirstChild.NextSibling.UserState = 1 then
           begin
             if CacheDataRoot.FileExistsByPath(Path + 'H') then
@@ -2178,10 +2002,7 @@ begin
     Image.SetActive(True);
     Image.LoadBitmapPathAsRgb('Bm.PQI.' + Name + '?RGB');
     if GiResourceVariant = 1 then
-      Image.GraphBuf.RescaleRgb(
-          Round(Cardinal(Image.GraphBuf.Width) * 800 / 1024),
-          Round(Cardinal(Image.GraphBuf.Height) * 800 / 1024)
-      );
+      Image.GraphBuf.RescaleRgb(Round(Cardinal(Image.GraphBuf.Width) * 800 / 1024), Round(Cardinal(Image.GraphBuf.Height) * 800 / 1024));
     Image.GraphBuf.ConvertRgbTo565;
     Image.Invalidate;
   end;
@@ -2198,11 +2019,7 @@ begin
     LayoutMobilePage;
     Exit;
   end;
-  if ShowMessageBoxGI(
-          Self,
-          LanguageDataConfig.GetParamByPathOrMarker('FormGameMenu.QExit'),
-          mbgOK or mbgCancel)
-      = mbgResultOK then
+  if ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormGameMenu.QExit'), mbgOK or mbgCancel) = mbgResultOK then
   begin
     Standalone := Galaxy = nil;
     ClearPendingScriptRequests;
@@ -2236,9 +2053,7 @@ begin
       RequestLoadGame(nil);
     Exit;
   end;
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
   begin
     if VirtualKey = VK_ESCAPE then
       RequestLoadGame(nil);
@@ -2267,8 +2082,7 @@ begin
           while (Control <> nil)
               and (not (Control is TPanelGI)
                   or ((@Control.LeftButtonUpCallback <> @TfPlanetQuest.ChoiceMouseUp)
-                      and (@Control.LeftButtonUpCallback
-                          <> @TfPlanetQuest.DisabledChoiceMouseUp))) do
+                      and (@Control.LeftButtonUpCallback <> @TfPlanetQuest.DisabledChoiceMouseUp))) do
             Control := Control.NextSibling;
           Choice := Control;
         end;
@@ -2277,11 +2091,7 @@ begin
     if VirtualKey = Ord('R') then
       if ActiveQueuedTextQuest = nil then
         if SaveManagerScreen.AutoSaveExists then
-          if ShowMessageBoxGI(
-                  Self,
-                  LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'),
-                  mbgOK or mbgCancel)
-              = mbgResultOK then
+          if ShowMessageBoxGI(Self, LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'), mbgOK or mbgCancel) = mbgResultOK then
             if GetPlayer <> nil then
             begin
               PendingLoadFileName := SaveManagerScreen.GetAutoSavePath;
@@ -2318,12 +2128,7 @@ begin
     First := FindTextOffsetW(Lower, '<fix>', Cursor);
     if First < 0 then
       First := Length(Text);
-    Result :=
-        Result
-            + ReplaceAllWideString(
-                Copy(Text, Cursor + 1, First - Cursor),
-                #13#10'          ',
-                #13#10);
+    Result := Result + ReplaceAllWideString(Copy(Text, Cursor + 1, First - Cursor), #13#10'          ', #13#10);
     if First = Length(Text) then
       Exit;
     Last := FindTextOffsetW(Lower, '</fix>', First + 5);
@@ -2347,37 +2152,20 @@ begin
     CurrentDate := TrimWideString(Galaxy.FormatTurnDate(Galaxy.CurrentTurn));
   Expanded := ExpandExternalText(Text);
   Expanded :=
-      ReplaceAllWideString(
-          Expanded,
-          '<ToStar>',
-          WrapTextInColor(TrimWideString(Quest.ToStarText.Text), GetTextColorTag(QuestStyleIndex))
-      );
+      ReplaceAllWideString(Expanded, '<ToStar>', WrapTextInColor(TrimWideString(Quest.ToStarText.Text), GetTextColorTag(QuestStyleIndex)));
   Expanded :=
       ReplaceAllWideString(
           Expanded,
           '<ToPlanet>',
           WrapTextInColor(TrimWideString(Quest.ToPlanetText.Text), GetTextColorTag(QuestStyleIndex))
       );
-  Expanded :=
-      ReplaceAllWideString(
-          Expanded,
-          '<Date>',
-          WrapTextInColor(Quest.DateText.Text, GetTextColorTag(QuestStyleIndex))
-      );
-  Expanded :=
-      ReplaceAllWideString(
-          Expanded,
-          '<Money>',
-          WrapTextInColor(Quest.MoneyText.Text, GetTextColorTag(QuestStyleIndex))
-      );
+  Expanded := ReplaceAllWideString(Expanded, '<Date>', WrapTextInColor(Quest.DateText.Text, GetTextColorTag(QuestStyleIndex)));
+  Expanded := ReplaceAllWideString(Expanded, '<Money>', WrapTextInColor(Quest.MoneyText.Text, GetTextColorTag(QuestStyleIndex)));
   Expanded :=
       ReplaceAllWideString(
           Expanded,
           '<FromPlanet>',
-          WrapTextInColor(
-              TrimWideString(Quest.FromPlanetText.Text),
-              GetTextColorTag(QuestStyleIndex)
-          )
+          WrapTextInColor(TrimWideString(Quest.FromPlanetText.Text), GetTextColorTag(QuestStyleIndex))
       );
   Expanded :=
       ReplaceAllWideString(
@@ -2386,17 +2174,8 @@ begin
           WrapTextInColor(TrimWideString(Quest.FromStarText.Text), GetTextColorTag(QuestStyleIndex))
       );
   Expanded :=
-      ReplaceAllWideString(
-          Expanded,
-          '<Ranger>',
-          WrapTextInColor(TrimWideString(Quest.RangerText.Text), GetTextColorTag(QuestStyleIndex))
-      );
-  Expanded :=
-      ReplaceAllWideString(
-          Expanded,
-          '<CurDate>',
-          WrapTextInColor(CurrentDate, GetTextColorTag(QuestStyleIndex))
-      );
+      ReplaceAllWideString(Expanded, '<Ranger>', WrapTextInColor(TrimWideString(Quest.RangerText.Text), GetTextColorTag(QuestStyleIndex)));
+  Expanded := ReplaceAllWideString(Expanded, '<CurDate>', WrapTextInColor(CurrentDate, GetTextColorTag(QuestStyleIndex)));
   Expanded := RemoveQuestProseIndent(Expanded);
   if Pos('<', Expanded) > 0 then
   begin
@@ -2404,12 +2183,7 @@ begin
     Expanded := ReplaceAllWideString(Expanded, '<ll>', #13#10' '#13#10);
     // Native quirk: <Player> is expanded into Result, then overwritten below.
     if GetPlayer <> nil then
-      Result :=
-          ReplaceAllWideString(
-              Result,
-              '<Player>',
-              WrapTextInColor(GetPlayer.Name, GetTextColorTag(QuestStyleIndex))
-          );
+      Result := ReplaceAllWideString(Result, '<Player>', WrapTextInColor(GetPlayer.Name, GetTextColorTag(QuestStyleIndex)));
     Expanded := ReplaceAllWideString(Expanded, '<clr>', GetTextColorTag(QuestStyleIndex));
     Expanded := ReplaceAllWideString(Expanded, '<clrEnd>', EndColorTag);
   end;
@@ -2466,24 +2240,11 @@ begin
                         'GalaxyNews.Quest.Successful.PlanetaryQuest',
                         (Galaxy.CurrentTurn div 10) * Integer(Galaxy.GenerationSeed)
                     );
-                ReplaceTextToken(
-                    News,
-                    '<FromPlanet>',
-                    GovernmentQuest.Planet.Name,
-                    TextHighlightColorTag
-                );
-                ReplaceTextToken(
-                    News,
-                    '<ToPlanet>',
-                    GetPlayer.CurrentPlanet.Name,
-                    TextHighlightColorTag
-                );
+                ReplaceTextToken(News, '<FromPlanet>', GovernmentQuest.Planet.Name, TextHighlightColorTag);
+                ReplaceTextToken(News, '<ToPlanet>', GetPlayer.CurrentPlanet.Name, TextHighlightColorTag);
                 AddOrUpdatePlayerBubble(pmGalaxyNews, Galaxy.CurrentTurn, News, '');
               end;
-              ItemName :=
-                  LookupLocalizedTextByKey(
-                      'PlanetQuest.ItemForPlanetQuest.' + IntToStr(GovernmentQuest.QuestNumber)
-                  );
+              ItemName := LookupLocalizedTextByKey('PlanetQuest.ItemForPlanetQuest.' + IntToStr(GovernmentQuest.QuestNumber));
               if ItemName <> 'none' then
               begin
                 Item := TUselessItem.Create;
@@ -2492,12 +2253,9 @@ begin
               end;
               GetPlayer.CurrentPlanet.TextQuestId := -1;
               (GetByName('QuestPanel') as TPanelGI).SetActive(False);
-              if GetPlayer.CurrentPlanet.IsCoalitionOwned
-                  or (GetPlayer.CurrentPlanet.OwnerId = oiPirate) then
+              if GetPlayer.CurrentPlanet.IsCoalitionOwned or (GetPlayer.CurrentPlanet.OwnerId = oiPirate) then
               begin
-                GetPlayer
-                    .CurrentPlanet
-                    .ChangeRelationToRanger(GetPlayer, Quest.SuccessRelationDelta);
+                GetPlayer.CurrentPlanet.ChangeRelationToRanger(GetPlayer, Quest.SuccessRelationDelta);
                 if GetPlayer.CurrentPlanet.RelationToShip(GetPlayer) < 20 then
                   GetPlayer.CurrentPlanet.SetRelationLevelToRanger(GetPlayer, rlBad);
               end;
@@ -2505,9 +2263,7 @@ begin
             end;
           end;
   if QuestId >= 0 then
-    if (ActiveQueuedTextQuest = nil)
-        or (GetPlayer = nil)
-        or not (GetPlayer.PirateRank in [4, 6]) then
+    if (ActiveQueuedTextQuest = nil) or (GetPlayer = nil) or not (GetPlayer.PirateRank in [4, 6]) then
     begin
       if GetPlayer <> nil then
         TryAddAchievementProgress('QUEST', 1);
@@ -2562,24 +2318,9 @@ begin
                       'GalaxyNews.Quest.Failure.PlanetaryQuest',
                       Integer(GetPlayer.Seed) * (Galaxy.CurrentTurn div 10)
                   );
-              ReplaceTextToken(
-                  News,
-                  '<ToPlanet>',
-                  GetPlayer.CurrentPlanet.Name,
-                  TextHighlightColorTag
-              );
-              ReplaceTextToken(
-                  News,
-                  '<FromPlanet>',
-                  GovernmentQuest.Planet.Name,
-                  TextHighlightColorTag
-              );
-              ReplaceTextToken(
-                  News,
-                  '<Relation>',
-                  GovernmentQuest.Planet.GetRelationLevelTextToShip(GetPlayer),
-                  TextHighlightColorTag
-              );
+              ReplaceTextToken(News, '<ToPlanet>', GetPlayer.CurrentPlanet.Name, TextHighlightColorTag);
+              ReplaceTextToken(News, '<FromPlanet>', GovernmentQuest.Planet.Name, TextHighlightColorTag);
+              ReplaceTextToken(News, '<Relation>', GovernmentQuest.Planet.GetRelationLevelTextToShip(GetPlayer), TextHighlightColorTag);
               AddOrUpdatePlayerBubble(pmGalaxyNews, Galaxy.CurrentTurn, News, '');
               GetPlayer.CurrentPlanet.TextQuestId := -1;
               GetPlayer.ArchiveQuest(I);
@@ -2588,11 +2329,7 @@ begin
           end;
     if (ActiveQueuedTextQuest = nil)
         and SaveManagerScreen.AutoSaveExists
-        and (ShowMessageBoxGI(
-                Self,
-                LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'),
-                mbgOK or mbgCancel)
-            = mbgResultOK) then
+        and (ShowMessageBoxGI(Self, LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'), mbgOK or mbgCancel) = mbgResultOK) then
     begin
       PendingLoadFileName := SaveManagerScreen.GetAutoSavePath;
       RequestedScreenId := screenGameLoad;
@@ -2615,11 +2352,7 @@ begin
   else
   begin
     if SaveManagerScreen.AutoSaveExists
-        and (ShowMessageBoxGI(
-                Self,
-                LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'),
-                mbgOK or mbgCancel)
-            = mbgResultOK) then
+        and (ShowMessageBoxGI(Self, LocalizedText('Planet.NotCivil.QuestPlay.MsgLoad'), mbgOK or mbgCancel) = mbgResultOK) then
     begin
       PendingLoadFileName := SaveManagerScreen.GetAutoSavePath;
       RequestedScreenId := screenGameLoad;
@@ -2797,11 +2530,7 @@ begin
     Variable := SharedScriptVariables.GetVarNE(Name);
     if Variable <> nil then
       Expanded :=
-          ReplaceAllWideString(
-              Expanded,
-              Token,
-              WrapTextInColor(TrimWideString(Variable.GetString), GetTextColorTag(QuestStyleIndex))
-          );
+          ReplaceAllWideString(Expanded, Token, WrapTextInColor(TrimWideString(Variable.GetString), GetTextColorTag(QuestStyleIndex)));
   end;
   Result := Expanded;
 end;
@@ -2843,100 +2572,56 @@ end;
 
 procedure TTextQuestPlayerInterface.AddContinueAction;
 begin
-  PlanetQuestScreen.AddChoice(
-      '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'),
-      0,
-      PlanetQuestScreen.ContinueToOutcome
-  );
+  PlanetQuestScreen.AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'), 0, PlanetQuestScreen.ContinueToOutcome);
 end;
 
 procedure TTextQuestPlayerInterface.AddSuccessAction;
 begin
   if (GetPlayer <> nil) and GetPlayer.InPrison then
-    PlanetQuestScreen.AddChoice(
-        '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgSuccessPrison'),
-        0,
-        PlanetQuestScreen.CompleteQuestSuccess
-    )
+    PlanetQuestScreen
+        .AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgSuccessPrison'), 0, PlanetQuestScreen.CompleteQuestSuccess)
   else if (ActiveQueuedTextQuest <> nil) and (ActiveQueuedTextQuest.SuccessCaption <> '') then
-    PlanetQuestScreen.AddChoice(
-        ' - ' + ActiveQueuedTextQuest.SuccessCaption,
-        0,
-        PlanetQuestScreen.CompleteQuestSuccess
-    )
+    PlanetQuestScreen.AddChoice(' - ' + ActiveQueuedTextQuest.SuccessCaption, 0, PlanetQuestScreen.CompleteQuestSuccess)
   else
-    PlanetQuestScreen.AddChoice(
-        ' - ' + LocalizedColorText('Planet.NotCivil.QuestPlay.MsgSuccess'),
-        0,
-        PlanetQuestScreen.CompleteQuestSuccess
-    );
+    PlanetQuestScreen
+        .AddChoice(' - ' + LocalizedColorText('Planet.NotCivil.QuestPlay.MsgSuccess'), 0, PlanetQuestScreen.CompleteQuestSuccess);
 end;
 
 procedure TTextQuestPlayerInterface.AddDeathAction;
 begin
-  PlanetQuestScreen.AddChoice(
-      '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgDeath'),
-      0,
-      PlanetQuestScreen.CompleteQuestDeath
-  );
+  PlanetQuestScreen.AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgDeath'), 0, PlanetQuestScreen.CompleteQuestDeath);
 end;
 
 procedure TTextQuestPlayerInterface.AddFailureAction;
 begin
   if (GetPlayer <> nil) and GetPlayer.InPrison then
-    PlanetQuestScreen.AddChoice(
-        '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgFailPrison'),
-        0,
-        PlanetQuestScreen.CompleteQuestFailure
-    )
+    PlanetQuestScreen
+        .AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgFailPrison'), 0, PlanetQuestScreen.CompleteQuestFailure)
   else if (ActiveQueuedTextQuest <> nil) and (ActiveQueuedTextQuest.FailureCaption <> '') then
-    PlanetQuestScreen.AddChoice(
-        ' - ' + ActiveQueuedTextQuest.FailureCaption,
-        0,
-        PlanetQuestScreen.CompleteQuestFailure
-    )
+    PlanetQuestScreen.AddChoice(' - ' + ActiveQueuedTextQuest.FailureCaption, 0, PlanetQuestScreen.CompleteQuestFailure)
   else
-    PlanetQuestScreen.AddChoice(
-        '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgFail'),
-        0,
-        PlanetQuestScreen.CompleteQuestFailure
-    );
+    PlanetQuestScreen.AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgFail'), 0, PlanetQuestScreen.CompleteQuestFailure);
 end;
 
 procedure TTextQuestPlayerInterface.AddPathAction(Text: WideString; PathId: Integer);
 begin
-  PlanetQuestScreen.AddChoice(
-      '  - ' + PlanetQuestScreen.ExpandTemplateText(Text),
-      PathId,
-      PlanetQuestScreen.ContinueAlongPath
-  );
+  PlanetQuestScreen.AddChoice('  - ' + PlanetQuestScreen.ExpandTemplateText(Text), PathId, PlanetQuestScreen.ContinueAlongPath);
 end;
 
 procedure TTextQuestPlayerInterface.AddDisabledPath(Text: WideString);
 begin
-  PlanetQuestScreen.AddDisabledChoice(
-      '  - ' + PlanetQuestScreen.ExpandTemplateText(Text),
-      0,
-      PlanetQuestScreen.IgnoreChoice
-  );
+  PlanetQuestScreen.AddDisabledChoice('  - ' + PlanetQuestScreen.ExpandTemplateText(Text), 0, PlanetQuestScreen.IgnoreChoice);
 end;
 
 procedure TTextQuestPlayerInterface.AddPathContinueAction(PathId: Integer);
 begin
-  PlanetQuestScreen.AddChoice(
-      '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'),
-      PathId,
-      PlanetQuestScreen.ContinueAlongPath
-  );
+  PlanetQuestScreen.AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'), PathId, PlanetQuestScreen.ContinueAlongPath);
 end;
 
 procedure TTextQuestPlayerInterface.AddLocationContinueAction(LocationId: Integer);
 begin
-  PlanetQuestScreen.AddChoice(
-      '  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'),
-      LocationId,
-      PlanetQuestScreen.ContinueToLocation
-  );
+  PlanetQuestScreen
+      .AddChoice('  - ' + LocalizedText('Planet.NotCivil.QuestPlay.MsgContinue'), LocationId, PlanetQuestScreen.ContinueToLocation);
 end;
 
 procedure TTextQuestPlayerInterface.AdvanceDays(Days: Integer);
@@ -2966,8 +2651,7 @@ procedure TfPlanetQuest.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
   if ExitScreenLoop then
     Exit;
-  if TurnCalculationPhase
-      in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
+  if TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
   begin
     if Galaxy <> nil then
       Galaxy.CheckIntegrityChecksum(10109);

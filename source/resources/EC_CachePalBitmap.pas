@@ -89,8 +89,7 @@ end;
 procedure TCPalBitmapEC.LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString);
 begin
   Bitmap.LoadImage(SourceBuffer);
-  ResidentBytes :=
-      Bitmap.PitchBytes * Bitmap.Height + Bitmap.PaletteCount * SizeOf(Bitmap.Palette^);
+  ResidentBytes := Bitmap.PitchBytes * Bitmap.Height + Bitmap.PaletteCount * SizeOf(Bitmap.Palette^);
 end;
 
 end.

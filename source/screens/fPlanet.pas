@@ -108,10 +108,7 @@ begin
   Info.SetPosition(Classes.Point(Info.LocalPosition.X + ExtraScreenWidth, Info.LocalPosition.Y));
   Quest := Panel.FindByNameRecursive('QuestInfo');
   // Native layout adds the extra width to both coordinates here.
-  Quest.SetPosition(
-      Classes
-          .Point(Quest.LocalPosition.X + ExtraScreenWidth, Quest.LocalPosition.Y + ExtraScreenWidth)
-  );
+  Quest.SetPosition(Classes.Point(Quest.LocalPosition.X + ExtraScreenWidth, Quest.LocalPosition.Y + ExtraScreenWidth));
   AppendLogLineThreadSafe('ok');
   (GetByName('PM_EndTurn') as TGraphButtonGI).UpCallback := EndTurnClicked;
 end;
@@ -140,13 +137,10 @@ begin
   end;
   Galaxy.ReleaseItemGraphics;
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
-  (GetByName('BGCity') as TImageGI)
-      .SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
+  (GetByName('BGCity') as TImageGI).SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
   RefreshPlanetInfo;
   RefreshTextQuestPrompt;
-  if (GetPlayer = nil)
-      or ((GetPlayer.CurrentPlanet <> nil)
-          and (GetPlayer.CurrentStar.ControlFaction = sfDominators)) then
+  if (GetPlayer = nil) or ((GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentStar.ControlFaction = sfDominators)) then
   begin
     Event := AddGalaxyEvent('PlayerDeath');
     Event.AddTextData('PlanetCaptured');
@@ -172,15 +166,13 @@ begin
     Galaxy.PrimeIntegrityChecksum(94);
     Exit;
   end;
-  if (GetPlayer.CurrentPlanet <> nil)
-      and ((GetPlayer.PendingDockDialogue > 0) or GetPlayer.CurrentPlanet.IsMainPiratePlanet) then
+  if (GetPlayer.CurrentPlanet <> nil) and ((GetPlayer.PendingDockDialogue > 0) or GetPlayer.CurrentPlanet.IsMainPiratePlanet) then
   begin
     RequestedScreenId := screenGovernment;
     RequestClose(1);
     Exit;
   end;
-  if GR_Main.CCInterface.GetResourceChecksumFailed
-      and not GR_Main.CCInterface.GetTamperDetected then
+  if GR_Main.CCInterface.GetResourceChecksumFailed and not GR_Main.CCInterface.GetTamperDetected then
     GR_Main.CCInterface.SetTamperDetected(True);
   MainPanel.RebuildMessageButtons(False);
   if GetPlayer <> nil then
@@ -208,12 +200,7 @@ begin
       SetText(GetPlayer.CurrentPlanet.Name)
     else
       SetText(
-          ReplaceColoredToken(
-              LocalizedText('Planet.Civil.Info.TextNamePlanet'),
-              '<Planet>',
-              GetPlayer.CurrentPlanet.Name,
-              InfoNameColorTag
-          )
+          ReplaceColoredToken(LocalizedText('Planet.Civil.Info.TextNamePlanet'), '<Planet>', GetPlayer.CurrentPlanet.Name, InfoNameColorTag)
       );
   with GetByName('PanelInfo_Text') as TLabelGI do
   begin
@@ -234,38 +221,20 @@ begin
     SourceHasPerPixelAlpha := True;
     GetPlayer.CurrentPlanet.Graphic.RenderToBuffer(Self, GraphBuf, False);
     if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-      GraphBuf.RescaleRgba(
-          ClientSize.X,
-          Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-          5
-      )
+      GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
     else
-      GraphBuf.RescaleRgba(
-          Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-          ClientSize.Y,
-          5
-      );
+      GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
     SetImageKindX(ikxCenter);
     SetImageKindY(ikyCenter);
   end;
-  ShipScreen.LayoutItemInfo(
-      Window,
-      GetByName('PanelInfo_Name') as TLabelGI,
-      GetByName('PanelInfo_Text') as TLabelGI,
-      True,
-      False,
-      0
-  );
+  ShipScreen.LayoutItemInfo(Window, GetByName('PanelInfo_Name') as TLabelGI, GetByName('PanelInfo_Text') as TLabelGI, True, False, 0);
   with GetByName('PanelInfo_Race') as TImageGI do
   begin
     SetImagePath(GetFactionEmblemPath(GetPlayer.CurrentPlanet.GetFactionResourceName));
     SetImageKindX(ikxCenter);
     SetImageKindY(ikyCenter);
     SetPosition(
-        Classes.Point(
-            Window.ClientSize.X + ShipScreen.ItemRaceImagePosition.X,
-            Window.ClientSize.Y + ShipScreen.ItemRaceImagePosition.Y
-        )
+        Classes.Point(Window.ClientSize.X + ShipScreen.ItemRaceImagePosition.X, Window.ClientSize.Y + ShipScreen.ItemRaceImagePosition.Y)
     );
   end;
   with GetByName('PanelInfo_Text') as TLabelGI do
@@ -275,10 +244,7 @@ end;
 procedure TfPlanet.StartTextQuest(Sender: TObjectGI);
 begin
   if (Sender.UserValue <> 0)
-      and (ShowMessageBoxGI(
-              Self,
-              LocalizedText('FormGov.QuestCertificate.NotCertificateAttention'),
-              mbgOK or mbgCancel or mbgQuestion)
+      and (ShowMessageBoxGI(Self, LocalizedText('FormGov.QuestCertificate.NotCertificateAttention'), mbgOK or mbgCancel or mbgQuestion)
           <> mbgResultOK) then
     Exit;
   Galaxy.CheckIntegrityChecksum(162);
@@ -310,18 +276,12 @@ begin
       if (Quest.QuestType = qtPlanetQuest)
           and (Quest.ObjectiveTarget is TPlanet)
           and (GetPlayer.CurrentPlanet = (Quest.ObjectiveTarget as TPlanet))
-          and (LanguageDataConfig
-                  .GetBlockByPath('PlanetQuest.PlanetQuest')
-                  .CountParams(IntToStr(Quest.QuestNumber))
-              > 0) then
+          and (LanguageDataConfig.GetBlockByPath('PlanetQuest.PlanetQuest').CountParams(IntToStr(Quest.QuestNumber)) > 0) then
       begin
         QuestNumber := Quest.QuestNumber;
         if (Quest.QuestNumber < FirstLicensedQuestId)
             or ((LanguageDataConfig.GetBlock('PlanetQuest').CountBlocks('PlanetQuestLic') > 0)
-                and (LanguageDataConfig
-                        .GetBlock('PlanetQuest')
-                        .GetBlock('PlanetQuestLic')
-                        .GetParamOrMarker(IntToStr(Quest.QuestNumber))
+                and (LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuestLic').GetParamOrMarker(IntToStr(Quest.QuestNumber))
                     = PlanetQuestScreen.GetQuestContentHash(Quest.QuestNumber))) then
           Window.FindByNameRecursive('QuestInfo_Run').UserValue := 0
         else
@@ -341,18 +301,8 @@ begin
       Text := LocalizedColorText('PlanetQuest.StartText.QuestExtern');
     if Quest <> nil then
     begin
-      ReplaceTextToken(
-          Text,
-          '<CurPlanet>',
-          (Quest.ObjectiveTarget as TPlanet).Name,
-          TextHighlightColorTag
-      );
-      ReplaceTextToken(
-          Text,
-          '<CurStar>',
-          (Quest.ObjectiveTarget as TPlanet).CurrentStar.Name,
-          TextHighlightColorTag
-      );
+      ReplaceTextToken(Text, '<CurPlanet>', (Quest.ObjectiveTarget as TPlanet).Name, TextHighlightColorTag);
+      ReplaceTextToken(Text, '<CurStar>', (Quest.ObjectiveTarget as TPlanet).CurrentStar.Name, TextHighlightColorTag);
       ReplaceTextToken(Text, '<FromPlanet>', Quest.Planet.Name, TextHighlightColorTag);
       ReplaceTextToken(Text, '<FromStar>', Quest.Planet.CurrentStar.Name, TextHighlightColorTag);
     end;
@@ -367,38 +317,18 @@ begin
     Window.SetActive(True);
     SetPosition(Window.WorkSubRect.TopLeft);
   end;
-  ShipScreen.LayoutItemInfo(
-      Window,
-      GetByName('QuestInfo_Name') as TLabelGI,
-      GetByName('QuestInfo_Text') as TLabelGI,
-      True,
-      True,
-      0
-  );
+  ShipScreen.LayoutItemInfo(Window, GetByName('QuestInfo_Name') as TLabelGI, GetByName('QuestInfo_Text') as TLabelGI, True, True, 0);
   with GetByName('QuestInfo_Run') as TGraphButtonGI do
   begin
     UpCallback := StartTextQuest;
-    Window.SetSize(
-        Classes.Point(Window.ClientSize.X, ClientSize.Y + Window.ClientSize.Y + GiScalePixels(5))
-    );
+    Window.SetSize(Classes.Point(Window.ClientSize.X, ClientSize.Y + Window.ClientSize.Y + GiScalePixels(5)));
     Window.UpdateAutoGeometry;
-    SetPosition(
-        Classes.Point(
-            Window.ClientSize.X div 2 - ClientSize.X div 2,
-            Window.ClientSize.Y - GiScalePixels(10) - ClientSize.Y
-        )
-    );
+    SetPosition(Classes.Point(Window.ClientSize.X div 2 - ClientSize.X div 2, Window.ClientSize.Y - GiScalePixels(10) - ClientSize.Y));
   end;
   with GetByName('QuestInfo_Name') as TLabelGI do
-    SetSize(
-        Classes
-            .Point(Window.ClientSize.X - LocalPosition.X - Window.WorkSubRect.Right, ClientSize.Y)
-    );
+    SetSize(Classes.Point(Window.ClientSize.X - LocalPosition.X - Window.WorkSubRect.Right, ClientSize.Y));
   Window.SetPosition(
-      Classes.Point(
-          LayoutSize.X - 10 - Window.ClientSize.X,
-          MainPanel.ContentLayoutHeight - GiScalePixels(90) - Window.ClientSize.Y
-      )
+      Classes.Point(LayoutSize.X - 10 - Window.ClientSize.X, MainPanel.ContentLayoutHeight - GiScalePixels(90) - Window.ClientSize.Y)
   );
 end;
 
@@ -447,8 +377,7 @@ begin
     Exit;
   if ExitScreenLoop then
     Exit;
-  if TurnCalculationPhase
-      in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
+  if TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
   begin
     Galaxy.CheckIntegrityChecksum(10002);
     ExecuteGameplayUiCode(Block, Key);
@@ -468,9 +397,7 @@ begin
   if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
   begin
     if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
     else
       MusicManager.PlayCategory('Nation.PiratePlanetMain');
   end

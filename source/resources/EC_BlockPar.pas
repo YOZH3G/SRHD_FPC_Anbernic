@@ -89,12 +89,7 @@ type
     procedure WriteAnsiText(Dest: TBufEC; Indent: Integer; Sorted: Boolean);
     procedure WriteTextBuffer(Dest: TBufEC; AnsiText: Boolean; Sorted: Boolean);
     procedure SaveTextFile(FileName: PWideChar; AnsiText: Boolean; Sorted: Boolean);
-    procedure ParseTextBuffer(
-        Buf: TBufEC;
-        const InitialText: WideString;
-        AnsiText: Boolean;
-        PreserveComments: Boolean
-    );
+    procedure ParseTextBuffer(Buf: TBufEC; const InitialText: WideString; AnsiText: Boolean; PreserveComments: Boolean);
     procedure LoadFromTextBufferWithEncodingProbe(Buf: TBufEC; PreserveComments: Boolean);
     procedure LoadFromTextFileWithEncodingProbe(FileName: PWideChar; PreserveComments: Boolean);
     procedure MergeFrom(Source: TBlockParEC);
@@ -278,10 +273,7 @@ begin
   Entry.Free;
 end;
 
-function TBlockParEC.FindEntryByPath(
-    const Path: WideString;
-    RaiseIfMissing: Boolean
-): TBlockParElEC;
+function TBlockParEC.FindEntryByPath(const Path: WideString; RaiseIfMissing: Boolean): TBlockParElEC;
 var
   Cursor, PathLength, Start, PartLength, Occurrence: Integer;
   Index, Seen: Integer;
@@ -346,9 +338,7 @@ var
     if Length(Name) <> PartLength then
       Result := False
     else
-      Result :=
-          SysUtils
-              .CompareMem(PWideChar(Path) + Start, PWideChar(Name), PartLength * SizeOf(WideChar));
+      Result := SysUtils.CompareMem(PWideChar(Path) + Start, PWideChar(Name), PartLength * SizeOf(WideChar));
   end;
 
 begin
@@ -510,11 +500,7 @@ begin
     Inc(SortedEntryCount);
     Exit;
   end;
-  System.Move(
-      Pointer(@SortedEntries[Index])^,
-      Pointer(@SortedEntries[Index + 1])^,
-      (SortedEntryCount - Index) * SizeOf(SortedEntries[0])
-  );
+  System.Move(Pointer(@SortedEntries[Index])^, Pointer(@SortedEntries[Index + 1])^, (SortedEntryCount - Index) * SizeOf(SortedEntries[0]));
   SortedEntries[Index] := Entry;
   Inc(SortedEntryCount);
 end;
@@ -1293,11 +1279,7 @@ begin
   end;
 end;
 
-procedure TBlockParEC.ParseTextBuffer(
-    Buf: TBufEC;
-    const InitialText: WideString;
-    AnsiText, PreserveComments: Boolean
-);
+procedure TBlockParEC.ParseTextBuffer(Buf: TBufEC; const InitialText: WideString; AnsiText, PreserveComments: Boolean);
 var
   Text, Name, Value, Comment: WideString;
   Child: TBlockParEC;
@@ -1387,10 +1369,7 @@ begin
     ParseTextBuffer(Buf, '', False, PreserveComments);
 end;
 
-procedure TBlockParEC.LoadFromTextFileWithEncodingProbe(
-    FileName: PWideChar;
-    PreserveComments: Boolean
-);
+procedure TBlockParEC.LoadFromTextFileWithEncodingProbe(FileName: PWideChar; PreserveComments: Boolean);
 var
   Buf: TBufEC;
 begin

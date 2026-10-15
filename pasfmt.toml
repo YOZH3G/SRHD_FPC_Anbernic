@@ -1,4 +1,4 @@
-wrap_column = 100
+wrap_column = 140
 begin_style = "always_wrap"
 line_ending = "lf"
 encoding = "utf-8"

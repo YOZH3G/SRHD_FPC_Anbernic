@@ -121,9 +121,7 @@ begin
     while Entry <> nil do
     begin
       if Entry.Animation <> nil then
-        Entry.Animation.SetPosition(
-            TruncatePointF(RotateAndTranslatePoint(Entry.Position, APosition, MoveAngle))
-        );
+        Entry.Animation.SetPosition(TruncatePointF(RotateAndTranslatePoint(Entry.Position, APosition, MoveAngle)));
       Entry := Entry.Next;
     end;
   end;
@@ -191,11 +189,7 @@ begin
   if FirstEntry <> nil then
     FirstEntry.Prev := Entry;
   FirstEntry := Entry;
-  Entry.Position :=
-      MakePointF(
-          RandomFloatRange(-GroupSize.X, GroupSize.X),
-          RandomFloatRange(-GroupSize.Y, GroupSize.Y)
-      );
+  Entry.Position := MakePointF(RandomFloatRange(-GroupSize.X, GroupSize.X), RandomFloatRange(-GroupSize.Y, GroupSize.Y));
   Entry.Velocity := MakePointF(0, 0);
   Entry.Target := Entry.Position;
   Entry.Angle := 0;
@@ -206,9 +200,7 @@ begin
   Entry.Animation.SetSize(Entry.Animation.GetContentSize);
   Entry.Animation.SetOrigin(HalfPoint(Entry.Animation.ClientSize));
   Entry.Animation.SetDepthByName(DepthExpression);
-  Entry.Animation.SetPosition(
-      Classes.Point(Trunc(Entry.Position.X + Position.X), Trunc(Entry.Position.Y + Position.Y))
-  );
+  Entry.Animation.SetPosition(Classes.Point(Trunc(Entry.Position.X + Position.X), Trunc(Entry.Position.Y + Position.Y)));
   Entry.Animation.SetPositionModeW(True);
   Entry.Animation.SetSequenceFrame(0);
   Entry.Animation.RestartPlayback;
@@ -240,21 +232,12 @@ begin
   if (Abs(Entry.Position.X - Entry.Target.X) <= Abs(Entry.Velocity.X) + 0.2)
       and (Abs(Entry.Position.Y - Entry.Target.Y) <= Abs(Entry.Velocity.Y) + 0.2) then
   begin
-    Movement :=
-        MakePointF(
-            RandomFloatRange(-GroupSize.X, GroupSize.X),
-            RandomFloatRange(-GroupSize.Y, GroupSize.Y)
-        );
+    Movement := MakePointF(RandomFloatRange(-GroupSize.X, GroupSize.X), RandomFloatRange(-GroupSize.Y, GroupSize.Y));
     Entry.Target := Movement;
-    Entry.Velocity :=
-        MakePointF(
-            (-Entry.Position.X + Entry.Target.X) / 64,
-            (-Entry.Position.Y + Entry.Target.Y) / 64
-        );
+    Entry.Velocity := MakePointF((-Entry.Position.X + Entry.Target.X) / 64, (-Entry.Position.Y + Entry.Target.Y) / 64);
   end
   else
-    Entry.Position :=
-        MakePointF(Entry.Position.X + Entry.Velocity.X, Entry.Position.Y + Entry.Velocity.Y);
+    Entry.Position := MakePointF(Entry.Position.X + Entry.Velocity.X, Entry.Position.Y + Entry.Velocity.Y);
   Movement := RotateAndTranslatePoint(Entry.Velocity, Velocity, MoveAngle);
   if Entry.Velocity.Y < -0.5 then
     Entry.MovingUp := True

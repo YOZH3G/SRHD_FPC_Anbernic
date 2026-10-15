@@ -81,12 +81,7 @@ begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('RewardPanel') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := MainPanelKeyDown;
@@ -179,9 +174,7 @@ begin
   Obj := AwardsPanel.FirstChild;
   while Obj <> nil do
   begin
-    if (Obj is TImageGI)
-        and (TImageGI(Obj).GetImagePath
-            = 'GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformA') then
+    if (Obj is TImageGI) and (TImageGI(Obj).GetImagePath = 'GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformA') then
       TImageGI(Obj).SetImagePath('GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformN');
     Obj := Obj.NextSibling;
   end;
@@ -213,9 +206,7 @@ begin
   Obj := AwardsPanel.FirstChild;
   while Obj <> nil do
   begin
-    if (Obj is TImageGI)
-        and (TImageGI(Obj).GetImagePath
-            = 'GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformA') then
+    if (Obj is TImageGI) and (TImageGI(Obj).GetImagePath = 'GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformA') then
       TImageGI(Obj).SetImagePath('GI,Bm.FormRewards.' + GiResourceSuffix + 'PlatformN');
     Obj := Obj.NextSibling;
   end;
@@ -372,9 +363,7 @@ end;
 
 procedure TfRewards.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
   begin
     if (Key = VK_ESCAPE) or (Key = VK_RETURN) or (Key = Ord('R')) then
       CloseClicked(nil);
@@ -403,30 +392,21 @@ begin
     else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-        MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
       else
         MusicManager.PlayCategory('Nation.PiratePlanetMain');
     end
     else
-      MusicManager
-          .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
   end
   else if GetPlayer.IsDockedToShip then
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
     else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
     else
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-      );
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
   end
   else if GetPlayer.InNormalSpace then
   begin

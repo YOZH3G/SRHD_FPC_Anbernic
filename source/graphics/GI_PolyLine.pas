@@ -72,19 +72,9 @@ type
     procedure AllocatePixelBuffers(Segment: PPolyLineSegmentGI);
     procedure LoadPolyLineProperties(Block: TBlockParEC);
     procedure RebuildBounds;
-    function AddParentLine(
-        First: TPoint;
-        Last: TPoint;
-        Color: Cardinal;
-        UserData: Integer
-    ): PPolyLineSegmentGI;
+    function AddParentLine(First: TPoint; Last: TPoint; Color: Cardinal; UserData: Integer): PPolyLineSegmentGI;
     function AddLine(First: TPoint; Last: TPoint; Color: Cardinal): PPolyLineSegmentGI;
-    function AddLocalLine(
-        First: TPoint;
-        Last: TPoint;
-        Color: Cardinal;
-        UserData: Integer
-    ): PPolyLineSegmentGI;
+    function AddLocalLine(First: TPoint; Last: TPoint; Color: Cardinal; UserData: Integer): PPolyLineSegmentGI;
     procedure UpdateSegmentLength(Segment: PPolyLineSegmentGI);
     procedure RetireSegment(Segment: PPolyLineSegmentGI);
     procedure StartAnimation;
@@ -270,11 +260,7 @@ begin
   end;
 end;
 
-function TPolyLineGI.AddParentLine(
-    First, Last: TPoint;
-    Color: Cardinal;
-    UserData: Integer
-): PPolyLineSegmentGI;
+function TPolyLineGI.AddParentLine(First, Last: TPoint; Color: Cardinal; UserData: Integer): PPolyLineSegmentGI;
 var
   Segment: PPolyLineSegmentGI;
 begin
@@ -296,11 +282,7 @@ begin
   Result := AddLocalLine(First, Last, Color, 0);
 end;
 
-function TPolyLineGI.AddLocalLine(
-    First, Last: TPoint;
-    Color: Cardinal;
-    UserData: Integer
-): PPolyLineSegmentGI;
+function TPolyLineGI.AddLocalLine(First, Last: TPoint; Color: Cardinal; UserData: Integer): PPolyLineSegmentGI;
 var
   Segment: PPolyLineSegmentGI;
 begin
@@ -326,10 +308,8 @@ begin
   begin
     Segment.PixelCount := Count;
     Segment.PixelCapacity := Segment.PixelCount;
-    Segment.SavedPixels :=
-        ReAllocFromHeapREC(SegmentHeap, Segment.SavedPixels, Segment.PixelCount * 2 + 10);
-    Segment.PreviousPixels :=
-        ReAllocFromHeapREC(SegmentHeap, Segment.PreviousPixels, Segment.PixelCount * 2 + 10);
+    Segment.SavedPixels := ReAllocFromHeapREC(SegmentHeap, Segment.SavedPixels, Segment.PixelCount * 2 + 10);
+    Segment.PreviousPixels := ReAllocFromHeapREC(SegmentHeap, Segment.PreviousPixels, Segment.PixelCount * 2 + 10);
   end
   else
     Segment.PixelCount := Count;
@@ -431,19 +411,11 @@ begin
   while Segment <> nil do
   begin
     AllocatePixelBuffers(Segment);
-    Segment.PixelFirst :=
-        Classes.Point(Segment.First.X + AbsolutePosition.X, Segment.First.Y + AbsolutePosition.Y);
-    Segment.PixelLast :=
-        Classes.Point(Segment.Last.X + AbsolutePosition.X, Segment.Last.Y + AbsolutePosition.Y);
+    Segment.PixelFirst := Classes.Point(Segment.First.X + AbsolutePosition.X, Segment.First.Y + AbsolutePosition.Y);
+    Segment.PixelLast := Classes.Point(Segment.Last.X + AbsolutePosition.X, Segment.Last.Y + AbsolutePosition.Y);
     if Segment.Kind <> 2 then
     begin
-      if Ex_OKGR_Line_Clip(
-              Segment.PixelFirst.X,
-              Segment.PixelFirst.Y,
-              Segment.PixelLast.X,
-              Segment.PixelLast.Y,
-              Clip)
-          = 0 then
+      if Ex_OKGR_Line_Clip(Segment.PixelFirst.X, Segment.PixelFirst.Y, Segment.PixelLast.X, Segment.PixelLast.Y, Clip) = 0 then
         Segment.Visible := False
       else
         Segment.Visible := True;
@@ -493,10 +465,8 @@ begin
   Segment := FirstSegment;
   while Segment <> nil do
   begin
-    Segment.PixelFirst :=
-        Classes.Point(Segment.First.X + AbsolutePosition.X, Segment.First.Y + AbsolutePosition.Y);
-    Segment.PixelLast :=
-        Classes.Point(Segment.Last.X + AbsolutePosition.X, Segment.Last.Y + AbsolutePosition.Y);
+    Segment.PixelFirst := Classes.Point(Segment.First.X + AbsolutePosition.X, Segment.First.Y + AbsolutePosition.Y);
+    Segment.PixelLast := Classes.Point(Segment.Last.X + AbsolutePosition.X, Segment.Last.Y + AbsolutePosition.Y);
     DrawSegment(Segment, ClipRect);
     Segment := Segment.Next;
   end;
@@ -646,9 +616,7 @@ begin
         );
     end;
   end
-  else if (ShadowCircle.LightBuffer <> nil)
-      and (ShadowCircle.LightBuffer.GetPixels <> nil)
-      and Segment.Visible then
+  else if (ShadowCircle.LightBuffer <> nil) and (ShadowCircle.LightBuffer.GetPixels <> nil) and Segment.Visible then
   begin
     if not SkipSavedPixelRestore then
     begin
@@ -668,10 +636,7 @@ begin
             Segment.Color,
             AnimationPhase,
             ClipRect,
-            AddPointerOffset(
-                ShadowCircle.LightBuffer.GetPixels,
-                ShadowCircle.LightBuffer.PitchBytes * Y + X
-            ),
+            AddPointerOffset(ShadowCircle.LightBuffer.GetPixels, ShadowCircle.LightBuffer.PitchBytes * Y + X),
             ShadowCircle.LightBuffer.PitchBytes
         )
       else
@@ -681,10 +646,7 @@ begin
             Segment.Color,
             0,
             ClipRect,
-            AddPointerOffset(
-                ShadowCircle.LightBuffer.GetPixels,
-                ShadowCircle.LightBuffer.PitchBytes * Y + X
-            ),
+            AddPointerOffset(ShadowCircle.LightBuffer.GetPixels, ShadowCircle.LightBuffer.PitchBytes * Y + X),
             ShadowCircle.LightBuffer.PitchBytes
         );
     end

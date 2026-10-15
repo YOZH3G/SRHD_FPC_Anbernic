@@ -82,8 +82,7 @@ begin
   AimTick := ArcadeTickCount + 8;
   Thrust := 1;
   Phase := 2;
-  Image :=
-      ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w04b_f', 'GAI,Bm.AB.w04b_s', False);
+  Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w04b_f', 'GAI,Bm.AB.w04b_s', False);
   ab_WorldImage_SetFrameMode(Image, afmRandomStart);
   ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
 end;
@@ -145,8 +144,7 @@ begin
     if (Enemy <> nil) and (Bearing.Distance < 500) then
     begin
       Velocity := MakePointF(0, 0);
-      State.BearingDegrees :=
-          WrapHeadingDegrees(State.BearingDegrees + Bearing.BearingDeltaDegrees);
+      State.BearingDegrees := WrapHeadingDegrees(State.BearingDegrees + Bearing.BearingDeltaDegrees);
       Thrust := 3;
     end;
     Phase := 3;

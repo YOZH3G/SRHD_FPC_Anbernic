@@ -23,20 +23,19 @@ begin
   Initialized := False;
 end;
 
-function TGameFramePacer.Remaining(
-    Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal
-): QWord;
+function TGameFramePacer.Remaining(Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal): QWord;
 begin
-  if not Initialized or (CounterFrequency = 0) or (TargetFrameRate = 0)
-      or (Frequency <> CounterFrequency) or (FrameRate <> TargetFrameRate)
+  if not Initialized
+      or (CounterFrequency = 0)
+      or (TargetFrameRate = 0)
+      or (Frequency <> CounterFrequency)
+      or (FrameRate <> TargetFrameRate)
       or (Counter >= NextCounter) then
     Exit(0);
   Result := NextCounter - Counter;
 end;
 
-function TGameFramePacer.Ready(
-    Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal
-): Boolean;
+function TGameFramePacer.Ready(Counter, CounterFrequency: QWord; TargetFrameRate: Cardinal): Boolean;
 var
   Interval: QWord;
 begin

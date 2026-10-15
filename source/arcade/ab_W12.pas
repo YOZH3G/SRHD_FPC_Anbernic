@@ -92,11 +92,7 @@ begin
     if SourceObject <> nil then
       State :=
           AdvanceSphericalStateOnCurrentSphere(
-              MakeSphericalBearingState(
-                  SourceObject.State.LongitudeDegrees,
-                  SourceObject.State.PolarAngleDegrees,
-                  OrbitAngle
-              ),
+              MakeSphericalBearingState(SourceObject.State.LongitudeDegrees, SourceObject.State.PolarAngleDegrees, OrbitAngle),
               OrbitRadius
           );
     Velocity := MakePointF(0, 0);
@@ -109,8 +105,7 @@ begin
     if Collision = SourceObject then
       Collision := nil;
   end;
-  if ((ArcadeTickCount > ExpireTick) or (Collision <> nil) or (SourceObject = nil))
-      and not Exploding then
+  if ((ArcadeTickCount > ExpireTick) or (Collision <> nil) or (SourceObject = nil)) and not Exploding then
   begin
     if Collision <> nil then
       Collision.ApplyDamage(Damage, SourceObject, False);
@@ -141,8 +136,7 @@ begin
     end;
     if Entry = nil then
     begin
-      Entry :=
-          ab_WorldImage_Create(GetWorldPosition, 'GAI,Bm.AB.w12a_f', 'GAI,Bm.AB.w12a_s', False);
+      Entry := ab_WorldImage_Create(GetWorldPosition, 'GAI,Bm.AB.w12a_f', 'GAI,Bm.AB.w12a_s', False);
       ab_WorldImage_SetDepth(Entry, HitFrontDepth, HitBackDepth);
       ab_WorldImage_SetLooping(Entry, False);
       TrailImages.Add(Entry);

@@ -67,12 +67,7 @@ begin
   Self.Screen := Screen;
   AppendLogTextThreadSafe('fPanelPlanet... ');
   Panel := Self.Screen.GetByName('PanelPlanet');
-  Panel.SetPosition(
-      Classes.Point(
-          Panel.LocalPosition.X + ExtraScreenWidth,
-          Panel.LocalPosition.Y + ExtraScreenHeight
-      )
-  );
+  Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth, Panel.LocalPosition.Y + ExtraScreenHeight));
   AppendLogLineThreadSafe('ok');
   (Self.Screen.GetByName('PP_Hangar') as TGraphButtonGI).UpCallback := HangarClicked;
   (Self.Screen.GetByName('PP_Shop') as TGraphButtonGI).UpCallback := EquipmentShopClicked;
@@ -105,8 +100,7 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;
@@ -122,15 +116,13 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
-      and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad) and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
     if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
@@ -168,15 +160,13 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
-      and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad) and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
     if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
@@ -214,8 +204,7 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;
@@ -231,15 +220,13 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;
   if HasPendingScriptRequests then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad)
-      and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) <= rlBad) and not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
   begin
     if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       ShowMessageBoxGI(
@@ -277,8 +264,7 @@ begin
     Exit;
   if (ActiveLoadPanel <> nil) and ActiveLoadPanel.IsAnimatingShutters then
     Exit;
-  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile)
-      and (GovernmentScreen = Screen) then
+  if (GetPlayer.CurrentPlanet.GetRelationLevelToShip(GetPlayer) = rlHostile) and (GovernmentScreen = Screen) then
     Exit;
   if (GetPlayer.PendingDockDialogue > 1) and (GovernmentScreen = Screen) then
     Exit;

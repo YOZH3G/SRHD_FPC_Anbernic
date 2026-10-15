@@ -290,12 +290,7 @@ begin
   end;
   Text := Text + #13#10 + LocalizedColorText('Cheat.Ok');
   // Native code reads the total without a nil-galaxy guard.
-  ReplaceTextToken(
-      Text,
-      '<AllPoints>',
-      WideString(IntToStr(Galaxy.GetCheatPoints)),
-      TextHighlightColorTag
-  );
+  ReplaceTextToken(Text, '<AllPoints>', WideString(IntToStr(Galaxy.GetCheatPoints)), TextHighlightColorTag);
   if ShipScreen.IsOpen then
     Parent := ShipScreen
   else if RangerRatingScreen.IsOpen then
@@ -329,8 +324,7 @@ begin
     for I := 0 to GetPlayer.Inventory.Count - 1 do
     begin
       Item := GetPlayer.Inventory[I];
-      if (Item.ItemType = t_Hull)
-          or ((Item.EquippedFlag <> 0) and (Item.ConditionPercent < 90)) then
+      if (Item.ItemType = t_Hull) or ((Item.EquippedFlag <> 0) and (Item.ConditionPercent < 90)) then
         Item.Repair;
     end;
     for I := 0 to GetPlayer.Artefacts.Count - 1 do
@@ -433,8 +427,7 @@ begin
         begin
           Planet := Star.Planets[PlanetIndex];
           if Planet.OwnerId <> oiUninhabited then
-            while (Planet.Warriors.Count < RemapClamped(Planet.Radius, 60, 100, 2, 6))
-                and (Created < 500) do
+            while (Planet.Warriors.Count < RemapClamped(Planet.Radius, 60, 100, 2, 6)) and (Created < 500) do
             begin
               Planet.BuyWarrior(100);
               Inc(Created);
@@ -466,20 +459,14 @@ begin
       for ShipIndex := 0 to Star.Ships.Count - 1 do
       begin
         Ship := Star.Ships[ShipIndex];
-        if (Ship.OwnerId = oiDominator)
-            and (Ship.Order = soNone)
-            and Ship.InNormalSpace
-            and not Ship.HasIndependentScriptFaction then
+        if (Ship.OwnerId = oiDominator) and (Ship.Order = soNone) and Ship.InNormalSpace and not Ship.HasIndependentScriptFaction then
           Inc(Eligible);
       end;
       if Eligible > 2 then
         for ShipIndex := 0 to Star.Ships.Count - 1 do
         begin
           Ship := Star.Ships[ShipIndex];
-          if (Ship.OwnerId = oiDominator)
-              and (Ship.Order = soNone)
-              and Ship.InNormalSpace
-              and not Ship.HasIndependentScriptFaction then
+          if (Ship.OwnerId = oiDominator) and (Ship.Order = soNone) and Ship.InNormalSpace and not Ship.HasIndependentScriptFaction then
           begin
             Ship.OrderJump(GetPlayer.CurrentStar, True);
             Inc(Sent);
@@ -507,28 +494,20 @@ begin
     for DistanceIndex := 1 to Galaxy.Stars.Count - 1 do
     begin
       Star := GetPlayer.CurrentStar.StarDistances[DistanceIndex].Star;
-      if not ((Star.ControlFaction = sfPirates)
-          and (Star.Battle = 0)
-          and (Star.Status.CustomFaction = '')) then
+      if not ((Star.ControlFaction = sfPirates) and (Star.Battle = 0) and (Star.Status.CustomFaction = '')) then
         Continue;
       Eligible := 0;
       for ShipIndex := 0 to Star.Ships.Count - 1 do
       begin
         Ship := Star.Ships[ShipIndex];
-        if (Ship.OwnerId = oiPirate)
-            and (Ship.Order = soNone)
-            and Ship.InNormalSpace
-            and not Ship.HasIndependentScriptFaction then
+        if (Ship.OwnerId = oiPirate) and (Ship.Order = soNone) and Ship.InNormalSpace and not Ship.HasIndependentScriptFaction then
           Inc(Eligible);
       end;
       if Eligible > 2 then
         for ShipIndex := 0 to Star.Ships.Count - 1 do
         begin
           Ship := Star.Ships[ShipIndex];
-          if (Ship.OwnerId = oiPirate)
-              and (Ship.Order = soNone)
-              and Ship.InNormalSpace
-              and not Ship.HasIndependentScriptFaction then
+          if (Ship.OwnerId = oiPirate) and (Ship.Order = soNone) and Ship.InNormalSpace and not Ship.HasIndependentScriptFaction then
           begin
             Ship.OrderJump(GetPlayer.CurrentStar, True);
             Inc(Sent);
@@ -579,10 +558,7 @@ procedure CheatCoolweapon;
 var
   Item: TEquipment;
 begin
-  if (Galaxy <> nil)
-      and (CurrentScreenId <> screenShip)
-      and (GetPlayer <> nil)
-      and GetPlayer.IsOnPlanet then
+  if (Galaxy <> nil) and (CurrentScreenId <> screenShip) and (GetPlayer <> nil) and GetPlayer.IsOnPlanet then
   begin
     RestoreTemporaryShopStock;
     Item := TWeapon.Create;
@@ -609,20 +585,11 @@ var
   Item: TWeapon;
   Info: PWeaponInfo;
 begin
-  if (Galaxy <> nil)
-      and (CurrentScreenId <> screenShip)
-      and (GetPlayer <> nil)
-      and GetPlayer.IsOnPlanet then
+  if (Galaxy <> nil) and (CurrentScreenId <> screenShip) and (GetPlayer <> nil) and GetPlayer.IsOnPlanet then
   begin
     RestoreTemporaryShopStock;
     Info := Galaxy.SelectWeaponInfo(RandomIntRange(1, 100000), [waFree], 8, 1);
-    Item :=
-        CreateGeneratedWeapon(
-            Info,
-            RandomIntRange(14, 200),
-            RandomIntRange(1, 8),
-            RaceToOwner(GetPlayer.CurrentPlanet.RaceId)
-        );
+    Item := CreateGeneratedWeapon(Info, RandomIntRange(14, 200), RandomIntRange(1, 8), RaceToOwner(GetPlayer.CurrentPlanet.RaceId));
     GetPlayer.CurrentPlanet.EquipmentShop.Add(Item);
     Item.Cost := RandomIntRange(1, 10);
     if Item.Weight > 100 then
@@ -668,9 +635,7 @@ begin
     GetPlayer.Artefacts.Add(CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiHuman));
     GetPlayer.Artefacts.Add(CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiFeyan));
     GetPlayer.Artefacts.Add(CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiGaal));
-    GetPlayer.Artefacts.Add(
-        CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiUninhabited)
-    );
+    GetPlayer.Artefacts.Add(CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiUninhabited));
     GetPlayer.Artefacts.Add(CreateConfiguredArtefactByItemType(t_ArtefactTranclucator, oiPirate));
     GetPlayer.RefreshDerivedStats(True);
     ReportCheat(60, DecodeTextW('RFOCBIOLTQFNOCROCRE')); // 'ROBOTFORCE'
@@ -683,12 +648,7 @@ var
 begin
   if (Galaxy <> nil) and (GetPlayer <> nil) and (CurrentScreenId = screenArcadeBattle) then
   begin
-    Item :=
-        CreateRandomLootItem(
-            ilpAnyAvailable,
-            RaceToOwner(GetPlayer.HomePlanet.RaceId),
-            RandomIntRange(1, 1000000000)
-        );
+    Item := CreateRandomLootItem(ilpAnyAvailable, RaceToOwner(GetPlayer.HomePlanet.RaceId), RandomIntRange(1, 1000000000));
     if Item is TArtefact then
       GetPlayer.Artefacts.Add(Item)
     else
@@ -701,9 +661,7 @@ end;
 procedure CheatMoney;
 begin
   if (Galaxy <> nil) and (GetPlayer <> nil) then
-    if (GetPlayer.InNormalSpace
-            and (CurrentScreenId = screenStarMap)
-            and (StarMapScreen.Mode = smmOrders))
+    if (GetPlayer.InNormalSpace and (CurrentScreenId = screenStarMap) and (StarMapScreen.Mode = smmOrders))
         or (CurrentScreenId = screenPlanet)
         or (CurrentScreenId = screenPlanetNO)
         or (CurrentScreenId = screenGoodsShop)
@@ -797,8 +755,7 @@ begin
     begin
       Item := GetPlayer.Artefacts[I];
       if Item.ItemType = t_ArtefactTranclucator then
-        TTranclucator((Item as TArtefactTranclucator).Ship).ArtefactSize :=
-            Max(1, Item.Weight div 2);
+        TTranclucator((Item as TArtefactTranclucator).Ship).ArtefactSize := Max(1, Item.Weight div 2);
       Item.Weight := Max(1, Item.Weight div 2);
     end;
     GetPlayer.RefreshDerivedStats(True);
@@ -872,8 +829,7 @@ begin
           begin
             for K := 1 to Ship.WeaponCount do
             begin
-              Ship.Weapons[K].MaxDamage :=
-                  Min(255, Ship.Weapons[K].MaxDamage + RandomIntRange(10, 20));
+              Ship.Weapons[K].MaxDamage := Min(255, Ship.Weapons[K].MaxDamage + RandomIntRange(10, 20));
               if GetPlayer <> Ship then
                 Ship.ChangeRelationToRanger(GetPlayer, 50);
             end;
@@ -1037,9 +993,7 @@ end;
 procedure CheatHugemoney;
 begin
   if (Galaxy <> nil) and (GetPlayer <> nil) then
-    if (GetPlayer.InNormalSpace
-            and (CurrentScreenId = screenStarMap)
-            and (StarMapScreen.Mode = smmOrders))
+    if (GetPlayer.InNormalSpace and (CurrentScreenId = screenStarMap) and (StarMapScreen.Mode = smmOrders))
         or (CurrentScreenId = screenPlanet)
         or (CurrentScreenId = screenPlanetNO)
         or (CurrentScreenId = screenGoodsShop)
@@ -1111,10 +1065,7 @@ begin
     if (CurrentScreenId = screenArcadeBattle) and (KellerArcadeShip = nil) then
       for I := PlayerArcadeShip.Enemies.Count - 1 downto 0 do
         TabHit(PlayerArcadeShip.Enemies[I])
-            .ApplyDamage(
-                Round(TabHit(PlayerArcadeShip.Enemies[I]).Health * 2 / ShieldDamageScale),
-                nil,
-                False);
+            .ApplyDamage(Round(TabHit(PlayerArcadeShip.Enemies[I]).Health * 2 / ShieldDamageScale), nil, False);
     if CurrentScreenId = screenStarMap then
       for I := 0 to GetPlayer.CurrentStar.Ships.Count - 1 do
       begin
@@ -1209,12 +1160,7 @@ begin
       Info := Galaxy.CustomWeaponTypes[I];
       if Info.Availability <> waSystemOnly then
         GetPlayer.Inventory.Add(
-            CreateGeneratedWeapon(
-                Info,
-                Round(Info.AverageSize * EquipmentSizeFactors[5]),
-                Galaxy.TechLevel,
-                GetPlayer.OwnerId
-            )
+            CreateGeneratedWeapon(Info, Round(Info.AverageSize * EquipmentSizeFactors[5]), Galaxy.TechLevel, GetPlayer.OwnerId)
         );
     end;
     ReportCheat(10, DecodeTextW('GOUMNO')); // 'GUN'
@@ -1245,12 +1191,7 @@ begin
   begin
     for Kind := t_FuelTanks to t_DefGenerator do
       GetPlayer.Inventory.Add(
-          CreateGeneratedEquipment(
-              Kind,
-              Round(GetAverageItemSize(Kind) * EquipmentSizeFactors[5]),
-              8,
-              GetPlayer.OwnerId
-          )
+          CreateGeneratedEquipment(Kind, Round(GetAverageItemSize(Kind) * EquipmentSizeFactors[5]), 8, GetPlayer.OwnerId)
       );
     ReportCheat(10, DecodeTextW('DREAVNIYCHER')); // 'DEVICE'
   end;
@@ -1266,12 +1207,7 @@ begin
     for I := 0 to Length(ArtefactLootPools[ilpAnyAvailable]) - 1 do
     begin
       Item :=
-          TObject(
-                  CreateConfiguredArtefactByItemType(
-                      ArtefactLootPools[ilpAnyAvailable][I],
-                      GetPlayer.OwnerId
-                  ))
-              as TEquipmentWithActCode;
+          TObject(CreateConfiguredArtefactByItemType(ArtefactLootPools[ilpAnyAvailable][I], GetPlayer.OwnerId)) as TEquipmentWithActCode;
       GetPlayer.Artefacts.Add(Item);
     end;
     for I := 0 to Length(CustomArtefactLootPools[ilpAnyAvailable]) - 1 do
@@ -1409,8 +1345,7 @@ begin
     for I := 0 to Galaxy.Constellations.Count - 1 do
     begin
       Constellation := Galaxy.Constellations[I];
-      if (MainPiratePlanet = nil)
-          or (MainPiratePlanet.CurrentStar.Constellation <> Constellation) then
+      if (MainPiratePlanet = nil) or (MainPiratePlanet.CurrentStar.Constellation <> Constellation) then
         Constellation.Visible := True;
     end;
     ReportCheat(10, DecodeTextW('SIHSONWEMEANPA')); // 'SHOWMAP'
@@ -1572,11 +1507,7 @@ begin
       Hole.Star2 := GetPlayer.CurrentStar;
       Hole.ArcadeMapName := MapName;
       Angle := ArcTan2(GetPlayer.Position.X, -GetPlayer.Position.Y);
-      Radius :=
-          Max(
-              GetPlayer.CurrentStar.SafeRadius + 100,
-              Sqrt(PointDistanceSquared(GetPlayer.Position, MakePointF(0, 0))) + 200
-          );
+      Radius := Max(GetPlayer.CurrentStar.SafeRadius + 100, Sqrt(PointDistanceSquared(GetPlayer.Position, MakePointF(0, 0))) + 200);
       Hole.Position1 := MakePointF(Sin(Angle) * Radius, -Cos(Angle) * Radius);
       Angle := HeadingDegreesToRadians(RandomIntRange(0, 359));
       Radius := RandomIntRange(1000, 2000);
@@ -1632,15 +1563,9 @@ begin
           begin
             AmmoCapacity := CalculateGeneratedAmmoCapacity;
             if MicroModuleIndex <> 0 then
-              Inc(
-                  AmmoCapacity,
-                  MicroModuleTemplates[Item.MicroModuleIndex - 1].StatBonuses[bonAmmo]
-              );
+              Inc(AmmoCapacity, MicroModuleTemplates[Item.MicroModuleIndex - 1].StatBonuses[bonAmmo]);
             if SpecialModuleIndex <> 0 then
-              Inc(
-                  AmmoCapacity,
-                  MicroModuleTemplates[Item.SpecialModuleIndex - 1].StatBonuses[bonAmmo]
-              );
+              Inc(AmmoCapacity, MicroModuleTemplates[Item.SpecialModuleIndex - 1].StatBonuses[bonAmmo]);
           end;
         end;
     end;
@@ -1670,10 +1595,7 @@ begin
   begin
     for I := 1 to 10 do
     begin
-      Item :=
-          TArtefactTransmitter(
-              CreateConfiguredArtefactByItemType(t_ArtefactTransmitter, GetPlayer.OwnerId)
-          );
+      Item := TArtefactTransmitter(CreateConfiguredArtefactByItemType(t_ArtefactTransmitter, GetPlayer.OwnerId));
       Item.Power := 100;
       GetPlayer.Artefacts.Add(Item);
     end;
@@ -1780,8 +1702,7 @@ begin
   if (Galaxy <> nil) and Galaxy.CheatsDisabled then
     Exit;
   // The native subtract/test chain is DCC32 set membership, not a case statement.
-  if not (TurnCalculationPhase
-      in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
+  if not (TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
     Exit;
   while True do
   begin
@@ -1944,14 +1865,7 @@ begin
   if Galaxy <> nil then
     Galaxy.CheckIntegrityChecksum(888);
   Value := '';
-  if ShowTextInputDialog(
-          RegisteredScreens[CurrentScreenId] as TMessageLoopGI,
-          'Enter script command',
-          Value,
-          255,
-          0,
-          0)
-      = 1 then
+  if ShowTextInputDialog(RegisteredScreens[CurrentScreenId] as TMessageLoopGI, 'Enter script command', Value, 255, 0, 0) = 1 then
     try
       Count := Length(Value);
       if Count > 0 then
@@ -1998,11 +1912,7 @@ begin
       end;
     except
       on E: Exception do
-        ShowMessageBoxGI(
-            RegisteredScreens[CurrentScreenId] as TMessageLoopGI,
-            E.Message,
-            mbgCancel
-        );
+        ShowMessageBoxGI(RegisteredScreens[CurrentScreenId] as TMessageLoopGI, E.Message, mbgCancel);
     end;
   if Galaxy <> nil then
     Galaxy.PrimeIntegrityChecksum(889);
@@ -2023,9 +1933,7 @@ begin
     begin
       Event := Galaxy.GalaxyEvents[Index];
       AppendLogLineThreadSafe(AnsiString(Event.EventType));
-      AppendLogLineThreadSafe(
-          AnsiString(FormatGameTurnDate(Event.Turn) + ' (' + IntToStr(Event.Turn) + ')')
-      );
+      AppendLogLineThreadSafe(AnsiString(FormatGameTurnDate(Event.Turn) + ' (' + IntToStr(Event.Turn) + ')'));
       if Event.TextData <> nil then
       begin
         AppendLogLineThreadSafe('  Text data:');
@@ -2132,30 +2040,22 @@ initialization
   CheatEntries.AddCheat(DecodeTextW('WIAGRARUILOIRAMOARX9'), CheatWarriormax); // 'WARRIORMAX'
   CheatEntries.AddCheat(DecodeTextW('KOLEINSOSUAINOCRABLELS'), CheatKlissancall); // 'KLISSANCALL'
   CheatEntries.AddCheat(DecodeTextW('PAIORNAMTZEXCOASLOL'), CheatPiratecall); // 'PIRATECALL'
-  CheatEntries
-      .AddCheat(DecodeTextW('RIALNOGDEPROPRONIHNITIS'), CheatRangerpoints); // 'RANGERPOINTS'
+  CheatEntries.AddCheat(DecodeTextW('RIALNOGDEPROPRONIHNITIS'), CheatRangerpoints); // 'RANGERPOINTS'
   CheatEntries.AddCheat(DecodeTextW('NIETXATARNARNAK'), CheatNextrank); // 'NEXTRANK'
   CheatEntries.AddCheat(DecodeTextW('CRONOBLAWSENAIPROSN'), CheatCoolweapon); // 'COOLWEAPON'
-  CheatEntries
-      .AddCheat(DecodeTextW('LLOYWACSONSETIWIEFAIPROLNO'), CheatLowcostweapon); // 'LOWCOSTWEAPON'
+  CheatEntries.AddCheat(DecodeTextW('LLOYWACSONSETIWIEFAIPROLNO'), CheatLowcostweapon); // 'LOWCOSTWEAPON'
   CheatEntries.AddCheat(DecodeTextW('BRODMEB'), CheatBomb); // 'BOMB'
   CheatEntries.AddCheat(DecodeTextW('ASRATIENFOARCAT'), CheatArtefact); // 'ARTEFACT'
   CheatEntries.AddCheat(DecodeTextW('MEOLNIERYE'), CheatMoney); // 'MONEY'
   CheatEntries.AddCheat(DecodeTextW('DIRIOSPA'), CheatDrop); // 'DROP'
   CheatEntries.AddCheat(DecodeTextW('PRANCIKCIINEG'), CheatPacking); // 'PACKING'
   CheatEntries.AddCheat(DecodeTextW('KALKINSOSUANNIINTHEMM'), CheatKlissanitem); // 'KLISSANITEM'
-  CheatEntries.AddCheat(
-      DecodeTextW('WRENARPBOSNASOTERLEINAGATOHE'),
-      CheatWeaponstrength
-  ); // 'WEAPONSTRENGTH'
+  CheatEntries.AddCheat(DecodeTextW('WRENARPBOSNASOTERLEINAGATOHE'), CheatWeaponstrength); // 'WEAPONSTRENGTH'
   CheatEntries.AddCheat(DecodeTextW('TIECN0BEOAMOB'), CheatTenbomb); // 'TENBOMB'
   CheatEntries.AddCheat(DecodeTextW('RONNDOBNASSAEY'), CheatRndbase); // 'RNDBASE'
   CheatEntries.AddCheat(DecodeTextW('MOARPESHESCOTROLR2'), CheatMapsector); // 'MAPSECTOR'
   CheatEntries.AddCheat(DecodeTextW('HAUNGLESMIOMNEELYS'), CheatHugemoney); // 'HUGEMONEY'
-  CheatEntries.AddCheat(
-      DecodeTextW('PLEVLIESNOGASRUEROPTROINSAEN'),
-      CheatPelengsurprise
-  ); // 'PELENGSURPRISE'
+  CheatEntries.AddCheat(DecodeTextW('PLEVLIESNOGASRUEROPTROINSAEN'), CheatPelengsurprise); // 'PELENGSURPRISE'
   CheatEntries.AddCheat(DecodeTextW('SRUNPRESROHLUALELS'), CheatSuperhull); // 'SUPERHULL'
   CheatEntries.AddCheat(DecodeTextW('BLOSOMM'), CheatBoom); // 'BOOM'
   CheatEntries.AddCheat(DecodeTextW('HEAVTIERROASNAGZEOROST'), CheatHaterangers); // 'HATERANGERS'
@@ -2190,8 +2090,7 @@ initialization
   CheatEntries.AddCheat(DecodeTextW('FLITTONLEISES'), CheatFitness); // 'FITNESS'
   CheatEntries.AddCheat(DecodeTextW('EIXATIRIANORNAEL'), CheatExtraone); // 'EXTRAONE'
   CheatEntries.AddCheat(DecodeTextW('RFOCBIOLTQFNOCROCRE'), CheatRobotforce); // 'ROBOTFORCE'
-  CheatEntries
-      .AddCheat(DecodeTextW('RIALNEGREFRESIDUREEKALMA'), CheatRangersdream); // 'RANGERSDREAM'
+  CheatEntries.AddCheat(DecodeTextW('RIALNEGREFRESIDUREEKALMA'), CheatRangersdream); // 'RANGERSDREAM'
   CheatEntries.AddCheat(DecodeTextW('MOABKREIDLUCMEPT'), CheatMakedump); // 'MAKEDUMP'
   CheatEntries.AddCheat(DecodeTextW('SAENEEDO'), CheatSeed); // 'SEED'
   CheatEntries.AddCheat('SUDO', CheatSudo);

@@ -137,12 +137,7 @@ begin
   if Block.CountParams('Size') > 0 then
   begin
     Text := Block.GetParam('Size');
-    SetSize(
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(Text, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(Text, 1, ','))
-        )
-    );
+    SetSize(Classes.Point(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), StrToInt(ExtractDelimitedPartW(Text, 1, ','))));
   end;
   if Block.CountParams('KindX') > 0 then
     SetImageKindX(ParseImageKindXName(Block.GetParam('KindX')));
@@ -168,12 +163,7 @@ begin
   if Block.CountParams('Size') > 0 then
   begin
     Text := Block.GetParam('Size');
-    SetSize(
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(Text, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(Text, 1, ','))
-        )
-    );
+    SetSize(Classes.Point(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), StrToInt(ExtractDelimitedPartW(Text, 1, ','))));
   end;
   if Block.CountParams('KindX') > 0 then
     SetImageKindX(ParseImageKindXName(Block.GetParam('KindX')));
@@ -261,15 +251,7 @@ begin
       X := Left;
       while (X < Right) do
       begin
-        DrawTransparentBuffer16(
-            ScreenRenderBuffer.GetPixels,
-            ScreenRenderBuffer.PitchBytes,
-            X,
-            Y,
-            Bitmap.TransBuffer,
-            ClipRect,
-            HalfAlpha
-        );
+        DrawTransparentBuffer16(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, Bitmap.TransBuffer, ClipRect, HalfAlpha);
         Inc(X, Width);
       end;
       Inc(Y, Height);

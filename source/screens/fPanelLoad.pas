@@ -106,28 +106,13 @@ begin
       SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     with Panel.FindByNameRecursive('LoadAnim') as TgaiGI do
     begin
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
       StopAutoPlayback;
     end;
     with Panel.FindByNameRecursive('LoadAnimText') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
     with Panel.FindByNameRecursive('PLProgress') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
     with Panel.FindByNameRecursive('PLBar') do
       SetActive(False);
     LayoutAdjusted := True;
@@ -154,11 +139,7 @@ begin
   LeftShutter := Self.Screen.FindControlByPath('PLLeft') as TPanelGI;
   TopShutter := Self.Screen.FindControlByPath('PLTop') as TPanelGI;
   BottomShutter := Self.Screen.FindControlByPath('PLBottom') as TPanelGI;
-  HasShutters :=
-      (RightShutter <> nil)
-          and (LeftShutter <> nil)
-          and (TopShutter <> nil)
-          and (BottomShutter <> nil);
+  HasShutters := (RightShutter <> nil) and (LeftShutter <> nil) and (TopShutter <> nil) and (BottomShutter <> nil);
   if HasShutters then
   begin
     RightShutter.SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
@@ -168,10 +149,7 @@ begin
     Self.Screen.GetByName('PLRightImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     Self.Screen.GetByName('PLLeftImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
     Self.Screen.GetByName('PLTopImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
-    Self
-        .Screen
-        .GetByName('PLBottomImage')
-        .SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
+    Self.Screen.GetByName('PLBottomImage').SetSize(Classes.Point(Self.Screen.LayoutSize.X, Self.Screen.LayoutSize.Y));
   end;
 end;
 
@@ -191,18 +169,10 @@ begin
       or ((PreviousScreenId = screenLoad) and (CurrentScreenId = screenMainMenu) and SkipVideo)
       or ((PreviousScreenId = screenGameLoad) and (CurrentScreenId <> screenLoad))
       or ((CurrentScreenId
-              in [
-                  screenHangar,
-                  screenPlanet,
-                  screenPlanetNO,
-                  screenEquipmentShop,
-                  screenGovernment,
-                  screenRuinsTalk,
-                  screenInfo])
+              in [screenHangar, screenPlanet, screenPlanetNO, screenEquipmentShop, screenGovernment, screenRuinsTalk, screenInfo])
           and (PreviousScreenId = screenStarMap)
           and (GetPlayer.RuinsMode = 0))
-      or ((CurrentScreenId in [screenStarMap, screenRuinsTalk])
-          and (PreviousScreenId in [screenJump, screenArcadeBattle]))
+      or ((CurrentScreenId in [screenStarMap, screenRuinsTalk]) and (PreviousScreenId in [screenJump, screenArcadeBattle]))
       or ((CurrentScreenId = screenArcadeBattle) and (PreviousScreenId = screenStarMap)) then
   begin
     PreviousScreenId := screenNone;
@@ -268,21 +238,17 @@ var
   Style: WideString;
 begin
   if not HasShutters then
-    (BackgroundImage as TImageGI)
-        .SetImagePath('GI,Bm.FormLoad2.Style' + IntToStr(LoadScreen.BackgroundStyle))
+    (BackgroundImage as TImageGI).SetImagePath('GI,Bm.FormLoad2.Style' + IntToStr(LoadScreen.BackgroundStyle))
   else
   begin
     if LoadScreen.BackgroundStyle < 10 then
       Style := '0' + IntToStr(LoadScreen.BackgroundStyle)
     else
       Style := IntToStr(LoadScreen.BackgroundStyle);
-    (Screen.GetByName('PLRightImage') as TImageGI)
-        .SetImagePath('GI,Bm.FormLoad2.ShutterRight' + Style);
-    (Screen.GetByName('PLLeftImage') as TImageGI)
-        .SetImagePath('GI,Bm.FormLoad2.ShutterLeft' + Style);
+    (Screen.GetByName('PLRightImage') as TImageGI).SetImagePath('GI,Bm.FormLoad2.ShutterRight' + Style);
+    (Screen.GetByName('PLLeftImage') as TImageGI).SetImagePath('GI,Bm.FormLoad2.ShutterLeft' + Style);
     (Screen.GetByName('PLTopImage') as TImageGI).SetImagePath('GI,Bm.FormLoad2.ShutterTop' + Style);
-    (Screen.GetByName('PLBottomImage') as TImageGI)
-        .SetImagePath('GI,Bm.FormLoad2.ShutterBottom' + Style);
+    (Screen.GetByName('PLBottomImage') as TImageGI).SetImagePath('GI,Bm.FormLoad2.ShutterBottom' + Style);
   end;
 end;
 
@@ -297,31 +263,17 @@ begin
     ProgressSegments[I].SetActive(False);
   ProgressLabel.SetText(IntToStr(Round(Fraction * 100 + 0.5)) + '%');
   with Screen.GetByName('LoadAnim') as TgaiGI do
-    SetSequenceFrame(
-        Round((SequenceFrameCount - 1) * Fraction * 2 + 3) mod (SequenceFrameCount - 1)
-    );
+    SetSequenceFrame(Round((SequenceFrameCount - 1) * Fraction * 2 + 3) mod (SequenceFrameCount - 1));
 end;
 
 procedure TfPanelLoad.SetShutterOpenFraction(Fraction: Single);
 begin
   if not HasShutters then
     Exit;
-  LeftShutter.SetPosition(
-      Classes
-          .Point(-Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), LeftShutter.LocalPosition.Y)
-  );
-  RightShutter.SetPosition(
-      Classes
-          .Point(Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), RightShutter.LocalPosition.Y)
-  );
-  TopShutter.SetPosition(
-      Classes
-          .Point(TopShutter.LocalPosition.X, -Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.61))
-  );
-  BottomShutter.SetPosition(
-      Classes
-          .Point(BottomShutter.LocalPosition.X, Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.39))
-  );
+  LeftShutter.SetPosition(Classes.Point(-Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), LeftShutter.LocalPosition.Y));
+  RightShutter.SetPosition(Classes.Point(Round(Cardinal(Self.Screen.LayoutSize.X) * Fraction * 0.34), RightShutter.LocalPosition.Y));
+  TopShutter.SetPosition(Classes.Point(TopShutter.LocalPosition.X, -Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.61)));
+  BottomShutter.SetPosition(Classes.Point(BottomShutter.LocalPosition.X, Round(Cardinal(Self.Screen.LayoutSize.Y) * Fraction * 0.39)));
 end;
 
 procedure TfPanelLoad.StartOpeningShutters;

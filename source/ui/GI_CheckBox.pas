@@ -75,18 +75,9 @@ end;
 procedure TCheckBoxGI.SetSize(Size: TPoint);
 begin
   inherited SetSize(Size);
-  CheckedImage.SetPosition(
-      Classes.Point(
-          Size.X div 2 - CheckedImage.ClientSize.X div 2,
-          Size.Y div 2 - CheckedImage.ClientSize.Y div 2
-      )
-  );
-  UncheckedImage.SetPosition(
-      Classes.Point(
-          Size.X div 2 - UncheckedImage.ClientSize.X div 2,
-          Size.Y div 2 - UncheckedImage.ClientSize.Y div 2
-      )
-  );
+  CheckedImage.SetPosition(Classes.Point(Size.X div 2 - CheckedImage.ClientSize.X div 2, Size.Y div 2 - CheckedImage.ClientSize.Y div 2));
+  UncheckedImage
+      .SetPosition(Classes.Point(Size.X div 2 - UncheckedImage.ClientSize.X div 2, Size.Y div 2 - UncheckedImage.ClientSize.Y div 2));
 end;
 
 procedure TCheckBoxGI.RefreshStateImages;
@@ -96,16 +87,10 @@ begin
   UncheckedImage.SetImagePath(ConfigPath + '.IUnchecked');
   UncheckedImage.SetSize(UncheckedImage.GetContentSize);
   CheckedImage.SetPosition(
-      Classes.Point(
-          ClientSize.X div 2 - CheckedImage.ClientSize.X div 2,
-          ClientSize.Y div 2 - CheckedImage.ClientSize.Y div 2
-      )
+      Classes.Point(ClientSize.X div 2 - CheckedImage.ClientSize.X div 2, ClientSize.Y div 2 - CheckedImage.ClientSize.Y div 2)
   );
   UncheckedImage.SetPosition(
-      Classes.Point(
-          ClientSize.X div 2 - UncheckedImage.ClientSize.X div 2,
-          ClientSize.Y div 2 - UncheckedImage.ClientSize.Y div 2
-      )
+      Classes.Point(ClientSize.X div 2 - UncheckedImage.ClientSize.X div 2, ClientSize.Y div 2 - UncheckedImage.ClientSize.Y div 2)
   );
 end;
 

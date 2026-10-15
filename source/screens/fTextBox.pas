@@ -120,12 +120,7 @@ begin
   CancelButton.SetImageNormalActivePath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelA');
   CancelButton.SetImageDownPath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelD');
   CancelButton.SetSize(CancelButton.GetMaxStateImageSize);
-  CancelButton.SetPosition(
-      Classes.Point(
-          Size.X div 2 + GiScalePixels(5),
-          Size.Y - Insets.Bottom - CancelButton.ClientSize.Y
-      )
-  );
+  CancelButton.SetPosition(Classes.Point(Size.X div 2 + GiScalePixels(5), Size.Y - Insets.Bottom - CancelButton.ClientSize.Y));
   CancelButton.HitKind := gbhRect;
   CancelButton.UpdateStateImagePlacement;
   CancelButton.UpdateStateVisuals;
@@ -146,11 +141,7 @@ begin
   CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
   CaptionLabel.SetFontName(NormalBoldFontName);
   CaptionLabel.SetText(
-      ReplaceAllWideString(
-          ReplaceAllWideString(Caption, TextHighlightColorTag, DialogHighlightColorTag),
-          GreenColorTag,
-          YellowColorTag
-      )
+      ReplaceAllWideString(ReplaceAllWideString(Caption, TextHighlightColorTag, DialogHighlightColorTag), GreenColorTag, YellowColorTag)
   );
   Edit := TEditGI.Create(ContentPanel);
   with Edit do

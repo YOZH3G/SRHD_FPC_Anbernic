@@ -15,12 +15,7 @@ function GetProcessHeap: TGameHeapHandle;
 function HeapCreate(Flags: Cardinal; InitialSize, MaximumSize: SizeUInt): TGameHeapHandle;
 function HeapDestroy(Heap: TGameHeapHandle): Boolean;
 function HeapAlloc(Heap: TGameHeapHandle; Flags: Cardinal; ByteCount: SizeUInt): Pointer;
-function HeapReAlloc(
-    Heap: TGameHeapHandle;
-    Flags: Cardinal;
-    Data: Pointer;
-    ByteCount: SizeUInt
-): Pointer;
+function HeapReAlloc(Heap: TGameHeapHandle; Flags: Cardinal; Data: Pointer; ByteCount: SizeUInt): Pointer;
 function HeapFree(Heap: TGameHeapHandle; Flags: Cardinal; Data: Pointer): Boolean;
 
 implementation
@@ -128,12 +123,7 @@ begin
   end;
 end;
 
-function HeapReAlloc(
-    Heap: TGameHeapHandle;
-    Flags: Cardinal;
-    Data: Pointer;
-    ByteCount: SizeUInt
-): Pointer;
+function HeapReAlloc(Heap: TGameHeapHandle; Flags: Cardinal; Data: Pointer; ByteCount: SizeUInt): Pointer;
 var
   Owner: TGameHeap;
   Block, Resized, Prev, Next: PHeapBlock;

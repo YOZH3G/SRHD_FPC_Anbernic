@@ -59,13 +59,7 @@ type
     function GetWeaponInfo: PWeaponInfo; virtual;
     constructor Create;
     destructor Destroy; override;
-    procedure InitializeShot(
-        Star: TStar;
-        OwnerShip: TShip;
-        Weapon: TWeapon;
-        Target: TObject;
-        ShotIndex: Integer
-    );
+    procedure InitializeShot(Star: TStar; OwnerShip: TShip; Weapon: TWeapon; Target: TObject; ShotIndex: Integer);
     procedure InitializeUnownedShot(
         Star: TStar;
         Target: TObject;
@@ -83,12 +77,7 @@ type
     function GetGraphObject: TObjectSE;
     procedure PrepareTurnMovement(StepIndex: Integer; RecordFilm: Boolean; PlayShotSound: Boolean);
     function StepDay(StepIndex: Integer; RecordFilm: Boolean): TObject;
-    function TryReturnToOwner(
-        StepIndex: Integer;
-        RecordFilm: Boolean;
-        PreviousPosition: TPointF;
-        Ship: TShip
-    ): Boolean;
+    function TryReturnToOwner(StepIndex: Integer; RecordFilm: Boolean; PreviousPosition: TPointF; Ship: TShip): Boolean;
     procedure RetargetTorpedo;
     function GetDisplayName: WideString;
     function GetInfoText: WideString;
@@ -103,13 +92,7 @@ type
     procedure LoadFromBuffer(Buffer: TBufEC; World: TGalaxy); override;
     function GetGraphSuffix: WideString; override;
     function GetWeaponInfo: PWeaponInfo; override;
-    procedure InitializeShot(
-        Star: TStar;
-        OwnerShip: TShip;
-        Weapon: TWeapon;
-        Target: TObject;
-        ShotIndex: Integer
-    );
+    procedure InitializeShot(Star: TStar; OwnerShip: TShip; Weapon: TWeapon; Target: TObject; ShotIndex: Integer);
     procedure InitializeUnownedShot(
         Star: TStar;
         Target: TObject;
@@ -171,13 +154,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TMissile.InitializeShot(
-    Star: TStar;
-    OwnerShip: TShip;
-    Weapon: TWeapon;
-    Target: TObject;
-    ShotIndex: Integer
-);
+procedure TMissile.InitializeShot(Star: TStar; OwnerShip: TShip; Weapon: TWeapon; Target: TObject; ShotIndex: Integer);
 var
   DY, DX: Single;
   ShotCount, SpeedBonus, SpecialBonus: Integer;
@@ -200,23 +177,9 @@ begin
   begin
     Inc(SpeedBonus, MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonMissileSpeed]);
     if SpecialBonus < 0 then
-      Inc(
-          SpecialBonus,
-          Round(
-              SpecialBonus
-                  * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinPenalty]
-                  * 0.0001
-          )
-      )
+      Inc(SpecialBonus, Round(SpecialBonus * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinPenalty] * 0.0001))
     else
-      Inc(
-          SpecialBonus,
-          Round(
-              SpecialBonus
-                  * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinEff]
-                  * 0.0001
-          )
-      );
+      Inc(SpecialBonus, Round(SpecialBonus * MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[bonExtraAkrinEff] * 0.0001));
   end;
   Inc(SpeedBonus, SpecialBonus);
   TechLevel := Weapon.TechLevel;
@@ -226,8 +189,7 @@ begin
   Position := OwnerShip.Position;
   if ShotIndex > 0 then
   begin
-    Direction :=
-        Direction - 60 / (ShotCount + 3) * ((ShotIndex + 1) div 2) * (2 * (ShotIndex mod 2) - 1);
+    Direction := Direction - 60 / (ShotCount + 3) * ((ShotIndex + 1) div 2) * (2 * (ShotIndex mod 2) - 1);
     DX := Sin(HeadingDegreesToRadians(Direction));
     DY := -Cos(HeadingDegreesToRadians(Direction));
     Position := MakePointF(Position.X + -DX * 8, Position.Y + -DY * 8);
@@ -235,23 +197,11 @@ begin
   MaximumSpeed :=
       Max(
           GetWeaponInfo.MissileMinSpeed div 10,
-          RemapClamped(
-                  TechLevel,
-                  1,
-                  8,
-                  GetWeaponInfo.MissileMinSpeed,
-                  GetWeaponInfo.MissileMaxSpeed)
-              + SpeedBonus
+          RemapClamped(TechLevel, 1, 8, GetWeaponInfo.MissileMinSpeed, GetWeaponInfo.MissileMaxSpeed) + SpeedBonus
       );
 end;
 
-procedure TCustomMissile.InitializeShot(
-    Star: TStar;
-    OwnerShip: TShip;
-    Weapon: TWeapon;
-    Target: TObject;
-    ShotIndex: Integer
-);
+procedure TCustomMissile.InitializeShot(Star: TStar; OwnerShip: TShip; Weapon: TWeapon; Target: TObject; ShotIndex: Integer);
 begin
   WeaponInfo := Weapon.GetWeaponInfo;
   inherited InitializeShot(Star, OwnerShip, Weapon, Target, ShotIndex);
@@ -406,9 +356,7 @@ procedure TMissile.LoadFromBuffer(Buffer: TBufEC; World: TGalaxy);
 var
   ModuleNumber: Integer;
 
-  function FindLegacyMissileMicroModuleIndex(
-      ConfigNumber: Integer
-  ): Integer; { Nested legacy lookup; caller pops the unused static link. }
+  function FindLegacyMissileMicroModuleIndex(ConfigNumber: Integer): Integer; { Nested legacy lookup; caller pops the unused static link. }
   var
     I: Integer;
   begin
@@ -509,8 +457,7 @@ begin
   if LoadedSaveVersion >= 95 then
     MaximumSpeed := Buffer.GetSingle
   else
-    MaximumSpeed :=
-        RemapClamped(TechLevel, 1, 8, GetWeaponInfo.MissileMinSpeed, GetWeaponInfo.MissileMaxSpeed);
+    MaximumSpeed := RemapClamped(TechLevel, 1, 8, GetWeaponInfo.MissileMinSpeed, GetWeaponInfo.MissileMaxSpeed);
   SavedPreviousTargetKind := TMissileTargetKind(Buffer.GetByte);
   if SavedPreviousTargetKind = mtkNone then
     PreviousTarget := nil
@@ -553,10 +500,7 @@ function TMissile.GetGraphObject: TObjectSE;
 begin
   if Graphic = nil then
   begin
-    RetainSpaceObject(
-        Graphic,
-        CreateSpaceObjectByName('Missile', 'Missile.w' + GetGraphSuffix, Classes.Point(0, 0))
-    );
+    RetainSpaceObject(Graphic, CreateSpaceObjectByName('Missile', 'Missile.w' + GetGraphSuffix, Classes.Point(0, 0)));
     Graphic.SetPosition(Position);
     Graphic.SetAngle(HeadingDegreesToByte(Direction));
     Graphic.SetAlpha(255);
@@ -580,9 +524,7 @@ begin
       if Self is TCustomMissile then
         Config := GameDataConfig.GetBlockByPath('SE.' + GetWeaponInfo.PrimarySE)
       else
-        Config :=
-            GameDataConfig
-                .GetBlockByPath('SE.Weapon.' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser)));
+        Config := GameDataConfig.GetBlockByPath('SE.Weapon.' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser)));
       Palette := Config.FindBlock('Palettes');
       if Palette <> nil then
         Palette := Palette.FindBlock(IntToStr(GetShotVisual));
@@ -593,11 +535,7 @@ begin
       else if Self is TCustomMissile then
         PrimaryFilm.PlayObjectSound(StepIndex, FilmObject, 'Sound.shot' + GetWeaponInfo.ConfigName)
       else
-        PrimaryFilm.PlayObjectSound(
-            StepIndex,
-            FilmObject,
-            'Sound.shot' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser))
-        );
+        PrimaryFilm.PlayObjectSound(StepIndex, FilmObject, 'Sound.shot' + IntToStr(Ord(ItemType) - Ord(t_IndustrialLaser)));
     end;
   end;
   if FlightTicks = 0 then
@@ -692,26 +630,14 @@ begin
         Direction := WrapHeadingDegrees(Direction + Delta);
         if RecordFilm then
           PrimaryFilm.SetObjectAngle(StepIndex, FilmObject, HeadingDegreesToByte(Direction));
-        Position.X :=
-            Position.X
-                + Sin(HeadingDegreesToRadians(Direction))
-                    * (Speed / BaseMovementStepsPerTurn * StepScale);
-        Position.Y :=
-            Position.Y
-                - Cos(HeadingDegreesToRadians(Direction))
-                    * (Speed / BaseMovementStepsPerTurn * StepScale);
+        Position.X := Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
+        Position.Y := Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
       end
       else
       begin
         Stage := 4;
-        Position.X :=
-            Position.X
-                + Sin(HeadingDegreesToRadians(Direction))
-                    * (Speed / BaseMovementStepsPerTurn * StepScale);
-        Position.Y :=
-            Position.Y
-                - Cos(HeadingDegreesToRadians(Direction))
-                    * (Speed / BaseMovementStepsPerTurn * StepScale);
+        Position.X := Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
+        Position.Y := Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
       end;
     end
     else
@@ -721,9 +647,7 @@ begin
       Stage := 6;
       if Target <> nil then
       begin
-        if (Target is TShip)
-            and (TShip(Target).CurrentStar = CurrentStar)
-            and TShip(Target).InNormalSpace then
+        if (Target is TShip) and (TShip(Target).CurrentStar = CurrentStar) and TShip(Target).InNormalSpace then
         begin
           Stage := 7;
           TargetPosition := TShip(Target).Position;
@@ -758,9 +682,7 @@ begin
       begin
         Stage := 12;
         VerticalSign := -1;
-        if (FlightTicks > 1)
-            and (LastTargetPosition.X = TargetPosition.X)
-            and (LastTargetPosition.Y = TargetPosition.Y) then
+        if (FlightTicks > 1) and (LastTargetPosition.X = TargetPosition.X) and (LastTargetPosition.Y = TargetPosition.Y) then
         begin
           Stage := 13;
           DistanceSquared := PointDistanceSquared(Position, TargetPosition);
@@ -774,13 +696,7 @@ begin
           end;
         end;
         LastTargetPosition := TargetPosition;
-        TargetHeading :=
-            RadiansToHeadingDegrees(
-                ArcTan2(
-                    TargetPosition.X - Position.X,
-                    (TargetPosition.Y - Position.Y) * VerticalSign
-                )
-            );
+        TargetHeading := RadiansToHeadingDegrees(ArcTan2(TargetPosition.X - Position.X, (TargetPosition.Y - Position.Y) * VerticalSign));
         Stage := 14;
         Delta := HeadingDifferenceDegrees(Direction, TargetHeading);
         if Abs(Delta) <= 3 * StepScale then
@@ -803,14 +719,8 @@ begin
         Speed := Speed + 10
       else if Speed > DesiredSpeed then
         Speed := Speed - 10;
-      Position.X :=
-          Position.X
-              + Sin(HeadingDegreesToRadians(Direction))
-                  * (Speed / BaseMovementStepsPerTurn * StepScale);
-      Position.Y :=
-          Position.Y
-              - Cos(HeadingDegreesToRadians(Direction))
-                  * (Speed / BaseMovementStepsPerTurn * StepScale);
+      Position.X := Position.X + Sin(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
+      Position.Y := Position.Y - Cos(HeadingDegreesToRadians(Direction)) * (Speed / BaseMovementStepsPerTurn * StepScale);
     end;
     Stage := 16;
     if RecordFilm then
@@ -876,10 +786,7 @@ begin
       begin
         if TryReturnToOwner(StepIndex, RecordFilm, PreviousPosition, Ship) then
           Exit;
-        if (OwnerShip <> Ship)
-            and ((Target = Ship)
-                or (OwnerShip = nil)
-                or (OwnerShip.GetRelationLevelToShip(Ship) = rlHostile)) then
+        if (OwnerShip <> Ship) and ((Target = Ship) or (OwnerShip = nil) or (OwnerShip.GetRelationLevelToShip(Ship) = rlHostile)) then
         begin
           Stage := 26;
           if SegmentIntersectsCircle(PreviousPosition, Position, Ship.Position, 20) then
@@ -902,11 +809,7 @@ begin
       end;
     end;
     Stage := 29;
-    if SegmentIntersectsCircle(
-        PreviousPosition,
-        Position,
-        MakePointF(0, 0),
-        CurrentStar.Radius * 0.7) then
+    if SegmentIntersectsCircle(PreviousPosition, Position, MakePointF(0, 0), CurrentStar.Radius * 0.7) then
     begin
       if RecordFilm then
       begin
@@ -923,9 +826,7 @@ begin
     end;
     begin
       Stage := 30;
-      if (FlightTicks > 1000)
-          and ((Target = nil)
-              or not (FlightTicks * 0.005 * MaximumSpeed < GetWeaponInfo.MissileRange)) then
+      if (FlightTicks > 1000) and ((Target = nil) or not (FlightTicks * 0.005 * MaximumSpeed < GetWeaponInfo.MissileRange)) then
       begin
         if RecordFilm then
         begin
@@ -950,12 +851,7 @@ begin
   end;
 end;
 
-function TMissile.TryReturnToOwner(
-    StepIndex: Integer;
-    RecordFilm: Boolean;
-    PreviousPosition: TPointF;
-    Ship: TShip
-): Boolean;
+function TMissile.TryReturnToOwner(StepIndex: Integer; RecordFilm: Boolean; PreviousPosition: TPointF; Ship: TShip): Boolean;
 var
   I: Integer;
   FoundWeapon: Boolean;
@@ -1015,9 +911,7 @@ var
   I: Integer;
   Ship, BestShip: TShip;
 begin
-  if (GetWeaponInfo.ShotType = wstTorpedo)
-      and (OwnerShip <> nil)
-      and ((Target = nil) or (Target = OwnerShip)) then
+  if (GetWeaponInfo.ShotType = wstTorpedo) and (OwnerShip <> nil) and ((Target = nil) or (Target = OwnerShip)) then
   begin
     BestDistance := 1E30;
     BestShip := nil;
@@ -1027,10 +921,8 @@ begin
       if not Ship.IsOutsideStarSpace
           and (Ship <> PreviousTarget)
           and (Ship.GetRelationLevelToShip(OwnerShip) <= rlHostile)
-          and (not (OwnerShip is TKling)
-              or not (OwnerShip as TKling).IsPlayerCamouflageEffective(Ship))
-          and (not (Ship is TKling)
-              or not (Ship as TKling).IsPlayerCamouflageEffective(OwnerShip)) then
+          and (not (OwnerShip is TKling) or not (OwnerShip as TKling).IsPlayerCamouflageEffective(Ship))
+          and (not (Ship is TKling) or not (Ship as TKling).IsPlayerCamouflageEffective(OwnerShip)) then
       begin
         Distance := PointDistance(Ship.Position, Position);
         if (Distance <= 700) and (Distance < BestDistance) then
@@ -1064,13 +956,7 @@ begin
   Result := LocalizedText('Items.Weapon.Missile.' + GetGraphSuffix + '.Text') + #13#10;
   if OwnerShip <> nil then
     Result :=
-        Result
-            + FormatText1(
-                LocalizedText('Items.Weapon.Missile.TextFrom'),
-                TextHighlightColorTag,
-                '<Name>',
-                OwnerShip.GetName)
-            + #13#10;
+        Result + FormatText1(LocalizedText('Items.Weapon.Missile.TextFrom'), TextHighlightColorTag, '<Name>', OwnerShip.GetName) + #13#10;
   if (Target <> nil) and (Target is TAsteroid) then
     Result :=
         Result
@@ -1083,20 +969,12 @@ begin
   else if (Target <> nil) and (Target is TItem) then
     Result :=
         Result
-            + FormatText1(
-                LocalizedText('Items.Weapon.Missile.TextTarget'),
-                TextHighlightColorTag,
-                '<Name>',
-                TItem(Target).GetDisplayName)
+            + FormatText1(LocalizedText('Items.Weapon.Missile.TextTarget'), TextHighlightColorTag, '<Name>', TItem(Target).GetDisplayName)
             + #13#10
   else if (Target <> nil) and (Target is TShip) then
     Result :=
         Result
-            + FormatText1(
-                LocalizedText('Items.Weapon.Missile.TextTarget'),
-                TextHighlightColorTag,
-                '<Name>',
-                TShip(Target).GetName)
+            + FormatText1(LocalizedText('Items.Weapon.Missile.TextTarget'), TextHighlightColorTag, '<Name>', TShip(Target).GetName)
             + #13#10
   else if (Target <> nil) and (Target is TMissile) then
     Result :=
@@ -1122,32 +1000,16 @@ begin
           DamageFactor := Galaxy.InterpolateDifficulty(-1, 0.7, 1, 1.2, 1.5) * 2
         else
           DamageFactor := 1;
-        DamageText :=
-            IntToStr(Round(MinDamage * DamageFactor))
-                + '-'
-                + IntToStr(Round(MaxDamage * DamageFactor));
+        DamageText := IntToStr(Round(MinDamage * DamageFactor)) + '-' + IntToStr(Round(MaxDamage * DamageFactor));
       end
       else
       begin
         SpeedText := '???';
         DamageText := '???';
       end;
+      Result := Result + FormatText1(LocalizedText('Items.Weapon.Missile.TextSpeed'), TextHighlightColorTag, '<Speed>', SpeedText) + ', ';
       Result :=
-          Result
-              + FormatText1(
-                  LocalizedText('Items.Weapon.Missile.TextSpeed'),
-                  TextHighlightColorTag,
-                  '<Speed>',
-                  SpeedText)
-              + ', ';
-      Result :=
-          Result
-              + FormatText1(
-                  LocalizedText('Items.Weapon.Missile.TextDamage'),
-                  TextHighlightColorTag,
-                  '<Damage>',
-                  DamageText)
-              + #13#10;
+          Result + FormatText1(LocalizedText('Items.Weapon.Missile.TextDamage'), TextHighlightColorTag, '<Damage>', DamageText) + #13#10;
     end;
 end;
 

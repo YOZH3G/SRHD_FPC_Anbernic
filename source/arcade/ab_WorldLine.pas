@@ -201,11 +201,9 @@ begin
       if Line.Segment = nil then
       begin
         Line.Segment :=
-            ArcadeBattleScreen.WorldLines.AddLine(
-                Classes.Point(Round(First.X), Round(First.Y)),
-                Classes.Point(Round(Last.X), Round(Last.Y)),
-                Line.FrontColor
-            );
+            ArcadeBattleScreen
+                .WorldLines
+                .AddLine(Classes.Point(Round(First.X), Round(First.Y)), Classes.Point(Round(Last.X), Round(Last.Y)), Line.FrontColor);
         Line.Segment.Animated := Line.Kind = 2;
         if Line.Kind < 3 then
           Line.Segment.Kind := 0

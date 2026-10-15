@@ -86,12 +86,7 @@ procedure ReleaseAllTextureSurfaces;
 
 procedure EvictTextureCaches(Force: Boolean);
 
-function GR_CreateTexture(
-    Width: Integer;
-    Height: Integer;
-    Format: Cardinal;
-    Pool: Cardinal
-): IDirect3DTexture9;
+function GR_CreateTexture(Width: Integer; Height: Integer; Format: Cardinal; Pool: Cardinal): IDirect3DTexture9;
 
 function CreateTextureFromPixels(
     Width: Integer;
@@ -108,25 +103,9 @@ procedure QueueDrawPoint(X: Integer; Y: Integer; Color: Cardinal; Alpha: Integer
 
 procedure FlushDrawPoints(ClipRect: PRect);
 
-procedure DrawAlphaLine(
-    X1: Integer;
-    Y1: Integer;
-    X2: Integer;
-    Y2: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    ClipRect: PRect
-);
+procedure DrawAlphaLine(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 
-procedure DrawGradientLine(
-    X1: Integer;
-    Y1: Integer;
-    Color1: Cardinal;
-    X2: Integer;
-    Y2: Integer;
-    Color2: Cardinal;
-    ClipRect: PRect
-);
+procedure DrawGradientLine(X1: Integer; Y1: Integer; Color1: Cardinal; X2: Integer; Y2: Integer; Color2: Cardinal; ClipRect: PRect);
 
 procedure DrawAntialiasedLineDX(
     StartX: Integer;
@@ -173,24 +152,9 @@ procedure DrawColoredRect(
     ClipRect: PRect
 );
 
-procedure DrawAntialiasedCircle(
-    X: Integer;
-    Y: Integer;
-    Radius: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    ClipRect: PRect
-);
+procedure DrawAntialiasedCircle(X: Integer; Y: Integer; Radius: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 
-procedure DrawCircle(
-    X: Integer;
-    Y: Integer;
-    Radius: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    Mode: Integer;
-    ClipRect: PRect
-);
+procedure DrawCircle(X: Integer; Y: Integer; Radius: Integer; Color: Cardinal; Alpha: Integer; Mode: Integer; ClipRect: PRect);
 
 procedure DrawTexture(
     Texture: IDirect3DTexture9;
@@ -420,11 +384,7 @@ begin
     Texture.LockRect(0, Locked, nil, 0);
     if Locked.Bits <> nil then
       for Y := 0 to Desc.Height - 1 do
-        System.FillChar(
-            Pointer(Pointer(Integer(Y) * Locked.Pitch + PAnsiChar(Locked.Bits)))^,
-            Locked.Pitch,
-            0
-        );
+        System.FillChar(Pointer(Pointer(Integer(Y) * Locked.Pitch + PAnsiChar(Locked.Bits)))^, Locked.Pitch, 0);
     Texture.UnlockRect(0);
   end;
 end;
@@ -555,12 +515,7 @@ begin
     Direct3DDevice.GetScissorRect(OldClip);
     Direct3DDevice.SetScissorRect(ClipRect);
   end;
-  Direct3DDevice.DrawPrimitiveUP(
-      D3DPT_POINTLIST,
-      PendingPointCount,
-      @PendingPoints[0],
-      SizeOf(TScreenVertexGR)
-  );
+  Direct3DDevice.DrawPrimitiveUP(D3DPT_POINTLIST, PendingPointCount, @PendingPoints[0], SizeOf(TScreenVertexGR));
   PendingPointCount := 0;
   if ClipRect <> nil then
     Direct3DDevice.SetScissorRect(@OldClip);
@@ -568,24 +523,10 @@ end;
 
 procedure DrawAlphaLine(X1, Y1, X2, Y2: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 begin
-  DrawGradientLine(
-      X1,
-      Y1,
-      ColorWithAlpha(Color, Alpha),
-      X2,
-      Y2,
-      ColorWithAlpha(Color, Alpha),
-      ClipRect
-  );
+  DrawGradientLine(X1, Y1, ColorWithAlpha(Color, Alpha), X2, Y2, ColorWithAlpha(Color, Alpha), ClipRect);
 end;
 
-procedure DrawGradientLine(
-    X1, Y1: Integer;
-    Color1: Cardinal;
-    X2, Y2: Integer;
-    Color2: Cardinal;
-    ClipRect: PRect
-);
+procedure DrawGradientLine(X1, Y1: Integer; Color1: Cardinal; X2, Y2: Integer; Color2: Cardinal; ClipRect: PRect);
 var
   OldClip: TRect;
 begin
@@ -605,12 +546,7 @@ begin
     Direct3DDevice.SetScissorRect(@OldClip);
 end;
 
-procedure DrawAntialiasedLineDX(
-    StartX, StartY, FinishX, FinishY: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    UnusedClipRect: PRect
-);
+procedure DrawAntialiasedLineDX(StartX, StartY, FinishX, FinishY: Integer; Color: Cardinal; Alpha: Integer; UnusedClipRect: PRect);
 var
   Slope, DX, DY, Gap, EndX, EndY, InterY, Coverage1, Coverage2: Double;
   X, FirstX, LastX, FirstY, LastY: Integer;
@@ -714,12 +650,7 @@ begin
   FlushDrawPoints(nil);
 end;
 
-procedure DrawAnimatedLineDX(
-    StartX, StartY, FinishX, FinishY: Integer;
-    Color: Cardinal;
-    Phase: Integer;
-    UnusedClipRect: PRect
-);
+procedure DrawAnimatedLineDX(StartX, StartY, FinishX, FinishY: Integer; Color: Cardinal; Phase: Integer; UnusedClipRect: PRect);
 var
   Slope, DX, DY, Gap, EndX, EndY, InterY, Coverage1, Coverage2: Double;
   X, FirstX, LastX, FirstY, LastY: Integer;
@@ -868,13 +799,7 @@ begin
     Direct3DDevice.SetScissorRect(@OldClip);
 end;
 
-procedure DrawColoredRect(
-    X, Y, Width, Height: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    Filled: Boolean;
-    ClipRect: PRect
-);
+procedure DrawColoredRect(X, Y, Width, Height: Integer; Color: Cardinal; Alpha: Integer; Filled: Boolean; ClipRect: PRect);
 var
   OldClip: TRect;
 begin
@@ -906,12 +831,7 @@ begin
     Direct3DDevice.SetScissorRect(@OldClip);
 end;
 
-procedure DrawAntialiasedCircle(
-    X, Y, Radius: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    ClipRect: PRect
-);
+procedure DrawAntialiasedCircle(X, Y, Radius: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 var
   DX, DY, SX, SY, Quadrant: Integer;
   PreviousCoverage, Coverage: Single;
@@ -1039,18 +959,7 @@ procedure DrawTexture(
     UsePreparedVertices, MirrorHorizontal: Boolean
 );
 begin
-  DrawTextureSized(
-      Texture,
-      X,
-      Y,
-      0,
-      0,
-      Alpha,
-      Color,
-      ClipRect,
-      UsePreparedVertices,
-      MirrorHorizontal
-  );
+  DrawTextureSized(Texture, X, Y, 0, 0, Alpha, Color, ClipRect, UsePreparedVertices, MirrorHorizontal);
 end;
 
 procedure DrawTextureSized(
@@ -1108,11 +1017,7 @@ end;
 
 function Color565ToArgb(Color: Cardinal): Cardinal;
 begin
-  Result :=
-      ((Color shl 3) and $F8)
-          or (((Color shr 3) and $FC) shl 8)
-          or (((Color shr 8) and $F8) shl 16)
-          or $FF000000;
+  Result := ((Color shl 3) and $F8) or (((Color shr 3) and $FC) shl 8) or (((Color shr 8) and $F8) shl 16) or $FF000000;
 end;
 
 function ColorWithAlpha(Color, Alpha: Cardinal): Cardinal;

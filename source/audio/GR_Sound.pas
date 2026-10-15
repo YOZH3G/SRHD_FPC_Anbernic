@@ -101,29 +101,14 @@ type
     procedure RemoveFinishedBuffers;
     procedure UpdateFades;
     procedure PlaySound(const Path: WideString);
-    function PlayEffect(
-        const Path: WideString;
-        Group: Integer;
-        Volume: Single;
-        Pan: Single
-    ): TSoundBuffer;
-    function PlayLoop(
-        const Path: WideString;
-        Group: Integer;
-        Volume: Single;
-        Pan: Single
-    ): TSoundBuffer;
+    function PlayEffect(const Path: WideString; Group: Integer; Volume: Single; Pan: Single): TSoundBuffer;
+    function PlayLoop(const Path: WideString; Group: Integer; Volume: Single; Pan: Single): TSoundBuffer;
     procedure SignalStop;
   end;
 
 function SoundErrorText(Code: Integer): AnsiString;
 
-function EnumerateSoundDevice(
-    Guid: Pointer;
-    Description: PAnsiChar;
-    Module: PAnsiChar;
-    Context: Pointer
-): LongBool; stdcall;
+function EnumerateSoundDevice(Guid: Pointer; Description: PAnsiChar; Module: PAnsiChar; Context: Pointer): LongBool; stdcall;
 
 implementation
 
@@ -402,12 +387,7 @@ begin
     System.Move(Pointer(Format)^, Pointer(@WaveFormat)^, SizeOf(WaveFormat));
     FillChar(Desc, SizeOf(Desc), 0);
     Desc.Size := SizeOf(Desc);
-    Desc.Flags :=
-        DSBCAPS_LOCSOFTWARE
-            or DSBCAPS_CTRLPAN
-            or DSBCAPS_CTRLVOLUME
-            or DSBCAPS_CTRLPOSITIONNOTIFY
-            or DSBCAPS_GETCURRENTPOSITION2;
+    Desc.Flags := DSBCAPS_LOCSOFTWARE or DSBCAPS_CTRLPAN or DSBCAPS_CTRLVOLUME or DSBCAPS_CTRLPOSITIONNOTIFY or DSBCAPS_GETCURRENTPOSITION2;
     Desc.BufferBytes := ChunkBytes * Length(ChunkEvents);
     Desc.WaveFormat := @WaveFormat;
     SoundManager.Lock.Enter;
@@ -502,9 +482,7 @@ var
 begin
   SoundManager.Lock.Enter;
   try
-    if (Cardinal(BufferBytes) < ByteCount)
-        or not CompareMem(@WaveFormat, Format, SizeOf(WaveFormat))
-        or Streaming then
+    if (Cardinal(BufferBytes) < ByteCount) or not CompareMem(@WaveFormat, Format, SizeOf(WaveFormat)) or Streaming then
       Init(ByteCount, Format);
     if DirectBuffer = nil then
       Exit;
@@ -569,10 +547,7 @@ begin
         end
         else
         begin
-          Offset :=
-              (Cardinal(BufferBytes) + WriteCursor - 1)
-                  div Cardinal(BufferBytes)
-                  * Cardinal(BufferBytes);
+          Offset := (Cardinal(BufferBytes) + WriteCursor - 1) div Cardinal(BufferBytes) * Cardinal(BufferBytes);
           if BufferBytes * Length(ChunkEvents) <= Offset then
           begin
             Offset := 0;
@@ -616,11 +591,7 @@ begin
       if BufferBytes > ReadBytes then
       begin
         if WaveFormat.BitsPerSample = 8 then
-          System.FillChar(
-              Pointer(PAnsiChar(Dest) + ReadBytes)^,
-              BufferBytes - ReadBytes,
-              UnsignedPcmSilence
-          )
+          System.FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, UnsignedPcmSilence)
         else
           FillChar(Pointer(PAnsiChar(Dest) + ReadBytes)^, BufferBytes - ReadBytes, 0);
       end;
@@ -769,9 +740,7 @@ begin
     if (Status <> DS_OK) and (Status <> DS_INCOMPLETE) then
     begin
       AppendLogLineThreadSafe('Error in TSoundBuffer.SetVolume');
-      AppendLogLineThreadSafe(
-          'volume = ' + FloatToWideString(Value) + '*' + FloatToWideString(VolumeScale)
-      );
+      AppendLogLineThreadSafe('volume = ' + FloatToWideString(Value) + '*' + FloatToWideString(VolumeScale));
       if Controller <> nil then
         AppendLogLineThreadSafe('Path=' + Controller.SoundPath)
       else
@@ -828,11 +797,7 @@ begin
   end;
 end;
 
-function EnumerateSoundDevice(
-    Guid: Pointer;
-    Description, Module: PAnsiChar;
-    Context: Pointer
-): LongBool; stdcall;
+function EnumerateSoundDevice(Guid: Pointer; Description, Module: PAnsiChar; Context: Pointer): LongBool; stdcall;
 var
   Text: WideString;
 begin
@@ -911,8 +876,7 @@ begin
       );
       if (WaveFormat.BitsPerSample shr 3) * WaveFormat.Channels <> WaveFormat.BlockAlign then
         AppendLogLineThreadSafe('BlockAlign is ' + IntToStr(WaveFormat.BlockAlign));
-      if WaveFormat.SamplesPerSecond * WaveFormat.BlockAlign
-          <> WaveFormat.AverageBytesPerSecond then
+      if WaveFormat.SamplesPerSecond * WaveFormat.BlockAlign <> WaveFormat.AverageBytesPerSecond then
         AppendLogLineThreadSafe('AvgBytesPerSec is ' + IntToStr(WaveFormat.AverageBytesPerSecond));
       AppendLogLineThreadSafe('Initializing sound.... ok!');
     except
@@ -1108,11 +1072,7 @@ begin
   end;
 end;
 
-function TSoundControl.PlayEffect(
-    const Path: WideString;
-    Group: Integer;
-    Volume, Pan: Single
-): TSoundBuffer;
+function TSoundControl.PlayEffect(const Path: WideString; Group: Integer; Volume, Pan: Single): TSoundBuffer;
 var
   Control: TCSoundControlEC;
   Sound: TCSoundEC;
@@ -1150,11 +1110,7 @@ begin
   end;
 end;
 
-function TSoundControl.PlayLoop(
-    const Path: WideString;
-    Group: Integer;
-    Volume, Pan: Single
-): TSoundBuffer;
+function TSoundControl.PlayLoop(const Path: WideString; Group: Integer; Volume, Pan: Single): TSoundBuffer;
 var
   Control: TCSoundControlEC;
   Sound: TCSoundEC;

@@ -379,9 +379,7 @@ begin
           ScreenRenderBuffer.GetPixels,
           ScreenRenderBuffer.PitchBytes,
           (HitTestBounds.Left + HitTestBounds.Right) div 2 - (Bounds.Right - Bounds.Left) div 2,
-          (HitTestBounds.Top + HitTestBounds.Bottom) div 2
-              - (Bounds.Bottom - Bounds.Top) div 2
-              - Bounds.Top,
+          (HitTestBounds.Top + HitTestBounds.Bottom) div 2 - (Bounds.Bottom - Bounds.Top) div 2 - Bounds.Top,
           Caption,
           ClipRect
       );

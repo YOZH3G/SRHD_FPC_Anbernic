@@ -89,8 +89,7 @@ begin
   Phase := 2;
   ExpireTick := ArcadeTickCount + 50;
   ParentProjectile := Parent;
-  Image :=
-      ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w16b_f', 'GAI,Bm.AB.w16b_s', False);
+  Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w16b_f', 'GAI,Bm.AB.w16b_s', False);
   ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
 end;
 
@@ -110,17 +109,13 @@ begin
     Collision := FindCollision;
     if (Collision = SourceObject) and (Phase = 0) and (DistanceTravelled < 200) then
       Collision := nil;
-    if (Collision = SourceObject)
-        and (Phase = 2)
-        and (ParentProjectile <> nil)
-        and (ParentProjectile.DistanceTravelled < 600) then
+    if (Collision = SourceObject) and (Phase = 2) and (ParentProjectile <> nil) and (ParentProjectile.DistanceTravelled < 600) then
       Collision := nil;
     if Collision <> nil then
       if Collision is TabW16 then
         if ((Collision as TabW16).ParentProjectile = Self)
             or (ParentProjectile = Collision)
-            or ((ParentProjectile <> nil)
-                and ((Collision as TabW16).ParentProjectile = ParentProjectile)) then
+            or ((ParentProjectile <> nil) and ((Collision as TabW16).ParentProjectile = ParentProjectile)) then
           Collision := nil;
   end;
   if ((ArcadeTickCount > ExpireTick) or (Collision <> nil)) and (Phase <> 1) and (Phase <> 3) then

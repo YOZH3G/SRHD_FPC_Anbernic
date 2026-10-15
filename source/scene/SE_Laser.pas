@@ -108,19 +108,12 @@ begin
     Segment.SetPosition(TruncatePointF(EndPosition));
     Segment.SetAngle(ImageAngle);
     Segment.SetAlpha(192);
-    Segment.SetImage(
-        FrameImages.GetTextAt(0),
-        Classes.Point(SegmentSize, SegmentSize),
-        Classes.Point(SegmentSize div 2, SegmentSize div 2)
-    );
+    Segment
+        .SetImage(FrameImages.GetTextAt(0), Classes.Point(SegmentSize, SegmentSize), Classes.Point(SegmentSize div 2, SegmentSize div 2));
     Segments.Add(Segment);
     Distance := Distance + SegmentSize - 4;
   end;
-  EndPosition :=
-      MakePointF(
-          SegmentSize / 2 * AngleSin + EndPosition.X,
-          EndPosition.Y - SegmentSize / 2 * AngleCos
-      );
+  EndPosition := MakePointF(SegmentSize / 2 * AngleSin + EndPosition.X, EndPosition.Y - SegmentSize / 2 * AngleCos);
   FrameIndex := 0;
   UpdateSegmentImages;
   StartAnimationTimer;
@@ -150,10 +143,7 @@ var
   Index: Integer;
   Segment: TRotateImage2GI;
 begin
-  if (Segments <> nil)
-      and (FrameIndex >= 0)
-      and (FrameImages <> nil)
-      and (FrameIndex < FrameImages.GetCount) then
+  if (Segments <> nil) and (FrameIndex >= 0) and (FrameImages <> nil) and (FrameIndex < FrameImages.GetCount) then
     for Index := 0 to Segments.Count - 1 do
     begin
       Segment := Segments[Index];
@@ -169,8 +159,7 @@ procedure TLaserSE.StartAnimationTimer;
 begin
   StopAnimationTimer;
   if not ManualAnimation then
-    AnimationTimer :=
-        Space.Screen.ScheduleCallbackTimer(FrameInterval, FrameInterval, AdvanceAnimationTimer);
+    AnimationTimer := Space.Screen.ScheduleCallbackTimer(FrameInterval, FrameInterval, AdvanceAnimationTimer);
 end;
 
 procedure TLaserSE.StopAnimationTimer;

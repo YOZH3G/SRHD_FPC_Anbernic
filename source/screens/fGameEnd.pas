@@ -164,25 +164,16 @@ begin
       while Control <> nil do
       begin
         if FindTextOffsetW(Control.ControlName, 'CustomEnd') = 0 then
-          Control.SetPosition(
-              Classes
-                  .Point(Control.LocalPosition.X, Control.LocalPosition.Y + ExtraScreenHeight div 2)
-          );
+          Control.SetPosition(Classes.Point(Control.LocalPosition.X, Control.LocalPosition.Y + ExtraScreenHeight div 2));
         Control := Control.NextSibling;
       end;
     end;
     with FindByNameRecursive('Ok') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('Load') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('LabelHelp') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('PanelText') do
     begin
       SetSize(Classes.Point(ClientSize.X + ExtraScreenWidth, ClientSize.Y + ExtraScreenHeight));
@@ -253,32 +244,22 @@ begin
   ScrollBackground(nil, 0);
   SelectMusic;
   if GetPlayer <> nil then
-    ScoreScreen.RecordPlayerResult(
-        (GetPlayer <> nil) and (GameEndReason <> gerPlayerDeath) and not CustomLoss
-    );
+    ScoreScreen.RecordPlayerResult((GetPlayer <> nil) and (GameEndReason <> gerPlayerDeath) and not CustomLoss);
   Score := ScoreScreen.Entries[ScoreScreen.SelectedIndex];
   DefaultLoss := (GameEndReason <= 4) and not CustomWin and (CustomPicture = '');
   GetByName('Maloc').SetActive((Score.PilotRace = oiMaloc) and DefaultLoss);
   GetByName('Peleng').SetActive((Score.PilotRace = oiPeleng) and DefaultLoss);
   GetByName('Fei').SetActive((Score.PilotRace = oiFeyan) and DefaultLoss);
   GetByName('Gaal').SetActive((Score.PilotRace = oiGaal) and DefaultLoss);
-  GetByName('PirateWin1Maloc')
-      .SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiMaloc));
-  GetByName('PirateWin1Peleng')
-      .SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiPeleng));
-  GetByName('PirateWin1People')
-      .SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiHuman));
-  GetByName('PirateWin1Fei')
-      .SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiFeyan));
-  GetByName('PirateWin1Gaal')
-      .SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiGaal));
+  GetByName('PirateWin1Maloc').SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiMaloc));
+  GetByName('PirateWin1Peleng').SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiPeleng));
+  GetByName('PirateWin1People').SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiHuman));
+  GetByName('PirateWin1Fei').SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiFeyan));
+  GetByName('PirateWin1Gaal').SetActive((GameEndReason in [5, 9, 11]) and (Score.PilotRace = oiGaal));
   GetByName('PirateWin2').SetActive(GameEndReason in [6, 10]);
-  GetByName('PirateWin3Maloc')
-      .SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiMaloc));
-  GetByName('PirateWin3Peleng')
-      .SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiPeleng));
-  GetByName('PirateWin3People')
-      .SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiHuman));
+  GetByName('PirateWin3Maloc').SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiMaloc));
+  GetByName('PirateWin3Peleng').SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiPeleng));
+  GetByName('PirateWin3People').SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiHuman));
   GetByName('PirateWin3Fei').SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiFeyan));
   GetByName('PirateWin3Gaal').SetActive((GameEndReason in [7, 18]) and (Score.PilotRace = oiGaal));
   GetByName('PirateWin4Maloc').SetActive((GameEndReason = 8) and (Score.PilotRace = oiMaloc));
@@ -286,12 +267,9 @@ begin
   GetByName('PirateWin4People').SetActive((GameEndReason = 8) and (Score.PilotRace = oiHuman));
   GetByName('PirateWin4Fei').SetActive((GameEndReason = 8) and (Score.PilotRace = oiFeyan));
   GetByName('PirateWin4Gaal').SetActive((GameEndReason = 8) and (Score.PilotRace = oiGaal));
-  GetByName('PirateWin5Maloc')
-      .SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiMaloc));
-  GetByName('PirateWin5Peleng')
-      .SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiPeleng));
-  GetByName('PirateWin5People')
-      .SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiHuman));
+  GetByName('PirateWin5Maloc').SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiMaloc));
+  GetByName('PirateWin5Peleng').SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiPeleng));
+  GetByName('PirateWin5People').SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiHuman));
   GetByName('PirateWin5Fei').SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiFeyan));
   GetByName('PirateWin5Gaal').SetActive((GameEndReason in [12..14]) and (Score.PilotRace = oiGaal));
   GetByName('PirateWin6').SetActive(GameEndReason = 15);
@@ -369,23 +347,13 @@ begin
         if (GetPlayer <> nil) and (GetPlayer.CurrentPlanet <> nil) then
         begin
           if (GetPlayer.CurrentPlanet.CustomFaction <> '')
-              and (LocalizedColorText(
-                      'FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CustomFaction)
-                  <> '') then
-            Text :=
-                PickLocalizedTextVariant(
-                    'FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CustomFaction,
-                    Random(100000)
-                )
+              and (LocalizedColorText('FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CustomFaction) <> '') then
+            Text := PickLocalizedTextVariant('FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CustomFaction, Random(100000))
           else if (GetPlayer.CurrentPlanet.CurrentStar.Status.CustomFaction <> '')
-              and (LocalizedColorText(
-                      'FormGameEnd.LossInPlanet'
-                          + GetPlayer.CurrentPlanet.CurrentStar.Status.CustomFaction)
-                  <> '') then
+              and (LocalizedColorText('FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CurrentStar.Status.CustomFaction) <> '') then
             Text :=
                 PickLocalizedTextVariant(
-                    'FormGameEnd.LossInPlanet'
-                        + GetPlayer.CurrentPlanet.CurrentStar.Status.CustomFaction,
+                    'FormGameEnd.LossInPlanet' + GetPlayer.CurrentPlanet.CurrentStar.Status.CustomFaction,
                     Random(100000)
                 );
           ReplaceTextToken(Text, '<Planet>', GetPlayer.CurrentPlanet.Name, TextHighlightColorTag);
@@ -426,29 +394,9 @@ begin
   begin
     SourceHasPerPixelAlpha := True;
     if (ExtraScreenWidth > 127) or (ExtraScreenHeight > 127) then
-      RenderLabelTextToBuffer(
-          GraphBuf,
-          ClientSize.X,
-          1,
-          0,
-          Text,
-          'Font.2Big',
-          $FFFFF3D2,
-          $FF373737,
-          $FFDBDA9C
-      )
+      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, 'Font.2Big', $FFFFF3D2, $FF373737, $FFDBDA9C)
     else
-      RenderLabelTextToBuffer(
-          GraphBuf,
-          ClientSize.X,
-          1,
-          0,
-          Text,
-          'Font.2Intro',
-          $FFFFF3D2,
-          $FF373737,
-          $FFDBDA9C
-      );
+      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, 'Font.2Intro', $FFFFF3D2, $FF373737, $FFDBDA9C);
     SetSize(Classes.Point(ClientSize.X, GraphBuf.Height));
     SetPosition(Classes.Point(LocalPosition.X, TextPanelHeight));
   end;
@@ -556,9 +504,7 @@ end;
 
 procedure TfGameEnd.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
     if Key = VK_F3 then
       LoadClicked(nil)
     else if (Key = VK_ESCAPE) or (Key = VK_RETURN) then

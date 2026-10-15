@@ -214,14 +214,9 @@ begin
   Point := Stars.Points;
   for I := 0 to Stars.Count - 1 do
   begin
-    Position.X :=
-        Integer(Round((Point.X - ViewPosition.X) * Point.InverseDepth)) + AbsolutePosition.X;
-    Position.Y :=
-        Integer(Round((Point.Y - ViewPosition.Y) * Point.InverseDepth)) + AbsolutePosition.Y;
-    if (Position.X >= Left)
-        and (Position.X < Right)
-        and (Position.Y >= Top)
-        and (Position.Y < Bottom) then
+    Position.X := Integer(Round((Point.X - ViewPosition.X) * Point.InverseDepth)) + AbsolutePosition.X;
+    Position.Y := Integer(Round((Point.Y - ViewPosition.Y) * Point.InverseDepth)) + AbsolutePosition.Y;
+    if (Position.X >= Left) and (Position.X < Right) and (Position.Y >= Top) and (Position.Y < Bottom) then
     begin
       Inc(PixelCount);
       if PixelCount > PixelCapacity then
@@ -301,21 +296,14 @@ begin
       end;
       Width := Bounds.Right - Bounds.Left;
       Height := Bounds.Bottom - Bounds.Top;
-      X :=
-          Integer(Round((0.0 - ViewPosition.X) / BackgroundScale))
-              + AbsolutePosition.X
-              - Width div 2;
-      Y :=
-          Integer(Round((0.0 - ViewPosition.Y) / BackgroundScale))
-              + AbsolutePosition.Y
-              - Height div 2;
+      X := Integer(Round((0.0 - ViewPosition.X) / BackgroundScale)) + AbsolutePosition.X - Width div 2;
+      Y := Integer(Round((0.0 - ViewPosition.Y) / BackgroundScale)) + AbsolutePosition.Y - Height div 2;
       Bounds.Left := X;
       Bounds.Top := Y;
       Bounds.Right := X + Width;
       Bounds.Bottom := Y + Height;
       BackgroundBounds := Bounds;
-      SkipSavedPixelRestore :=
-          not CompareMem(@BackgroundBounds, @PreviousBackgroundBounds, SizeOf(TRect));
+      SkipSavedPixelRestore := not CompareMem(@BackgroundBounds, @PreviousBackgroundBounds, SizeOf(TRect));
     end;
 end;
 
@@ -398,10 +386,7 @@ begin
         DrawColoredRect(X, Y, Width, Height, 0, 255, True, @ClipRect)
       else
         Ex_OKGR_Fill_WORD(
-            AddPointerOffset(
-                ScreenRenderBuffer.GetPixels,
-                ScreenRenderBuffer.PitchBytes * Y + X * 2
-            ),
+            AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * Y + X * 2),
             ScreenRenderBuffer.PitchBytes,
             Width,
             Height,
@@ -418,10 +403,7 @@ begin
         DrawColoredRect(X, Y, Width, Height, 0, 255, True, @ClipRect)
       else
         Ex_OKGR_Fill_WORD(
-            AddPointerOffset(
-                ScreenRenderBuffer.GetPixels,
-                ScreenRenderBuffer.PitchBytes * Y + X * 2
-            ),
+            AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * Y + X * 2),
             ScreenRenderBuffer.PitchBytes,
             Width,
             Height,
@@ -443,10 +425,7 @@ begin
         DrawColoredRect(X, Y, Width, Height, 0, 255, True, @ClipRect)
       else
         Ex_OKGR_Fill_WORD(
-            AddPointerOffset(
-                ScreenRenderBuffer.GetPixels,
-                ScreenRenderBuffer.PitchBytes * Y + X * 2
-            ),
+            AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * Y + X * 2),
             ScreenRenderBuffer.PitchBytes,
             Width,
             Height,
@@ -468,10 +447,7 @@ begin
         DrawColoredRect(X, Y, Width, Height, 0, 255, True, @ClipRect)
       else
         Ex_OKGR_Fill_WORD(
-            AddPointerOffset(
-                ScreenRenderBuffer.GetPixels,
-                ScreenRenderBuffer.PitchBytes * Y + X * 2
-            ),
+            AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * Y + X * 2),
             ScreenRenderBuffer.PitchBytes,
             Width,
             Height,
@@ -491,16 +467,7 @@ begin
         if IntersectRects(Intersection, ClipRect, Bounds) then
         begin
           if HardwareRenderingEnabled then
-            DrawTexture(
-                Data.GetOrCreateFrameSurface(I),
-                Bounds.Left,
-                Bounds.Top,
-                255,
-                RgbWhite,
-                @Intersection,
-                False,
-                False
-            )
+            DrawTexture(Data.GetOrCreateFrameSurface(I), Bounds.Left, Bounds.Top, 255, RgbWhite, @Intersection, False, False)
           else
             Frame.DrawToGraphBuf(ScreenRenderBuffer, Bounds.Left, Bounds.Top, Intersection, 0, 255);
         end;
@@ -571,11 +538,7 @@ begin
   if not HardwareRenderingEnabled then
   begin
     PreviousPixelCount := PixelCount;
-    System.Move(
-        Pointer(Pixels)^,
-        Pointer(PreviousPixels)^,
-        PreviousPixelCount * SizeOf(TStarFieldPixel)
-    );
+    System.Move(Pointer(Pixels)^, Pointer(PreviousPixels)^, PreviousPixelCount * SizeOf(TStarFieldPixel));
     PreviousBackgroundBounds := BackgroundBounds;
   end;
 end;

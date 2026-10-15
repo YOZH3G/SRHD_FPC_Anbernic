@@ -85,14 +85,7 @@ function MeasureLabelTextBounds(const Text: WideString; const FontName: WideStri
 
 function MeasureWrappedLabelBounds(Width: Integer; TextLines: TStringsEC; Font: TCFontEC): TRect;
 
-procedure DrawWrappedLabelLines(
-    Buffer: TGraphBufGR;
-    Width: Integer;
-    X: Integer;
-    Y: Integer;
-    TextLines: TStringsEC;
-    Font: TCFontEC
-);
+procedure DrawWrappedLabelLines(Buffer: TGraphBufGR; Width: Integer; X: Integer; Y: Integer; TextLines: TStringsEC; Font: TCFontEC);
 
 procedure RenderLabelTextToBuffer(
     Buffer: TGraphBufGR;
@@ -467,11 +460,7 @@ begin
   Result :=
       Classes.Point(
           Bounds.Right - Bounds.Left + TextBorderWidth + Max(TextBorderWidth, TextShadowOffset),
-          Padding
-              + Bounds.Bottom
-              - Bounds.Top
-              + TextBorderWidth
-              + Max(TextBorderWidth, TextShadowOffset)
+          Padding + Bounds.Bottom - Bounds.Top + TextBorderWidth + Max(TextBorderWidth, TextShadowOffset)
       );
 end;
 
@@ -610,8 +599,7 @@ begin
     Index := 0;
     while Index < Font.ObjectCount do
     begin
-      if (Child.UserIndex = Index)
-          and (Child.UserValue = Font.GetEmbeddedObject(Index).ObjectId) then
+      if (Child.UserIndex = Index) and (Child.UserValue = Font.GetEmbeddedObject(Index).ObjectId) then
         Break;
       Inc(Index);
     end;
@@ -761,9 +749,7 @@ var
   Texture: IDirect3DTexture9;
   Bounds: TRect;
 
-  procedure SwitchLabelDrawFont(
-      FontName: WideString
-  ); { Nested Draw helper; caller removes the parent-frame argument. }
+  procedure SwitchLabelDrawFont(FontName: WideString); { Nested Draw helper; caller removes the parent-frame argument. }
   begin
     FontCache.SetCacheKey(FontName);
     if TextTexture <> nil then
@@ -894,37 +880,12 @@ begin
           RemoveUnusedEmbeddedControls(Font);
           TextTexture.SetSurface(Texture, 0);
         end;
-        DrawTexture(
-            Texture,
-            AbsolutePosition.X,
-            AbsolutePosition.Y,
-            255,
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+        DrawTexture(Texture, AbsolutePosition.X, AbsolutePosition.Y, 255, RgbWhite, @ClipRect, False, False);
         if BorderEnabled then
         begin
           Color := Color565ToArgb(BorderLightColor);
-          DrawAlphaLine(
-              HitTestBounds.Left,
-              HitTestBounds.Top,
-              HitTestBounds.Right - 1,
-              HitTestBounds.Top,
-              Color,
-              255,
-              @ClipRect
-          );
-          DrawAlphaLine(
-              HitTestBounds.Left,
-              HitTestBounds.Top,
-              HitTestBounds.Left,
-              HitTestBounds.Bottom - 1,
-              Color,
-              255,
-              @ClipRect
-          );
+          DrawAlphaLine(HitTestBounds.Left, HitTestBounds.Top, HitTestBounds.Right - 1, HitTestBounds.Top, Color, 255, @ClipRect);
+          DrawAlphaLine(HitTestBounds.Left, HitTestBounds.Top, HitTestBounds.Left, HitTestBounds.Bottom - 1, Color, 255, @ClipRect);
           Color := Color565ToArgb(BorderDarkColor);
           DrawAlphaLine(
               HitTestBounds.Left,
@@ -954,8 +915,7 @@ begin
             Y :=
                 HitTestBounds.Top
                     + ClientSize.Y div 2
-                    - (Font.GetLineHeight * (TextLines.GetCount - 1) + Font.GetCenteringHeight)
-                        div 2
+                    - (Font.GetLineHeight * (TextLines.GetCount - 1) + Font.GetCenteringHeight) div 2
                     + Font.GetCenteringHeight
           else
             Y := TextTop + Font.AboveBaseline - 2;
@@ -1233,9 +1193,7 @@ begin
                 Font.DrawTaggedText16(
                     ScreenRenderBuffer.GetPixels,
                     ScreenRenderBuffer.PitchBytes,
-                    (HitTestBounds.Right - HitTestBounds.Left) div 2
-                        + HitTestBounds.Left
-                        - (Bounds.Right - Bounds.Left) div 2,
+                    (HitTestBounds.Right - HitTestBounds.Left) div 2 + HitTestBounds.Left - (Bounds.Right - Bounds.Left) div 2,
                     Y,
                     Lines.GetCurrentText,
                     ClipRect
@@ -1498,12 +1456,7 @@ begin
   Result := Bounds;
 end;
 
-procedure DrawWrappedLabelLines(
-    Buffer: TGraphBufGR;
-    Width, X, Y: Integer;
-    TextLines: TStringsEC;
-    Font: TCFontEC
-);
+procedure DrawWrappedLabelLines(Buffer: TGraphBufGR; Width, X, Y: Integer; TextLines: TStringsEC; Font: TCFontEC);
 var
   Lines: TStringsEC;
   CurrentY: Integer;
@@ -1522,24 +1475,9 @@ begin
     begin
       Font.ResetTextMeasureState;
       if not Lines.IsAtLast then
-        Font.DrawJustifiedTaggedText32(
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            X,
-            CurrentY,
-            Lines.GetCurrentText,
-            Width - 4,
-            ClipRect
-        )
+        Font.DrawJustifiedTaggedText32(Buffer.GetPixels, Buffer.PitchBytes, X, CurrentY, Lines.GetCurrentText, Width - 4, ClipRect)
       else
-        Font.DrawTaggedText32(
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            X,
-            CurrentY,
-            Lines.GetCurrentText,
-            ClipRect
-        );
+        Font.DrawTaggedText32(Buffer.GetPixels, Buffer.PitchBytes, X, CurrentY, Lines.GetCurrentText, ClipRect);
       Inc(CurrentY, Font.GetLineHeight);
       Lines.Next;
     end;

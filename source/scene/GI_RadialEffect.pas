@@ -104,11 +104,8 @@ begin
   PositionInitialized := False;
   PaletteIndex := APaletteIndex;
   SetColor(
-      CurrentPixelFormat.PackNormalizedRgb(
-          RadiationPalettes[APaletteIndex][0],
-          RadiationPalettes[APaletteIndex][1],
-          RadiationPalettes[APaletteIndex][2]
-      )
+      CurrentPixelFormat
+          .PackNormalizedRgb(RadiationPalettes[APaletteIndex][0], RadiationPalettes[APaletteIndex][1], RadiationPalettes[APaletteIndex][2])
   );
 end;
 
@@ -219,11 +216,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - 24;
   Rect.Right := Target.X + 24;
@@ -249,16 +242,13 @@ begin
       begin
         Particle := AddParticle;
         Particle.Color := Color;
-        Particle.Position.X :=
-            Round((Row mod 2 * 0.5 + Column) * 30.0 * 2.0 * 0.866025404 + LatticeOffset.X);
+        Particle.Position.X := Round((Row mod 2 * 0.5 + Column) * 30.0 * 2.0 * 0.866025404 + LatticeOffset.X);
         Particle.Position.Y := Round((30 * Row) * 1.5 + LatticeOffset.Y);
         for Edge := Low(Particle.Alpha) to High(Particle.Alpha) do
         begin
           Particle.Alpha[Edge] := 0;
-          X :=
-              Particle.Position.X + (RadiationEdgeStarts[Edge].X + RadiationEdgeEnds[Edge].X) div 2;
-          Y :=
-              Particle.Position.Y + (RadiationEdgeStarts[Edge].Y + RadiationEdgeEnds[Edge].Y) div 2;
+          X := Particle.Position.X + (RadiationEdgeStarts[Edge].X + RadiationEdgeEnds[Edge].X) div 2;
+          Y := Particle.Position.Y + (RadiationEdgeStarts[Edge].Y + RadiationEdgeEnds[Edge].Y) div 2;
           Particle.EdgeDistance[Edge] := Round(Sqrt(X * X + Y * Y));
         end;
       end;
@@ -278,8 +268,7 @@ begin
       Particle := Particle.Next;
       for Edge := Low(Current.EdgeDistance) to High(Current.EdgeDistance) do
         if Current.EdgeDistance[Edge] > RingOffset then
-          Current.Alpha[Edge] :=
-              Math.Max(0, FadeAlpha - Sqr((Current.EdgeDistance[Edge] - RingOffset) div 2))
+          Current.Alpha[Edge] := Math.Max(0, FadeAlpha - Sqr((Current.EdgeDistance[Edge] - RingOffset) div 2))
         else
           Current.Alpha[Edge] :=
               Round(
@@ -287,9 +276,7 @@ begin
                       0,
                       FadeAlpha
                           - Abs(Current.EdgeDistance[Edge] - RingOffset)
-                              * Math.Max(
-                                  0.1,
-                                  1.0 - Math.Max(RingOffset, 0) / RadiationRadii[PaletteIndex])
+                              * Math.Max(0.1, 1.0 - Math.Max(RingOffset, 0) / RadiationRadii[PaletteIndex])
                   )
               );
     end;
@@ -360,10 +347,7 @@ var
 
     procedure BlendRadiationPoint(X, Y: Integer);
     begin
-      if (ClipRect.Left <= X)
-          and (ClipRect.Right > X)
-          and (ClipRect.Top <= Y)
-          and (ClipRect.Bottom > Y) then
+      if (ClipRect.Left <= X) and (ClipRect.Right > X) and (ClipRect.Top <= Y) and (ClipRect.Bottom > Y) then
         ScreenRenderBuffer.BlendPixel16(X, Y, PixelColor, PixelAlpha);
     end;
 
@@ -517,8 +501,7 @@ begin
       begin
         Text := PaletteBlock.GetParam('Color' + IntToStr(ColorIndex));
         for PartIndex := 0 to 2 do
-          RadiationPalettes[Index][3 * ColorIndex + PartIndex] :=
-              ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, PartIndex, ','));
+          RadiationPalettes[Index][3 * ColorIndex + PartIndex] := ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, PartIndex, ','));
       end;
       if PaletteBlock.CountParams('Radius') > 0 then
         RadiationRadii[Index] := ExtractDigitsToIntW(PaletteBlock.GetParam('Radius'))
@@ -531,25 +514,21 @@ begin
     begin
       RadiationEdgeStarts[Index * 4 + ColorIndex].X :=
           Round(
-              ((4 - ColorIndex) * RadiationHexagon[Index].X
-                      + ColorIndex * RadiationHexagon[(Index + 1) mod Length(RadiationHexagon)].X)
+              ((4 - ColorIndex) * RadiationHexagon[Index].X + ColorIndex * RadiationHexagon[(Index + 1) mod Length(RadiationHexagon)].X)
                   * 30.0
                   / 4.0
           );
       RadiationEdgeStarts[Index * 4 + ColorIndex].Y :=
           Round(
-              ((4 - ColorIndex) * RadiationHexagon[Index].Y
-                      + ColorIndex * RadiationHexagon[(Index + 1) mod Length(RadiationHexagon)].Y)
+              ((4 - ColorIndex) * RadiationHexagon[Index].Y + ColorIndex * RadiationHexagon[(Index + 1) mod Length(RadiationHexagon)].Y)
                   * 30.0
                   / 4.0
           );
     end;
   for Index := Low(RadiationEdgeEnds) to High(RadiationEdgeEnds) do
   begin
-    RadiationEdgeEnds[Index].X :=
-        RadiationEdgeStarts[(Index + 1) mod Length(RadiationEdgeStarts)].X;
-    RadiationEdgeEnds[Index].Y :=
-        RadiationEdgeStarts[(Index + 1) mod Length(RadiationEdgeStarts)].Y;
+    RadiationEdgeEnds[Index].X := RadiationEdgeStarts[(Index + 1) mod Length(RadiationEdgeStarts)].X;
+    RadiationEdgeEnds[Index].Y := RadiationEdgeStarts[(Index + 1) mod Length(RadiationEdgeStarts)].Y;
   end;
   Block := GameDataConfig.GetBlockByPath('SE.Weapon.AuraEffect.Palettes');
   ColorIndex := Block.GetBlockCount;

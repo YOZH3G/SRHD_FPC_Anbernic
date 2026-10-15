@@ -64,41 +64,19 @@ type
 
 const
 
-  HexDigits: THexDigits =
-      ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+  HexDigits: THexDigits = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
 
 function CountDelimitedPartsW(const Text: WideString; const Delimiters: WideString): Integer;
 
-function GetDelimitedPartStartIndexW(
-    const Text: WideString;
-    PartIndex: Integer;
-    const Delimiters: WideString
-): Integer;
+function GetDelimitedPartStartIndexW(const Text: WideString; PartIndex: Integer; const Delimiters: WideString): Integer;
 
-function GetCharDelimitedPartStartIndexW(
-    const Text: WideString;
-    PartIndex: Integer;
-    Delimiter: WideChar
-): Integer;
+function GetCharDelimitedPartStartIndexW(const Text: WideString; PartIndex: Integer; Delimiter: WideChar): Integer;
 
-function GetDelimitedPartLengthW(
-    const Text: WideString;
-    StartIndex: Integer;
-    const Delimiters: WideString
-): Integer;
+function GetDelimitedPartLengthW(const Text: WideString; StartIndex: Integer; const Delimiters: WideString): Integer;
 
-function ExtractDelimitedPartW(
-    const Text: WideString;
-    PartIndex: Integer;
-    const Delimiters: WideString
-): WideString;
+function ExtractDelimitedPartW(const Text: WideString; PartIndex: Integer; const Delimiters: WideString): WideString;
 
-function ExtractDelimitedRangeW(
-    const Text: WideString;
-    FirstPart: Integer;
-    LastPart: Integer;
-    const Delimiters: WideString
-): WideString;
+function ExtractDelimitedRangeW(const Text: WideString; FirstPart: Integer; LastPart: Integer; const Delimiters: WideString): WideString;
 
 function ExtractNextDelimitedPartW(var Text: WideString; Delimiter: WideChar): WideString;
 
@@ -118,11 +96,7 @@ function ParseDecimalToSingleW(const Text: WideString): Single;
 
 function FloatToWideString(Value: Double): WideString;
 
-function ReplaceAllWideString(
-    const Text: WideString;
-    const Search: WideString;
-    const Replacement: WideString
-): WideString;
+function ReplaceAllWideString(const Text: WideString; const Search: WideString; const Replacement: WideString): WideString;
 
 function CardinalToHexWideString(Value: Cardinal): WideString;
 
@@ -142,28 +116,15 @@ function RemoveWideStringChars(const Text: WideString; Chars: WideString): WideS
 
 function GetTextTagLengthW(Text: PWideChar; CharCount: Integer): Integer;
 
-function MatchTextTagPrefixW(
-    Text: PWideChar;
-    CharCount: Integer;
-    const Pattern: WideString;
-    const AlternatePattern: WideString
-): Boolean;
+function MatchTextTagPrefixW(Text: PWideChar; CharCount: Integer; const Pattern: WideString; const AlternatePattern: WideString): Boolean;
 
 function RemoveTextTagsW(const Text: WideString): WideString;
 
-function RemoveMatchingTextTagsW(
-    Text: WideString;
-    const Pattern: WideString;
-    const AlternatePattern: WideString
-): WideString;
+function RemoveMatchingTextTagsW(Text: WideString; const Pattern: WideString; const AlternatePattern: WideString): WideString;
 
 function CompareWideChars(Left: PWideChar; Right: PWideChar): Integer; cdecl;
 
-function FindTextOffsetW(
-    const Text: WideString;
-    const Search: WideString;
-    StartIndex: Integer = 0
-): Integer;
+function FindTextOffsetW(const Text: WideString; const Search: WideString; StartIndex: Integer = 0): Integer;
 
 function FindTextPosW(const Search: WideString; const Text: WideString): Integer;
 
@@ -465,11 +426,7 @@ begin
   Result := Count;
 end;
 
-function GetDelimitedPartStartIndexW(
-    const Text: WideString;
-    PartIndex: Integer;
-    const Delimiters: WideString
-): Integer;
+function GetDelimitedPartStartIndexW(const Text: WideString; PartIndex: Integer; const Delimiters: WideString): Integer;
 var
   TextLength, DelimiterCount, i, j: Integer;
 begin
@@ -489,17 +446,12 @@ begin
           end;
           Break;
         end;
-    raise Exception.Create(
-        'GetSmeParEC. Str=' + Text + ' np=' + SysUtils.IntToStr(PartIndex) + ' raz=' + Delimiters);
+    raise Exception.Create('GetSmeParEC. Str=' + Text + ' np=' + SysUtils.IntToStr(PartIndex) + ' raz=' + Delimiters);
   end;
   Result := 1;
 end;
 
-function GetCharDelimitedPartStartIndexW(
-    const Text: WideString;
-    PartIndex: Integer;
-    Delimiter: WideChar
-): Integer;
+function GetCharDelimitedPartStartIndexW(const Text: WideString; PartIndex: Integer; Delimiter: WideChar): Integer;
 var
   TextLength, i: Integer;
 begin
@@ -523,11 +475,7 @@ begin
   Result := 1;
 end;
 
-function GetDelimitedPartLengthW(
-    const Text: WideString;
-    StartIndex: Integer;
-    const Delimiters: WideString
-): Integer;
+function GetDelimitedPartLengthW(const Text: WideString; StartIndex: Integer; const Delimiters: WideString): Integer;
 var
   TextLength, DelimiterCount, i, j: Integer;
 begin
@@ -543,11 +491,7 @@ begin
   Result := TextLength - StartIndex + 1;
 end;
 
-function ExtractDelimitedPartW(
-    const Text: WideString;
-    PartIndex: Integer;
-    const Delimiters: WideString
-): WideString;
+function ExtractDelimitedPartW(const Text: WideString; PartIndex: Integer; const Delimiters: WideString): WideString;
 var
   StartIndex: Integer;
 begin
@@ -555,12 +499,7 @@ begin
   Result := Copy(Text, StartIndex, GetDelimitedPartLengthW(Text, StartIndex, Delimiters));
 end;
 
-function ExtractDelimitedRangeW(
-    const Text: WideString;
-    FirstPart: Integer;
-    LastPart: Integer;
-    const Delimiters: WideString
-): WideString;
+function ExtractDelimitedRangeW(const Text: WideString; FirstPart: Integer; LastPart: Integer; const Delimiters: WideString): WideString;
 var
   StartIndex, EndIndex: Integer;
 begin
@@ -1009,11 +948,7 @@ begin
     Result := i + 1;
 end;
 
-function MatchTextTagPrefixW(
-    Text: PWideChar;
-    CharCount: Integer;
-    const Pattern, AlternatePattern: WideString
-): Boolean;
+function MatchTextTagPrefixW(Text: PWideChar; CharCount: Integer; const Pattern, AlternatePattern: WideString): Boolean;
 var
   i, PatternLength: Integer;
 begin
@@ -1050,10 +985,7 @@ begin
   end;
 end;
 
-function RemoveMatchingTextTagsW(
-    Text: WideString;
-    const Pattern, AlternatePattern: WideString
-): WideString;
+function RemoveMatchingTextTagsW(Text: WideString; const Pattern, AlternatePattern: WideString): WideString;
 var
   i, TagLength: Integer;
 begin
@@ -1144,10 +1076,7 @@ begin
   else
     while StartIndex <= TextLength - SearchLength do
     begin
-      if SysUtils.CompareMem(
-          Pointer(StartIndex * SizeOf(WideChar) + PAnsiChar(TextPtr)),
-          SearchPtr,
-          SearchLength * SizeOf(WideChar)) then
+      if SysUtils.CompareMem(Pointer(StartIndex * SizeOf(WideChar) + PAnsiChar(TextPtr)), SearchPtr, SearchLength * SizeOf(WideChar)) then
       begin
         Result := StartIndex;
         Exit
@@ -1306,11 +1235,7 @@ end;
 function CopyWideStringUnchecked(Text: WideString; Index, Count: Integer): WideString;
 begin
   SetLength(Result, Count);
-  System.Move(
-      AddPointerOffset(PWideChar(Text), (Index - 1) * SizeOf(WideChar))^,
-      PWideChar(Result)^,
-      Count * SizeOf(WideChar)
-  );
+  System.Move(AddPointerOffset(PWideChar(Text), (Index - 1) * SizeOf(WideChar))^, PWideChar(Result)^, Count * SizeOf(WideChar));
 end;
 
 end.

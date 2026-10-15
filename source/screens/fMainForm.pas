@@ -97,32 +97,25 @@ end;
 
 procedure TfMainForm.FitMobileMenu;
 const
-  ButtonNames: array[0..7] of WideString =
-      ('New', 'Load', 'Settings', 'Score', 'Achievements', 'About', 'Exit', 'Circle');
+  ButtonNames: array[0..7] of WideString = ('New', 'Load', 'Settings', 'Score', 'Achievements', 'About', 'Exit', 'Circle');
 var
   ButtonBounds, HeaderBounds: TRect;
   Control: TObjectGI;
   CenterX, HeaderScale, ButtonScale, MenuTop, MenuBottom, MenuLeft: Single;
   Index: Integer;
 
-  procedure PlaceControls(
-      const Names: array of WideString;
-      Scale, SourceCenterX, SourceTop, TargetTop: Single
-  );
+  procedure PlaceControls(const Names: array of WideString; Scale, SourceCenterX, SourceTop, TargetTop: Single);
   var
     Name: WideString;
     Item: TObjectGI;
     Offset: TPoint;
   begin
-    Offset :=
-        Classes.Point(Round(CenterX / Scale - SourceCenterX), Round(TargetTop / Scale - SourceTop));
+    Offset := Classes.Point(Round(CenterX / Scale - SourceCenterX), Round(TargetTop / Scale - SourceTop));
     for Name in Names do
     begin
       Item := GetByName(Name);
       Item.DisplayScale := Scale;
-      Item.SetPosition(
-          Classes.Point(Item.LocalPosition.X + Offset.X, Item.LocalPosition.Y + Offset.Y)
-      );
+      Item.SetPosition(Classes.Point(Item.LocalPosition.X + Offset.X, Item.LocalPosition.Y + Offset.Y));
     end;
   end;
 
@@ -147,31 +140,17 @@ begin
   MenuTop := 24 + (HeaderBounds.Bottom - HeaderBounds.Top) * HeaderScale;
   MenuBottom := GetByName('LogoElemental').HitTestBounds.Top - 8;
   ButtonScale := GetGameMobileUiScale;
-  ButtonScale :=
-      Min(
-          ButtonScale,
-          2
-              * Min(CenterX - 12, GameScreenWidth - 12 - CenterX)
-              / (ButtonBounds.Right - ButtonBounds.Left)
-      );
+  ButtonScale := Min(ButtonScale, 2 * Min(CenterX - 12, GameScreenWidth - 12 - CenterX) / (ButtonBounds.Right - ButtonBounds.Left));
   MenuLeft := CenterX - (ButtonBounds.Right - ButtonBounds.Left) * ButtonScale / 2;
   // On narrower displays, the bottom shortcuts also extend below the column.
   if MenuLeft < GetByName('LMods').HitTestBounds.Right + 8 then
     MenuBottom := Min(MenuBottom, GetByName('LoadRobot').HitTestBounds.Top - 8);
-  ButtonScale :=
-      Min(ButtonScale, (MenuBottom - MenuTop) / (ButtonBounds.Bottom - ButtonBounds.Top));
+  ButtonScale := Min(ButtonScale, (MenuBottom - MenuTop) / (ButtonBounds.Bottom - ButtonBounds.Top));
   if ButtonScale <= 0 then
     Exit;
   PlaceControls(['Caption', 'CaptionBlur', 'SubName'], HeaderScale, CenterX, HeaderBounds.Top, 12);
-  MenuTop :=
-      MenuTop + (MenuBottom - MenuTop - (ButtonBounds.Bottom - ButtonBounds.Top) * ButtonScale) / 2;
-  PlaceControls(
-      ButtonNames,
-      ButtonScale,
-      (ButtonBounds.Left + ButtonBounds.Right) / 2,
-      ButtonBounds.Top,
-      MenuTop
-  );
+  MenuTop := MenuTop + (MenuBottom - MenuTop - (ButtonBounds.Bottom - ButtonBounds.Top) * ButtonScale) / 2;
+  PlaceControls(ButtonNames, ButtonScale, (ButtonBounds.Left + ButtonBounds.Right) / 2, ButtonBounds.Top, MenuTop);
 end;
 
 procedure TfMainForm.InitializeLayout;
@@ -185,8 +164,7 @@ begin
   inherited InitializeLayout;
   LayoutExtraWidth := ExtraScreenWidth;
   LayoutExtraHeight := ExtraScreenHeight;
-  if GameCompactLayoutEnabled and HardwareRenderingEnabled
-      and (GameScreenWidth < 1024) then
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024) then
   begin
     LayoutExtraWidth := 0;
     LayoutExtraHeight := 0;
@@ -198,52 +176,27 @@ begin
   begin
     if Cardinal(GameScreenWidth) >= 1280 then
     begin
-      SetPosition(
-          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight));
       SetText(ReplaceAllWideString(LocalizedText('FormMain.Version'), '<Value>', GameVersionText));
       LogoShift := 0;
     end
     else
     begin
-      SetPosition(
-          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - 7)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - 7));
       SetText(ReplaceAllWideString(LocalizedText('FormMain.Version2'), '<Value>', GameVersionText));
       LogoShift := 16;
     end;
   end;
   with GetByName('LogoElemental') do
-    SetPosition(
-        Classes.Point(
-            LocalPosition.X + LayoutExtraWidth,
-            LocalPosition.Y + LayoutExtraHeight - LogoShift
-        )
-    );
+    SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - LogoShift));
   with GetByName('Logo1C') do
-    SetPosition(
-        Classes.Point(
-            LocalPosition.X + LayoutExtraWidth,
-            LocalPosition.Y + LayoutExtraHeight - LogoShift
-        )
-    );
+    SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - LogoShift));
   with GetByName('LogoKatauri') do
-    SetPosition(
-        Classes.Point(
-            LocalPosition.X + LayoutExtraWidth,
-            LocalPosition.Y + LayoutExtraHeight - LogoShift
-        )
-    );
+    SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - LogoShift));
   with GetByName('LogoSNK') do
-    SetPosition(
-        Classes.Point(
-            LocalPosition.X + LayoutExtraWidth,
-            LocalPosition.Y + LayoutExtraHeight - LogoShift
-        )
-    );
+    SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight - LogoShift));
   if ((ExtraScreenWidth <> 0) or (ExtraScreenHeight <> 0))
-      and not (GameCompactLayoutEnabled and HardwareRenderingEnabled
-          and (GameScreenWidth < 1024)) then
+      and not (GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024)) then
   begin
     ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
     OffsetX := 0;
@@ -270,61 +223,21 @@ begin
       with FindByNameRecursive('MicroText') do
         SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
       with FindByNameRecursive('Circle') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('New') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Score') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Achievements') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Load') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Settings') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('About') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Exit') do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2 + OffsetX,
-                LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('AnimAddonShip') do
         SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
       with FindByNameRecursive('LoadRobot') do
@@ -365,9 +278,7 @@ begin
               SetImagePath('Bm.FormMain3.CaptionLarge');
             end
             else
-              SetPosition(
-                  Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y)
-              );
+              SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y));
           end;
         end
         else
@@ -402,9 +313,7 @@ begin
                 SetImagePath('GI,Bm.FormMain3.CaptionLarge');
             end
             else
-              SetPosition(
-                  Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y)
-              );
+              SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y));
           end;
         end;
         with FindByNameRecursive('CaptionBlur') as TImageGI do
@@ -412,9 +321,7 @@ begin
           if WideLayout and (Cardinal(GameScreenHeight) >= 900) then
             SetPosition(Classes.Point((GameScreenWidth - ClientSize.X) div 2 - 7, -29))
           else
-            SetPosition(
-                Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y)
-            );
+            SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y));
         end;
         with FindByNameRecursive('SubName') as TImageGI do
         begin
@@ -425,17 +332,14 @@ begin
             SetPosition(Classes.Point((GameScreenWidth - ClientSize.X) div 2 - 54, 320));
           end
           else
-            SetPosition(
-                Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y)
-            );
+            SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + 50, LocalPosition.Y));
         end;
       end;
       with FindByNameRecursive('Planet') do
         SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
     end;
   end;
-  if GameCompactLayoutEnabled and HardwareRenderingEnabled
-      and (GameScreenWidth < 1024) then
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024) then
   begin
     ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
     GetByName('MainPanel').DisplayScale := Min(GameScreenWidth / 1024, GameScreenHeight / 768);
@@ -520,8 +424,7 @@ begin
   with GetByName('AnimAddonShip') as TgaiGI do
   begin
     FirstFrameOnly := not AnimMenuShip;
-    if GameCompactLayoutEnabled and HardwareRenderingEnabled
-        and (GameScreenWidth < 1024) then
+    if GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024) then
       SetPosition(Classes.Point(0, 60))
     else
       SetPosition(Classes.Point(0, ExtraScreenHeight div 2 + 60));
@@ -611,10 +514,7 @@ end;
 
 procedure TfMainForm.QuitClicked(Sender: TObjectGI);
 begin
-  if ShowMessageBoxGI(
-          Self,
-          LanguageDataConfig.GetParamByPathOrMarker('FormMain.MsgExit'),
-          mbgOK or mbgCancel or mbgQuestion)
+  if ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormMain.MsgExit'), mbgOK or mbgCancel or mbgQuestion)
       = mbgResultOK then
   begin
     RequestedScreenId := screenNone;

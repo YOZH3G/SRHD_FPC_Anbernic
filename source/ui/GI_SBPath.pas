@@ -108,8 +108,7 @@ begin
   if Maximum - Minimum < 1 then
     ThumbImage.SetPosition(Points[0])
   else
-    ThumbImage
-        .SetPosition(Points[Round((Position - Minimum) / (Maximum - Minimum) * (PointCount - 1))]);
+    ThumbImage.SetPosition(Points[Round((Position - Minimum) / (Maximum - Minimum) * (PointCount - 1))]);
 end;
 
 function TSBPathGI.PositionFromPointIndex(Index: Integer): Integer;

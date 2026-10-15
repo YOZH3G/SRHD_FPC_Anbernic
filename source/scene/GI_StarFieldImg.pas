@@ -156,10 +156,8 @@ begin
   end
   else
   begin
-    Star.Position.X :=
-        Random * (Cardinal(GameScreenWidth) - 1) * 0.5 + Cardinal(GameScreenWidth) * 0.25;
-    Star.Position.Y :=
-        Random * (Cardinal(GameScreenHeight) - 1) * 0.5 + Cardinal(GameScreenHeight) * 0.25;
+    Star.Position.X := Random * (Cardinal(GameScreenWidth) - 1) * 0.5 + Cardinal(GameScreenWidth) * 0.25;
+    Star.Position.Y := Random * (Cardinal(GameScreenHeight) - 1) * 0.5 + Cardinal(GameScreenHeight) * 0.25;
   end;
   Outside :=
       (FocusPoint.X < 0)
@@ -197,8 +195,7 @@ begin
   Star.Acceleration.X := DX * Speed;
   Star.Acceleration.Y := DY * Speed;
   Star.TemplateIndex := RandomIntRange(0, High(StarFieldImageTemplates));
-  Data :=
-      AcquireCachedGai(TCGaiControlEC(StarFieldImageTemplates[Star.TemplateIndex].CacheControl));
+  Data := AcquireCachedGai(TCGaiControlEC(StarFieldImageTemplates[Star.TemplateIndex].CacheControl));
   try
     Star.ImageSize := Data.GetCanvasSize;
     Star.ImageOffset := HalfPoint(Star.ImageSize);
@@ -277,8 +274,7 @@ begin
     Speed := Sqrt(Star.Velocity.X * Star.Velocity.X + Star.Velocity.Y * Star.Velocity.Y);
     Star.Velocity.X := Speed * DX;
     Star.Velocity.Y := Speed * DY;
-    Speed :=
-        Sqrt(Star.Acceleration.X * Star.Acceleration.X + Star.Acceleration.Y * Star.Acceleration.Y);
+    Speed := Sqrt(Star.Acceleration.X * Star.Acceleration.X + Star.Acceleration.Y * Star.Acceleration.Y);
     Star.Acceleration.X := Speed * DX;
     Star.Acceleration.Y := Speed * DY;
     Star := AddPointerOffset(Star, SizeOf(TStarFieldImageGI));
@@ -313,12 +309,8 @@ begin
         CurrentFocusDistance := Max(TargetFocusDistance, CurrentFocusDistance - 150)
       else if TargetFocusDistance > CurrentFocusDistance then
         CurrentFocusDistance := Min(TargetFocusDistance, CurrentFocusDistance + 100);
-      FocusPoint.X :=
-          Sin(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance
-              + Cardinal(GameScreenWidth) / 2;
-      FocusPoint.Y :=
-          Cardinal(GameScreenHeight) / 2
-              - Cos(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance;
+      FocusPoint.X := Sin(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance + Cardinal(GameScreenWidth) / 2;
+      FocusPoint.Y := Cardinal(GameScreenHeight) / 2 - Cos(HeadingDegreesToRadians(CurrentHeading)) * CurrentFocusDistance;
       RedirectStars;
     end;
     AdvanceStars;
@@ -422,8 +414,7 @@ begin
     StarFieldImageTemplates[I].CachedData := nil;
   try
     for I := 0 to High(StarFieldImageTemplates) do
-      StarFieldImageTemplates[I].CachedData :=
-          AcquireCachedGai(TCGaiControlEC(StarFieldImageTemplates[I].CacheControl));
+      StarFieldImageTemplates[I].CachedData := AcquireCachedGai(TCGaiControlEC(StarFieldImageTemplates[I].CacheControl));
     Star := Stars;
     for I := 0 to StarCount - 1 do
     begin

@@ -89,13 +89,7 @@ begin
     Exit;
   Rotation := AcquireOrCreateRotateBuf(RotationCache);
   try
-    Ex_OKGR_RotateBuf_Size(
-        AbsolutePosition.X,
-        AbsolutePosition.Y,
-        Angle,
-        Rotation.Buffer,
-        HitTestBounds
-    );
+    Ex_OKGR_RotateBuf_Size(AbsolutePosition.X, AbsolutePosition.Y, Angle, Rotation.Buffer, HitTestBounds);
     Inc(HitTestBounds.Right);
     Inc(HitTestBounds.Bottom);
   finally

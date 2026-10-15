@@ -49,16 +49,8 @@ type
     function IsFrameCompressed(FrameIndex: Integer): Boolean;
     function GetSequenceCount: Integer;
     function GetSequenceFrameCount(SequenceIndex: Integer): Integer;
-    procedure FillSequenceFrameIndexTable(
-        SequenceIndex: Integer;
-        DestTable: Pointer;
-        EntryStride: Integer
-    );
-    procedure FillSequenceFrameDelayTable(
-        SequenceIndex: Integer;
-        DestTable: Pointer;
-        EntryStride: Integer
-    );
+    procedure FillSequenceFrameIndexTable(SequenceIndex: Integer; DestTable: Pointer; EntryStride: Integer);
+    procedure FillSequenceFrameDelayTable(SequenceIndex: Integer; DestTable: Pointer; EntryStride: Integer);
     function GetSequenceFrameIndex(SequenceIndex: Integer; FrameInSequence: Integer): Integer;
     function GetSequenceFrameDelay(SequenceIndex: Integer; FrameInSequence: Integer): Integer;
     procedure ApplyAB2BackgroundFixup(SourceBuffer: TBufEC; const ResourceKey: WideString);
@@ -76,13 +68,9 @@ uses
   GR_GraphBuf;
 
 // Native directory indexing adds the two header dwords separately.
-function ReadGaiSequenceOffset(
-    const Table: PGaiSequenceTableHeader;
-    const Index: Integer
-): Cardinal; inline;
+function ReadGaiSequenceOffset(const Table: PGaiSequenceTableHeader; const Index: Integer): Cardinal; inline;
 begin
-  Result :=
-      ReadDWordEC(AddPointerOffset(Table, Index * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4));
+  Result := ReadDWordEC(AddPointerOffset(Table, Index * SizeOf(TGaiSequenceDirectoryEntry) + 4 + 4));
 end;
 
 procedure TCGaiControlEC.QueueLoadIfMissing(PendingLoads: TList);
@@ -229,10 +217,7 @@ begin
   Result := nil;
   if (FrameIndex < 0) or (Header.FrameCount <= FrameIndex) then
     Exit;
-  Offset :=
-      ReadDWordEC(
-          AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
-      );
+  Offset := ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader)));
   if Offset = 0 then
   begin
     Result := nil;
@@ -242,12 +227,7 @@ begin
   begin
     DecodedFrameGi.LoadCompressedGiBytes(
         AddPointerOffset(RawGaiData, Offset),
-        ReadDWordEC(
-            AddPointerOffset(
-                RawGaiData,
-                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)
-            )
-        )
+        ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)))
     );
     if not SkipPalettedColorCacheBuild then
       DecodedFrameGi.BuildPalettedFormat4ColorCache;
@@ -255,12 +235,7 @@ begin
   else
     DecodedFrameGi.LoadRawGiBytes(
         AddPointerOffset(RawGaiData, Offset),
-        ReadDWordEC(
-            AddPointerOffset(
-                RawGaiData,
-                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)
-            )
-        )
+        ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)))
     );
   if not DecodedFrameGi.IsEmpty then
     Result := DecodedFrameGi;
@@ -270,10 +245,7 @@ function TCGaiEC.IsFrameCompressed(FrameIndex: Integer): Boolean;
 var
   Offset: Integer;
 begin
-  Offset :=
-      ReadDWordEC(
-          AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
-      );
+  Offset := ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader)));
   if Offset = 0 then
     Result := False
   else
@@ -290,26 +262,15 @@ end;
 
 function TCGaiEC.GetSequenceFrameCount(SequenceIndex: Integer): Integer;
 begin
-  Result :=
-      ReadDWordEC(
-          AddPointerOffset(
-              SequenceTableData,
-              ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
-          )
-      );
+  Result := ReadDWordEC(AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)));
 end;
 
-procedure TCGaiEC.FillSequenceFrameIndexTable(
-    SequenceIndex: Integer;
-    DestTable: Pointer;
-    EntryStride: Integer
-);
+procedure TCGaiEC.FillSequenceFrameIndexTable(SequenceIndex: Integer; DestTable: Pointer; EntryStride: Integer);
 var
   Source: Pointer;
   Index, Count: Integer;
 begin
-  Source :=
-      AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
+  Source := AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
   Count := ReadDWordEC(Source);
   Source := AddPointerOffset(Source, SizeOf(TGaiSequenceDataBlock));
   for Index := 0 to Count - 1 do
@@ -320,17 +281,12 @@ begin
   end;
 end;
 
-procedure TCGaiEC.FillSequenceFrameDelayTable(
-    SequenceIndex: Integer;
-    DestTable: Pointer;
-    EntryStride: Integer
-);
+procedure TCGaiEC.FillSequenceFrameDelayTable(SequenceIndex: Integer; DestTable: Pointer; EntryStride: Integer);
 var
   Source: Pointer;
   Index, Count: Integer;
 begin
-  Source :=
-      AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
+  Source := AddPointerOffset(SequenceTableData, ReadGaiSequenceOffset(SequenceTableData, SequenceIndex));
   Count := ReadDWordEC(Source);
   Source := AddPointerOffset(Source, SizeOf(TGaiSequenceDataBlock) + SizeOf(Integer));
   for Index := 0 to Count - 1 do
@@ -348,8 +304,7 @@ begin
           AddPointerOffset(
               SequenceTableData,
               ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
-                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
-                      + SizeOf(TGaiSequenceDataBlock))
+                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry) + SizeOf(TGaiSequenceDataBlock))
           )
       );
 end;
@@ -361,9 +316,7 @@ begin
           AddPointerOffset(
               SequenceTableData,
               ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
-                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
-                      + SizeOf(TGaiSequenceDataBlock)
-                      + SizeOf(Integer))
+                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry) + SizeOf(TGaiSequenceDataBlock) + SizeOf(Integer))
           )
       );
 end;

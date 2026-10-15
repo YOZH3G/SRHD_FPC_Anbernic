@@ -92,12 +92,7 @@ type
     function RemoveDismissibleMessages(Key: WideString): Boolean;
     procedure MessageMouseEnter(Sender: TObjectGI);
     procedure MessageMouseLeave(Sender: TObjectGI);
-    procedure DeleteMessage(
-        Sender: TObjectGI;
-        KeyState: Cardinal;
-        Point: TPoint;
-        SkipLock: Boolean
-    );
+    procedure DeleteMessage(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint; SkipLock: Boolean);
     procedure MessageRightButtonDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure AdvanceMessageDeletion(Sender: TObjectGI);
     procedure FinishMessageDeletion(Sender: TObjectGI);
@@ -264,9 +259,7 @@ begin
     Query := Pos('?', ImagePath);
     if Query > 0 then
       SetLength(ImagePath, Query - 1);
-    BackgroundImage.SetImagePath(
-        ImagePath + '?mobile-hud=' + IntToStr(LayoutWidth) + ',' + IntToStr(LayoutHeight)
-    );
+    BackgroundImage.SetImagePath(ImagePath + '?mobile-hud=' + IntToStr(LayoutWidth) + ',' + IntToStr(LayoutHeight));
   end;
   ShipButton := Self.Screen.GetByName('PM_Ship') as TGraphButtonGI;
   GalaxyButton := Self.Screen.GetByName('PM_Gal') as TGraphButtonGI;
@@ -301,23 +294,17 @@ var
     // common bar in the original layouts. Keep their depth and callbacks.
     Control.DisplayScale := Panel.DisplayScale;
     if RightAligned then
-      Control.SetPosition(
-          Classes.Point(Control.LocalPosition.X + Delta.X, Control.LocalPosition.Y + Delta.Y)
-      )
+      Control.SetPosition(Classes.Point(Control.LocalPosition.X + Delta.X, Control.LocalPosition.Y + Delta.Y))
     else
-      Control
-          .SetPosition(Classes.Point(Control.LocalPosition.X, Control.LocalPosition.Y + Delta.Y));
+      Control.SetPosition(Classes.Point(Control.LocalPosition.X, Control.LocalPosition.Y + Delta.Y));
   end;
 
 begin
   if Panel.DisplayScale = 1 then
     Exit;
   Screen.RootUiObject.UpdateAbsolutePosition;
-  Panel.SetPosition(
-      Classes.Point(-Panel.Parent.AbsolutePosition.X, -Panel.Parent.AbsolutePosition.Y)
-  );
-  Delta :=
-      Classes.Point(Panel.ClientSize.X - GameScreenWidth, Panel.ClientSize.Y - GameScreenHeight);
+  Panel.SetPosition(Classes.Point(-Panel.Parent.AbsolutePosition.X, -Panel.Parent.AbsolutePosition.Y));
+  Delta := Classes.Point(Panel.ClientSize.X - GameScreenWidth, Panel.ClientSize.Y - GameScreenHeight);
   AlignBarPart('PanelPlanet', True);
   AlignBarPart('PanelPlanetNO', True);
   AlignBarPart('PanelRuins', True);
@@ -335,8 +322,7 @@ end;
 
 function TfPanelMain.ContentBounds: TRect;
 begin
-  Result :=
-      Classes.Rect(0, 0, Screen.LayoutSize.X, ContentLayoutHeight - ShipButton.Parent.ClientSize.Y);
+  Result := Classes.Rect(0, 0, Screen.LayoutSize.X, ContentLayoutHeight - ShipButton.Parent.ClientSize.Y);
 end;
 
 procedure TfPanelMain.FitContent(Control: TObjectGI);
@@ -457,8 +443,7 @@ begin
     if MoneyWarningActive and ((MoneyWarningTicks and 1) = 0) then
     begin
       Screen.GetByName('PM_WarningMoney').SetActive(True);
-      (Screen.GetByName('PM_Money') as TLabelGI)
-          .SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 128, 61));
+      (Screen.GetByName('PM_Money') as TLabelGI).SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 128, 61));
     end
     else
     begin
@@ -467,12 +452,10 @@ begin
     end;
     (Screen.GetByName('PM_Money') as TLabelGI).SetText(WideString(IntToStr(GetPlayer.Money)));
     FreeSpace := GetPlayer.GetCargoFreeSpace;
-    if (CargoWarningActive and ((CargoWarningTicks and 1) = 0))
-        or ((FreeSpace < 0) and not CargoWarningActive) then
+    if (CargoWarningActive and ((CargoWarningTicks and 1) = 0)) or ((FreeSpace < 0) and not CargoWarningActive) then
     begin
       Screen.GetByName('PM_WarningSpace').SetActive(True);
-      (Screen.GetByName('PM_FreeSpace') as TLabelGI)
-          .SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 128, 61));
+      (Screen.GetByName('PM_FreeSpace') as TLabelGI).SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 128, 61));
     end
     else
     begin
@@ -499,12 +482,9 @@ begin
     NextDateLabel.SetText(Galaxy.FormatTurnDate(DisplayedTurn));
   X := -Round((DateLabel.ClientSize.X + DateNextImage.ClientSize.X) * DateSlideProgress);
   DateLabel.SetPosition(Classes.Point(X, 0));
-  DateNextImage
-      .SetPosition(Classes.Point(X + DateLabel.ClientSize.X, DateNextImage.LocalPosition.Y));
-  NextDateLabel
-      .SetPosition(Classes.Point(X + DateLabel.ClientSize.X + DateNextImage.ClientSize.X, 0));
-  if (DisplayedTurn >= TargetTurn)
-      or ((DisplayedTurn >= TargetTurn - 1) and (DateSlideProgress >= 1)) then
+  DateNextImage.SetPosition(Classes.Point(X + DateLabel.ClientSize.X, DateNextImage.LocalPosition.Y));
+  NextDateLabel.SetPosition(Classes.Point(X + DateLabel.ClientSize.X + DateNextImage.ClientSize.X, 0));
+  if (DisplayedTurn >= TargetTurn) or ((DisplayedTurn >= TargetTurn - 1) and (DateSlideProgress >= 1)) then
   begin
     DateLabel.SetTextColor(CurrentDateColor);
     NextDateLabel.SetTextColor(CurrentDateColor);
@@ -531,8 +511,7 @@ end;
 
 procedure TfPanelMain.StartDateAnimation(IntervalMs: Integer);
 begin
-  if (DisplayedTurn < TargetTurn)
-      and ((DisplayedTurn < TargetTurn - 1) or (DateSlideProgress < 1)) then
+  if (DisplayedTurn < TargetTurn) and ((DisplayedTurn < TargetTurn - 1) or (DateSlideProgress < 1)) then
   begin
     if DateTimer <> nil then
     begin
@@ -546,8 +525,7 @@ end;
 
 procedure TfPanelMain.AdvanceDateAnimation(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
-  DateSlideProgress :=
-      (TargetTurn - DisplayedTurn) * 0.01 * (TargetTurn - DisplayedTurn) + DateSlideProgress;
+  DateSlideProgress := (TargetTurn - DisplayedTurn) * 0.01 * (TargetTurn - DisplayedTurn) + DateSlideProgress;
   if DateSlideProgress >= 1 then
   begin
     Inc(DisplayedTurn);
@@ -617,8 +595,7 @@ begin
       CalculateGalaxyTurnAndWait;
     end;
   end;
-  if (GetPlayer = nil)
-      or ((GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentPlanet.OwnerId = oiDominator)) then
+  if (GetPlayer = nil) or ((GetPlayer.CurrentPlanet <> nil) and (GetPlayer.CurrentPlanet.OwnerId = oiDominator)) then
   begin
     Event := AddGalaxyEvent('PlayerDeath');
     Event.AddTextData('PlanetCaptured');
@@ -832,11 +809,7 @@ begin
     Exit;
   if Galaxy.IronWill then
   begin
-    ShowMessageBoxGI(
-        Screen,
-        LocalizedColorText('FormGameSet2.IronWillText'),
-        mbgCancel or mbgUnused04
-    );
+    ShowMessageBoxGI(Screen, LocalizedColorText('FormGameSet2.IronWillText'), mbgCancel or mbgUnused04);
     FullFrameRedrawRequested := True;
     Exit;
   end;
@@ -933,8 +906,7 @@ begin
       while Control <> nil do
       begin
         MessageEntry := TMessagePlayer(Control.UserValue);
-        if IsPersistentPlayerMessageQueued(MessageEntry, True)
-            and (MessageEntry.Button = Control) then
+        if IsPersistentPlayerMessageQueued(MessageEntry, True) and (MessageEntry.Button = Control) then
         begin
           if Control is TGraphButtonGI then
           begin
@@ -947,12 +919,7 @@ begin
                     ImageNormal.GraphBufControl.GraphBuf
                 );
                 ImageNormal.GraphBufControl.GraphBuf.ScaleAlpha(
-                    Classes.Rect(
-                        0,
-                        0,
-                        ImageNormal.GraphBufControl.GraphBuf.Width,
-                        ImageNormal.GraphBufControl.GraphBuf.Height
-                    ),
+                    Classes.Rect(0, 0, ImageNormal.GraphBufControl.GraphBuf.Width, ImageNormal.GraphBufControl.GraphBuf.Height),
                     Alpha
                 );
                 Finished := False;
@@ -962,10 +929,7 @@ begin
             else if ((Control as TGraphButtonGI).ImageNormal <> nil)
                 and ((Control as TGraphButtonGI).ImageNormal.GraphBufControl <> nil) then
             begin
-              (Control as TGraphButtonGI)
-                  .ImageNormal
-                  .SetImagePath(
-                      'GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
+              (Control as TGraphButtonGI).ImageNormal.SetImagePath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
               (Control as TGraphButtonGI).Invalidate;
             end;
           end;
@@ -1085,15 +1049,9 @@ begin
           MessagePulseTimer := Screen.ScheduleCallbackTimer(40, 40, PulseUnreadMessages);
       end
       else
-        Button.SetImageNormalPath(
-            'GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName
-        );
-      Button.SetImageNormalActivePath(
-          'GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetActiveImageName
-      );
-      Button.SetImageDownPath(
-          'GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetPressedImageName
-      );
+        Button.SetImageNormalPath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
+      Button.SetImageNormalActivePath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetActiveImageName);
+      Button.SetImageDownPath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetPressedImageName);
       Button.HitKind := gbhRect;
       Button.SetSize(Button.GetMaxStateImageSize);
       Button.SetPosition(Classes.Point(X, Panel.ClientSize.Y div 2 - Button.ClientSize.Y div 2));
@@ -1169,9 +1127,7 @@ begin
         )
     );
     Window.UpdateAutoGeometry;
-    Window.SetPosition(
-        Classes.Point(Window.LocalPosition.X, Panel.LocalPosition.Y - Window.ClientSize.Y - 5 - 5)
-    );
+    Window.SetPosition(Classes.Point(Window.LocalPosition.X, Panel.LocalPosition.Y - Window.ClientSize.Y - 5 - 5));
     Window.SetActive(True);
     LabelControl.SetSize(
         Classes.Point(
@@ -1187,10 +1143,7 @@ begin
     end;
     LabelControl.SetPosition(Window.WorkSubRect.TopLeft);
     Window.SetPosition(
-        Classes.Point(
-            Sender.HitTestBounds.Left + Sender.ClientSize.X div 2,
-            Sender.HitTestBounds.Top - Window.ClientSize.Y - 5
-        )
+        Classes.Point(Sender.HitTestBounds.Left + Sender.ClientSize.X div 2, Sender.HitTestBounds.Top - Window.ClientSize.Y - 5)
     );
   finally
     PersistentPlayerMessageLock.Leave;
@@ -1202,12 +1155,7 @@ begin
   Screen.GetByName('PM_WinMsg').SetActive(False);
 end;
 
-procedure TfPanelMain.DeleteMessage(
-    Sender: TObjectGI;
-    KeyState: Cardinal;
-    Point: TPoint;
-    SkipLock: Boolean
-);
+procedure TfPanelMain.DeleteMessage(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint; SkipLock: Boolean);
 var
   MessageEntry: TMessagePlayer;
   Control: TObjectGI;
@@ -1290,10 +1238,7 @@ begin
     begin
       if Control is TGraphButtonGI then
         Control.SetPosition(
-            Classes.Point(
-                Control.LocalPosition.X + Round((DeletedButton.ClientSize.X + 2) * Progress),
-                Control.LocalPosition.Y
-            )
+            Classes.Point(Control.LocalPosition.X + Round((DeletedButton.ClientSize.X + 2) * Progress), Control.LocalPosition.Y)
         );
       Control := Control.PrevSibling;
     end;
@@ -1305,10 +1250,7 @@ begin
     begin
       if Control is TGraphButtonGI then
         Control.SetPosition(
-            Classes.Point(
-                Control.LocalPosition.X - Round((DeletedButton.ClientSize.X + 2) * Progress),
-                Control.LocalPosition.Y
-            )
+            Classes.Point(Control.LocalPosition.X - Round((DeletedButton.ClientSize.X + 2) * Progress), Control.LocalPosition.Y)
         );
       Control := Control.NextSibling;
     end;
@@ -1392,12 +1334,7 @@ begin
       end;
     end
     else
-      MessagePanel.SetPosition(
-          Classes.Point(
-              MessagePanel.LocalPosition.X,
-              MessagePanel.LocalPosition.Y + MessageSlideDirection
-          )
-      );
+      MessagePanel.SetPosition(Classes.Point(MessagePanel.LocalPosition.X, MessagePanel.LocalPosition.Y + MessageSlideDirection));
   end
   else
   begin
@@ -1410,12 +1347,7 @@ begin
       end;
     end
     else
-      MessagePanel.SetPosition(
-          Classes.Point(
-              MessagePanel.LocalPosition.X,
-              MessagePanel.LocalPosition.Y + MessageSlideDirection
-          )
-      );
+      MessagePanel.SetPosition(Classes.Point(MessagePanel.LocalPosition.X, MessagePanel.LocalPosition.Y + MessageSlideDirection));
   end;
 end;
 
@@ -1428,8 +1360,7 @@ var
   Attempts: Integer;
   FilmObject: TEFilmObj;
 begin
-  if (CurrentScreenId <> screenStarMap)
-      or ((StarMapScreen.Mode <> smmOrders) and (StarMapScreen.Mode <> smmTurnFilm)) then
+  if (CurrentScreenId <> screenStarMap) or ((StarMapScreen.Mode <> smmOrders) and (StarMapScreen.Mode <> smmTurnFilm)) then
     Exit;
   PersistentPlayerMessageLock.Enter;
   try
@@ -1479,9 +1410,7 @@ begin
         if StarMapScreen.Mode = smmOrders then
         begin
           Ship := Galaxy.IdToShip(DisplayedShipId, False) as TShip;
-          if (Ship <> nil)
-              and Ship.InNormalSpace
-              and (Ship.CurrentStar = GetPlayer.CurrentStar) then
+          if (Ship <> nil) and Ship.InNormalSpace and (Ship.CurrentStar = GetPlayer.CurrentStar) then
           begin
             StarMapScreen.SetMapCenterManually(TruncatePointF(Ship.Position));
             StarMapScreen.AddMapAnimation(Ship.Position, 'Bm.SI.' + GiResourceSuffix + 'Ring', 0);
@@ -1508,12 +1437,9 @@ begin
           if (Planet <> nil) and (Planet.CurrentStar = GetPlayer.CurrentStar) then
           begin
             StarMapScreen.SetMapCenterManually(TruncatePointF(Planet.GetPosition));
-            StarMapScreen
-                .AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 0);
-            StarMapScreen
-                .AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 200);
-            StarMapScreen
-                .AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 400);
+            StarMapScreen.AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 0);
+            StarMapScreen.AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 200);
+            StarMapScreen.AddMapAnimation(Planet.GetPosition, 'Bm.SI.' + GiResourceSuffix + 'Ring', 400);
             Break;
           end;
         end
@@ -1685,11 +1611,7 @@ begin
   if Key = VK_F2 then
   begin
     if Galaxy.IronWill then
-      ShowMessageBoxGI(
-          Screen,
-          LocalizedColorText('FormGameSet2.IronWillText'),
-          mbgCancel or mbgUnused04
-      )
+      ShowMessageBoxGI(Screen, LocalizedColorText('FormGameSet2.IronWillText'), mbgCancel or mbgUnused04)
     else if Galaxy.SpecialSimulationMode = 0 then
     begin
       CaptureSavePreview;

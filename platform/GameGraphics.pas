@@ -14,8 +14,7 @@ type
     PixelAligned: Boolean;
   end;
 const
-  GameGraphicsIdentityTransform: TGameGraphicsTransform =
-      (ScaleX: 1; ScaleY: 1; OffsetX: 0; OffsetY: 0; PixelAligned: False);
+  GameGraphicsIdentityTransform: TGameGraphicsTransform = (ScaleX: 1; ScaleY: 1; OffsetX: 0; OffsetY: 0; PixelAligned: False);
 var
   GameGraphicsTransform: TGameGraphicsTransform;
 implementation
@@ -50,12 +49,7 @@ type
     CachedClip: TRect;
     CachedClipTransform: TGameGraphicsTransform;
     CachedRasterClip: TSDL_Rect;
-    constructor Create(
-        W, H: Integer;
-        Format, Pool: Cardinal;
-        IsTarget: Boolean;
-        IsScreen: Boolean = False
-    );
+    constructor Create(W, H: Integer; Format, Pool: Cardinal; IsTarget: Boolean; IsScreen: Boolean = False);
     destructor Destroy; override;
     function Storage: TSDLStorage;
     procedure Realize;
@@ -65,9 +59,7 @@ type
     function RasterTransform(ApplyTransform: Boolean): TGameGraphicsTransform;
     function RasterRect(const Rect: TRect; ApplyTransform: Boolean = False): TSDL_Rect;
     function RasterClipRect(const Rect: TRect): TSDL_Rect; overload;
-    function RasterClipRect(
-        const Rect: TRect; const Transform: TGameGraphicsTransform
-    ): TSDL_Rect; overload;
+    function RasterClipRect(const Rect: TRect; const Transform: TGameGraphicsTransform): TSDL_Rect; overload;
     procedure ReadPixels(Dest: Pointer; DestPitch: Integer; DestFormat: Cardinal);
     procedure ReadRasterPixels(Dest: Pointer; DestPitch: Integer; DestFormat: Cardinal);
     procedure Upload;
@@ -86,12 +78,7 @@ type
     procedure GenerateMipSubLevels; stdcall;
     function GetLevelDesc(Level: Cardinal; out Desc: TD3DSurfaceDesc): LongInt; stdcall;
     function GetSurfaceLevel(Level: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall;
-    function LockRect(
-        Level: Cardinal;
-        out LockedRect: TD3DLockedRect;
-        Rect: PRect;
-        Flags: Cardinal
-    ): LongInt; stdcall;
+    function LockRect(Level: Cardinal; out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt; stdcall;
     function UnlockRect(Level: Cardinal): LongInt; stdcall;
     function AddDirtyRect(Rect: PRect): LongInt; stdcall;
   end;
@@ -101,11 +88,7 @@ type
     function Storage: TSDLStorage;
     function GetContainer(const IID: TGUID; out Container): LongInt; stdcall;
     function GetDesc(out Desc: TD3DSurfaceDesc): LongInt; stdcall;
-    function LockRect(
-        out LockedRect: TD3DLockedRect;
-        Rect: PRect;
-        Flags: Cardinal
-    ): LongInt; stdcall;
+    function LockRect(out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt; stdcall;
     function UnlockRect: LongInt; stdcall;
     function GetDC(out DC: Cardinal): LongInt; stdcall;
     function ReleaseDC(DC: Cardinal): LongInt; stdcall;
@@ -132,18 +115,11 @@ type
     destructor Destroy; override;
     function TestCooperativeLevel: LongInt; stdcall; override;
     function Reset(var Parameters): LongInt; stdcall; override;
-    function GetBackBuffer(
-        SwapChain, BackBuffer, BackBufferType: Cardinal;
-        out Surface: IDirect3DSurface9
-    ): LongInt; stdcall; override;
+    function GetBackBuffer(SwapChain, BackBuffer, BackBufferType: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall; override;
     function SetFVF(FVF: Cardinal): LongInt; stdcall; override;
     function SetVertexShader(Shader: IDirect3DVertexShader9): LongInt; stdcall; override;
     procedure SetGammaRamp(SwapChain, Flags: Cardinal; const Ramp); stdcall; override;
-    function ColorFill(
-        Surface: IDirect3DSurface9;
-        Rect: PRect;
-        Color: Cardinal
-    ): LongInt; stdcall; override;
+    function ColorFill(Surface: IDirect3DSurface9; Rect: PRect; Color: Cardinal): LongInt; stdcall; override;
     function StretchRect(
         Source: IDirect3DSurface9;
         SourceRect: PRect;
@@ -170,42 +146,19 @@ type
     ): LongInt; stdcall; override;
     function UpdateTexture(Source, Dest: IDirect3DBaseTexture9): LongInt; stdcall; override;
     function GetRenderTargetData(Source, Dest: IDirect3DSurface9): LongInt; stdcall; override;
-    function SetRenderTarget(
-        Index: Cardinal;
-        Surface: IDirect3DSurface9
-    ): LongInt; stdcall; override;
-    function GetRenderTarget(
-        Index: Cardinal;
-        out Surface: IDirect3DSurface9
-    ): LongInt; stdcall; override;
+    function SetRenderTarget(Index: Cardinal; Surface: IDirect3DSurface9): LongInt; stdcall; override;
+    function GetRenderTarget(Index: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall; override;
     function BeginScene: LongInt; stdcall; override;
     function EndScene: LongInt; stdcall; override;
-    function Present(
-        SourceRect, DestRect: PRect;
-        DestWindow: Cardinal;
-        DirtyRegion: Pointer
-    ): LongInt; stdcall; override;
-    function Clear(
-        RectCount: Cardinal;
-        Rects: PRect;
-        Flags, Color: Cardinal;
-        Z: Single;
-        Stencil: Cardinal
-    ): LongInt; stdcall; override;
+    function Present(SourceRect, DestRect: PRect; DestWindow: Cardinal; DirtyRegion: Pointer): LongInt; stdcall; override;
+    function Clear(RectCount: Cardinal; Rects: PRect; Flags, Color: Cardinal; Z: Single; Stencil: Cardinal): LongInt; stdcall; override;
     function SetRenderState(State, Value: Cardinal): LongInt; stdcall; override;
-    function SetTexture(
-        Stage: Cardinal;
-        Texture: IDirect3DBaseTexture9
-    ): LongInt; stdcall; override;
+    function SetTexture(Stage: Cardinal; Texture: IDirect3DBaseTexture9): LongInt; stdcall; override;
     function SetTextureStageState(Stage, State, Value: Cardinal): LongInt; stdcall; override;
     function SetSamplerState(Sampler, State, Value: Cardinal): LongInt; stdcall; override;
     function SetScissorRect(Rect: PRect): LongInt; stdcall; override;
     function GetScissorRect(out Rect: TRect): LongInt; stdcall; override;
-    function DrawPrimitiveUP(
-        PrimitiveType, PrimitiveCount: Cardinal;
-        Data: Pointer;
-        Stride: Cardinal
-    ): LongInt; stdcall; override;
+    function DrawPrimitiveUP(PrimitiveType, PrimitiveCount: Cardinal; Data: Pointer; Stride: Cardinal): LongInt; stdcall; override;
   end;
 
 var
@@ -295,10 +248,7 @@ var
 begin
   inherited Create;
   Require((W > 0) and (H > 0) and (W <= 16384) and (H <= 16384), 'texture dimensions');
-  Require(
-      Format in [D3DFMT_R5G6B5, D3DFMT_A8R8G8B8, D3DFMT_X8R8G8B8],
-      'texture format ' + IntToStr(Format)
-  );
+  Require(Format in [D3DFMT_R5G6B5, D3DFMT_A8R8G8B8, D3DFMT_X8R8G8B8], 'texture format ' + IntToStr(Format));
   Desc.Width := W;
   Desc.Height := H;
   Desc.Format := Format;
@@ -423,8 +373,7 @@ begin
   if Target then
     TextureFormat := SDL_PIXELFORMAT_ARGB8888;
   Handle := SDL_CreateTexture(GameSDLRenderer, TextureFormat, Access, RasterWidth, RasterHeight);
-  if (Handle = nil)
-      and ((RasterWidth > Integer(Desc.Width)) or (RasterHeight > Integer(Desc.Height))) then
+  if (Handle = nil) and ((RasterWidth > Integer(Desc.Width)) or (RasterHeight > Integer(Desc.Height))) then
   begin
     // A device can run out of target memory even below its advertised limits.
     RasterWidth := Desc.Width;
@@ -470,14 +419,7 @@ begin
     if (RasterWidth <> Integer(Desc.Width)) or (RasterHeight <> Integer(Desc.Height)) then
     begin
       if UploadTexture = nil then
-        UploadTexture :=
-            SDL_CreateTexture(
-                GameSDLRenderer,
-                TextureFormat,
-                SDL_TEXTUREACCESS_STATIC,
-                Desc.Width,
-                Desc.Height
-            );
+        UploadTexture := SDL_CreateTexture(GameSDLRenderer, TextureFormat, SDL_TEXTUREACCESS_STATIC, Desc.Width, Desc.Height);
       Require(UploadTexture <> nil, string(SDL_GetError));
       Texture := UploadTexture;
     end;
@@ -487,16 +429,7 @@ begin
     begin
       SetLength(Converted, SizeUInt(Desc.Width) * Desc.Height);
       Check(
-          SDL_ConvertPixels(
-              Desc.Width,
-              Desc.Height,
-              PixelFormat(Desc.Format),
-              Pixels,
-              Pitch,
-              TextureFormat,
-              @Converted[0],
-              Desc.Width * 4
-          )
+          SDL_ConvertPixels(Desc.Width, Desc.Height, PixelFormat(Desc.Format), Pixels, Pitch, TextureFormat, @Converted[0], Desc.Width * 4)
       );
       Check(SDL_UpdateTexture(Texture, nil, @Converted[0], Desc.Width * 4));
     end;
@@ -557,9 +490,7 @@ begin
   Result := RasterClipRect(Rect, RasterTransform(True));
 end;
 
-function TSDLStorage.RasterClipRect(
-    const Rect: TRect; const Transform: TGameGraphicsTransform
-): TSDL_Rect;
+function TSDLStorage.RasterClipRect(const Rect: TRect; const Transform: TGameGraphicsTransform): TSDL_Rect;
 
   function PixelEdge(Coordinate: Integer; Scale, Offset: Single): Integer;
   var
@@ -577,8 +508,10 @@ begin
   // their actual clip state normally. Mapping changes invalidate the result,
   // including camera zoom and native-raster resizes.
   if ClipCached
-      and (CachedClip.Left = Rect.Left) and (CachedClip.Top = Rect.Top)
-      and (CachedClip.Right = Rect.Right) and (CachedClip.Bottom = Rect.Bottom)
+      and (CachedClip.Left = Rect.Left)
+      and (CachedClip.Top = Rect.Top)
+      and (CachedClip.Right = Rect.Right)
+      and (CachedClip.Bottom = Rect.Bottom)
       and (CachedClipTransform.ScaleX = Transform.ScaleX)
       and (CachedClipTransform.ScaleY = Transform.ScaleY)
       and (CachedClipTransform.OffsetX = Transform.OffsetX)
@@ -620,14 +553,7 @@ begin
   Realize;
   // D3D locks, screenshots and screen copies still expose logical pixels.
   // Resize on the GPU before reading into their original logical-size buffers.
-  Readback :=
-      SDL_CreateTexture(
-          GameSDLRenderer,
-          SDL_PIXELFORMAT_ARGB8888,
-          SDL_TEXTUREACCESS_TARGET,
-          Desc.Width,
-          Desc.Height
-      );
+  Readback := SDL_CreateTexture(GameSDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, Desc.Width, Desc.Height);
   Require(Readback <> nil, string(SDL_GetError));
   Previous := SDL_GetRenderTarget(GameSDLRenderer);
   try
@@ -739,17 +665,9 @@ begin
   if not Surface.Screen then
     Exit;
   Surface.Upload;
-  if (Surface.RasterWidth = Integer(Surface.Desc.Width))
-      and (Surface.RasterHeight = Integer(Surface.Desc.Height)) then
+  if (Surface.RasterWidth = Integer(Surface.Desc.Width)) and (Surface.RasterHeight = Integer(Surface.Desc.Height)) then
     Exit;
-  Image :=
-      TSDLStorage.Create(
-          Surface.RasterWidth,
-          Surface.RasterHeight,
-          D3DFMT_A8R8G8B8,
-          D3DPOOL_MANAGED,
-          False
-      );
+  Image := TSDLStorage.Create(Surface.RasterWidth, Surface.RasterHeight, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, False);
   Snapshot := Image.Storage;
   Surface.ReadRasterPixels(Snapshot.Pixels, Snapshot.Pitch, Snapshot.Desc.Format);
   Pixel := Snapshot.Pixels;
@@ -766,12 +684,7 @@ begin
   Surface := TSDLSurface.Create(Image);
   Result := 0
 end;
-function TSDLTexture.LockRect(
-    Level: Cardinal;
-    out LockedRect: TD3DLockedRect;
-    Rect: PRect;
-    Flags: Cardinal
-): LongInt;
+function TSDLTexture.LockRect(Level: Cardinal; out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt;
 begin
   Require(Level = 0, 'mip level');
   Storage.Lock(LockedRect, Rect, Flags);
@@ -807,11 +720,7 @@ begin
   Desc := Storage.Desc;
   Result := 0
 end;
-function TSDLSurface.LockRect(
-    out LockedRect: TD3DLockedRect;
-    Rect: PRect;
-    Flags: Cardinal
-): LongInt;
+function TSDLSurface.LockRect(out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt;
 begin
   Storage.Lock(LockedRect, Rect, Flags);
   Result := 0
@@ -885,16 +794,7 @@ begin
   Check(SDL_GetRendererInfo(GameSDLRenderer, Info));
   Accelerated := (Info.Flags and SDL_RENDERER_ACCELERATED) <> 0;
   ScreenSurface :=
-      TSDLSurface.Create(
-          TSDLStorage.Create(
-              Params.BackBufferWidth,
-              Params.BackBufferHeight,
-              D3DFMT_A8R8G8B8,
-              D3DPOOL_DEFAULT,
-              True,
-              True
-          )
-      );
+      TSDLSurface.Create(TSDLStorage.Create(Params.BackBufferWidth, Params.BackBufferHeight, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, True, True));
   Clip := Types.Rect(0, 0, Params.BackBufferWidth, Params.BackBufferHeight);
   SDL_DestroyTexture(GammaTexture);
   GammaTexture := nil;
@@ -922,10 +822,7 @@ begin
     RebindRenderTarget;
   Result := 0;
 end;
-function TSDLDevice.GetBackBuffer(
-    SwapChain, BackBuffer, BackBufferType: Cardinal;
-    out Surface: IDirect3DSurface9
-): LongInt;
+function TSDLDevice.GetBackBuffer(SwapChain, BackBuffer, BackBufferType: Cardinal; out Surface: IDirect3DSurface9): LongInt;
 begin
   Surface := ScreenSurface;
   Result := 0;
@@ -947,9 +844,7 @@ begin
   Move(Ramp, Gamma, SizeOf(Gamma));
   GammaEnabled := False;
   for Index := 0 to 255 do
-    if (Gamma.Red[Index] <> Index * 257)
-        or (Gamma.Green[Index] <> Index * 257)
-        or (Gamma.Blue[Index] <> Index * 257) then
+    if (Gamma.Red[Index] <> Index * 257) or (Gamma.Green[Index] <> Index * 257) or (Gamma.Blue[Index] <> Index * 257) then
       GammaEnabled := True;
 end;
 
@@ -974,10 +869,7 @@ function TSDLDevice.CreateRenderTarget(
     SharedHandle: PCardinal
 ): LongInt;
 begin
-  Require(
-      (MultiSample = 0) and (MultiSampleQuality = 0) and (SharedHandle = nil),
-      'target options'
-  );
+  Require((MultiSample = 0) and (MultiSampleQuality = 0) and (SharedHandle = nil), 'target options');
   Surface := TSDLSurface.Create(TSDLStorage.Create(Width, Height, Format, D3DPOOL_DEFAULT, True));
   Result := 0;
 end;
@@ -997,12 +889,7 @@ var
 begin
   A := ImageOf(Source);
   B := ImageOf(Dest);
-  Require(
-      (A.Desc.Width = B.Desc.Width)
-          and (A.Desc.Height = B.Desc.Height)
-          and (A.Desc.Format = B.Desc.Format),
-      'texture copy dimensions'
-  );
+  Require((A.Desc.Width = B.Desc.Width) and (A.Desc.Height = B.Desc.Height) and (A.Desc.Format = B.Desc.Format), 'texture copy dimensions');
   Move(A.Pixels^, B.Pixels^, SizeUInt(A.Pitch) * A.Desc.Height);
   B.Dirty := True;
   Result := 0;
@@ -1014,13 +901,7 @@ begin
   TestCooperativeLevel;
   A := ImageOf(Source);
   B := ImageOf(Dest);
-  Require(
-      A.Target
-          and not B.Target
-          and (A.Desc.Width = B.Desc.Width)
-          and (A.Desc.Height = B.Desc.Height),
-      'readback dimensions'
-  );
+  Require(A.Target and not B.Target and (A.Desc.Width = B.Desc.Width) and (A.Desc.Height = B.Desc.Height), 'readback dimensions');
   A.ReadPixels(B.Pixels, B.Pitch, B.Desc.Format);
   B.Dirty := True;
   Result := 0;
@@ -1047,9 +928,7 @@ begin
 end;
 function TSDLDevice.BeginScene: LongInt;
 begin
-  if (ScreenSurface <> nil)
-      and GameWindowUsesNativeRaster
-      and ImageOf(ScreenSurface).UpdateScreenRaster then
+  if (ScreenSurface <> nil) and GameWindowUsesNativeRaster and ImageOf(ScreenSurface).UpdateScreenRaster then
     RebindRenderTarget;
   Result := TestCooperativeLevel;
 end;
@@ -1062,11 +941,7 @@ procedure BrowserWaitFrame; cdecl; external name 'fpc_browser_wait_frame';
 procedure BrowserFramePresented; cdecl; external name 'fpc_browser_presented';
 {$ENDIF}
 
-function TSDLDevice.Present(
-    SourceRect, DestRect: PRect;
-    DestWindow: Cardinal;
-    DirtyRegion: Pointer
-): LongInt;
+function TSDLDevice.Present(SourceRect, DestRect: PRect; DestWindow: Cardinal; DirtyRegion: Pointer): LongInt;
 var
   Screen: TSDLStorage;
   Texture: PSDL_Texture;
@@ -1129,11 +1004,9 @@ begin
   Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
   Check(SDL_GetRendererOutputSize(GameSDLRenderer, OutputWidth, OutputHeight));
   if DestinationPtr <> nil then
-    CoversOutput := (Destination.X = 0) and (Destination.Y = 0)
-        and (Destination.W = OutputWidth) and (Destination.H = OutputHeight)
+    CoversOutput := (Destination.X = 0) and (Destination.Y = 0) and (Destination.W = OutputWidth) and (Destination.H = OutputHeight)
   else
-    CoversOutput := QWord(OutputWidth) * Screen.Desc.Height
-        = QWord(OutputHeight) * Screen.Desc.Width;
+    CoversOutput := QWord(OutputWidth) * Screen.Desc.Height = QWord(OutputHeight) * Screen.Desc.Width;
   // An unblended full-window copy replaces every output pixel. Clear only
   // when the fitted image leaves letterbox bars; avoid writing the complete
   // window twice on handheld software renderers and memory-bound GPUs.
@@ -1151,8 +1024,7 @@ begin
   Filter := SDL_ScaleModeLinear;
   if GameWindowUsesNativeRaster then
   begin
-    if (Destination.W mod Screen.RasterWidth = 0)
-        and (Destination.H mod Screen.RasterHeight = 0) then
+    if (Destination.W mod Screen.RasterWidth = 0) and (Destination.H mod Screen.RasterHeight = 0) then
       Filter := SDL_ScaleModeNearest;
   end
   else
@@ -1183,25 +1055,11 @@ begin
   CollectTextures;
   Result := SetRenderTarget(0, CurrentTarget);
 end;
-function TSDLDevice.Clear(
-    RectCount: Cardinal;
-    Rects: PRect;
-    Flags, Color: Cardinal;
-    Z: Single;
-    Stencil: Cardinal
-): LongInt;
+function TSDLDevice.Clear(RectCount: Cardinal; Rects: PRect; Flags, Color: Cardinal; Z: Single; Stencil: Cardinal): LongInt;
 begin
   TestCooperativeLevel;
   Require((RectCount = 0) and (Flags = 1), 'partial/depth clear');
-  Check(
-      SDL_SetRenderDrawColor(
-          GameSDLRenderer,
-          Byte(Color shr 16),
-          Byte(Color shr 8),
-          Byte(Color),
-          Byte(Color shr 24)
-      )
-  );
+  Check(SDL_SetRenderDrawColor(GameSDLRenderer, Byte(Color shr 16), Byte(Color shr 8), Byte(Color), Byte(Color shr 24)));
   Check(SDL_RenderClear(GameSDLRenderer));
   Result := 0
 end;
@@ -1273,15 +1131,7 @@ begin
   try
     Check(SDL_RenderSetClipRect(GameSDLRenderer, nil));
     Check(SDL_SetRenderDrawBlendMode(GameSDLRenderer, SDL_BLENDMODE_NONE));
-    Check(
-        SDL_SetRenderDrawColor(
-            GameSDLRenderer,
-            Byte(Color shr 16),
-            Byte(Color shr 8),
-            Byte(Color),
-            Byte(Color shr 24)
-        )
-    );
+    Check(SDL_SetRenderDrawColor(GameSDLRenderer, Byte(Color shr 16), Byte(Color shr 8), Byte(Color), Byte(Color shr 24)));
     if Rect = nil then
       Check(SDL_RenderClear(GameSDLRenderer))
     else
@@ -1322,11 +1172,7 @@ begin
     if DestRect <> nil then
       B := ImageOf(Dest).RasterRect(DestRect^, True)
     else
-      B :=
-          ImageOf(Dest)
-              .RasterRect(
-                  Types.Rect(0, 0, ImageOf(Dest).Desc.Width, ImageOf(Dest).Desc.Height),
-                  True);
+      B := ImageOf(Dest).RasterRect(Types.Rect(0, 0, ImageOf(Dest).Desc.Width, ImageOf(Dest).Desc.Height), True);
     PB := @B;
     Image.SetBlend(SDL_BLENDMODE_NONE);
     Image.SetSampling(Ord(Filter = D3DTEXF_LINEAR));
@@ -1339,11 +1185,7 @@ begin
   Result := 0;
 end;
 
-function TSDLDevice.DrawPrimitiveUP(
-    PrimitiveType, PrimitiveCount: Cardinal;
-    Data: Pointer;
-    Stride: Cardinal
-): LongInt;
+function TSDLDevice.DrawPrimitiveUP(PrimitiveType, PrimitiveCount: Cardinal; Data: Pointer; Stride: Cardinal): LongInt;
 type
   TGameVertex = packed record
     X, Y, Z, RHW: Single;
@@ -1368,8 +1210,7 @@ var
     Rect: TSDL_Rect;
   begin
     Result := False;
-    if not Accelerated or not OpaqueVertices
-        or ((Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
+    if not Accelerated or not OpaqueVertices or ((Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
       Exit;
     // Keep the existing integer coverage, colors and submission order. One
     // geometry command replaces a color change and fill command per point.
@@ -1378,7 +1219,8 @@ var
     if Length(PointVertices) < VertexCount then
     begin
       Capacity := Max(192, Length(PointVertices));
-      while Capacity < VertexCount do Capacity := Capacity * 2;
+      while Capacity < VertexCount do
+        Capacity := Capacity * 2;
       SetLength(PointVertices, Capacity);
     end;
     for I := 0 to Count - 1 do
@@ -1410,8 +1252,7 @@ var
     Rect: TSDL_Rect;
   begin
     Result := False;
-    if (Texture <> nil) or Wireframe or (PrimitiveType <> D3DPT_TRIANGLEFAN)
-        or (Count <> 4) then
+    if (Texture <> nil) or Wireframe or (PrimitiveType <> D3DPT_TRIANGLEFAN) or (Count <> 4) then
       Exit;
     Color := DrawVertices[0].Color;
     if Color.A <> 255 then
@@ -1464,8 +1305,7 @@ var
   var
     I, Next: Integer;
   begin
-    if not Target.Screen or not GameGraphicsTransform.PixelAligned
-        or (PrimitiveType <> D3DPT_TRIANGLEFAN) or (Count <> 4) then
+    if not Target.Screen or not GameGraphicsTransform.PixelAligned or (PrimitiveType <> D3DPT_TRIANGLEFAN) or (Count <> 4) then
       Exit;
     for I := 0 to 3 do
     begin
@@ -1498,9 +1338,7 @@ var
     DY := DrawVertices[Last].Position.Y - DrawVertices[First].Position.Y;
     Distance := Sqrt(DX * DX + DY * DY);
     if (Distance = 0)
-        or (CompareMem(@Color, @DrawVertices[Last].Color, SizeOf(Color))
-            and (Transform.ScaleX = 1)
-            and (Transform.ScaleY = 1)) then
+        or (CompareMem(@Color, @DrawVertices[Last].Color, SizeOf(Color)) and (Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
     begin
       Check(SDL_SetRenderDrawColor(GameSDLRenderer, Color.R, Color.G, Color.B, Color.A));
       Check(
@@ -1601,13 +1439,7 @@ begin
       Color := DrawVertices[Index].Color;
       Check(SDL_SetRenderDrawColor(GameSDLRenderer, Color.R, Color.G, Color.B, Color.A));
       if (Transform.ScaleX = 1) and (Transform.ScaleY = 1) then
-        Check(
-            SDL_RenderDrawPointF(
-                GameSDLRenderer,
-                DrawVertices[Index].Position.X,
-                DrawVertices[Index].Position.Y
-            )
-        )
+        Check(SDL_RenderDrawPointF(GameSDLRenderer, DrawVertices[Index].Position.X, DrawVertices[Index].Position.Y))
       else
       begin
         Value.X := Round(DrawVertices[Index].Position.X - Transform.ScaleX * 0.5);
@@ -1647,35 +1479,26 @@ begin
     // Triangle lists are already ordered triples. SDL accepts them directly,
     // while every fan reuses the same immutable index prefix.
     if Wireframe then
-    for Index := 0 to Integer(PrimitiveCount) - 1 do
-    begin
-      if PrimitiveType = D3DPT_TRIANGLEFAN then
+      for Index := 0 to Integer(PrimitiveCount) - 1 do
       begin
-        A := 0;
-        B := Index + 1;
-        C := Index + 2;
-      end
-      else
-      begin
-        A := Index * 3;
-        B := A + 1;
-        C := A + 2;
+        if PrimitiveType = D3DPT_TRIANGLEFAN then
+        begin
+          A := 0;
+          B := Index + 1;
+          C := Index + 2;
+        end
+        else
+        begin
+          A := Index * 3;
+          B := A + 1;
+          C := A + 2;
+        end;
+        DrawEdge(A, B);
+        DrawEdge(B, C);
+        DrawEdge(C, A);
       end;
-      DrawEdge(A, B);
-      DrawEdge(B, C);
-      DrawEdge(C, A);
-    end;
     if not Wireframe then
-      Check(
-          SDL_RenderGeometry(
-              GameSDLRenderer,
-              Texture,
-              @DrawVertices[0],
-              Count,
-              IndexData,
-              IndexCount
-          )
-      );
+      Check(SDL_RenderGeometry(GameSDLRenderer, Texture, @DrawVertices[0], Count, IndexData, IndexCount));
   end;
   Result := 0;
 end;
@@ -1689,18 +1512,9 @@ type
   public
     function RegisterSoftwareDevice(InitializeFunction: Pointer): LongInt; stdcall;
     function GetAdapterCount: Cardinal; stdcall;
-    function GetAdapterIdentifier(
-        Adapter: Cardinal;
-        Flags: Cardinal;
-        out Identifier: TD3DAdapterIdentifier9
-    ): LongInt; stdcall;
+    function GetAdapterIdentifier(Adapter: Cardinal; Flags: Cardinal; out Identifier: TD3DAdapterIdentifier9): LongInt; stdcall;
     function GetAdapterModeCount(Adapter: Cardinal; Format: Cardinal): Cardinal; stdcall;
-    function EnumAdapterModes(
-        Adapter: Cardinal;
-        Format: Cardinal;
-        Mode: Cardinal;
-        out DisplayMode
-    ): LongInt; stdcall;
+    function EnumAdapterModes(Adapter: Cardinal; Format: Cardinal; Mode: Cardinal; out DisplayMode): LongInt; stdcall;
     function GetAdapterDisplayMode(Adapter: Cardinal; out DisplayMode): LongInt; stdcall;
     function CheckDeviceType(
         Adapter: Cardinal;
@@ -1738,11 +1552,7 @@ type
         SourceFormat: Cardinal;
         TargetFormat: Cardinal
     ): LongInt; stdcall;
-    function GetDeviceCaps(
-        Adapter: Cardinal;
-        DeviceType: Cardinal;
-        out Caps: TD3DCaps9
-    ): LongInt; stdcall;
+    function GetDeviceCaps(Adapter: Cardinal; DeviceType: Cardinal; out Caps: TD3DCaps9): LongInt; stdcall;
     function GetAdapterMonitor(Adapter: Cardinal): Cardinal; stdcall;
     function CreateDevice(
         Adapter: Cardinal;
@@ -1762,10 +1572,7 @@ function TSDLGraphics.GetAdapterCount: Cardinal;
 begin
   Result := 1;
 end;
-function TSDLGraphics.GetAdapterIdentifier(
-    Adapter, Flags: Cardinal;
-    out Identifier: TD3DAdapterIdentifier9
-): LongInt;
+function TSDLGraphics.GetAdapterIdentifier(Adapter, Flags: Cardinal; out Identifier: TD3DAdapterIdentifier9): LongInt;
 begin
   FillChar(Identifier, SizeOf(Identifier), 0);
   StrPCopy(PAnsiChar(@Identifier.Description), 'SDL2 renderer');
@@ -1781,14 +1588,14 @@ var
 begin
   Value := Default(TSDL_DisplayMode);
   Result := SDL_GetCurrentDisplayMode(0, Value);
-  {$IFDEF SRHD_ANBERNIC}
+{$IFDEF SRHD_ANBERNIC}
   if Result = 0 then
   begin
     // Small physical panels must not select the legacy low-mode CPU-only path.
     GetGameAutomaticLayoutSize(1024, 768, Value.W, Value.H);
     Exit;
   end;
-  {$ENDIF}
+{$ENDIF}
   if GameWindowIsFullscreenOnly then
   begin
     GetGameAutomaticLayoutSize(1024, 768, Width, Height);
@@ -1923,8 +1730,7 @@ begin
     J := I;
     while (J > 0)
         and ((RenderModes[J].W < RenderModes[J - 1].W)
-            or ((RenderModes[J].W = RenderModes[J - 1].W)
-                and (RenderModes[J].H < RenderModes[J - 1].H))) do
+            or ((RenderModes[J].W = RenderModes[J - 1].W) and (RenderModes[J].H < RenderModes[J - 1].H))) do
     begin
       Swap := RenderModes[J];
       RenderModes[J] := RenderModes[J - 1];
@@ -1981,21 +1787,11 @@ begin
     Move(Data, DisplayMode, SizeOf(Data));
   end;
 end;
-function TSDLGraphics.CheckDeviceType(
-    Adapter, DeviceType, DisplayFormat, BackBufferFormat: Cardinal;
-    Windowed: LongBool
-): LongInt;
+function TSDLGraphics.CheckDeviceType(Adapter, DeviceType, DisplayFormat, BackBufferFormat: Cardinal; Windowed: LongBool): LongInt;
 begin
   Result := 0;
 end;
-function TSDLGraphics.CheckDeviceFormat(
-    Adapter,
-    DeviceType,
-    AdapterFormat,
-    Usage,
-    ResourceType,
-    CheckFormat: Cardinal
-): LongInt;
+function TSDLGraphics.CheckDeviceFormat(Adapter, DeviceType, AdapterFormat, Usage, ResourceType, CheckFormat: Cardinal): LongInt;
 begin
   if CheckFormat in [D3DFMT_A8R8G8B8, D3DFMT_X8R8G8B8, D3DFMT_R5G6B5] then
     Result := 0
@@ -2016,22 +1812,11 @@ begin
   else
     Result := -2147467263;
 end;
-function TSDLGraphics.CheckDepthStencilMatch(
-    Adapter,
-    DeviceType,
-    AdapterFormat,
-    RenderTargetFormat,
-    DepthStencilFormat: Cardinal
-): LongInt;
+function TSDLGraphics.CheckDepthStencilMatch(Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat: Cardinal): LongInt;
 begin
   Result := -2147467263;
 end;
-function TSDLGraphics.CheckDeviceFormatConversion(
-    Adapter,
-    DeviceType,
-    SourceFormat,
-    TargetFormat: Cardinal
-): LongInt;
+function TSDLGraphics.CheckDeviceFormatConversion(Adapter, DeviceType, SourceFormat, TargetFormat: Cardinal): LongInt;
 begin
   Result := 0;
 end;

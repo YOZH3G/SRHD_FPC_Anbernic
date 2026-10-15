@@ -86,8 +86,7 @@ uses
 
 function ReadGaiFrameSize(const Directory: Pointer; const Index: Integer): Cardinal; inline;
 begin
-  Result :=
-      ReadDWordEC(AddPointerOffset(Directory, Index * SizeOf(TGaiFrameEntry) + SizeOf(Integer)));
+  Result := ReadDWordEC(AddPointerOffset(Directory, Index * SizeOf(TGaiFrameEntry) + SizeOf(Integer)));
 end;
 
 procedure TGAIFileThreadGI.Execute;
@@ -109,12 +108,7 @@ begin
     Count := 0;
     while Count < Owner.GetFrameCount do
     begin
-      if PPointer(
-              AddPointerOffset(
-                  Owner.FrameBuffers,
-                  Owner.GetSequenceFrame(Index) * SizeOf(Pointer)
-              ))^
-          = nil then
+      if PPointer(AddPointerOffset(Owner.FrameBuffers, Owner.GetSequenceFrame(Index) * SizeOf(Pointer)))^ = nil then
         Break;
       Inc(Index);
       if Index >= Owner.GetFrameCount then
@@ -127,10 +121,7 @@ begin
     if IsStopRequested then
       Break;
     Data := AllocEC(ReadGaiFrameSize(Owner.FrameDirectory, SourceFrame));
-    Owner.ImageFile.SetPointer(
-        ReadDWordEC(AddPointerOffset(Owner.FrameDirectory, SourceFrame * SizeOf(TGaiFrameEntry))),
-        fsFromBeginning
-    );
+    Owner.ImageFile.SetPointer(ReadDWordEC(AddPointerOffset(Owner.FrameDirectory, SourceFrame * SizeOf(TGaiFrameEntry))), fsFromBeginning);
     Owner.ImageFile.ReadBuffer(Data, ReadGaiFrameSize(Owner.FrameDirectory, SourceFrame));
     PrepareRawGiColorCache(Data);
     if IsStopRequested then
@@ -281,10 +272,7 @@ begin
   end;
   begin
     Data := AllocEC(ReadGaiFrameSize(FrameDirectory, FrameIndex));
-    ImageFile.SetPointer(
-        ReadDWordEC(AddPointerOffset(FrameDirectory, FrameIndex * SizeOf(TGaiFrameEntry))),
-        fsFromBeginning
-    );
+    ImageFile.SetPointer(ReadDWordEC(AddPointerOffset(FrameDirectory, FrameIndex * SizeOf(TGaiFrameEntry))), fsFromBeginning);
     ImageFile.ReadBuffer(Data, ReadGaiFrameSize(FrameDirectory, FrameIndex));
     PrepareRawGiColorCache(Data);
     PPointer(AddPointerOffset(FrameBuffers, FrameIndex * SizeOf(Pointer)))^ := Data;
@@ -426,14 +414,8 @@ begin
     FrameDelays := ReAllocREC(FrameDelays, SequenceFrameCount * SizeOf(Integer));
     for J := 0 to FrameCount - 1 do
     begin
-      WriteInt32EC(
-          AddPointerOffset(SequenceFrames, (SequenceFrameCount - FrameCount + J) * SizeOf(Integer)),
-          First
-      );
-      WriteInt32EC(
-          AddPointerOffset(FrameDelays, (SequenceFrameCount - FrameCount + J) * SizeOf(Integer)),
-          Delay
-      );
+      WriteInt32EC(AddPointerOffset(SequenceFrames, (SequenceFrameCount - FrameCount + J) * SizeOf(Integer)), First);
+      WriteInt32EC(AddPointerOffset(FrameDelays, (SequenceFrameCount - FrameCount + J) * SizeOf(Integer)), Delay);
       if First < Last then
         Inc(First)
       else
@@ -441,8 +423,7 @@ begin
     end;
   end;
   if not Stopped then
-    FrameTimer :=
-        MessageLoop.ScheduleCallbackTimer(GetFrameDelay(CurrentFrame), $FFFFFF, AdvanceFrame);
+    FrameTimer := MessageLoop.ScheduleCallbackTimer(GetFrameDelay(CurrentFrame), $FFFFFF, AdvanceFrame);
 end;
 
 function TGAIFileGI.GetSequenceFrame(Index: Integer): Integer;
@@ -529,8 +510,7 @@ begin
     FrameTimer := nil;
   end;
   if not Stopped then
-    FrameTimer :=
-        MessageLoop.ScheduleCallbackTimer(GetFrameDelay(CurrentFrame), $FFFFFF, AdvanceFrame);
+    FrameTimer := MessageLoop.ScheduleCallbackTimer(GetFrameDelay(CurrentFrame), $FFFFFF, AdvanceFrame);
   Invalidate;
 end;
 
@@ -634,9 +614,7 @@ begin
   end
   else if UsePlaybackBuffer then
   begin
-    if (PlaybackBuffer = nil)
-        or (PlaybackBuffer.Width <> Width)
-        or (PlaybackBuffer.Height <> Height) then
+    if (PlaybackBuffer = nil) or (PlaybackBuffer.Width <> Width) or (PlaybackBuffer.Height <> Height) then
     begin
       LastBufferedFrame := -1;
       if PlaybackBuffer = nil then

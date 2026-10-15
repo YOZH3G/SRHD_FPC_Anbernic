@@ -70,10 +70,7 @@ begin
     with FindByNameRecursive('Caption') do
       SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y));
     with FindByNameRecursive('SubCaption') do
-      SetPosition(
-          Classes
-              .Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('LogoElemental') do
     begin
       Shift := LocalPosition.X * GameScreenWidth div 1024 - LocalPosition.X;

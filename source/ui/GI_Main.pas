@@ -19,24 +19,10 @@ const
 type
 
   {$Z1}
-  TImageKindXGI = (
-      ikxLeftFill = 0,
-      ikxCenterFill = 1,
-      ikxRightFill = 2,
-      ikxLeft = 3,
-      ikxCenter = 4,
-      ikxRight = 5
-  );
+  TImageKindXGI = (ikxLeftFill = 0, ikxCenterFill = 1, ikxRightFill = 2, ikxLeft = 3, ikxCenter = 4, ikxRight = 5);
 
   {$Z1}
-  TImageKindYGI = (
-      ikyTopFill = 0,
-      ikyCenterFill = 1,
-      ikyBottomFill = 2,
-      ikyTop = 3,
-      ikyCenter = 4,
-      ikyBottom = 5
-  );
+  TImageKindYGI = (ikyTopFill = 0, ikyCenterFill = 1, ikyBottomFill = 2, ikyTop = 3, ikyCenter = 4, ikyBottom = 5);
 
   {$Z1}
   TTextAlignXGI = (taxLeft = 0, taxCenter = 1, taxRight = 2, taxAuto = 3);
@@ -69,32 +55,16 @@ function ParseAutoGeometryFlagsGI(Values: WideString): Integer;
 // Position is the rendered control origin in game-screen coordinates, not
 // physical pixels or HitTestBounds.TopLeft. EffectiveScale includes ancestors.
 // Retain fractional positions until the final rounding to control coordinates.
-procedure PlaceControlAtScreen(
-    Control: TObjectGI;
-    const Position: TPointF;
-    EffectiveScale: Single
-); overload;
-procedure PlaceControlAtScreen(
-    Control: TObjectGI;
-    const Position: TPoint;
-    EffectiveScale: Single
-); overload;
+procedure PlaceControlAtScreen(Control: TObjectGI; const Position: TPointF; EffectiveScale: Single); overload;
+procedure PlaceControlAtScreen(Control: TObjectGI; const Position: TPoint; EffectiveScale: Single); overload;
 
 // Anchor a scaled child to its parent's unscaled absolute origin. Used by
 // independently sized markers and inventory cells whose parent can move.
-function ScaledChildPosition(
-    const ParentPosition, ChildPosition: TPoint;
-    RelativeScale: Single
-): TPoint;
+function ScaledChildPosition(const ParentPosition, ChildPosition: TPoint; RelativeScale: Single): TPoint;
 function ControlViewportBounds(Control: TObjectGI): TRect;
 function ControlIntersectsViewport(Control: TObjectGI; Margin: Single = 0): Boolean;
 
-procedure FitMobileControl(
-    Control: TObjectGI;
-    const Bounds: TRect;
-    MaximumScale: Single = 0;
-    PreferredDpScale: Single = 1
-);
+procedure FitMobileControl(Control: TObjectGI; const Bounds: TRect; MaximumScale: Single = 0; PreferredDpScale: Single = 1);
 
 procedure BreakUiMessage;
 
@@ -325,12 +295,7 @@ end;
 
 function ParseEnabledNameGI(Name: WideString): Boolean;
 begin
-  if (Name = 'Yes')
-      or (Name = 'yes')
-      or (Name = 'True')
-      or (Name = 'true')
-      or (Name = 'TRUE')
-      or (Name = '1') then
+  if (Name = 'Yes') or (Name = 'yes') or (Name = 'True') or (Name = 'true') or (Name = 'TRUE') or (Name = '1') then
     Result := True
   else
     Result := False;
@@ -352,11 +317,7 @@ function GetPointGI(PointText: WideString): TPoint;
 begin
   if CountDelimitedPartsW(PointText, ',') < 2 then
     raise Exception.Create('GetPointGI. tstr=' + PointText);
-  Result :=
-      Classes.Point(
-          StrToInt(ExtractDelimitedPartW(PointText, 0, ',')),
-          StrToInt(ExtractDelimitedPartW(PointText, 1, ','))
-      );
+  Result := Classes.Point(StrToInt(ExtractDelimitedPartW(PointText, 0, ',')), StrToInt(ExtractDelimitedPartW(PointText, 1, ',')));
 end;
 
 function GetFloatPointGI(PointText: WideString): TPointF;
@@ -432,16 +393,9 @@ begin
   PlaceControlAtScreen(Control, MakePointF(Position.X, Position.Y), EffectiveScale);
 end;
 
-function ScaledChildPosition(
-    const ParentPosition, ChildPosition: TPoint;
-    RelativeScale: Single
-): TPoint;
+function ScaledChildPosition(const ParentPosition, ChildPosition: TPoint; RelativeScale: Single): TPoint;
 begin
-  Result :=
-      Point(
-          Round(ParentPosition.X / RelativeScale) + ChildPosition.X,
-          Round(ParentPosition.Y / RelativeScale) + ChildPosition.Y
-      );
+  Result := Point(Round(ParentPosition.X / RelativeScale) + ChildPosition.X, Round(ParentPosition.Y / RelativeScale) + ChildPosition.Y);
 end;
 
 function ControlViewportBounds(Control: TObjectGI): TRect;
@@ -465,12 +419,7 @@ begin
             or (Cardinal(GameScreenHeight) * (1 + Margin) < Top * Scale));
 end;
 
-procedure FitMobileControl(
-    Control: TObjectGI;
-    const Bounds: TRect;
-    MaximumScale: Single;
-    PreferredDpScale: Single
-);
+procedure FitMobileControl(Control: TObjectGI; const Bounds: TRect; MaximumScale: Single; PreferredDpScale: Single);
 var
   ControlBounds: TRect;
   Width, Height: Integer;
@@ -485,27 +434,16 @@ begin
   ControlBounds := Control.HitTestBounds;
   Width := ControlBounds.Right - ControlBounds.Left;
   Height := ControlBounds.Bottom - ControlBounds.Top;
-  if (Width <= 0)
-      or (Height <= 0)
-      or (Bounds.Right <= Bounds.Left)
-      or (Bounds.Bottom <= Bounds.Top) then
+  if (Width <= 0) or (Height <= 0) or (Bounds.Right <= Bounds.Left) or (Bounds.Bottom <= Bounds.Top) then
     Exit;
   // Desired size is in dp, independently of the display's pixel resolution.
   // Tight bounds can reduce it continuously; integer-first fitting discarded
   // useful room and changed size abruptly at physical-resolution thresholds.
-  Scale :=
-      Min(
-          GetGameMobileUiScale(PreferredDpScale),
-          Min((Bounds.Right - Bounds.Left) / Width, (Bounds.Bottom - Bounds.Top) / Height)
-      );
+  Scale := Min(GetGameMobileUiScale(PreferredDpScale), Min((Bounds.Right - Bounds.Left) / Width, (Bounds.Bottom - Bounds.Top) / Height));
   if MaximumScale > 0 then
     Scale := Min(Scale, MaximumScale);
-  Position.X :=
-      (Bounds.Left + Bounds.Right) / 2
-          + (Control.AbsolutePosition.X - (ControlBounds.Left + ControlBounds.Right) / 2) * Scale;
-  Position.Y :=
-      (Bounds.Top + Bounds.Bottom) / 2
-          + (Control.AbsolutePosition.Y - (ControlBounds.Top + ControlBounds.Bottom) / 2) * Scale;
+  Position.X := (Bounds.Left + Bounds.Right) / 2 + (Control.AbsolutePosition.X - (ControlBounds.Left + ControlBounds.Right) / 2) * Scale;
+  Position.Y := (Bounds.Top + Bounds.Bottom) / 2 + (Control.AbsolutePosition.Y - (ControlBounds.Top + ControlBounds.Bottom) / 2) * Scale;
   PlaceControlAtScreen(Control, Position, Scale);
 end;
 

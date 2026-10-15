@@ -198,18 +198,9 @@ type
     ['{81BDCBCA-64D4-426D-AE8D-AD0147F4275C}']
     function RegisterSoftwareDevice(InitializeFunction: Pointer): LongInt; stdcall;
     function GetAdapterCount: Cardinal; stdcall;
-    function GetAdapterIdentifier(
-        Adapter: Cardinal;
-        Flags: Cardinal;
-        out Identifier: TD3DAdapterIdentifier9
-    ): LongInt; stdcall;
+    function GetAdapterIdentifier(Adapter: Cardinal; Flags: Cardinal; out Identifier: TD3DAdapterIdentifier9): LongInt; stdcall;
     function GetAdapterModeCount(Adapter: Cardinal; Format: Cardinal): Cardinal; stdcall;
-    function EnumAdapterModes(
-        Adapter: Cardinal;
-        Format: Cardinal;
-        Mode: Cardinal;
-        out DisplayMode
-    ): LongInt; stdcall;
+    function EnumAdapterModes(Adapter: Cardinal; Format: Cardinal; Mode: Cardinal; out DisplayMode): LongInt; stdcall;
     function GetAdapterDisplayMode(Adapter: Cardinal; out DisplayMode): LongInt; stdcall;
     function CheckDeviceType(
         Adapter: Cardinal;
@@ -247,11 +238,7 @@ type
         SourceFormat: Cardinal;
         TargetFormat: Cardinal
     ): LongInt; stdcall;
-    function GetDeviceCaps(
-        Adapter: Cardinal;
-        DeviceType: Cardinal;
-        out Caps: TD3DCaps9
-    ): LongInt; stdcall;
+    function GetDeviceCaps(Adapter: Cardinal; DeviceType: Cardinal; out Caps: TD3DCaps9): LongInt; stdcall;
     function GetAdapterMonitor(Adapter: Cardinal): Cardinal; stdcall;
     function CreateDevice(
         Adapter: Cardinal;
@@ -305,17 +292,8 @@ type
   IDirect3DResource9 = interface(IInterface)
     ['{05EEC05D-8F7D-4362-B999-D1BAF357C704}']
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall;
-    function SetPrivateData(
-        const Guid: TGUID;
-        Data: Pointer;
-        DataSize: Cardinal;
-        Flags: Cardinal
-    ): LongInt; stdcall;
-    function GetPrivateData(
-        const Guid: TGUID;
-        Data: Pointer;
-        var DataSize: Cardinal
-    ): LongInt; stdcall;
+    function SetPrivateData(const Guid: TGUID; Data: Pointer; DataSize: Cardinal; Flags: Cardinal): LongInt; stdcall;
+    function GetPrivateData(const Guid: TGUID; Data: Pointer; var DataSize: Cardinal): LongInt; stdcall;
     function FreePrivateData(const Guid: TGUID): LongInt; stdcall;
     function SetPriority(NewPriority: Cardinal): Cardinal; stdcall;
     function GetPriority: Cardinal; stdcall;
@@ -337,12 +315,7 @@ type
     ['{85C31227-3DE5-4F00-9B3A-F11AC38C18B5}']
     function GetLevelDesc(Level: Cardinal; out Desc: TD3DSurfaceDesc): LongInt; stdcall;
     function GetSurfaceLevel(Level: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall;
-    function LockRect(
-        Level: Cardinal;
-        out LockedRect: TD3DLockedRect;
-        Rect: PRect;
-        Flags: Cardinal
-    ): LongInt; stdcall;
+    function LockRect(Level: Cardinal; out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt; stdcall;
     function UnlockRect(Level: Cardinal): LongInt; stdcall;
     function AddDirtyRect(Rect: PRect): LongInt; stdcall;
   end;
@@ -351,11 +324,7 @@ type
     ['{0CFBAF3A-9FF6-429A-99B3-A2796AF8B89B}']
     function GetContainer(const IID: TGUID; out Container): LongInt; stdcall;
     function GetDesc(out Desc: TD3DSurfaceDesc): LongInt; stdcall;
-    function LockRect(
-        out LockedRect: TD3DLockedRect;
-        Rect: PRect;
-        Flags: Cardinal
-    ): LongInt; stdcall;
+    function LockRect(out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt; stdcall;
     function UnlockRect: LongInt; stdcall;
     function GetDC(out DC: Cardinal): LongInt; stdcall;
     function ReleaseDC(DC: Cardinal): LongInt; stdcall;
@@ -370,26 +339,14 @@ type
     function GetDeviceCaps(out Caps: TD3DCaps9): LongInt; stdcall;
     function GetDisplayMode(SwapChain: Cardinal; out Mode): LongInt; stdcall;
     function GetCreationParameters(out Parameters): LongInt; stdcall;
-    function SetCursorProperties(
-        XHotSpot: Cardinal;
-        YHotSpot: Cardinal;
-        CursorBitmap: IDirect3DSurface9
-    ): LongInt; stdcall;
+    function SetCursorProperties(XHotSpot: Cardinal; YHotSpot: Cardinal; CursorBitmap: IDirect3DSurface9): LongInt; stdcall;
     procedure SetCursorPosition(X: Integer; Y: Integer; Flags: Cardinal); stdcall;
     function ShowCursor(Show: LongBool): LongBool; stdcall;
-    function CreateAdditionalSwapChain(
-        var Parameters;
-        out SwapChain: IDirect3DSwapChain9
-    ): LongInt; stdcall;
+    function CreateAdditionalSwapChain(var Parameters; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall;
     function GetSwapChain(Index: Cardinal; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall;
     function GetNumberOfSwapChains: Cardinal; stdcall;
     function Reset(var Parameters): LongInt; stdcall;
-    function Present(
-        SourceRect: PRect;
-        DestRect: PRect;
-        DestWindow: Cardinal;
-        DirtyRegion: Pointer
-    ): LongInt; stdcall;
+    function Present(SourceRect: PRect; DestRect: PRect; DestWindow: Cardinal; DirtyRegion: Pointer): LongInt; stdcall;
     function GetBackBuffer(
         SwapChain: Cardinal;
         BackBuffer: Cardinal;
@@ -466,20 +423,9 @@ type
         out Surface: IDirect3DSurface9;
         SharedHandle: PCardinal
     ): LongInt; stdcall;
-    function UpdateSurface(
-        Source: IDirect3DSurface9;
-        SourceRect: PRect;
-        Dest: IDirect3DSurface9;
-        DestPoint: PPoint
-    ): LongInt; stdcall;
-    function UpdateTexture(
-        Source: IDirect3DBaseTexture9;
-        Dest: IDirect3DBaseTexture9
-    ): LongInt; stdcall;
-    function GetRenderTargetData(
-        Source: IDirect3DSurface9;
-        Dest: IDirect3DSurface9
-    ): LongInt; stdcall;
+    function UpdateSurface(Source: IDirect3DSurface9; SourceRect: PRect; Dest: IDirect3DSurface9; DestPoint: PPoint): LongInt; stdcall;
+    function UpdateTexture(Source: IDirect3DBaseTexture9; Dest: IDirect3DBaseTexture9): LongInt; stdcall;
+    function GetRenderTargetData(Source: IDirect3DSurface9; Dest: IDirect3DSurface9): LongInt; stdcall;
     function GetFrontBufferData(SwapChain: Cardinal; Dest: IDirect3DSurface9): LongInt; stdcall;
     function StretchRect(
         Source: IDirect3DSurface9;
@@ -503,14 +449,7 @@ type
     function GetDepthStencilSurface(out Surface: IDirect3DSurface9): LongInt; stdcall;
     function BeginScene: LongInt; stdcall;
     function EndScene: LongInt; stdcall;
-    function Clear(
-        RectCount: Cardinal;
-        Rects: PRect;
-        Flags: Cardinal;
-        Color: Cardinal;
-        Z: Single;
-        Stencil: Cardinal
-    ): LongInt; stdcall;
+    function Clear(RectCount: Cardinal; Rects: PRect; Flags: Cardinal; Color: Cardinal; Z: Single; Stencil: Cardinal): LongInt; stdcall;
     function SetTransform(State: Cardinal; const Matrix): LongInt; stdcall;
     function GetTransform(State: Cardinal; out Matrix): LongInt; stdcall;
     function MultiplyTransform(State: Cardinal; const Matrix): LongInt; stdcall;
@@ -526,31 +465,16 @@ type
     function GetClipPlane(Index: Cardinal; Plane: PSingle): LongInt; stdcall;
     function SetRenderState(State: Cardinal; Value: Cardinal): LongInt; stdcall;
     function GetRenderState(State: Cardinal; out Value: Cardinal): LongInt; stdcall;
-    function CreateStateBlock(
-        BlockType: Cardinal;
-        out StateBlock: IDirect3DStateBlock9
-    ): LongInt; stdcall;
+    function CreateStateBlock(BlockType: Cardinal; out StateBlock: IDirect3DStateBlock9): LongInt; stdcall;
     function BeginStateBlock: LongInt; stdcall;
     function EndStateBlock(out StateBlock: IDirect3DStateBlock9): LongInt; stdcall;
     function SetClipStatus(const Status): LongInt; stdcall;
     function GetClipStatus(out Status): LongInt; stdcall;
     function GetTexture(Stage: Cardinal; out Texture: IDirect3DBaseTexture9): LongInt; stdcall;
     function SetTexture(Stage: Cardinal; Texture: IDirect3DBaseTexture9): LongInt; stdcall;
-    function GetTextureStageState(
-        Stage: Cardinal;
-        State: Cardinal;
-        out Value: Cardinal
-    ): LongInt; stdcall;
-    function SetTextureStageState(
-        Stage: Cardinal;
-        State: Cardinal;
-        Value: Cardinal
-    ): LongInt; stdcall;
-    function GetSamplerState(
-        Sampler: Cardinal;
-        State: Cardinal;
-        out Value: Cardinal
-    ): LongInt; stdcall;
+    function GetTextureStageState(Stage: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall;
+    function SetTextureStageState(Stage: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall;
+    function GetSamplerState(Sampler: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall;
     function SetSamplerState(Sampler: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall;
     function ValidateDevice(out PassCount: Cardinal): LongInt; stdcall;
     function SetPaletteEntries(Palette: Cardinal; Entries: Pointer): LongInt; stdcall;
@@ -563,11 +487,7 @@ type
     function GetSoftwareVertexProcessing: LongBool; stdcall;
     function SetNPatchMode(Segments: Single): LongInt; stdcall;
     function GetNPatchMode: Single; stdcall;
-    function DrawPrimitive(
-        PrimitiveType: Cardinal;
-        StartVertex: Cardinal;
-        PrimitiveCount: Cardinal
-    ): LongInt; stdcall;
+    function DrawPrimitive(PrimitiveType: Cardinal; StartVertex: Cardinal; PrimitiveCount: Cardinal): LongInt; stdcall;
     function DrawIndexedPrimitive(
         PrimitiveType: Cardinal;
         BaseVertexIndex: Integer;
@@ -576,12 +496,7 @@ type
         StartIndex: Cardinal;
         PrimitiveCount: Cardinal
     ): LongInt; stdcall;
-    function DrawPrimitiveUP(
-        PrimitiveType: Cardinal;
-        PrimitiveCount: Cardinal;
-        Data: Pointer;
-        Stride: Cardinal
-    ): LongInt; stdcall;
+    function DrawPrimitiveUP(PrimitiveType: Cardinal; PrimitiveCount: Cardinal; Data: Pointer; Stride: Cardinal): LongInt; stdcall;
     function DrawIndexedPrimitiveUP(
         PrimitiveType: Cardinal;
         MinVertexIndex: Cardinal;
@@ -600,18 +515,12 @@ type
         Declaration: IDirect3DVertexDeclaration9;
         Flags: Cardinal
     ): LongInt; stdcall;
-    function CreateVertexDeclaration(
-        Elements: Pointer;
-        out Declaration: IDirect3DVertexDeclaration9
-    ): LongInt; stdcall;
+    function CreateVertexDeclaration(Elements: Pointer; out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
     function SetVertexDeclaration(Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
     function GetVertexDeclaration(out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
     function SetFVF(FVF: Cardinal): LongInt; stdcall;
     function GetFVF(out FVF: Cardinal): LongInt; stdcall;
-    function CreateVertexShader(
-        ByteCode: PCardinal;
-        out Shader: IDirect3DVertexShader9
-    ): LongInt; stdcall;
+    function CreateVertexShader(ByteCode: PCardinal; out Shader: IDirect3DVertexShader9): LongInt; stdcall;
     function SetVertexShader(Shader: IDirect3DVertexShader9): LongInt; stdcall;
   end;
 

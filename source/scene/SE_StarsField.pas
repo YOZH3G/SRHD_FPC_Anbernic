@@ -47,8 +47,7 @@ begin
     StaticImage.SetPositionModeW(False);
     StaticImage.SetImageKindX(ikxLeftFill);
     StaticImage.SetImageKindY(ikyTopFill);
-    StaticImage
-        .SetPosition(Classes.Point(-Space.MapPanel.OriginPoint.X, -Space.MapPanel.OriginPoint.Y));
+    StaticImage.SetPosition(Classes.Point(-Space.MapPanel.OriginPoint.X, -Space.MapPanel.OriginPoint.Y));
     StaticImage.SetSize(Classes.Point(Space.MapPanel.ClientSize.X, Space.MapPanel.ClientSize.Y));
     StaticImage.SetImagePath(ImagePath);
   end

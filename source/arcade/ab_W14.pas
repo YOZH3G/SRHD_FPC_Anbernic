@@ -111,8 +111,7 @@ begin
   begin
     Position := GetWorldPosition;
     Position := ProjectPointByMatrix(SphereProjectionMatrix, Position);
-    Frame :=
-        Round(GetProjectedHeading(Position) / 360 * Image.Image.GaiImageControl.SequenceFrameCount);
+    Frame := Round(GetProjectedHeading(Position) / 360 * Image.Image.GaiImageControl.SequenceFrameCount);
     if Frame >= Image.Image.GaiImageControl.SequenceFrameCount then
       Frame := 0;
     Image.Image.GaiImageControl.SetSequenceFrame(Frame);

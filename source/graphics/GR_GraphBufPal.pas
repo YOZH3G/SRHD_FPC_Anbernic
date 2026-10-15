@@ -26,12 +26,7 @@ type
     destructor Destroy; override;
     procedure Clear;
     procedure AllocateTight(AWidth: Integer; AHeight: Integer; APaletteCount: Integer);
-    procedure AllocateBuffer(
-        AWidth: Integer;
-        AHeight: Integer;
-        APaletteCount: Integer;
-        APitchBytes: Integer
-    );
+    procedure AllocateBuffer(AWidth: Integer; AHeight: Integer; APaletteCount: Integer; APitchBytes: Integer);
     function GetPaletteColor(Index: Integer): TColorRGBA;
     procedure SetPalette(Source: PColorRGBA; Count: Integer);
     function GetPixelIndex(X: Integer; Y: Integer): Byte;
@@ -131,15 +126,7 @@ var
   Context: POkgfReadContext;
 begin
   Clear;
-  Context :=
-      BeginIndexedImageRead(
-          Buffer.Data,
-          Buffer.DataSize,
-          Width,
-          Height,
-          PaletteCount,
-          BytesPerPixel
-      );
+  Context := BeginIndexedImageRead(Buffer.Data, Buffer.DataSize, Width, Height, PaletteCount, BytesPerPixel);
   if Context = nil then
     raise Exception.Create('TGraphBufPalGR.LoadFromFile. Error load file');
   AllocateBuffer(Width, Height, PaletteCount, Width * BytesPerPixel);

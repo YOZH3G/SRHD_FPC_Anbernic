@@ -205,8 +205,7 @@ begin
     QueueConfiguredLoadingAssets(PendingLoads, Path + '.' + Block.GetBlockNameByIndex(I));
   Count := Block.GetParamCount;
   for I := 0 to Count - 1 do
-    GlobalCache
-        .QueueNamedLoadIfMissing(PendingLoads, Block.GetParamName(I), Block.GetParamValue(I));
+    GlobalCache.QueueNamedLoadIfMissing(PendingLoads, Block.GetParamName(I), Block.GetParamValue(I));
 end;
 
 procedure LoadPendingAssets(PendingLoads: TList);
@@ -235,9 +234,7 @@ begin
     Count := PendingLoads.Count;
     for I := 0 to Count - 1 do
     begin
-      while (Flag18 or ((Galaxy <> nil) and Galaxy.Destroying))
-          and not ExitScreenLoop
-          and not IsStopRequested do
+      while (Flag18 or ((Galaxy <> nil) and Galaxy.Destroying)) and not ExitScreenLoop and not IsStopRequested do
         SysUtils.Sleep(100);
       Control := PendingLoads[I];
       if not ExitScreenLoop and not IsStopRequested then
@@ -519,22 +516,15 @@ begin
                   ExtractDigitsToIntW(ExtractDelimitedPartW(ImagePath, 1, ','))
               )
           );
-          SetPosition(
-              Classes.Point(
-                  (GameScreenWidth - ClientSize.X) div 2,
-                  (GameScreenHeight - ClientSize.Y) div 2
-              )
-          );
+          SetPosition(Classes.Point((GameScreenWidth - ClientSize.X) div 2, (GameScreenHeight - ClientSize.Y) div 2));
           if Block.CountParams('Sme') > 0 then
           begin
             ImagePath := Block.GetParam('Sme');
             if CountDelimitedPartsW(ImagePath, ',') > 1 then
               SetPosition(
                   Classes.Point(
-                      LocalPosition.X
-                          + ExtractSignedDigitsToIntW(ExtractDelimitedPartW(ImagePath, 0, ',')),
-                      LocalPosition.Y
-                          + ExtractSignedDigitsToIntW(ExtractDelimitedPartW(ImagePath, 1, ','))
+                      LocalPosition.X + ExtractSignedDigitsToIntW(ExtractDelimitedPartW(ImagePath, 0, ',')),
+                      LocalPosition.Y + ExtractSignedDigitsToIntW(ExtractDelimitedPartW(ImagePath, 1, ','))
                   )
               );
           end;

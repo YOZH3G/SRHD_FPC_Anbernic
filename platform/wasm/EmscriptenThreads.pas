@@ -23,17 +23,10 @@ type
     Argument: Pointer;
   end;
 
-function NativeBegin(
-    Entry: TCThreadEntry;
-    Argument: Pointer;
-    StackSize: PtrUInt
-): TThreadID; cdecl; external name 'sr_fpc_thread_begin';
+function NativeBegin(Entry: TCThreadEntry; Argument: Pointer; StackSize: PtrUInt): TThreadID; cdecl; external name 'sr_fpc_thread_begin';
 function NativeSelf: TThreadID; cdecl; external name 'sr_fpc_thread_self';
 procedure NativeExit(Code: DWord); cdecl; external name 'sr_fpc_thread_exit';
-function NativeWait(
-    Handle: TThreadID;
-    Milliseconds: LongInt
-): DWord; cdecl; external name 'sr_fpc_thread_wait';
+function NativeWait(Handle: TThreadID; Milliseconds: LongInt): DWord; cdecl; external name 'sr_fpc_thread_wait';
 function NativeClose(Handle: TThreadID): DWord; cdecl; external name 'sr_fpc_thread_close';
 procedure NativeYield; cdecl; external name 'sr_fpc_thread_yield';
 procedure NativeName(Handle: TThreadID; Name: PAnsiChar); cdecl; external name 'sr_fpc_thread_name';
@@ -46,17 +39,11 @@ procedure NativeMutexDestroy(var CS); cdecl; external name 'sr_fpc_mutex_destroy
 procedure NativeMutexLock(var CS); cdecl; external name 'sr_fpc_mutex_lock';
 procedure NativeMutexUnlock(var CS); cdecl; external name 'sr_fpc_mutex_unlock';
 function NativeMutexTryLock(var CS): LongInt; cdecl; external name 'sr_fpc_mutex_trylock';
-function NativeEventCreate(
-    ManualReset,
-    Signaled: LongInt
-): Pointer; cdecl; external name 'sr_fpc_event_create';
+function NativeEventCreate(ManualReset, Signaled: LongInt): Pointer; cdecl; external name 'sr_fpc_event_create';
 procedure NativeEventDestroy(Event: Pointer); cdecl; external name 'sr_fpc_event_destroy';
 procedure NativeEventSet(Event: Pointer); cdecl; external name 'sr_fpc_event_set';
 procedure NativeEventReset(Event: Pointer); cdecl; external name 'sr_fpc_event_reset';
-function NativeEventWait(
-    Event: Pointer;
-    Milliseconds: Cardinal
-): LongInt; cdecl; external name 'sr_fpc_event_wait';
+function NativeEventWait(Event: Pointer; Milliseconds: Cardinal): LongInt; cdecl; external name 'sr_fpc_event_wait';
 
 threadvar
   Attached: Boolean;
@@ -101,14 +88,7 @@ begin
   end;
 end;
 
-function StartThread(
-    SA: Pointer;
-    StackSize: PtrUInt;
-    Func: TThreadFunc;
-    Argument: Pointer;
-    Flags: DWord;
-    var ID: TThreadID
-): TThreadID;
+function StartThread(SA: Pointer; StackSize: PtrUInt; Func: TThreadFunc; Argument: Pointer; Flags: DWord; var ID: TThreadID): TThreadID;
 var
   Start: PThreadStart;
 begin
@@ -201,11 +181,7 @@ function RelocateThreadVar(Offset: DWord): Pointer;
 begin
   Result := nil;
 end;
-function BasicCreate(
-    Attributes: Pointer;
-    ManualReset, InitialState: Boolean;
-    const Name: AnsiString
-): PEventState;
+function BasicCreate(Attributes: Pointer; ManualReset, InitialState: Boolean; const Name: AnsiString): PEventState;
 begin
   Result := NativeEventCreate(Ord(ManualReset), Ord(InitialState));
 end;

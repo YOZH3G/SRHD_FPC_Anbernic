@@ -67,10 +67,7 @@ type
     procedure AttachVisual;
     procedure DetachVisual;
     function FindNearestEnemy(Origin: TabObject): TabShip;
-    function FindNearestEnemyWithBearing(
-        Origin: TabObject;
-        var Bearing: TSphericalBearingDistance
-    ): TabShip;
+    function FindNearestEnemyWithBearing(Origin: TabObject; var Bearing: TSphericalBearingDistance): TabShip;
     procedure AddEnemy(Ship: TabShip);
     procedure AddTrackedShip(Ship: TabShip);
     procedure SetTurnInput(Value: Double);
@@ -261,9 +258,7 @@ begin
   RetainSpaceObject(Visual, CreateSpaceObjectByName('Ship2', GraphKey, Classes.Point(0, 0)));
   (Visual as TShip2SE).TailEmitIntervalMs := 10;
   Visual.SetAlpha(255);
-  if (Self = PlayerArcadeShip)
-      and (ShipTail <> 0)
-      and (ArcadeSpaceProcess.Space.AlphaShift = 0) then
+  if (Self = PlayerArcadeShip) and (ShipTail <> 0) and (ArcadeSpaceProcess.Space.AlphaShift = 0) then
     (Visual as TShip2SE).SetTailMode(1)
   else
     (Visual as TShip2SE).SetTailMode(0);
@@ -323,8 +318,7 @@ begin
   for Index := 0 to Enemies.Count - 1 do
   begin
     Ship := Enemies[Index];
-    if (Ship.Health >= 1)
-        and ((Ship.BonusTicks[abkInvisibility] <= 0) or (Ship.RevealTicks > 0)) then
+    if (Ship.Health >= 1) and ((Ship.BonusTicks[abkInvisibility] <= 0) or (Ship.RevealTicks > 0)) then
     begin
       Distance := Origin.DistanceTo(Ship);
       if Distance < BestDistance then
@@ -336,10 +330,7 @@ begin
   end;
 end;
 
-function TabShip.FindNearestEnemyWithBearing(
-    Origin: TabObject;
-    var Bearing: TSphericalBearingDistance
-): TabShip;
+function TabShip.FindNearestEnemyWithBearing(Origin: TabObject; var Bearing: TSphericalBearingDistance): TabShip;
 var
   Index: Integer;
   Ship: TabShip;
@@ -351,8 +342,7 @@ begin
   for Index := 0 to Enemies.Count - 1 do
   begin
     Ship := Enemies[Index];
-    if (Ship.Health >= 1)
-        and ((Ship.BonusTicks[abkInvisibility] <= 0) or (Ship.RevealTicks > 0)) then
+    if (Ship.Health >= 1) and ((Ship.BonusTicks[abkInvisibility] <= 0) or (Ship.RevealTicks > 0)) then
     begin
       CandidateBearing := Origin.BearingAndDistanceTo(Ship);
       if CandidateBearing.Distance < BestDistance then
@@ -487,8 +477,7 @@ begin
           DamageScale := 1;
         DamageScale := DamageScale * WeaponDamageScale;
         ab_Weapon_Fire(@Weapons[SecondaryWeapon], Self, DamageScale);
-        if (Self = PlayerArcadeShip)
-            and (Weapons[SecondaryWeapon].Ammo < Weapons[SecondaryWeapon].AmmoCost) then
+        if (Self = PlayerArcadeShip) and (Weapons[SecondaryWeapon].Ammo < Weapons[SecondaryWeapon].AmmoCost) then
         begin
           BestScore := -1;
           BestWeapon := -1;
@@ -565,10 +554,7 @@ end;
 function TabShip.CanFireWeapon(Index: Integer): Boolean;
 begin
   Result := False;
-  if (BonusTicks[abkWeaponLock] <= 0)
-      and (Index >= 0)
-      and (Index < WeaponCount)
-      and (Weapons[Index].AmmoCost <= Weapons[Index].Ammo) then
+  if (BonusTicks[abkWeaponLock] <= 0) and (Index >= 0) and (Index < WeaponCount) and (Weapons[Index].AmmoCost <= Weapons[Index].Ammo) then
     Result := ArcadeTickCount - Weapons[Index].LastFireTick >= Weapons[Index].FireIntervalTicks;
 end;
 
@@ -609,20 +595,14 @@ begin
     for Index := 0 to WeaponCount - 1 do
       Weapons[Index].Ammo :=
           Min(
-              Weapons[Index].Ammo
-                  + Round(
-                      Weapons[Index].RechargePerTick * AmmoRechargeScale * AmmoRechargeBonusScale),
+              Weapons[Index].Ammo + Round(Weapons[Index].RechargePerTick * AmmoRechargeScale * AmmoRechargeBonusScale),
               Weapons[Index].MaxAmmo
           );
   end
   else
   begin
     for Index := 0 to WeaponCount - 1 do
-      Weapons[Index].Ammo :=
-          Min(
-              Weapons[Index].Ammo + Round(Weapons[Index].RechargePerTick * AmmoRechargeScale),
-              Weapons[Index].MaxAmmo
-          );
+      Weapons[Index].Ammo := Min(Weapons[Index].Ammo + Round(Weapons[Index].RechargePerTick * AmmoRechargeScale), Weapons[Index].MaxAmmo);
   end;
   if TurnInput <> 0 then
   begin
@@ -675,12 +655,7 @@ begin
     if (Self = PlayerArcadeShip) and (TickCounter mod 10 = 0) then
       if GetPlayer <> nil then
         if GetPlayer.CountActiveArtefacts(t_ArtefactDroid) > 0 then
-          Health :=
-              Min(
-                  MaxHealth,
-                  Health
-                      + RegenerationHealthPerTick * GetPlayer.CountActiveArtefacts(t_ArtefactDroid)
-              );
+          Health := Min(MaxHealth, Health + RegenerationHealthPerTick * GetPlayer.CountActiveArtefacts(t_ArtefactDroid));
     if (BonusTicks[abkInvisibility] > 0) and (RevealTicks > 0) then
       Dec(RevealTicks);
   end;
@@ -714,11 +689,9 @@ begin
   if (Visual <> nil) and Visual.IsAttachedToSpace then
   begin
     if (Position.Z <= SphereHorizonDepth) and (Position.Z > SphereFarHorizonDepth) then
-      HorizonAlpha :=
-          (SphereHorizonDepth - Position.Z) / (SphereHorizonDepth - SphereFarHorizonDepth)
+      HorizonAlpha := (SphereHorizonDepth - Position.Z) / (SphereHorizonDepth - SphereFarHorizonDepth)
     else if (Position.Z > SphereHorizonDepth) and (Position.Z < SphereNearHorizonDepth) then
-      HorizonAlpha :=
-          (SphereHorizonDepth - Position.Z) / (SphereHorizonDepth - SphereNearHorizonDepth)
+      HorizonAlpha := (SphereHorizonDepth - Position.Z) / (SphereHorizonDepth - SphereNearHorizonDepth)
     else
       HorizonAlpha := 1;
     Visual.SetPosition(MakePointF(Position.X, Position.Y));
@@ -799,69 +772,28 @@ begin
       Position := PlayerArcadeShip.GetWorldPosition;
       Position := ProjectPointByMatrix(SphereProjectionMatrix, Position);
       Bearing := PlayerArcadeShip.BearingAndDistanceTo(Self);
-      Bearing.BearingDeltaDegrees :=
-          WrapHeadingDegrees(
-              PlayerArcadeShip.GetProjectedHeading(Position) + Bearing.BearingDeltaDegrees
-          );
+      Bearing.BearingDeltaDegrees := WrapHeadingDegrees(PlayerArcadeShip.GetProjectedHeading(Position) + Bearing.BearingDeltaDegrees);
       if Bearing.BearingDeltaDegrees > 180 then
         Bearing.BearingDeltaDegrees := Bearing.BearingDeltaDegrees - 360;
       ViewSize := ArcadeBattleScreen.WorldPanel.ClientSize;
       if (Bearing.BearingDeltaDegrees >= 0) and (Bearing.BearingDeltaDegrees <= 45) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                (ViewSize.X / 2 - 30) * (Bearing.BearingDeltaDegrees / 45),
-                -(ViewSize.Y div 2) + 30
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF((ViewSize.X / 2 - 30) * (Bearing.BearingDeltaDegrees / 45), -(ViewSize.Y div 2) + 30))
       else if (Bearing.BearingDeltaDegrees >= -45) and (Bearing.BearingDeltaDegrees < 0) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                (ViewSize.X / 2 - 30) * (Bearing.BearingDeltaDegrees / 45),
-                -(ViewSize.Y div 2) + 30
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF((ViewSize.X / 2 - 30) * (Bearing.BearingDeltaDegrees / 45), -(ViewSize.Y div 2) + 30))
       else if Bearing.BearingDeltaDegrees >= 135 then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                (180 - Bearing.BearingDeltaDegrees) / 45 * (ViewSize.X / 2 - 30),
-                ViewSize.Y div 2 - 30
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF((180 - Bearing.BearingDeltaDegrees) / 45 * (ViewSize.X / 2 - 30), ViewSize.Y div 2 - 30))
       else if Bearing.BearingDeltaDegrees <= -135 then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                -(180 + Bearing.BearingDeltaDegrees) / 45 * (ViewSize.X / 2 - 30),
-                ViewSize.Y div 2 - 30
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF(-(180 + Bearing.BearingDeltaDegrees) / 45 * (ViewSize.X / 2 - 30), ViewSize.Y div 2 - 30))
       else if (Bearing.BearingDeltaDegrees >= 45) and (Bearing.BearingDeltaDegrees <= 90) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                ViewSize.X div 2 - 30,
-                (ViewSize.Y / 2 - 30) * ((Bearing.BearingDeltaDegrees - 90) / 45)
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF(ViewSize.X div 2 - 30, (ViewSize.Y / 2 - 30) * ((Bearing.BearingDeltaDegrees - 90) / 45)))
       else if (Bearing.BearingDeltaDegrees >= 90) and (Bearing.BearingDeltaDegrees <= 135) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                ViewSize.X div 2 - 30,
-                (ViewSize.Y / 2 - 30) * ((Bearing.BearingDeltaDegrees - 90) / 45)
-            )
-        )
+        OffscreenMarker.SetPosition(MakePointF(ViewSize.X div 2 - 30, (ViewSize.Y / 2 - 30) * ((Bearing.BearingDeltaDegrees - 90) / 45)))
       else if (Bearing.BearingDeltaDegrees <= -45) and (Bearing.BearingDeltaDegrees >= -90) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                -(ViewSize.X div 2) + 30,
-                (-Bearing.BearingDeltaDegrees - 45 + -45) / 45 * (ViewSize.Y / 2 - 30)
-            )
-        )
+        OffscreenMarker
+            .SetPosition(MakePointF(-(ViewSize.X div 2) + 30, (-Bearing.BearingDeltaDegrees - 45 + -45) / 45 * (ViewSize.Y / 2 - 30)))
       else if (Bearing.BearingDeltaDegrees <= -90) and (Bearing.BearingDeltaDegrees >= -135) then
-        OffscreenMarker.SetPosition(
-            MakePointF(
-                -(ViewSize.X div 2) + 30,
-                (ViewSize.Y / 2 - 30) * ((-Bearing.BearingDeltaDegrees - 90) / 45)
-            )
-        )
+        OffscreenMarker
+            .SetPosition(MakePointF(-(ViewSize.X div 2) + 30, (ViewSize.Y / 2 - 30) * ((-Bearing.BearingDeltaDegrees - 90) / 45)))
       else
         OffscreenMarker.SetPosition(MakePointF(100, 100));
       OffscreenLabel.SetPosition(TruncatePointF(OffscreenMarker.Position));
@@ -871,10 +803,7 @@ begin
       else
         OffscreenMarker.SetAngle(
             HeadingDegreesToByte(
-                WrapHeadingDegrees(
-                    PointBearingDegrees(OffscreenMarker.Position, Visual.Position)
-                        - Bearing.BearingDeltaDegrees
-                )
+                WrapHeadingDegrees(PointBearingDegrees(OffscreenMarker.Position, Visual.Position) - Bearing.BearingDeltaDegrees)
             )
         );
     end;
@@ -903,38 +832,22 @@ begin
     NextObstacleScanTick := ArcadeTickCount + 4;
     UpdateAvoidanceDistances;
     ab_StopLine_GetDistances(
-        MakeSphericalBearingState(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            State.BearingDegrees
-        ),
+        MakeSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, State.BearingDegrees),
         ObstacleDistances[0],
         ObstacleDistances[4]
     );
     ab_StopLine_GetDistances(
-        MakeSphericalBearingState(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            WrapHeadingDegrees(State.BearingDegrees + 45)
-        ),
+        MakeSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, WrapHeadingDegrees(State.BearingDegrees + 45)),
         ObstacleDistances[1],
         ObstacleDistances[5]
     );
     ab_StopLine_GetDistances(
-        MakeSphericalBearingState(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            WrapHeadingDegrees(State.BearingDegrees + 90)
-        ),
+        MakeSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, WrapHeadingDegrees(State.BearingDegrees + 90)),
         ObstacleDistances[2],
         ObstacleDistances[6]
     );
     ab_StopLine_GetDistances(
-        MakeSphericalBearingState(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            WrapHeadingDegrees(State.BearingDegrees + 90 + 45)
-        ),
+        MakeSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, WrapHeadingDegrees(State.BearingDegrees + 90 + 45)),
         ObstacleDistances[3],
         ObstacleDistances[7]
     );

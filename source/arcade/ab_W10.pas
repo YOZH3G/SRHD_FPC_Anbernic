@@ -84,13 +84,7 @@ begin
   begin
     Heading := WrapHeadingDegrees(State.BearingDegrees + 90);
     HeadingDelta := HeadingDifferenceDegrees(Heading, State.BearingDegrees);
-    AdvanceSphericalBearingState(
-        State.LongitudeDegrees,
-        State.PolarAngleDegrees,
-        Heading,
-        SphereRadius,
-        Offset
-    );
+    AdvanceSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, Heading, SphereRadius, Offset);
     State.BearingDegrees := WrapHeadingDegrees(Heading + HeadingDelta);
   end;
   TrailDistance := 0;

@@ -83,11 +83,7 @@ begin
   OriginalLength := 1;
   RemainingTicks := 160;
   UpdateProjectionBounds;
-  SetColors(
-      EsodaferPalettes[APaletteIndex][0],
-      EsodaferPalettes[APaletteIndex][1],
-      EsodaferPalettes[APaletteIndex][2]
-  );
+  SetColors(EsodaferPalettes[APaletteIndex][0], EsodaferPalettes[APaletteIndex][1], EsodaferPalettes[APaletteIndex][2]);
 end;
 
 destructor TPSWeapon16Esodafer.Destroy;
@@ -196,11 +192,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - 24;
   Rect.Right := Target.X + 24;
@@ -232,8 +224,7 @@ begin
   Invalidate;
   if (FirstParticle = nil) and (RemainingTicks >= 24) then
   begin
-    Distance :=
-        Round(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
+    Distance := Round(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
     OriginalLength := Math.Max(70, Distance);
     Particle := AddParticle;
     Particle.Position := MakePointF(0, 0);
@@ -246,8 +237,7 @@ begin
     for I := 1 to 16 do
     begin
       Particle := AddParticle;
-      Particle.Position :=
-          MakePointF(Cos(I * 3.14 * 0.125) * 2.0, Sin(I * 3.14 * 0.125) * 2.0 - 10.0);
+      Particle.Position := MakePointF(Cos(I * 3.14 * 0.125) * 2.0, Sin(I * 3.14 * 0.125) * 2.0 - 10.0);
       Particle.Color := Colors[1];
       Particle.Alpha := 0;
       Particle.Velocity := MakePointF(0, Speed);
@@ -256,8 +246,7 @@ begin
     for I := 1 to 16 do
     begin
       Particle := AddParticle;
-      Particle.Position :=
-          MakePointF(Cos(I * 3.14 * 0.125) * 1.5, Sin(I * 3.14 * 0.125) * 1.5 - 20.0);
+      Particle.Position := MakePointF(Cos(I * 3.14 * 0.125) * 1.5, Sin(I * 3.14 * 0.125) * 1.5 - 20.0);
       Particle.Color := Colors[1];
       Particle.Alpha := 0;
       Particle.Velocity := MakePointF(Particle.Position.X * 0.5, Speed);
@@ -266,8 +255,7 @@ begin
     for I := 1 to 16 do
     begin
       Particle := AddParticle;
-      Particle.Position :=
-          MakePointF(Cos(I * 3.14 * 0.125) * 1.0, Sin(I * 3.14 * 0.125) * 1.0 - 30.0);
+      Particle.Position := MakePointF(Cos(I * 3.14 * 0.125) * 1.0, Sin(I * 3.14 * 0.125) * 1.0 - 30.0);
       Particle.Color := Colors[1];
       Particle.Alpha := 0;
       Particle.Velocity := MakePointF(Particle.Position.X * 1.0, Speed);
@@ -277,9 +265,7 @@ begin
   else
   begin
     Distance := OriginalLength;
-    LengthScale :=
-        Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y))
-            / OriginalLength;
+    LengthScale := Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)) / OriginalLength;
     UpdateHitTestBounds;
     Particle := FirstParticle;
     while Particle <> nil do
@@ -294,15 +280,10 @@ begin
         Spark.Alpha := Current.Alpha;
         Speed := 0.06 * Distance / RemainingTicks;
         Angle := Random(360) * 0.01745329252;
-        Spark.Velocity :=
-            MakePointF(
-                Cos(Angle) * Speed + Current.Velocity.X,
-                Sin(Angle) * Speed + Current.Velocity.Y
-            );
+        Spark.Velocity := MakePointF(Cos(Angle) * Speed + Current.Velocity.X, Sin(Angle) * Speed + Current.Velocity.Y);
         Spark.State := 2;
       end
-      else if ((Current.State = 2) and (Random(101) < 3))
-          or ((Current.State = 3) and (Random(101) < 10)) then
+      else if ((Current.State = 2) and (Random(101) < 3)) or ((Current.State = 3) and (Random(101) < 10)) then
       begin
         if Current.Alpha > 100 then
         begin
@@ -320,11 +301,7 @@ begin
             else
               Speed := 0.04 * Distance / RemainingTicks;
             Angle := Random(360) * 0.01745329252;
-            Spark.Velocity :=
-                MakePointF(
-                    Cos(Angle) * Speed + Current.Velocity.X,
-                    Sin(Angle) * Speed + Current.Velocity.Y
-                );
+            Spark.Velocity := MakePointF(Cos(Angle) * Speed + Current.Velocity.X, Sin(Angle) * Speed + Current.Velocity.Y);
             Spark.State := Current.State;
           end;
         end
@@ -335,10 +312,8 @@ begin
       begin
         if Current.Alpha >= 3 then
           Dec(Current.Alpha, 3);
-        Current.Velocity.X :=
-            (Current.Velocity.X - FirstParticle.Velocity.X) * 0.8 + FirstParticle.Velocity.X;
-        Current.Velocity.Y :=
-            (Current.Velocity.Y - FirstParticle.Velocity.Y) * 0.8 + FirstParticle.Velocity.Y;
+        Current.Velocity.X := (Current.Velocity.X - FirstParticle.Velocity.X) * 0.8 + FirstParticle.Velocity.X;
+        Current.Velocity.Y := (Current.Velocity.Y - FirstParticle.Velocity.Y) * 0.8 + FirstParticle.Velocity.Y;
       end;
       if (RemainingTicks > 150) and (Current.State in [1, 2]) then
         Current.Alpha := Math.Min(255, Current.Alpha + 30);
@@ -403,10 +378,7 @@ begin
         PY := -Particle.Position.Y * LengthScale;
         X := Round(PX * Cosine - PY * Sine + AbsolutePosition.X);
         Y := Round(PX * Sine + PY * Cosine + AbsolutePosition.Y);
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := Particle.Next;

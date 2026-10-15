@@ -69,17 +69,9 @@ begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('Resume').Parent do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
-  FitMobileControl(
-      GetByName('Resume').Parent,
-      Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
-  );
+  FitMobileControl(GetByName('Resume').Parent, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12));
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').LeftButtonUpCallback := BackgroundMouseUp;
   with GetByName('Resume') as TGraphButtonGI do
@@ -123,11 +115,7 @@ end;
 procedure TfGameMenu.SaveClicked(Sender: TObjectGI);
 begin
   if Galaxy.IronWill then
-    ShowMessageBoxGI(
-        Self,
-        LocalizedColorText('FormGameSet2.IronWillText'),
-        mbgCancel or mbgUnused04
-    )
+    ShowMessageBoxGI(Self, LocalizedColorText('FormGameSet2.IronWillText'), mbgCancel or mbgUnused04)
   else if Galaxy.SpecialSimulationMode = 0 then
   begin
     SaveManagerReturnScreenId := GameMenuReturnScreenId;
@@ -171,10 +159,7 @@ end;
 
 procedure TfGameMenu.ExitClicked(Sender: TObjectGI);
 begin
-  if ShowMessageBoxGI(
-          Self,
-          LanguageDataConfig.GetParamByPathOrMarker('FormGameMenu.QExit'),
-          mbgOK or mbgCancel or mbgQuestion)
+  if ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormGameMenu.QExit'), mbgOK or mbgCancel or mbgQuestion)
       = mbgResultOK then
   begin
     if MemorySnapshotBuffer <> nil then
@@ -217,9 +202,7 @@ end;
 
 procedure TfGameMenu.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
     if Key = VK_ESCAPE then
       ResumeClicked(nil)
     else if (Key = Ord('S')) or (Key = VK_F2) then
@@ -259,17 +242,12 @@ begin
       if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       begin
         if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-          MusicManager.PlayCategory(
-              'Nation.'
-                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                  + 'Pirate'
-          )
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
         else
           MusicManager.PlayCategory('Nation.PiratePlanetMain');
       end
       else
-        MusicManager
-            .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
     end;
   end
   else if GetPlayer.IsDockedToShip then
@@ -279,13 +257,9 @@ begin
     else
     begin
       if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-        MusicManager.PlayCategory(
-            'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
       else
-        MusicManager.PlayCategory(
-            'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-        );
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
     end;
   end
   else if GetPlayer.InNormalSpace then

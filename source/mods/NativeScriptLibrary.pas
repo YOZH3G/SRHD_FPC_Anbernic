@@ -9,19 +9,11 @@ interface
 uses
   EC_Expression;
 
-procedure RegisterNativeScriptFunction(
-    const LibraryName, Signature: WideString;
-    Callback: TExpressionCallback
-);
+procedure RegisterNativeScriptFunction(const LibraryName, Signature: WideString; Callback: TExpressionCallback);
 function LoadNativeScriptLibrary(const Path: WideString): Cardinal;
 function FreeNativeScriptLibrary(Handle: Cardinal): Boolean;
 function NativeScriptLibraryName(Handle: Cardinal): WideString;
-function InitNativeScriptFunction(
-    Cell: TVarEC;
-    Handle: Cardinal;
-    const ExportName: WideString;
-    const Signature: WideString = ''
-): Boolean;
+function InitNativeScriptFunction(Cell: TVarEC; Handle: Cardinal; const ExportName: WideString; const Signature: WideString = ''): Boolean;
 procedure InitAllNativeScriptFunctions(Scope: TVarArrayEC; Handle: Cardinal);
 procedure InvokeNativeScriptFunction(Cell: TVarEC; av: array of TVarEC; Code: TCodeEC);
 
@@ -83,10 +75,7 @@ begin
   Result := Libraries[Handle - 1];
 end;
 
-procedure RegisterNativeScriptFunction(
-    const LibraryName, Signature: WideString;
-    Callback: TExpressionCallback
-);
+procedure RegisterNativeScriptFunction(const LibraryName, Signature: WideString; Callback: TExpressionCallback);
 var
   Handle: Cardinal;
   N, I: Integer;
@@ -120,11 +109,7 @@ begin
   NativeExports[N].Callback := Callback;
 end;
 
-function InitNativeScriptFunction(
-    Cell: TVarEC;
-    Handle: Cardinal;
-    const ExportName, Signature: WideString
-): Boolean;
+function InitNativeScriptFunction(Cell: TVarEC; Handle: Cardinal; const ExportName, Signature: WideString): Boolean;
 var
   I, J, Count: Integer;
   Text, Kind: WideString;
@@ -139,8 +124,7 @@ begin
         Text := NativeExports[I].Signature;
       Count := CountDelimitedPartsW(Text, ',');
       if Count <> CountDelimitedPartsW(NativeExports[I].Signature, ',') then
-        raise ExceptionExpressionEC.Create(
-            'Native library signature argument count: ' + ExportName);
+        raise ExceptionExpressionEC.Create('Native library signature argument count: ' + ExportName);
       SetLength(Data, Count);
       Data[1] := I + 1;
       for J := 0 to Count - 1 do

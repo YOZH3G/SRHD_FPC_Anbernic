@@ -109,15 +109,12 @@ begin
   ViewStrings[1].MaxValue := MaxValue;
   Value := 0;
   CriticalOutcome := qoNone;
-  NameText.Text :=
-      QuestMessages.GetTextOrKey('ParameterDefaultName') + ' ' + IntToWideString(Index);
-  ValueText.Text :=
-      QuestMessages.GetTextOrKey('ParameterDefaultName') + ' ' + IntToWideString(Index) + ': <>';
+  NameText.Text := QuestMessages.GetTextOrKey('ParameterDefaultName') + ' ' + IntToWideString(Index);
+  ValueText.Text := QuestMessages.GetTextOrKey('ParameterDefaultName') + ' ' + IntToWideString(Index) + ': <>';
   ViewStrings[1].Text.Text := ValueText.Text;
   CriticalEvent.ClearTextFields;
   CriticalEventOverride := nil;
-  CriticalEvent.Text.Text :=
-      QuestMessages.GetTextOrKey('ParameterDefaultCriticalMessage') + ' ' + IntToWideString(Index);
+  CriticalEvent.Text.Text := QuestMessages.GetTextOrKey('ParameterDefaultCriticalMessage') + ' ' + IntToWideString(Index);
 end;
 
 procedure TParameter.EnsureViewStringCapacity(RequiredCapacity: Integer; ParameterIndex: Integer);
@@ -127,12 +124,7 @@ begin
     Inc(ViewStringCapacity);
     SetLength(ViewStrings, ViewStringCapacity + 1);
     ViewStrings[ViewStringCapacity] :=
-        TParViewString.Create(
-            QuestMessages.GetTextOrKey('ParameterDefaultName')
-                + ' '
-                + IntToWideString(ParameterIndex)
-                + ': <>'
-        );
+        TParViewString.Create(QuestMessages.GetTextOrKey('ParameterDefaultName') + ' ' + IntToWideString(ParameterIndex) + ': <>');
   end;
 end;
 

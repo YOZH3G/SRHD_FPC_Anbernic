@@ -16,29 +16,14 @@ type
     function GetDeviceCaps(out Caps: TD3DCaps9): LongInt; stdcall; virtual;
     function GetDisplayMode(SwapChain: Cardinal; out Mode): LongInt; stdcall; virtual;
     function GetCreationParameters(out Parameters): LongInt; stdcall; virtual;
-    function SetCursorProperties(
-        XHotSpot: Cardinal;
-        YHotSpot: Cardinal;
-        CursorBitmap: IDirect3DSurface9
-    ): LongInt; stdcall; virtual;
+    function SetCursorProperties(XHotSpot: Cardinal; YHotSpot: Cardinal; CursorBitmap: IDirect3DSurface9): LongInt; stdcall; virtual;
     procedure SetCursorPosition(X: Integer; Y: Integer; Flags: Cardinal); stdcall; virtual;
     function ShowCursor(Show: LongBool): LongBool; stdcall; virtual;
-    function CreateAdditionalSwapChain(
-        var Parameters;
-        out SwapChain: IDirect3DSwapChain9
-    ): LongInt; stdcall; virtual;
-    function GetSwapChain(
-        Index: Cardinal;
-        out SwapChain: IDirect3DSwapChain9
-    ): LongInt; stdcall; virtual;
+    function CreateAdditionalSwapChain(var Parameters; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall; virtual;
+    function GetSwapChain(Index: Cardinal; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall; virtual;
     function GetNumberOfSwapChains: Cardinal; stdcall; virtual;
     function Reset(var Parameters): LongInt; stdcall; virtual;
-    function Present(
-        SourceRect: PRect;
-        DestRect: PRect;
-        DestWindow: Cardinal;
-        DirtyRegion: Pointer
-    ): LongInt; stdcall; virtual;
+    function Present(SourceRect: PRect; DestRect: PRect; DestWindow: Cardinal; DirtyRegion: Pointer): LongInt; stdcall; virtual;
     function GetBackBuffer(
         SwapChain: Cardinal;
         BackBuffer: Cardinal;
@@ -121,18 +106,9 @@ type
         Dest: IDirect3DSurface9;
         DestPoint: PPoint
     ): LongInt; stdcall; virtual;
-    function UpdateTexture(
-        Source: IDirect3DBaseTexture9;
-        Dest: IDirect3DBaseTexture9
-    ): LongInt; stdcall; virtual;
-    function GetRenderTargetData(
-        Source: IDirect3DSurface9;
-        Dest: IDirect3DSurface9
-    ): LongInt; stdcall; virtual;
-    function GetFrontBufferData(
-        SwapChain: Cardinal;
-        Dest: IDirect3DSurface9
-    ): LongInt; stdcall; virtual;
+    function UpdateTexture(Source: IDirect3DBaseTexture9; Dest: IDirect3DBaseTexture9): LongInt; stdcall; virtual;
+    function GetRenderTargetData(Source: IDirect3DSurface9; Dest: IDirect3DSurface9): LongInt; stdcall; virtual;
+    function GetFrontBufferData(SwapChain: Cardinal; Dest: IDirect3DSurface9): LongInt; stdcall; virtual;
     function StretchRect(
         Source: IDirect3DSurface9;
         SourceRect: PRect;
@@ -140,11 +116,7 @@ type
         DestRect: PRect;
         Filter: Cardinal
     ): LongInt; stdcall; virtual;
-    function ColorFill(
-        Surface: IDirect3DSurface9;
-        Rect: PRect;
-        Color: Cardinal
-    ): LongInt; stdcall; virtual;
+    function ColorFill(Surface: IDirect3DSurface9; Rect: PRect; Color: Cardinal): LongInt; stdcall; virtual;
     function CreateOffscreenPlainSurface(
         Width: Cardinal;
         Height: Cardinal;
@@ -153,14 +125,8 @@ type
         out Surface: IDirect3DSurface9;
         SharedHandle: PCardinal
     ): LongInt; stdcall; virtual;
-    function SetRenderTarget(
-        Index: Cardinal;
-        Surface: IDirect3DSurface9
-    ): LongInt; stdcall; virtual;
-    function GetRenderTarget(
-        Index: Cardinal;
-        out Surface: IDirect3DSurface9
-    ): LongInt; stdcall; virtual;
+    function SetRenderTarget(Index: Cardinal; Surface: IDirect3DSurface9): LongInt; stdcall; virtual;
+    function GetRenderTarget(Index: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall; virtual;
     function SetDepthStencilSurface(Surface: IDirect3DSurface9): LongInt; stdcall; virtual;
     function GetDepthStencilSurface(out Surface: IDirect3DSurface9): LongInt; stdcall; virtual;
     function BeginScene: LongInt; stdcall; virtual;
@@ -188,39 +154,17 @@ type
     function GetClipPlane(Index: Cardinal; Plane: PSingle): LongInt; stdcall; virtual;
     function SetRenderState(State: Cardinal; Value: Cardinal): LongInt; stdcall; virtual;
     function GetRenderState(State: Cardinal; out Value: Cardinal): LongInt; stdcall; virtual;
-    function CreateStateBlock(
-        BlockType: Cardinal;
-        out StateBlock: IDirect3DStateBlock9
-    ): LongInt; stdcall; virtual;
+    function CreateStateBlock(BlockType: Cardinal; out StateBlock: IDirect3DStateBlock9): LongInt; stdcall; virtual;
     function BeginStateBlock: LongInt; stdcall; virtual;
     function EndStateBlock(out StateBlock: IDirect3DStateBlock9): LongInt; stdcall; virtual;
     function SetClipStatus(const Status): LongInt; stdcall; virtual;
     function GetClipStatus(out Status): LongInt; stdcall; virtual;
-    function GetTexture(
-        Stage: Cardinal;
-        out Texture: IDirect3DBaseTexture9
-    ): LongInt; stdcall; virtual;
+    function GetTexture(Stage: Cardinal; out Texture: IDirect3DBaseTexture9): LongInt; stdcall; virtual;
     function SetTexture(Stage: Cardinal; Texture: IDirect3DBaseTexture9): LongInt; stdcall; virtual;
-    function GetTextureStageState(
-        Stage: Cardinal;
-        State: Cardinal;
-        out Value: Cardinal
-    ): LongInt; stdcall; virtual;
-    function SetTextureStageState(
-        Stage: Cardinal;
-        State: Cardinal;
-        Value: Cardinal
-    ): LongInt; stdcall; virtual;
-    function GetSamplerState(
-        Sampler: Cardinal;
-        State: Cardinal;
-        out Value: Cardinal
-    ): LongInt; stdcall; virtual;
-    function SetSamplerState(
-        Sampler: Cardinal;
-        State: Cardinal;
-        Value: Cardinal
-    ): LongInt; stdcall; virtual;
+    function GetTextureStageState(Stage: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall; virtual;
+    function SetTextureStageState(Stage: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall; virtual;
+    function GetSamplerState(Sampler: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall; virtual;
+    function SetSamplerState(Sampler: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall; virtual;
     function ValidateDevice(out PassCount: Cardinal): LongInt; stdcall; virtual;
     function SetPaletteEntries(Palette: Cardinal; Entries: Pointer): LongInt; stdcall; virtual;
     function GetPaletteEntries(Palette: Cardinal; Entries: Pointer): LongInt; stdcall; virtual;
@@ -232,11 +176,7 @@ type
     function GetSoftwareVertexProcessing: LongBool; stdcall; virtual;
     function SetNPatchMode(Segments: Single): LongInt; stdcall; virtual;
     function GetNPatchMode: Single; stdcall; virtual;
-    function DrawPrimitive(
-        PrimitiveType: Cardinal;
-        StartVertex: Cardinal;
-        PrimitiveCount: Cardinal
-    ): LongInt; stdcall; virtual;
+    function DrawPrimitive(PrimitiveType: Cardinal; StartVertex: Cardinal; PrimitiveCount: Cardinal): LongInt; stdcall; virtual;
     function DrawIndexedPrimitive(
         PrimitiveType: Cardinal;
         BaseVertexIndex: Integer;
@@ -245,12 +185,7 @@ type
         StartIndex: Cardinal;
         PrimitiveCount: Cardinal
     ): LongInt; stdcall; virtual;
-    function DrawPrimitiveUP(
-        PrimitiveType: Cardinal;
-        PrimitiveCount: Cardinal;
-        Data: Pointer;
-        Stride: Cardinal
-    ): LongInt; stdcall; virtual;
+    function DrawPrimitiveUP(PrimitiveType: Cardinal; PrimitiveCount: Cardinal; Data: Pointer; Stride: Cardinal): LongInt; stdcall; virtual;
     function DrawIndexedPrimitiveUP(
         PrimitiveType: Cardinal;
         MinVertexIndex: Cardinal;
@@ -269,38 +204,19 @@ type
         Declaration: IDirect3DVertexDeclaration9;
         Flags: Cardinal
     ): LongInt; stdcall; virtual;
-    function CreateVertexDeclaration(
-        Elements: Pointer;
-        out Declaration: IDirect3DVertexDeclaration9
-    ): LongInt; stdcall; virtual;
-    function SetVertexDeclaration(
-        Declaration: IDirect3DVertexDeclaration9
-    ): LongInt; stdcall; virtual;
-    function GetVertexDeclaration(
-        out Declaration: IDirect3DVertexDeclaration9
-    ): LongInt; stdcall; virtual;
+    function CreateVertexDeclaration(Elements: Pointer; out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall; virtual;
+    function SetVertexDeclaration(Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall; virtual;
+    function GetVertexDeclaration(out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall; virtual;
     function SetFVF(FVF: Cardinal): LongInt; stdcall; virtual;
     function GetFVF(out FVF: Cardinal): LongInt; stdcall; virtual;
-    function CreateVertexShader(
-        ByteCode: PCardinal;
-        out Shader: IDirect3DVertexShader9
-    ): LongInt; stdcall; virtual;
+    function CreateVertexShader(ByteCode: PCardinal; out Shader: IDirect3DVertexShader9): LongInt; stdcall; virtual;
     function SetVertexShader(Shader: IDirect3DVertexShader9): LongInt; stdcall; virtual;
   end;
   TSDLResourceBase = class(TInterfacedObject, IDirect3DResource9)
   public
     function GetDevice(out Device: IDirect3DDevice9): LongInt; stdcall; virtual;
-    function SetPrivateData(
-        const Guid: TGUID;
-        Data: Pointer;
-        DataSize: Cardinal;
-        Flags: Cardinal
-    ): LongInt; stdcall; virtual;
-    function GetPrivateData(
-        const Guid: TGUID;
-        Data: Pointer;
-        var DataSize: Cardinal
-    ): LongInt; stdcall; virtual;
+    function SetPrivateData(const Guid: TGUID; Data: Pointer; DataSize: Cardinal; Flags: Cardinal): LongInt; stdcall; virtual;
+    function GetPrivateData(const Guid: TGUID; Data: Pointer; var DataSize: Cardinal): LongInt; stdcall; virtual;
     function FreePrivateData(const Guid: TGUID): LongInt; stdcall; virtual;
     function SetPriority(NewPriority: Cardinal): Cardinal; stdcall; virtual;
     function GetPriority: Cardinal; stdcall; virtual;
@@ -343,11 +259,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetCreationParameters');
 end;
 
-function TSDLDeviceBase.SetCursorProperties(
-    XHotSpot: Cardinal;
-    YHotSpot: Cardinal;
-    CursorBitmap: IDirect3DSurface9
-): LongInt; stdcall;
+function TSDLDeviceBase.SetCursorProperties(XHotSpot: Cardinal; YHotSpot: Cardinal; CursorBitmap: IDirect3DSurface9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetCursorProperties');
 end;
@@ -362,18 +274,12 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.ShowCursor');
 end;
 
-function TSDLDeviceBase.CreateAdditionalSwapChain(
-    var Parameters;
-    out SwapChain: IDirect3DSwapChain9
-): LongInt; stdcall;
+function TSDLDeviceBase.CreateAdditionalSwapChain(var Parameters; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.CreateAdditionalSwapChain');
 end;
 
-function TSDLDeviceBase.GetSwapChain(
-    Index: Cardinal;
-    out SwapChain: IDirect3DSwapChain9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetSwapChain(Index: Cardinal; out SwapChain: IDirect3DSwapChain9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetSwapChain');
 end;
@@ -388,12 +294,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.Reset');
 end;
 
-function TSDLDeviceBase.Present(
-    SourceRect: PRect;
-    DestRect: PRect;
-    DestWindow: Cardinal;
-    DirtyRegion: Pointer
-): LongInt; stdcall;
+function TSDLDeviceBase.Present(SourceRect: PRect; DestRect: PRect; DestWindow: Cardinal; DirtyRegion: Pointer): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.Present');
 end;
@@ -532,26 +433,17 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.UpdateSurface');
 end;
 
-function TSDLDeviceBase.UpdateTexture(
-    Source: IDirect3DBaseTexture9;
-    Dest: IDirect3DBaseTexture9
-): LongInt; stdcall;
+function TSDLDeviceBase.UpdateTexture(Source: IDirect3DBaseTexture9; Dest: IDirect3DBaseTexture9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.UpdateTexture');
 end;
 
-function TSDLDeviceBase.GetRenderTargetData(
-    Source: IDirect3DSurface9;
-    Dest: IDirect3DSurface9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetRenderTargetData(Source: IDirect3DSurface9; Dest: IDirect3DSurface9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetRenderTargetData');
 end;
 
-function TSDLDeviceBase.GetFrontBufferData(
-    SwapChain: Cardinal;
-    Dest: IDirect3DSurface9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetFrontBufferData(SwapChain: Cardinal; Dest: IDirect3DSurface9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetFrontBufferData');
 end;
@@ -567,11 +459,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.StretchRect');
 end;
 
-function TSDLDeviceBase.ColorFill(
-    Surface: IDirect3DSurface9;
-    Rect: PRect;
-    Color: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.ColorFill(Surface: IDirect3DSurface9; Rect: PRect; Color: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.ColorFill');
 end;
@@ -588,18 +476,12 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.CreateOffscreenPlainSurface');
 end;
 
-function TSDLDeviceBase.SetRenderTarget(
-    Index: Cardinal;
-    Surface: IDirect3DSurface9
-): LongInt; stdcall;
+function TSDLDeviceBase.SetRenderTarget(Index: Cardinal; Surface: IDirect3DSurface9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetRenderTarget');
 end;
 
-function TSDLDeviceBase.GetRenderTarget(
-    Index: Cardinal;
-    out Surface: IDirect3DSurface9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetRenderTarget(Index: Cardinal; out Surface: IDirect3DSurface9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetRenderTarget');
 end;
@@ -711,10 +593,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetRenderState');
 end;
 
-function TSDLDeviceBase.CreateStateBlock(
-    BlockType: Cardinal;
-    out StateBlock: IDirect3DStateBlock9
-): LongInt; stdcall;
+function TSDLDeviceBase.CreateStateBlock(BlockType: Cardinal; out StateBlock: IDirect3DStateBlock9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.CreateStateBlock');
 end;
@@ -739,54 +618,32 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetClipStatus');
 end;
 
-function TSDLDeviceBase.GetTexture(
-    Stage: Cardinal;
-    out Texture: IDirect3DBaseTexture9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetTexture(Stage: Cardinal; out Texture: IDirect3DBaseTexture9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetTexture');
 end;
 
-function TSDLDeviceBase.SetTexture(
-    Stage: Cardinal;
-    Texture: IDirect3DBaseTexture9
-): LongInt; stdcall;
+function TSDLDeviceBase.SetTexture(Stage: Cardinal; Texture: IDirect3DBaseTexture9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetTexture');
 end;
 
-function TSDLDeviceBase.GetTextureStageState(
-    Stage: Cardinal;
-    State: Cardinal;
-    out Value: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.GetTextureStageState(Stage: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetTextureStageState');
 end;
 
-function TSDLDeviceBase.SetTextureStageState(
-    Stage: Cardinal;
-    State: Cardinal;
-    Value: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.SetTextureStageState(Stage: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetTextureStageState');
 end;
 
-function TSDLDeviceBase.GetSamplerState(
-    Sampler: Cardinal;
-    State: Cardinal;
-    out Value: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.GetSamplerState(Sampler: Cardinal; State: Cardinal; out Value: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetSamplerState');
 end;
 
-function TSDLDeviceBase.SetSamplerState(
-    Sampler: Cardinal;
-    State: Cardinal;
-    Value: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.SetSamplerState(Sampler: Cardinal; State: Cardinal; Value: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetSamplerState');
 end;
@@ -846,11 +703,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetNPatchMode');
 end;
 
-function TSDLDeviceBase.DrawPrimitive(
-    PrimitiveType: Cardinal;
-    StartVertex: Cardinal;
-    PrimitiveCount: Cardinal
-): LongInt; stdcall;
+function TSDLDeviceBase.DrawPrimitive(PrimitiveType: Cardinal; StartVertex: Cardinal; PrimitiveCount: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.DrawPrimitive');
 end;
@@ -903,24 +756,17 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.ProcessVertices');
 end;
 
-function TSDLDeviceBase.CreateVertexDeclaration(
-    Elements: Pointer;
-    out Declaration: IDirect3DVertexDeclaration9
-): LongInt; stdcall;
+function TSDLDeviceBase.CreateVertexDeclaration(Elements: Pointer; out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.CreateVertexDeclaration');
 end;
 
-function TSDLDeviceBase.SetVertexDeclaration(
-    Declaration: IDirect3DVertexDeclaration9
-): LongInt; stdcall;
+function TSDLDeviceBase.SetVertexDeclaration(Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.SetVertexDeclaration');
 end;
 
-function TSDLDeviceBase.GetVertexDeclaration(
-    out Declaration: IDirect3DVertexDeclaration9
-): LongInt; stdcall;
+function TSDLDeviceBase.GetVertexDeclaration(out Declaration: IDirect3DVertexDeclaration9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetVertexDeclaration');
 end;
@@ -935,10 +781,7 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.GetFVF');
 end;
 
-function TSDLDeviceBase.CreateVertexShader(
-    ByteCode: PCardinal;
-    out Shader: IDirect3DVertexShader9
-): LongInt; stdcall;
+function TSDLDeviceBase.CreateVertexShader(ByteCode: PCardinal; out Shader: IDirect3DVertexShader9): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DDevice9.CreateVertexShader');
 end;
@@ -953,21 +796,12 @@ begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DResource9.GetDevice');
 end;
 
-function TSDLResourceBase.SetPrivateData(
-    const Guid: TGUID;
-    Data: Pointer;
-    DataSize: Cardinal;
-    Flags: Cardinal
-): LongInt; stdcall;
+function TSDLResourceBase.SetPrivateData(const Guid: TGUID; Data: Pointer; DataSize: Cardinal; Flags: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DResource9.SetPrivateData');
 end;
 
-function TSDLResourceBase.GetPrivateData(
-    const Guid: TGUID;
-    Data: Pointer;
-    var DataSize: Cardinal
-): LongInt; stdcall;
+function TSDLResourceBase.GetPrivateData(const Guid: TGUID; Data: Pointer; var DataSize: Cardinal): LongInt; stdcall;
 begin
   raise Exception.Create('SDL renderer: unsupported IDirect3DResource9.GetPrivateData');
 end;

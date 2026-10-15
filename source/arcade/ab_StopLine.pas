@@ -120,11 +120,7 @@ function ab_StopLine_ReflectMovement(
     var Speed: Double
 ): Boolean;
 
-procedure ab_StopLine_GetDistances(
-    Source: TSphericalBearingState;
-    var ForwardDistance: Double;
-    var BackwardDistance: Double
-);
+procedure ab_StopLine_GetDistances(Source: TSphericalBearingState; var ForwardDistance: Double; var BackwardDistance: Double);
 
 function ab_StopLine_IsBlocked(
     SourceLongitude: Double;
@@ -220,21 +216,13 @@ begin
     while Point <> nil do
     begin
       Point.Position :=
-          SphericalToVector3D(
-              HeadingDegreesToRadians(Point.Longitude),
-              HeadingDegreesToRadians(Point.PolarAngle),
-              Point.Radius
-          );
+          SphericalToVector3D(HeadingDegreesToRadians(Point.Longitude), HeadingDegreesToRadians(Point.PolarAngle), Point.Radius);
       Point := Point.Next;
     end;
   end
   else
     Point.Position :=
-        SphericalToVector3D(
-            HeadingDegreesToRadians(Point.Longitude),
-            HeadingDegreesToRadians(Point.PolarAngle),
-            Point.Radius
-        );
+        SphericalToVector3D(HeadingDegreesToRadians(Point.Longitude), HeadingDegreesToRadians(Point.PolarAngle), Point.Radius);
 end;
 
 procedure ab_StopPoint_ClearImages;
@@ -400,29 +388,13 @@ begin
     begin
       if Line.WorldLine = nil then
       begin
-        Line.WorldLine :=
-            ab_WorldLine_Create(
-                Line.First.Position,
-                Line.Last.Position,
-                4,
-                Line.FirstColor^,
-                $80FFFFFF,
-                False
-            );
+        Line.WorldLine := ab_WorldLine_Create(Line.First.Position, Line.Last.Position, 4, Line.FirstColor^, $80FFFFFF, False);
         Line.WorldLine.FrontEndColor := Line.LastColor^;
         Line.WorldLine.BackEndColor := $80FFFFFF;
       end
       else
       begin
-        ab_WorldLine_Set(
-            Line.WorldLine,
-            Line.First.Position,
-            Line.Last.Position,
-            4,
-            Line.FirstColor^,
-            $80FFFFFF,
-            False
-        );
+        ab_WorldLine_Set(Line.WorldLine, Line.First.Position, Line.Last.Position, 4, Line.FirstColor^, $80FFFFFF, False);
         Line.WorldLine.FrontEndColor := Line.LastColor^;
         Line.WorldLine.BackEndColor := $80FFFFFF;
       end;
@@ -481,10 +453,7 @@ begin
   end;
 end;
 
-function ab_StopLine_ReflectMovement(
-    Source, Target: TSphericalBearingState;
-    var HeadingDelta, Speed: Double
-): Boolean;
+function ab_StopLine_ReflectMovement(Source, Target: TSphericalBearingState; var HeadingDelta, Speed: Double): Boolean;
 var
   InverseLengthSquared, LineLength: Single;
   Line: PabStopLine;
@@ -493,10 +462,7 @@ var
   Matrix: TMatrix4D;
   Normal, A, B, Direction, Movement: TVector3D;
 
-  function IntersectCollisionParameters(
-      A, B, C, D: TVector3D;
-      var FirstT, SecondT: Double
-  ): Boolean;
+  function IntersectCollisionParameters(A, B, C, D: TVector3D; var FirstT, SecondT: Double): Boolean;
   begin
     FirstT := (B.X - A.X) * (D.Y - C.Y) - (B.Y - A.Y) * (D.X - C.X);
     if FirstT = 0 then
@@ -571,13 +537,7 @@ begin
       Factor := 1 / LineLength;
       Direction.X := Direction.X * Factor;
       Direction.Y := Direction.Y * Factor;
-      if not IntersectCollisionParameters(
-          A,
-          B,
-          MakeVector3D(0, 0, 0),
-          Movement,
-          FirstT,
-          SecondT) then
+      if not IntersectCollisionParameters(A, B, MakeVector3D(0, 0, 0), Movement, FirstT, SecondT) then
       begin
         Line := Line.NextCollision;
         Continue;
@@ -602,20 +562,13 @@ begin
     end;
     if Result then
     begin
-      HeadingDelta :=
-          HeadingDifferenceDegrees(
-              OriginalHeading,
-              RadiansToHeadingDegrees(Math.ArcTan2(Movement.X, -Movement.Y))
-          );
+      HeadingDelta := HeadingDifferenceDegrees(OriginalHeading, RadiansToHeadingDegrees(Math.ArcTan2(Movement.X, -Movement.Y)));
       Speed := Sqrt(Sqr(Movement.X) + Sqr(Movement.Y));
     end;
   end;
 end;
 
-procedure ab_StopLine_GetDistances(
-    Source: TSphericalBearingState;
-    var ForwardDistance, BackwardDistance: Double
-);
+procedure ab_StopLine_GetDistances(Source: TSphericalBearingState; var ForwardDistance, BackwardDistance: Double);
 var
   CenterDepth: Double;
   Line: PabStopLine;
@@ -695,22 +648,13 @@ begin
       Line := Line.NextCollision;
     end;
     if (ForwardDistance < 1e15) and (ForwardDistance <> 0) then
-      ForwardDistance :=
-          RadiansToHeadingDegrees(Math.ArcSin(ForwardDistance / SphereRadius))
-              * (Pi * SphereRadius / 180);
+      ForwardDistance := RadiansToHeadingDegrees(Math.ArcSin(ForwardDistance / SphereRadius)) * (Pi * SphereRadius / 180);
     if (BackwardDistance < 1e15) and (BackwardDistance <> 0) then
-      BackwardDistance :=
-          RadiansToHeadingDegrees(Math.ArcSin(BackwardDistance / SphereRadius))
-              * (Pi * SphereRadius / 180);
+      BackwardDistance := RadiansToHeadingDegrees(Math.ArcSin(BackwardDistance / SphereRadius)) * (Pi * SphereRadius / 180);
   end;
 end;
 
-function ab_StopLine_IsBlocked(
-    SourceLongitude,
-    SourcePolarAngle,
-    TargetLongitude,
-    TargetPolarAngle: Double
-): Boolean;
+function ab_StopLine_IsBlocked(SourceLongitude, SourcePolarAngle, TargetLongitude, TargetPolarAngle: Double): Boolean;
 var
   BearingDelta, Distance, ForwardDistance, BackwardDistance: Double;
 begin
@@ -724,11 +668,7 @@ begin
       TargetPolarAngle,
       SphereRadius
   );
-  ab_StopLine_GetDistances(
-      MakeSphericalBearingState(SourceLongitude, SourcePolarAngle, BearingDelta),
-      ForwardDistance,
-      BackwardDistance
-  );
+  ab_StopLine_GetDistances(MakeSphericalBearingState(SourceLongitude, SourcePolarAngle, BearingDelta), ForwardDistance, BackwardDistance);
   Result := ForwardDistance < Distance;
 end;
 

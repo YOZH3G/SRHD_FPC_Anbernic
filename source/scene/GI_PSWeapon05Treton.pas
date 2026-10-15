@@ -203,11 +203,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - 24;
   Rect.Right := Target.X + 24;
@@ -272,9 +268,7 @@ begin
   else
   begin
     Distance := OriginalLength;
-    LengthScale :=
-        Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y))
-            / OriginalLength;
+    LengthScale := Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)) / OriginalLength;
     UpdateHitTestBounds;
     Particle := FirstParticle;
     while Particle <> nil do
@@ -357,10 +351,7 @@ begin
         PY := -Particle.Position.Y * LengthScale;
         X := Round(PX * Cosine - PY * Sine + AbsolutePosition.X);
         Y := Round(PX * Sine + PY * Cosine + AbsolutePosition.Y);
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := Particle.Next;

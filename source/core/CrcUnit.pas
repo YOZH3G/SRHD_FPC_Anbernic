@@ -341,9 +341,7 @@ var
   B3, B2, B1, B0: Cardinal;
   Cursor: PAnsiChar;
 
-  function ReverseCrc32Byte(
-      var State: Cardinal
-  ): Cardinal; { Nested in WriteCrc32Correction; unused static link is caller-popped. }
+  function ReverseCrc32Byte(var State: Cardinal): Cardinal; { Nested in WriteCrc32Correction; unused static link is caller-popped. }
   var
     i: Integer;
     Difference, Original: Cardinal;

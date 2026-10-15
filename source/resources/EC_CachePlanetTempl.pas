@@ -103,14 +103,7 @@ begin
   TextureWidth := ExtractDigitsToIntW(ExtractDelimitedPartW(LoadOption, 0, ','));
   TextureHeight := ExtractDigitsToIntW(ExtractDelimitedPartW(LoadOption, 1, ','));
   TemplateData :=
-      Ex_OKGR_Planet2_TemplBuild(
-          Bitmap.GetPixels,
-          Bitmap.PitchBytes,
-          Bitmap.Height,
-          TextureWidth,
-          TextureHeight,
-          ResidentBytes
-      );
+      Ex_OKGR_Planet2_TemplBuild(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Height, TextureWidth, TextureHeight, ResidentBytes);
   if TemplateData = nil then
     raise Exception.Create('TCPlanetTemplEC.Load. Error create template planet.');
   ImageHeight := Bitmap.Height;

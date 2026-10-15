@@ -139,8 +139,7 @@ begin
   if Next = nil then
     Next := FirstChild as TImageGI;
   MessageLoop.CancelCallbackTimer(FrameTimer);
-  FrameTimer :=
-      MessageLoop.ScheduleCallbackTimer(Next.UserValue, $FFFFFF, AdvanceFrame, PtrInt(Next));
+  FrameTimer := MessageLoop.ScheduleCallbackTimer(Next.UserValue, $FFFFFF, AdvanceFrame, PtrInt(Next));
   Previous.SetActive(False);
   Next.SetActive(True);
   Next.SetOrigin(OriginPoint);
@@ -207,8 +206,7 @@ begin
   First := FirstChild as TImageGI;
   if First <> nil then
   begin
-    FrameTimer :=
-        MessageLoop.ScheduleCallbackTimer(First.UserValue, $FFFFFF, AdvanceFrame, PtrInt(First));
+    FrameTimer := MessageLoop.ScheduleCallbackTimer(First.UserValue, $FFFFFF, AdvanceFrame, PtrInt(First));
     First.SetSize(ClientSize);
     First.SetImageKindX(ImageKindX);
     First.SetImageKindY(ImageKindY);

@@ -167,10 +167,8 @@ begin
       Text := Items.GetParamValue(Index);
       AddItem(
           Items.GetParamName(Index),
-          Classes.Point(
-              StrToInt(AnsiString(ExtractDelimitedPartW(Text, 0, ','))),
-              StrToInt(AnsiString(ExtractDelimitedPartW(Text, 1, ',')))
-          )
+          Classes
+              .Point(StrToInt(AnsiString(ExtractDelimitedPartW(Text, 0, ','))), StrToInt(AnsiString(ExtractDelimitedPartW(Text, 1, ','))))
       );
     end;
   end;

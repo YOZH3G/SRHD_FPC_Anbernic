@@ -32,14 +32,7 @@ type
     procedure EmitPan(Kind: Cardinal; DX, DY: Double; Point: TPoint);
     function Center: TPoint;
   public
-    procedure Feed(
-        Phase: TTouchPhase;
-        Device, ID: Int64;
-        X, Y, Slop: Double;
-        Mode: Integer;
-        Tick: Cardinal;
-        DoubleClickTime: Cardinal
-    );
+    procedure Feed(Phase: TTouchPhase; Device, ID: Int64; X, Y, Slop: Double; Mode: Integer; Tick: Cardinal; DoubleClickTime: Cardinal);
     procedure Cancel;
     function Poll(out Message: TGameMessage): Boolean;
     function Pending: Boolean;
@@ -71,11 +64,7 @@ end;
 
 function TGameTouch.Center: TPoint;
 begin
-  Result :=
-      Types.Point(
-          Round((Fingers[0].X + Fingers[1].X) / 2),
-          Round((Fingers[0].Y + Fingers[1].Y) / 2)
-      );
+  Result := Types.Point(Round((Fingers[0].X + Fingers[1].X) / 2), Round((Fingers[0].Y + Fingers[1].Y) / 2));
 end;
 
 procedure TGameTouch.Feed(
@@ -159,12 +148,7 @@ begin
       end
       else if Pinching or (Abs(Distance - PinchDistance) > Slop) then
       begin
-        Emit(
-            WM_GAME_PINCH,
-            Round(EnsureRange(Distance / PinchDistance, 0.01, 100.0) * 65536),
-            Round(CenterX),
-            Round(CenterY)
-        );
+        Emit(WM_GAME_PINCH, Round(EnsureRange(Distance / PinchDistance, 0.01, 100.0) * 65536), Round(CenterX), Round(CenterY));
         PinchDistance := Distance;
         Pinching := True;
       end;

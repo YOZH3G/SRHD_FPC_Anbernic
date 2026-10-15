@@ -111,23 +111,14 @@ begin
   Image.SetAngle(Angle + 128);
   Image.SetAlpha(255);
   ImageSize := GiScalePixels(Min(200, Size.X));
-  Image.SetImage(
-      'Bm.Gate2.00?NoConvertPF',
-      Classes.Point(ImageSize, ImageSize),
-      Classes.Point(ImageSize div 2, ImageSize div 2)
-  );
+  Image.SetImage('Bm.Gate2.00?NoConvertPF', Classes.Point(ImageSize, ImageSize), Classes.Point(ImageSize div 2, ImageSize div 2));
   TextLabel := TLabelGI.Create(Space.MapPanel);
   TextLabel.SetActive(False);
   TextLabel.SetFontName(NormalFontName);
   TextLabel.SetPositionModeW(True);
   TextLabel.SetDepthByName(DepthExpression);
   TextLabel.SetSize(Classes.Point(150, 20));
-  TextLabel.SetPosition(
-      Classes.Point(
-          Round(Position.X - TextLabel.ClientSize.X / 2),
-          Round(Position.Y + 50 + ImageSize div 2 - 40)
-      )
-  );
+  TextLabel.SetPosition(Classes.Point(Round(Position.X - TextLabel.ClientSize.X / 2), Round(Position.Y + 50 + ImageSize div 2 - 40)));
   TextLabel.SetText(LabelText);
   TextLabel.SetWordWrapEnabled(False);
   TextLabel.SetTextAlignX(taxCenter);
@@ -368,11 +359,7 @@ begin
   Image.SetAlpha(255);
   Image.SetActive(True);
   ImageSize := GiScalePixels(Min(200, Size.X));
-  Image.SetImage(
-      'Bm.Gate2.GateEffect?NoConvertPF',
-      Classes.Point(ImageSize, ImageSize),
-      Classes.Point(ImageSize div 2, ImageSize div 2)
-  );
+  Image.SetImage('Bm.Gate2.GateEffect?NoConvertPF', Classes.Point(ImageSize, ImageSize), Classes.Point(ImageSize div 2, ImageSize div 2));
   RebuildStateGraphics;
 end;
 

@@ -201,14 +201,7 @@ begin
   begin
     Segment.PixelFirst := AddPoints(RoundPointF(Segment.First), AbsolutePosition);
     Segment.PixelLast := AddPoints(RoundPointF(Segment.Last), AbsolutePosition);
-    Segment.ClipResult :=
-        Ex_OKGR_Line_Clip(
-            Segment.PixelFirst.X,
-            Segment.PixelFirst.Y,
-            Segment.PixelLast.X,
-            Segment.PixelLast.Y,
-            Clip
-        );
+    Segment.ClipResult := Ex_OKGR_Line_Clip(Segment.PixelFirst.X, Segment.PixelFirst.Y, Segment.PixelLast.X, Segment.PixelLast.Y, Clip);
     Segment := AddPointerOffset(Segment, SizeOf(TSpaceCircleSegmentGI));
   end;
 end;

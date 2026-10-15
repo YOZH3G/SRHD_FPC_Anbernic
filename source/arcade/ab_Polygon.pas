@@ -308,14 +308,8 @@ begin
       MinY := Projected.Y
     else if Projected.Y > MaxY then
       MaxY := Projected.Y;
-    ArcadeBattleScreen.QueueUpdateRect(
-        Classes.Rect(
-            CenterX + Round(MinX),
-            CenterY + Round(MinY),
-            CenterX + Round(MaxX) + 1,
-            CenterY + Round(MaxY) + 1
-        )
-    );
+    ArcadeBattleScreen
+        .QueueUpdateRect(Classes.Rect(CenterX + Round(MinX), CenterY + Round(MinY), CenterX + Round(MaxX) + 1, CenterY + Round(MaxY) + 1));
   end;
 end;
 
@@ -394,8 +388,7 @@ begin
     for Vertex := Low(Polygon.Vertices) to High(Polygon.Vertices) do
     begin
       Polygon.Vertices[Vertex].Point := StopPointIndex[Buffer.GetInt32];
-      Polygon.Vertices[Vertex].Color :=
-          Pointer(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
+      Polygon.Vertices[Vertex].Color := Pointer(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
     end;
     Inc(Polygon);
   end;

@@ -1,9 +1,13 @@
 program OkgfNarrowArguments;
 {$MODE delphi}
 uses
-  SysUtils, EC_OKGF;
-procedure OKGR_Light_BYTE(Pixels: Pointer; Pitch, Offset, Width, Height: Integer;
-    Alpha: TOkgfByteArgument); cdecl; external 'okgf' name 'OKGR_Light_BYTE';
+  SysUtils,
+  EC_OKGF;
+procedure OKGR_Light_BYTE(
+    Pixels: Pointer;
+    Pitch, Offset, Width, Height: Integer;
+    Alpha: TOkgfByteArgument
+); cdecl; external 'okgf' name 'OKGR_Light_BYTE';
 var
   Pixels: array[0..31] of Byte;
   Factors: array[0..4] of Byte = (0, 17, 128, 254, 255);
@@ -23,8 +27,7 @@ begin
       if Index mod 4 = 3 then
         Expected := ((200 + ((Index div 4) mod 4) * 3) * Factors[Factor] + 127) div 255;
       if Pixels[Index] <> Expected then
-        raise Exception.CreateFmt('Lighting factor %d, byte %d: got %d, expected %d',
-            [Factors[Factor], Index, Pixels[Index], Expected]);
+        raise Exception.CreateFmt('Lighting factor %d, byte %d: got %d, expected %d', [Factors[Factor], Index, Pixels[Index], Expected]);
     end;
   end;
   WriteLn('PASS: narrow C stack argument, alpha boundaries, pixel stride and guard bytes');

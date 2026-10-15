@@ -157,15 +157,11 @@ var
   X, Y: Integer;
 begin
   CurrentProcess := Space.Process as TProcessSE;
-  if PointDistanceSquared(Position, CurrentProcess.RadarCenter)
-      < Sqr(CurrentProcess.RadarRange) then
+  if PointDistanceSquared(Position, CurrentProcess.RadarCenter) < Sqr(CurrentProcess.RadarRange) then
   begin
     X := Round(Position.X * Space.MinimapScale) + (RenderScratchBuffer.Width shr 1);
     Y := Round(Position.Y * Space.MinimapScale) + (RenderScratchBuffer.Height shr 1);
-    if (X >= 0)
-        and (RenderScratchBuffer.Width > X)
-        and (Y >= 0)
-        and (RenderScratchBuffer.Height > Y) then
+    if (X >= 0) and (RenderScratchBuffer.Width > X) and (Y >= 0) and (RenderScratchBuffer.Height > Y) then
       RenderScratchBuffer.SetPixel16(X, Y, CurrentPixelFormat.PackRgbBytes(0, 255, 0));
   end;
 end;

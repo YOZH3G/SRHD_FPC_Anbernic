@@ -219,8 +219,7 @@ begin
   if Progress > 0.49 then
     Progress := 0.5;
   LoadPanel.SetProgress(Progress);
-  if IsTurnCalculationRunningUI
-      or (TurnCalculationPhase in [tcpGalaxyRunning, tcpPlayerStarRunning]) then
+  if IsTurnCalculationRunningUI or (TurnCalculationPhase in [tcpGalaxyRunning, tcpPlayerStarRunning]) then
     Exit;
   if TurnCalculationPhase = tcpGalaxyFinished then
   begin
@@ -309,11 +308,7 @@ begin
     if NoPendingLoads then
       Progress := Progress + 0.008
     else
-      Progress :=
-          Min(
-              Progress + 0.008,
-              CacheLoader.CompletedLoadCount / CacheLoader.TotalLoadCount * 0.5 + 0.5
-          );
+      Progress := Min(Progress + 0.008, CacheLoader.CompletedLoadCount / CacheLoader.TotalLoadCount * 0.5 + 0.5);
     if Progress > 0.99 then
       Progress := 1;
     LoadPanel.SetProgress(Progress);

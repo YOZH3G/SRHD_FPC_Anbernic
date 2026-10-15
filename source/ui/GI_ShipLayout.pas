@@ -10,11 +10,7 @@ uses
 
 // Called once after each fresh ship control tree has been loaded. This prepares
 // replacement artwork and reparents controls; it is not a repeatable relayout.
-procedure PrepareMobileShipInventory(
-    Screen: TMessageLoopGI;
-    const Bounds: TRect;
-    StorageCount, HoldColumns, HoldRows: Integer
-);
+procedure PrepareMobileShipInventory(Screen: TMessageLoopGI; const Bounds: TRect; StorageCount, HoldColumns, HoldRows: Integer);
 
 implementation
 
@@ -40,19 +36,12 @@ type
     function GetChildAbsolutePosition(LocalPosition: TPoint; ModeW: Boolean): TPoint; override;
   end;
 
-function TScaledContentsPanelGI.GetChildAbsolutePosition(
-    LocalPosition: TPoint;
-    ModeW: Boolean
-): TPoint;
+function TScaledContentsPanelGI.GetChildAbsolutePosition(LocalPosition: TPoint; ModeW: Boolean): TPoint;
 begin
   Result := ScaledChildPosition(AbsolutePosition, LocalPosition, ContentScale);
 end;
 
-procedure PrepareMobileShipInventory(
-    Screen: TMessageLoopGI;
-    const Bounds: TRect;
-    StorageCount, HoldColumns, HoldRows: Integer
-);
+procedure PrepareMobileShipInventory(Screen: TMessageLoopGI; const Bounds: TRect; StorageCount, HoldColumns, HoldRows: Integer);
 var
   Service, Storage, StorageClip, Body, Grid, Child, Next: TObjectGI;
   StorageImage, HoldImage: TImageGI;
@@ -79,12 +68,7 @@ var
     Wrapper := TScaledContentsPanelGI.Create(Button.Parent);
     Wrapper.ContentScale := Factor;
     Wrapper.SetName(Name + 'TouchFrame');
-    Wrapper.SetPosition(
-        Point(
-            Position.X - Round(Size.X * (Factor - 1) / 2),
-            Position.Y - Round(Size.Y * (Factor - 1) / 2)
-        )
-    );
+    Wrapper.SetPosition(Point(Position.X - Round(Size.X * (Factor - 1) / 2), Position.Y - Round(Size.Y * (Factor - 1) / 2)));
     Wrapper.SetSize(Point(Ceil(Size.X * Factor), Ceil(Size.Y * Factor)));
     Wrapper.SetDepth(Button.Depth);
     Button.Reparent(Wrapper);
@@ -95,8 +79,7 @@ var
 
   procedure PrepareCargoActions;
   const
-    Names: array[0..4] of WideString =
-        ('LoadRocketsInHold', 'SellAllFromHold', 'SortTypeRH', 'SortSizeRH', 'SortMoneyRH');
+    Names: array[0..4] of WideString = ('LoadRocketsInHold', 'SellAllFromHold', 'SortTypeRH', 'SortSizeRH', 'SortMoneyRH');
   var
     Actions: TScaledContentsPanelGI;
     Button: TGraphButtonGI;
@@ -124,14 +107,8 @@ var
       Button.DisplayScale := Scale;
       Button.SetPosition(
           Point(
-              Round(
-                  ((Index mod 2) * ColumnWidth + (ColumnWidth - Button.ClientSize.X * Scale) / 2)
-                      / Scale
-              ),
-              Round(
-                  ((Index div 2) * RowHeight + (RowHeight - Button.ClientSize.Y * Scale) / 2)
-                      / Scale
-              )
+              Round(((Index mod 2) * ColumnWidth + (ColumnWidth - Button.ClientSize.X * Scale) / 2) / Scale),
+              Round(((Index div 2) * RowHeight + (RowHeight - Button.ClientSize.Y * Scale) / 2) / Scale)
           )
       );
       Button.HitKind := gbhRect;
@@ -182,14 +159,8 @@ begin
     // The last 29 source rows are the cable behind the original stacked drawer.
     Height := 399 - RemovedHeight;
     StorageImage.GraphBufControl.GraphBuf.AllocateRgbaTight(Source.Width, Height);
-    StorageImage
-        .GraphBufControl
-        .GraphBuf
-        .CopyRect32(Point(0, 0), Source, Rect(0, 0, Source.Width, 361 - RemovedHeight));
-    StorageImage
-        .GraphBufControl
-        .GraphBuf
-        .CopyRect32(Point(0, 361 - RemovedHeight), Source, Rect(0, 361, Source.Width, 399));
+    StorageImage.GraphBufControl.GraphBuf.CopyRect32(Point(0, 0), Source, Rect(0, 0, Source.Width, 361 - RemovedHeight));
+    StorageImage.GraphBufControl.GraphBuf.CopyRect32(Point(0, 361 - RemovedHeight), Source, Rect(0, 361, Source.Width, 399));
     StorageImage.SetSize(Point(Source.Width, Height));
     Storage.SetSize(Point(Source.Width, Height));
     Storage.SetPosition(Point(0, 0));
@@ -237,12 +208,7 @@ begin
     ScaleBody := Min(1, Height / Body.ClientSize.Y);
     // The body's first 100 source pixels are the hidden edge of its sliding
     // panels. Its visible equipment begins there and stays beside storage.
-    Width :=
-        Round(
-            Service.ClientSize.X * ScaleService
-                + Storage.ClientSize.X * ScaleStorage
-                + (Body.ClientSize.X - 100) * ScaleBody
-        );
+    Width := Round(Service.ClientSize.X * ScaleService + Storage.ClientSize.X * ScaleStorage + (Body.ClientSize.X - 100) * ScaleBody);
     Fit := Min(1, (Bounds.Right - Bounds.Left - 4 * Gap) / Width);
     ScaleService := ScaleService * Fit;
     ScaleStorage := ScaleStorage * Fit;
@@ -257,10 +223,7 @@ begin
     Child := Screen.GetByName('CustomBridgeInto');
     Child.DisplayScale := ScaleBody;
     Child.SetPosition(
-        Point(
-            Child.LocalPosition.X - BodyPosition.X + Body.LocalPosition.X,
-            Child.LocalPosition.Y - BodyPosition.Y + Body.LocalPosition.Y
-        )
+        Point(Child.LocalPosition.X - BodyPosition.X + Body.LocalPosition.X, Child.LocalPosition.Y - BodyPosition.Y + Body.LocalPosition.Y)
     );
     Screen.RootUiObject.UpdateAbsolutePosition;
 
@@ -272,10 +235,7 @@ begin
     HoldImage := Screen.GetByName('RHOpen') as TImageGI;
     PrepareImage(HoldImage);
     HoldImage.GraphBufControl.GraphBuf.AllocateRgbaTight(Source.Width, Source.Height);
-    HoldImage
-        .GraphBufControl
-        .GraphBuf
-        .CopyRect32(Point(0, 0), Source, Rect(0, 0, Source.Width, Source.Height));
+    HoldImage.GraphBufControl.GraphBuf.CopyRect32(Point(0, 0), Source, Rect(0, 0, Source.Width, Source.Height));
     // Clear the former lower cells and tiny action strip with the same inset
     // background. The frame, heading and bottom navigation retain their skin.
     HoldImage.GraphBufControl.GraphBuf.DrawNinePatch(
@@ -328,12 +288,7 @@ begin
       CellHeight := Round(GridSize.Y / HoldRows / CellScale);
       Child := Screen.GetByName('RHItem' + IntToStr(I));
       Child.DisplayScale := CellScale;
-      Child.SetPosition(
-          Point(
-              Round(X * GridSize.X / HoldColumns / CellScale),
-              Round(Y * GridSize.Y / HoldRows / CellScale)
-          )
-      );
+      Child.SetPosition(Point(Round(X * GridSize.X / HoldColumns / CellScale), Round(Y * GridSize.Y / HoldRows / CellScale)));
       Child.SetSize(Point(CellWidth - 2, CellHeight - 2));
     end;
     PrepareCargoActions;

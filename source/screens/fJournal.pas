@@ -33,12 +33,7 @@ type
     procedure ClearEntries;
     procedure FinishEntries;
     procedure AddEntrySpacing(Height: Integer);
-    procedure AddEntryHeading(
-        Text: WideString;
-        MessageText: WideString;
-        Compact: Integer;
-        RecordIndex: Integer
-    );
+    procedure AddEntryHeading(Text: WideString; MessageText: WideString; Compact: Integer; RecordIndex: Integer);
     procedure AddEntryText(Text: WideString; Align: TTextAlignXGI; FontName: WideString);
     procedure ToggleJournalNews(Sender: TObjectGI);
     procedure MainPanelMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
@@ -117,12 +112,7 @@ begin
     SetSize(Types.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Types.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('ButFormClose').Parent do
-      SetPosition(
-          Types.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + MainPanel.VerticalContentOffset
-          )
-      );
+      SetPosition(Types.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
   AppendLogLineThreadSafe('ok');
   InfoPanel := GetByName('PanelInfo') as TPanelScrollBarGI;
@@ -194,32 +184,11 @@ end;
 
 var
   // Native managed-string initialization pairs at $56413C down to $5640A4.
-  TelevisionClipNames: array[0..19] of WideString = (
-      'a',
-      'b',
-      'c',
-      'd',
-      'e',
-      'f',
-      'g',
-      'h',
-      'k',
-      'l',
-      'm',
-      'n',
-      'o',
-      'p',
-      'q',
-      'r',
-      's',
-      't',
-      'u',
-      'v'
-  );
+  TelevisionClipNames: array[0..19] of WideString =
+      ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v');
 var
   // The native sum loop tests index < 20; the selection loop stops before index 19.
-  TelevisionClipWeights: array[0..19] of Integer =
-      (9, 5, 9, 9, 7, 5, 7, 1, 3, 1, 0, 3, 3, 2, 3, 2, 3, 4, 5, 3);
+  TelevisionClipWeights: array[0..19] of Integer = (9, 5, 9, 9, 7, 5, 7, 1, 3, 1, 0, 3, 3, 2, 3, 2, 3, 4, 5, 3);
 
 procedure TfJournal.RefreshTelevisionAnimation(Sender: TObjectGI);
 var
@@ -273,9 +242,7 @@ begin
   InfoPanel.UpdateScrollRanges;
   InfoPanel.VerticalScrollBar.SetRange(0, InfoPanel.VerticalScrollBar.Maximum);
   InfoPanel.VerticalScrollBar.SetActive(InfoPanel.ClientSize.Y < ContentHeight);
-  InfoPanel.VerticalScrollBar.SetSmallChange(
-      (GovernmentScreen.GetByName('TalkText') as TLabelGI).GetLineHeight
-  );
+  InfoPanel.VerticalScrollBar.SetSmallChange((GovernmentScreen.GetByName('TalkText') as TLabelGI).GetLineHeight);
   InfoPanel.VerticalScrollBar.SetLargeChange(InfoPanel.ClientSize.Y);
   InfoPanel.VerticalScrollBar.SetPageSize(InfoPanel.ClientSize.Y);
   InfoPanel.SetScrollOffset(Types.Point(0, 0));
@@ -287,11 +254,7 @@ begin
   Inc(ContentHeight, GiScalePixels(Height));
 end;
 
-procedure TfJournal.AddEntryHeading(
-    Text, MessageText: WideString;
-    Compact: Integer;
-    RecordIndex: Integer
-);
+procedure TfJournal.AddEntryHeading(Text, MessageText: WideString; Compact: Integer; RecordIndex: Integer);
 var
   Image: TImageGI;
   ButtonPrefix: WideString;
@@ -306,9 +269,7 @@ begin
     Image.SetImagePath('GI,Bm.FormInfo2.' + GiResourceSuffix + 'Caption');
   Image.SetSize(Image.GetContentSize);
   if Compact = 0 then
-    Image.SetPosition(
-        Types.Point(InfoPanel.ClientSize.X div 2 - Image.ClientSize.X div 2, ContentHeight)
-    )
+    Image.SetPosition(Types.Point(InfoPanel.ClientSize.X div 2 - Image.ClientSize.X div 2, ContentHeight))
   else
     Image.SetPosition(Types.Point(InfoPanel.ClientSize.X - Image.ClientSize.X, ContentHeight));
   Image.SetDepth(1);
@@ -330,10 +291,7 @@ begin
     SetSize(Image.ClientSize);
     if Compact <> 0 then
       SetSize(Types.Point(ClientSize.X - GiScalePixels(20), ClientSize.Y));
-    SetPosition(
-        Types
-            .Point(Image.LocalPosition.X + Image.ClientSize.X - ClientSize.X, Image.LocalPosition.Y)
-    );
+    SetPosition(Types.Point(Image.LocalPosition.X + Image.ClientSize.X - ClientSize.X, Image.LocalPosition.Y));
     SetWordWrapEnabled(False);
     SetPositionModeW(True);
     SetTextAlignX(taxCenter);
@@ -351,12 +309,7 @@ begin
       SetSize(GetMaxStateImageSize);
       PinWidth := ClientSize.X;
       if Compact = 0 then
-        SetPosition(
-            Types.Point(
-                Image.LocalPosition.X + Image.ClientSize.X - ClientSize.X - GiScalePixels(10),
-                Image.LocalPosition.Y
-            )
-        )
+        SetPosition(Types.Point(Image.LocalPosition.X + Image.ClientSize.X - ClientSize.X - GiScalePixels(10), Image.LocalPosition.Y))
       else
         SetPosition(
             Types.Point(
@@ -388,11 +341,7 @@ begin
           SetSize(GetMaxStateImageSize);
           SetPosition(
               Types.Point(
-                  Image.LocalPosition.X
-                      + Image.ClientSize.X
-                      - ClientSize.X
-                      - GiScalePixels(15)
-                      - PinWidth,
+                  Image.LocalPosition.X + Image.ClientSize.X - ClientSize.X - GiScalePixels(15) - PinWidth,
                   Image.LocalPosition.Y - GiScalePixels(3)
               )
           );
@@ -519,22 +468,16 @@ end;
 procedure TfJournal.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 begin
   if Delta = WHEEL_DELTA then
-    InfoPanel.VerticalScrollBar.SetPosition(
-        InfoPanel.VerticalScrollBar.Position - InfoPanel.VerticalScrollBar.SmallChange
-    )
+    InfoPanel.VerticalScrollBar.SetPosition(InfoPanel.VerticalScrollBar.Position - InfoPanel.VerticalScrollBar.SmallChange)
   else if Delta = -WHEEL_DELTA then
-    InfoPanel.VerticalScrollBar.SetPosition(
-        InfoPanel.VerticalScrollBar.Position + InfoPanel.VerticalScrollBar.SmallChange
-    );
+    InfoPanel.VerticalScrollBar.SetPosition(InfoPanel.VerticalScrollBar.Position + InfoPanel.VerticalScrollBar.SmallChange);
 end;
 
 function TfJournal.HasTelevisionReception: Boolean;
 begin
   Result :=
       (GetPlayer <> nil)
-          and (GetPlayer.IsDockedToShip
-              or (GetPlayer.IsOnPlanet
-                  and (GetPlayer.CurrentPlanet.OwnerId in [oiMaloc..oiGaal, oiPirate])));
+          and (GetPlayer.IsDockedToShip or (GetPlayer.IsOnPlanet and (GetPlayer.CurrentPlanet.OwnerId in [oiMaloc..oiGaal, oiPirate])));
 end;
 
 procedure TfJournal.PinEntryClicked(Sender: TObjectGI);
@@ -550,11 +493,7 @@ procedure TfJournal.DeleteEntryClicked(Sender: TObjectGI);
 var
   Position: Integer;
 begin
-  if ShowMessageBoxGI(
-          Self,
-          LookupLocalizedTextByKey('FormInfo.DelRecord'),
-          mbgOK or mbgCancel or mbgQuestion)
-      = mbgResultOK then
+  if ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormInfo.DelRecord'), mbgOK or mbgCancel or mbgQuestion) = mbgResultOK then
   begin
     if GetPlayer <> nil then
       GetPlayer.DeleteJournalRecord(Sender.UserValue);
@@ -575,11 +514,7 @@ begin
   begin
     if JournalSelected then
     begin
-      if ShowMessageBoxGI(
-              Self,
-              LookupLocalizedTextByKey('FormInfo.ClearRecord'),
-              mbgOK or mbgCancel or mbgQuestion)
-          = mbgResultOK then
+      if ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormInfo.ClearRecord'), mbgOK or mbgCancel or mbgQuestion) = mbgResultOK then
       begin
         GetPlayer.ClearJournal;
         RebuildJournalEntries;
@@ -588,11 +523,7 @@ begin
     end
     else
     begin
-      if ShowMessageBoxGI(
-              Self,
-              LookupLocalizedTextByKey('FormInfo.ClearNews'),
-              mbgOK or mbgCancel or mbgQuestion)
-          = mbgResultOK then
+      if ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormInfo.ClearNews'), mbgOK or mbgCancel or mbgQuestion) = mbgResultOK then
       begin
         GetPlayer.TrimNewsEntries(0);
         RebuildNewsEntries;
@@ -611,21 +542,12 @@ begin
     if JournalSelected then
     begin
       if GetPlayer.JournalRecords.Count > 0 then
-        if ShowMessageBoxGI(
-                Self,
-                LookupLocalizedTextByKey('FormInfo.ExtractRecord'),
-                mbgOK or mbgCancel or mbgQuestion)
-            = mbgResultOK then
+        if ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormInfo.ExtractRecord'), mbgOK or mbgCancel or mbgQuestion) = mbgResultOK then
         begin
           FileName := GetPlayer.ExportJournal;
           ShowMessageBoxGI(
               Self,
-              ReplaceColoredToken(
-                  LocalizedText('FormInfo.ExtractRecordDone'),
-                  '<FileName>',
-                  FileName,
-                  TextHighlightColorTag
-              ),
+              ReplaceColoredToken(LocalizedText('FormInfo.ExtractRecordDone'), '<FileName>', FileName, TextHighlightColorTag),
               mbgOK or mbgUnused04
           );
           RebuildJournalEntries;
@@ -633,21 +555,12 @@ begin
         end;
     end
     else if GetPlayer.NewsEntries.Count > 0 then
-      if ShowMessageBoxGI(
-              Self,
-              LookupLocalizedTextByKey('FormInfo.ExtractNews'),
-              mbgOK or mbgCancel or mbgQuestion)
-          = mbgResultOK then
+      if ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormInfo.ExtractNews'), mbgOK or mbgCancel or mbgQuestion) = mbgResultOK then
       begin
         FileName := GetPlayer.ExportNews;
         ShowMessageBoxGI(
             Self,
-            ReplaceColoredToken(
-                LocalizedText('FormInfo.ExtractNewsDone'),
-                '<FileName>',
-                FileName,
-                TextHighlightColorTag
-            ),
+            ReplaceColoredToken(LocalizedText('FormInfo.ExtractNewsDone'), '<FileName>', FileName, TextHighlightColorTag),
             mbgOK or mbgUnused04
         );
         RebuildNewsEntries;
@@ -678,39 +591,26 @@ begin
         if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
         begin
           if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-            MusicManager.PlayCategory(
-                'Nation.'
-                    + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                    + 'Pirate'
-            )
+            MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
           else
             MusicManager.PlayCategory('Nation.PiratePlanetMain');
         end
         else
-          MusicManager
-              .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
       end
       else if GetPlayer.IsDockedToShip then
       begin
         if not MusicInPlanetEnabled then
           MusicManager.RequestFadeOut
         else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-          MusicManager.PlayCategory(
-              'Nation.'
-                  + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-                  + 'Pirate'
-          )
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
         else
-          MusicManager.PlayCategory(
-              'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-          );
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
       end;
     end
     else if MusicInSpaceEnabled then
     begin
-      if (GetPlayer <> nil)
-          and (GetPlayer.GetHull.CapitalShip = 1)
-          and (RandomIntRange(0, 100) < 20) then
+      if (GetPlayer <> nil) and (GetPlayer.GetHull.CapitalShip = 1) and (RandomIntRange(0, 100) < 20) then
       begin
         StarMapScreen.BattleMusicSelected := True;
         MusicManager.PlayCategory('Destroyer');
@@ -743,11 +643,7 @@ begin
     Entry := GetPlayer.NewsEntries[I];
     AddEntryHeading(
         WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn) + HeadingSuffix, TextHighlightColorTag),
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn), TextHighlightColorTag)
-            + #13#10
-            + ' '
-            + #13#10
-            + Entry.Text,
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.Turn), TextHighlightColorTag) + #13#10 + ' ' + #13#10 + Entry.Text,
         1,
         0
     );
@@ -775,11 +671,7 @@ begin
     Entry := GetPlayer.JournalRecords[I];
     AddEntryHeading(
         WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), TextHighlightColorTag),
-        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), TextHighlightColorTag)
-            + #13#10
-            + ' '
-            + #13#10
-            + Entry.Text,
+        WrapTextInColor(Galaxy.FormatTurnDate(Entry.DateTurn), TextHighlightColorTag) + #13#10 + ' ' + #13#10 + Entry.Text,
         1,
         I
     );
@@ -791,12 +683,7 @@ begin
   end;
   if Displayed > 0 then
     AddEntryText(
-        FormatText1(
-            LocalizedColorText('FormInfo.RecordCount'),
-            DialogHighlightColorTag,
-            '<Count>',
-            IntToStr(Displayed)
-        ),
+        FormatText1(LocalizedColorText('FormInfo.RecordCount'), DialogHighlightColorTag, '<Count>', IntToStr(Displayed)),
         taxCenter,
         SmallFontName
     );
@@ -870,9 +757,7 @@ end;
 
 procedure TfJournal.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
-  if not ExitScreenLoop
-      and (TurnCalculationPhase
-          in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
+  if not ExitScreenLoop and (TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
     Galaxy.CheckIntegrityChecksum(10001);
     ExecuteGameplayUiCode(Block, Key);

@@ -97,26 +97,11 @@ begin
   Bitmap := TGraphBufGR.Create(False);
   Bitmap.LoadImage(SourceBuffer);
   Bitmap.ApplyOperations(LoadOption);
-  ByteCount :=
-      Ex_OKGR_TransBuf_Build_WORD(
-          Bitmap.GetPixels,
-          Bitmap.PitchBytes,
-          Bitmap.Width,
-          Bitmap.Height,
-          nil,
-          0
-      );
+  ByteCount := Ex_OKGR_TransBuf_Build_WORD(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, nil, 0);
   if ByteCount < 1 then
     raise Exception.Create('TCTBitmapEC.Load. Error load file.');
   GetMem(TransBuffer, ByteCount);
-  Ex_OKGR_TransBuf_Build_WORD(
-      Bitmap.GetPixels,
-      Bitmap.PitchBytes,
-      Bitmap.Width,
-      Bitmap.Height,
-      TransBuffer,
-      0
-  );
+  Ex_OKGR_TransBuf_Build_WORD(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, TransBuffer, 0);
   ResidentBytes := ByteCount;
   PixelSize.X := Bitmap.Width;
   PixelSize.Y := Bitmap.Height;

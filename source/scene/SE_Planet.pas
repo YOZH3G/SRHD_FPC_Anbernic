@@ -256,9 +256,7 @@ begin
     RuinsMinimapControl := TImageGI.Create(SpaceObjectUiLoop.ContentPanel);
     RuinsMinimapControl.SetPositionModeW(True);
     RuinsMinimapControl.SetDepthByName(DepthExpression);
-    RuinsMinimapControl.SetPosition(
-        TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-    );
+    RuinsMinimapControl.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
     RuinsMinimapControl.SetImagePath(RuinsMinimapPath);
     RuinsMinimapControl.SetSize(RuinsMinimapControl.GetContentSize);
     RuinsMinimapControl.SetOrigin(HalfPoint(RuinsMinimapControl.ClientSize));
@@ -307,9 +305,7 @@ begin
     MinimapControl := TAlphaImageGI.Create(SpaceObjectUiLoop.ContentPanel);
     MinimapControl.SetPositionModeW(True);
     MinimapControl.SetDepthByName(DepthExpression);
-    MinimapControl.SetPosition(
-        TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-    );
+    MinimapControl.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
     MinimapControl.SetOrigin(MinimapImageOrigin);
     if MinimapOwner <= 7 then
       MinimapControl.SetImagePath('Bm.Planet.M.' + OwnerInfo[TOwnerId(MinimapOwner)].InternalName)
@@ -336,20 +332,12 @@ begin
       begin
         if Cloud1RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud1RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud1RelativeRotationSpeed))));
           Cloud1MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud1RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud1RelativeRotationSpeed - 1))));
           Cloud1MapStep := -1;
         end;
         Cloud1Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 1);
@@ -358,20 +346,12 @@ begin
       begin
         if Cloud2RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud2RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud2RelativeRotationSpeed))));
           Cloud2MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud2RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud2RelativeRotationSpeed - 1))));
           Cloud2MapStep := -1;
         end;
         Cloud2Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 2);
@@ -380,20 +360,12 @@ begin
       begin
         if Cloud3RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud3RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud3RelativeRotationSpeed))));
           Cloud3MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud3RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud3RelativeRotationSpeed - 1))));
           Cloud3MapStep := -1;
         end;
         Cloud3Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 3);
@@ -581,14 +553,8 @@ begin
   begin
     SurfaceAnimationIndex := -1;
     Scale := (Radius - 60) / 40 * 0.7 + 0.3;
-    SurfaceAnimationOffset.X :=
-        GiScalePixels(
-            Round(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Position.X * Scale)
-        );
-    SurfaceAnimationOffset.Y :=
-        GiScalePixels(
-            Round(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Position.Y * Scale)
-        );
+    SurfaceAnimationOffset.X := GiScalePixels(Round(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Position.X * Scale));
+    SurfaceAnimationOffset.Y := GiScalePixels(Round(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Position.Y * Scale));
     SurfaceAnimationFrame := 0;
     SurfaceImageControl := TImageGI.Create(Space.MapPanel);
     SurfaceImageControl.SetPositionModeW(True);
@@ -630,19 +596,13 @@ begin
   if GiResourceVariant = 1 then
     SurfaceImageControl.SetImagePath(
         PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-            .Adverts[
-                PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-                    .Lists[SurfaceAnimationIndex]
-                    .Indices[SurfaceAnimationFrame]]
+            .Adverts[PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices[SurfaceAnimationFrame]]
             .Image1
     )
   else
     SurfaceImageControl.SetImagePath(
         PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-            .Adverts[
-                PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-                    .Lists[SurfaceAnimationIndex]
-                    .Indices[SurfaceAnimationFrame]]
+            .Adverts[PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices[SurfaceAnimationFrame]]
             .Image2
     );
   SurfaceImageControl.SetSize(SurfaceImageControl.GetContentSize);
@@ -689,11 +649,7 @@ begin
         RuinsImageControl.SetPosition(TruncatePointF(APosition));
       if RuinsAnimationControl <> nil then
         RuinsAnimationControl.SetPosition(TruncatePointF(APosition));
-      RuinsMinimapControl.SetPosition(
-          TruncatePointF(
-              MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-          )
-      );
+      RuinsMinimapControl.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
     end;
   end
   else
@@ -709,21 +665,15 @@ begin
     if IsAttachedToSpace then
     begin
       PlanetControl.SetPosition(Classes.Point(Round(APosition.X), Round(APosition.Y)));
-      MinimapControl.SetPosition(
-          TruncatePointF(
-              MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-          )
-      );
+      MinimapControl.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
       if RingControl1 <> nil then
         RingControl1.SetPosition(PlanetControl.LocalPosition);
       if RingControl2 <> nil then
         RingControl2.SetPosition(PlanetControl.LocalPosition);
       if LegacySurfaceControl <> nil then
-        LegacySurfaceControl
-            .SetPosition(AddPoints(PlanetControl.LocalPosition, SurfaceAnimationOffset));
+        LegacySurfaceControl.SetPosition(AddPoints(PlanetControl.LocalPosition, SurfaceAnimationOffset));
       if SurfaceImageControl <> nil then
-        SurfaceImageControl
-            .SetPosition(AddPoints(PlanetControl.LocalPosition, SurfaceAnimationOffset));
+        SurfaceImageControl.SetPosition(AddPoints(PlanetControl.LocalPosition, SurfaceAnimationOffset));
     end;
   end;
 end;
@@ -801,20 +751,12 @@ begin
       begin
         if Cloud1RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud1RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud1RelativeRotationSpeed))));
           Cloud1MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud1RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud1RelativeRotationSpeed - 1))));
           Cloud1MapStep := -1;
         end;
         Cloud1Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 1);
@@ -823,20 +765,12 @@ begin
       begin
         if Cloud2RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud2RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud2RelativeRotationSpeed))));
           Cloud2MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud2RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud2RelativeRotationSpeed - 1))));
           Cloud2MapStep := -1;
         end;
         Cloud2Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 2);
@@ -845,20 +779,12 @@ begin
       begin
         if Cloud3RelativeRotationSpeed > -1 then
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud3RelativeRotationSpeed)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (1 + Cloud3RelativeRotationSpeed))));
           Cloud3MapStep := 1;
         end
         else
         begin
-          Interval :=
-              Max(
-                  10,
-                  Round(1000 / (1000 / RotationTimerInterval * (-Cloud3RelativeRotationSpeed - 1)))
-              );
+          Interval := Max(10, Round(1000 / (1000 / RotationTimerInterval * (-Cloud3RelativeRotationSpeed - 1))));
           Cloud3MapStep := -1;
         end;
         Cloud3Timer := Space.CreateTimer(0, Abs(Interval), AdvanceCloudTimer, 3);
@@ -901,15 +827,7 @@ begin
     begin
       if Obj is TStarSE then
       begin
-        SetLightAngle(
-            Trunc(
-                ArcTan2(-(Position.X - Obj.Position.X), Position.Y - Obj.Position.Y)
-                    * 180
-                    / GamePi
-                    * 256
-                    / 360
-            )
-        );
+        SetLightAngle(Trunc(ArcTan2(-(Position.X - Obj.Position.X), Position.Y - Obj.Position.Y) * 180 / GamePi * 256 / 360));
         Break;
       end;
       Obj := Obj.Next;
@@ -922,27 +840,20 @@ begin
   if IsRuins then
     Exit;
   Inc(SurfaceAnimationFrame);
-  if High(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices)
-      < SurfaceAnimationFrame then
+  if High(PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices) < SurfaceAnimationFrame then
     StartRandomSurfaceAnimation
   else
   begin
     if GiResourceVariant = 1 then
       SurfaceImageControl.SetImagePath(
           PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-              .Adverts[
-                  PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-                      .Lists[SurfaceAnimationIndex]
-                      .Indices[SurfaceAnimationFrame]]
+              .Adverts[PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices[SurfaceAnimationFrame]]
               .Image1
       )
     else
       SurfaceImageControl.SetImagePath(
           PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-              .Adverts[
-                  PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]
-                      .Lists[SurfaceAnimationIndex]
-                      .Indices[SurfaceAnimationFrame]]
+              .Adverts[PlanetAdvertDefinitions[SurfaceAnimationMask shr 24].Lists[SurfaceAnimationIndex].Indices[SurfaceAnimationFrame]]
               .Image2
       );
     if SurfaceImageControl.GaiImageControl <> nil then
@@ -1015,8 +926,7 @@ begin
     if RadarRange <= 0 then
       Exit;
     if IsRuins then
-      RuinsMinimapControl
-          .Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height))
+      RuinsMinimapControl.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height))
     else
     begin
       Pixels := RenderScratchBuffer.GetPixels;
@@ -1083,33 +993,13 @@ begin
         MapOrbitPoints := AllocEC(MapOrbitPointCount * SizeOf(TPlanetMapOrbitPoint));
         Dest := MapOrbitPoints;
         P0 := Scratch;
-        P1 :=
-            AddPointerOffset(
-                Scratch,
-                Capacity * SizeOf(TPlanetMapOrbitPoint)
-                    + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint)
-            );
+        P1 := AddPointerOffset(Scratch, Capacity * SizeOf(TPlanetMapOrbitPoint) + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint));
         P2 := AddPointerOffset(Scratch, Capacity * 2 * SizeOf(TPlanetMapOrbitPoint));
-        P3 :=
-            AddPointerOffset(
-                Scratch,
-                Capacity * 3 * SizeOf(TPlanetMapOrbitPoint)
-                    + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint)
-            );
+        P3 := AddPointerOffset(Scratch, Capacity * 3 * SizeOf(TPlanetMapOrbitPoint) + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint));
         P4 := AddPointerOffset(Scratch, Capacity * 4 * SizeOf(TPlanetMapOrbitPoint));
-        P5 :=
-            AddPointerOffset(
-                Scratch,
-                Capacity * 5 * SizeOf(TPlanetMapOrbitPoint)
-                    + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint)
-            );
+        P5 := AddPointerOffset(Scratch, Capacity * 5 * SizeOf(TPlanetMapOrbitPoint) + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint));
         P6 := AddPointerOffset(Scratch, Capacity * 6 * SizeOf(TPlanetMapOrbitPoint));
-        P7 :=
-            AddPointerOffset(
-                Scratch,
-                Capacity * 7 * SizeOf(TPlanetMapOrbitPoint)
-                    + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint)
-            );
+        P7 := AddPointerOffset(Scratch, Capacity * 7 * SizeOf(TPlanetMapOrbitPoint) + (OctantCount - 1) * SizeOf(TPlanetMapOrbitPoint));
         X := -10000;
         Y := -10000;
         { Preserve octant traversal and duplicate suppression at the joins. }
@@ -1235,12 +1125,7 @@ begin
         end;
         FreeEC(Scratch);
       end;
-      Index :=
-          Round(
-              RadiansToHeadingDegrees(ArcTan2(ProjectedX, -ProjectedY))
-                  / 360
-                  * (MapOrbitPointCount - 1)
-          );
+      Index := Round(RadiansToHeadingDegrees(ArcTan2(ProjectedX, -ProjectedY)) / 360 * (MapOrbitPointCount - 1));
       Dest := AddPointerOffset(MapOrbitPoints, Index * SizeOf(TPlanetMapOrbitPoint));
       Intensity := 255;
       IntensityStep := -510 / MapOrbitPointCount;
@@ -1275,17 +1160,12 @@ begin
         end;
         Intensity := Intensity + IntensityStep;
       end;
-      MinimapControl
-          .Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
+      MinimapControl.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
     end;
   end;
 end;
 
-procedure TPlanetSE.RenderToBuffer(
-    Screen: TMessageLoopGI;
-    Buffer: TGraphBufGR;
-    SmallPreview: Boolean
-);
+procedure TPlanetSE.RenderToBuffer(Screen: TMessageLoopGI; Buffer: TGraphBufGR; SmallPreview: Boolean);
 var
   Template: TPlanetTempl;
   Planet: TPlanetGI;
@@ -1335,9 +1215,7 @@ begin
     Control := TCBitmapControlEC.Create;
     GlobalCache.ResetControl(Control);
     if SmallPreview then
-      Control.SetCacheKey(
-          ExtractDelimitedPartW(SatelliteTemplate.MaskName, 0, '?') + RgbaImagePathSuffix
-      )
+      Control.SetCacheKey(ExtractDelimitedPartW(SatelliteTemplate.MaskName, 0, '?') + RgbaImagePathSuffix)
     else
       Control.SetCacheKey(Template.MaskName + RgbaImagePathSuffix);
     AcquireOrCreateBitmap(Control);
@@ -1390,11 +1268,8 @@ begin
     begin
       Text := Block.GetParam('AtmColor');
       AtmosphereColor := Byte(ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 0, ',')));
-      AtmosphereColor :=
-          AtmosphereColor or (Byte(ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 1, ','))) shl 8);
-      AtmosphereColor :=
-          AtmosphereColor
-              or (Byte(ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 2, ','))) shl 16);
+      AtmosphereColor := AtmosphereColor or (Byte(ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 1, ','))) shl 8);
+      AtmosphereColor := AtmosphereColor or (Byte(ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 2, ','))) shl 16);
     end;
     if Block.CountParams('Space') > 0 then
     begin
@@ -1467,12 +1342,7 @@ begin
       raise Exception.Create('Error in TPlanetSE.BuildLoadList');
     with TPlanetGI.Create(Owner) do
     begin
-      SetImageWithRadius(
-          Template.SmallMaskName,
-          Self.ImagePath,
-          Template.SmallLightName,
-          Self.Radius
-      );
+      SetImageWithRadius(Template.SmallMaskName, Self.ImagePath, Template.SmallLightName, Self.Radius);
       QueueImageLoad(PendingLoads);
       Free;
     end;

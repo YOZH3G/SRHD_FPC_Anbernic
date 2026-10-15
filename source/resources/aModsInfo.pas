@@ -142,8 +142,7 @@ begin
   Count := CountDelimitedPartsW(Indices, ',');
   if (VariantIndex < 0) or (VariantIndex >= Count) then
     Exit;
-  Result :=
-      TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, VariantIndex, ','))]);
+  Result := TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, VariantIndex, ','))]);
 end;
 
 function TModInfo.GetDependency(Index, VariantIndex: Integer): TModInfo;
@@ -167,8 +166,7 @@ begin
   Count := CountDelimitedPartsW(Indices, ',');
   if (VariantIndex < 0) or (VariantIndex >= Count) then
     Exit;
-  Result :=
-      TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, VariantIndex, ','))]);
+  Result := TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, VariantIndex, ','))]);
 end;
 
 function FindOrInsertModFolder(Folder: WideString): Integer;
@@ -253,8 +251,7 @@ var
     if SysUtils.FindFirst('*', faAnyFile, FindData) = 0 then
     begin
       repeat
-        if ((FindData.Attr and faDirectory) = 0)
-            and SameText(ExtractFileExt(FindData.Name), '.txt') then
+        if ((FindData.Attr and faDirectory) = 0) and SameText(ExtractFileExt(FindData.Name), '.txt') then
         begin
           FileName := WideString(FindData.Name);
           FileName := LowerCaseWideString(FileName);
@@ -284,8 +281,7 @@ var
               FileName := WideString(FindData.Name);
               if (FileName <> '.')
                   and (FileName <> '..')
-                  and (LowerCaseWideString(FileName)
-                      <> LowerCaseWideString(LanguageInstallConfig.GetParam('Lang')))
+                  and (LowerCaseWideString(FileName) <> LowerCaseWideString(LanguageInstallConfig.GetParam('Lang')))
                   and SysUtils.FileExists(NativeGamePath(AnsiString(FileName + '\Lang.dat'))) then
               begin
                 Result := True;
@@ -359,19 +355,14 @@ begin
         Info.SmallDescription := Block.GetParamByPath('SmallDescription' + Language + ':0');
         for I := 1 to Count - 1 do
           Info.SmallDescription :=
-              Info.SmallDescription
-                  + #13#10
-                  + Block.GetParamByPath('SmallDescription' + Language + ':' + IntToWideString(I));
+              Info.SmallDescription + #13#10 + Block.GetParamByPath('SmallDescription' + Language + ':' + IntToWideString(I));
       end
       else if Block.CountParams('SmallDescription') > 0 then
       begin
         Count := Block.CountParams('SmallDescription');
         Info.SmallDescription := Block.GetParamByPath('SmallDescription:0');
         for I := 1 to Count - 1 do
-          Info.SmallDescription :=
-              Info.SmallDescription
-                  + #13#10
-                  + Block.GetParamByPath('SmallDescription:' + IntToWideString(I));
+          Info.SmallDescription := Info.SmallDescription + #13#10 + Block.GetParamByPath('SmallDescription:' + IntToWideString(I));
       end;
       if Block.CountParams('FullDescription' + Language) > 0 then
       begin
@@ -379,19 +370,14 @@ begin
         Info.FullDescription := Block.GetParamByPath('FullDescription' + Language + ':0');
         for I := 1 to Count - 1 do
           Info.FullDescription :=
-              Info.FullDescription
-                  + #13#10
-                  + Block.GetParamByPath('FullDescription' + Language + ':' + IntToWideString(I));
+              Info.FullDescription + #13#10 + Block.GetParamByPath('FullDescription' + Language + ':' + IntToWideString(I));
       end
       else if Block.CountParams('FullDescription') > 0 then
       begin
         Count := Block.CountParams('FullDescription');
         Info.FullDescription := Block.GetParamByPath('FullDescription:0');
         for I := 1 to Count - 1 do
-          Info.FullDescription :=
-              Info.FullDescription
-                  + #13#10
-                  + Block.GetParamByPath('FullDescription:' + IntToWideString(I));
+          Info.FullDescription := Info.FullDescription + #13#10 + Block.GetParamByPath('FullDescription:' + IntToWideString(I));
       end;
       if Block.CountParams('Author' + Language) > 0 then
         Info.Author := TrimWideString(Block.GetParam('Author' + Language))
@@ -405,9 +391,7 @@ begin
         Count := CountDelimitedPartsW(Languages, ',');
         if Languages <> '' then
           for I := 0 to Count - 1 do
-            if WideString(
-                    LowerCase(AnsiString(TrimWideString(ExtractDelimitedPartW(Languages, I, ',')))))
-                = Language then
+            if WideString(LowerCase(AnsiString(TrimWideString(ExtractDelimitedPartW(Languages, I, ','))))) = Language then
             begin
               Info.UnsupportedLanguage := False;
               Break;
@@ -545,8 +529,7 @@ begin
           Info := TModInfo.Create;
           ModInfos[Index] := Info;
           SelectedModInfos.Add(Info);
-          if DirectoryExists(NativeGamePath(AnsiString(Folder + '\' + Name)))
-              and LoadModInfo(Folder + '\' + Name, Info) then
+          if DirectoryExists(NativeGamePath(AnsiString(Folder + '\' + Name))) and LoadModInfo(Folder + '\' + Name, Info) then
           begin
             Info.Folder := Name;
             if Info.Name <> '' then
@@ -633,8 +616,7 @@ begin
         Info.Dependencies[J] := nil;
       end
       else
-        Info.Dependencies[J] :=
-            TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, 0, ','))]);
+        Info.Dependencies[J] := TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, 0, ','))]);
     end;
   end;
   for I := 0 to ModInfos.Count - 1 do
@@ -653,8 +635,7 @@ begin
         Info.Conflicts[J] := nil;
       end
       else
-        Info.Conflicts[J] :=
-            TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, 0, ','))]);
+        Info.Conflicts[J] := TModInfo(ModInfos[ExtractDigitsToIntW(ExtractDelimitedPartW(Indices, 0, ','))]);
     end;
   end;
   for I := 0 to ModConflictIndex.GetParamCount - 1 do

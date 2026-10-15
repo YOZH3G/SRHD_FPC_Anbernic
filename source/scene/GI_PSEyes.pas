@@ -247,11 +247,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - HalfWidth;
   Rect.Right := Target.X + HalfWidth;
@@ -310,11 +306,7 @@ begin
       case Current.State of
         2:
         begin
-          Current.Position :=
-              MakePointF(
-                  Current.Position.X + Current.Velocity.X,
-                  Current.Position.Y + Current.Velocity.Y
-              );
+          Current.Position := MakePointF(Current.Position.X + Current.Velocity.X, Current.Position.Y + Current.Velocity.Y);
           Current.Velocity.X := 0.95 * Current.Velocity.X;
           Current.Velocity.Y := 0.95 * Current.Velocity.Y;
           Dec(Current.Countdown);
@@ -326,11 +318,7 @@ begin
         end;
         3:
         begin
-          Current.Position :=
-              MakePointF(
-                  Current.Position.X + Current.Velocity.X,
-                  Current.Position.Y + Current.Velocity.Y
-              );
+          Current.Position := MakePointF(Current.Position.X + Current.Velocity.X, Current.Position.Y + Current.Velocity.Y);
           Current.Velocity.X := 0.95 * Current.Velocity.X;
           Current.Velocity.Y := 0.95 * Current.Velocity.Y;
           if Current.Alpha > 10 then
@@ -407,15 +395,7 @@ begin
         Shadow.Alpha := Line.Alpha;
         Shadow.Color := PrimaryColor;
         Inc(Progress, Step);
-        DrawAntialiasedLineDX(
-            Line.First.X,
-            Line.First.Y,
-            Line.Last.X,
-            Line.Last.Y,
-            Color565ToArgb(Line.Color),
-            Line.Alpha,
-            @ClipRect
-        );
+        DrawAntialiasedLineDX(Line.First.X, Line.First.Y, Line.Last.X, Line.Last.Y, Color565ToArgb(Line.Color), Line.Alpha, @ClipRect);
         DrawAntialiasedLineDX(
             Shadow.First.X,
             Shadow.First.Y,
@@ -442,15 +422,7 @@ begin
       end;
       Shadow.Alpha := Line.Alpha;
       Shadow.Color := PrimaryColor;
-      DrawAntialiasedLineDX(
-          Line.First.X,
-          Line.First.Y,
-          Line.Last.X,
-          Line.Last.Y,
-          Color565ToArgb(Line.Color),
-          Line.Alpha,
-          @ClipRect
-      );
+      DrawAntialiasedLineDX(Line.First.X, Line.First.Y, Line.Last.X, Line.Last.Y, Color565ToArgb(Line.Color), Line.Alpha, @ClipRect);
       DrawAntialiasedLineDX(
           Shadow.First.X,
           Shadow.First.Y,
@@ -468,10 +440,7 @@ begin
     begin
       DX := Round(Particle.Position.X) + X;
       DY := Round(Particle.Position.Y) + Y;
-      if (DX >= ClipRect.Left)
-          and (DX < ClipRect.Right)
-          and (DY >= ClipRect.Top)
-          and (DY < ClipRect.Bottom) then
+      if (DX >= ClipRect.Left) and (DX < ClipRect.Right) and (DY >= ClipRect.Top) and (DY < ClipRect.Bottom) then
         ScreenRenderBuffer.BlendPixel16(DX, DY, Particle.Color, Particle.Alpha);
       Particle := Particle.Next;
     end;
@@ -518,24 +487,9 @@ begin
         Shadow.Alpha := Line.Alpha;
         Shadow.Color := PrimaryColor;
         Inc(Progress, Step);
-        ScreenRenderBuffer.DrawAlphaLine16(
-            Line.First.X,
-            Line.First.Y,
-            Line.Last.X,
-            Line.Last.Y,
-            Line.Color,
-            Line.Alpha,
-            ClipRect
-        );
-        ScreenRenderBuffer.DrawAlphaLine16(
-            Shadow.First.X,
-            Shadow.First.Y,
-            Shadow.Last.X,
-            Shadow.Last.Y,
-            Shadow.Color,
-            Line.Alpha,
-            ClipRect
-        );
+        ScreenRenderBuffer.DrawAlphaLine16(Line.First.X, Line.First.Y, Line.Last.X, Line.Last.Y, Line.Color, Line.Alpha, ClipRect);
+        ScreenRenderBuffer
+            .DrawAlphaLine16(Shadow.First.X, Shadow.First.Y, Shadow.Last.X, Shadow.Last.Y, Shadow.Color, Line.Alpha, ClipRect);
       end;
       Line.First := P;
       Line.Last := Classes.Point(X + DX, Y + DY);
@@ -553,24 +507,8 @@ begin
       end;
       Shadow.Alpha := Line.Alpha;
       Shadow.Color := PrimaryColor;
-      ScreenRenderBuffer.DrawAlphaLine16(
-          Line.First.X,
-          Line.First.Y,
-          Line.Last.X,
-          Line.Last.Y,
-          Line.Color,
-          Line.Alpha,
-          ClipRect
-      );
-      ScreenRenderBuffer.DrawAlphaLine16(
-          Shadow.First.X,
-          Shadow.First.Y,
-          Shadow.Last.X,
-          Shadow.Last.Y,
-          Shadow.Color,
-          Line.Alpha,
-          ClipRect
-      );
+      ScreenRenderBuffer.DrawAlphaLine16(Line.First.X, Line.First.Y, Line.Last.X, Line.Last.Y, Line.Color, Line.Alpha, ClipRect);
+      ScreenRenderBuffer.DrawAlphaLine16(Shadow.First.X, Shadow.First.Y, Shadow.Last.X, Shadow.Last.Y, Shadow.Color, Line.Alpha, ClipRect);
     end;
   end;
 end;

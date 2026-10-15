@@ -444,17 +444,14 @@ begin
     repeat
       FileName := Search.Name;
       if (FileName <> '.') and (FileName <> '..') then
-        SysUtils.DeleteFile(
-            NativeGamePath(AnsiString(GetGameUserDirectory + 'Cache\' + WideString(FileName)))
-        );
+        SysUtils.DeleteFile(NativeGamePath(AnsiString(GetGameUserDirectory + 'Cache\' + WideString(FileName))));
     until SysUtils.FindNext(Search) <> 0;
     SysUtils.FindClose(Search);
   end;
   SetCurrentDir(NativeGamePath(OldDirectory));
 end;
 
-function CollectInstallLanguageCodes:
-    WideString; { Comma-separated lowercase names from INSTALL_*.txt in the current directory. }
+function CollectInstallLanguageCodes: WideString; { Comma-separated lowercase names from INSTALL_*.txt in the current directory. }
 var
   FileName, LanguageCode: WideString;
   LowerCode: AnsiString;
@@ -548,10 +545,7 @@ begin
           SteamInitialized := False;
           if InstallConfig.CountParamsByPath('GameDistributor') > 0 then
           begin
-            StartupText :=
-                WideString(
-                    LowerCase(AnsiString(InstallConfig.GetParamByPathOrMarker('GameDistributor')))
-                );
+            StartupText := WideString(LowerCase(AnsiString(InstallConfig.GetParamByPathOrMarker('GameDistributor'))));
             if StartupText = 'steam' then
             begin
               AppendLogLineThreadSafe('GameDistributor=Steam');
@@ -571,11 +565,7 @@ begin
               AppendLogLineThreadSafe('GameDistributor=GOG')
             else
               AppendLogLineThreadSafe(
-                  AnsiString(
-                      'GameDistributor=Unknown('
-                          + InstallConfig.GetParamByPathOrMarker('GameDistributor')
-                          + ')'
-                  )
+                  AnsiString('GameDistributor=Unknown(' + InstallConfig.GetParamByPathOrMarker('GameDistributor') + ')')
               );
           end
           else
@@ -625,20 +615,13 @@ begin
             WineNtToUnixFileName := GetProcAddress(WineModule, 'wine_nt_to_unix_file_name');
             @WineGetBuildId := GetProcAddress(WineModule, 'wine_get_build_id');
             RunningUnderWine :=
-                (WineGetVersion <> nil)
-                    or Assigned(WineGetHostVersion)
-                    or (WineNtToUnixFileName <> nil)
-                    or Assigned(WineGetBuildId);
+                (WineGetVersion <> nil) or Assigned(WineGetHostVersion) or (WineNtToUnixFileName <> nil) or Assigned(WineGetBuildId);
             if RunningUnderWine then
             begin
               AppendLogLineThreadSafe('----------------------------------');
               AppendLogLineThreadSafe('NOTICE: Game is launched under Wine or Proton!');
-              AppendLogLineThreadSafe(
-                  'NOTICE: Game may work as it does on Windows - or be funky, bug out and crash.'
-              );
-              AppendLogLineThreadSafe(
-                  'NOTICE: Please refer to https://www.protondb.com/app/214730 if you having any issues'
-              );
+              AppendLogLineThreadSafe('NOTICE: Game may work as it does on Windows - or be funky, bug out and crash.');
+              AppendLogLineThreadSafe('NOTICE: Please refer to https://www.protondb.com/app/214730 if you having any issues');
               AppendLogLineThreadSafe(
                   'NOTICE: MacOS users may try to ask for help on https://www.reddit.com/r/macgaming/ or https://www.reddit.com/r/wine_gaming/'
               );
@@ -659,9 +642,7 @@ begin
               if Assigned(WineGetBuildId) then
                 AppendLogLineThreadSafe('Wine=' + AnsiString(WineGetBuildId()))
               else
-                AppendLogLineThreadSafe(
-                    'Can''t detect Wine build version, wine_get_build_id() not found'
-                );
+                AppendLogLineThreadSafe('Can''t detect Wine build version, wine_get_build_id() not found');
             end;
             FreeLibrary(WineModule);
           end;
@@ -730,8 +711,7 @@ begin
             FinalizeRobotRuntime;
             FinalizeGlobalUiRuntime;
             FinalizeRuntimeAndSettings;
-            if ((RequestedScreenId = screenNone) and (PostLoadScreenId = screenNone))
-                or ExitScreenLoop then
+            if ((RequestedScreenId = screenNone) and (PostLoadScreenId = screenNone)) or ExitScreenLoop then
             begin
               FreeDatConfigRoots;
               Break;
@@ -780,11 +760,7 @@ begin
               and not SuppressModRetryPrompt
               and (SelectedMods <> '')
               and not SkipModsOnReload then
-            if GameMessageBox(
-                    'Failed to launch, do you want to try restarting without mods?',
-                    'Exception:',
-                    $1 or $10)
-                = 1 then
+            if GameMessageBox('Failed to launch, do you want to try restarting without mods?', 'Exception:', $1 or $10) = 1 then
             begin
               ResetScriptHostRuntimeState;
               ResetInstalledPackageState;
@@ -846,12 +822,7 @@ begin
       except
         on StartupException: Exception do
         begin
-          AppendLogLineThreadSafe(
-              'Exception '
-                  + StartupException.ClassName
-                  + ' with message '
-                  + StartupException.Message
-          );
+          AppendLogLineThreadSafe('Exception ' + StartupException.ClassName + ' with message ' + StartupException.Message);
           // The launcher runs this executable directly; report failures there
           // as well as in the game log, and return a failing process status.
           WriteLn(StdErr, StartupException.ClassName, ': ', StartupException.Message);

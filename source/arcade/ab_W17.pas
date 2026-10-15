@@ -88,8 +88,7 @@ begin
   ExpireTick := ArcadeTickCount + 120;
   Partner := Other;
   Other.Partner := Self;
-  Image :=
-      ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w17b_f', 'GAI,Bm.AB.w17b_s', False);
+  Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w17b_f', 'GAI,Bm.AB.w17b_s', False);
   ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
 end;
 
@@ -120,9 +119,7 @@ begin
       if Partner <> nil then
       begin
         Partner.Velocity := Collision.Velocity;
-        Partner.State.BearingDegrees :=
-            Partner.BearingAndDistanceTo(Collision).BearingDeltaDegrees
-                + Partner.State.BearingDegrees;
+        Partner.State.BearingDegrees := Partner.BearingAndDistanceTo(Collision).BearingDeltaDegrees + Partner.State.BearingDegrees;
         Partner.MaxSpeed := Partner.MaxSpeed * 1.5;
         Partner.Thrust := 2;
         Partner.Partner := nil;

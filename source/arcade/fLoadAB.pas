@@ -101,12 +101,7 @@ begin
   Root.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Root.FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Panel := Root.FindByNameRecursive('MainPanel');
-  Panel.SetPosition(
-      Classes.Point(
-          Panel.LocalPosition.X + ExtraScreenWidth div 2,
-          Panel.LocalPosition.Y + ExtraScreenHeight div 2
-      )
-  );
+  Panel.SetPosition(Classes.Point(Panel.LocalPosition.X + ExtraScreenWidth div 2, Panel.LocalPosition.Y + ExtraScreenHeight div 2));
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := ArenaListKeyDown;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := ReturnToMenu;
@@ -215,17 +210,13 @@ begin
   if Delta = WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end
   else if Delta = -WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end;
 end;
@@ -349,10 +340,7 @@ begin
     DifficultyImage.SetImagePath('GI,Bm.FormLoadAB.Dif' + IntToStr(Entries[Index].Difficulty + 1));
     DifficultyImage.SetSize(DifficultyImage.GetContentSize);
     DifficultyImage.SetPosition(
-        Classes.Point(
-            Row.ClientSize.X - DifficultyImage.ClientSize.X - 10,
-            Row.ClientSize.Y div 2 - DifficultyImage.ClientSize.Y div 2
-        )
+        Classes.Point(Row.ClientSize.X - DifficultyImage.ClientSize.X - 10, Row.ClientSize.Y div 2 - DifficultyImage.ClientSize.Y div 2)
     );
     DifficultyImage.SetActive(True);
   end;
@@ -515,11 +503,9 @@ begin
     SetScrollOffset(Classes.Point(0, 0));
     UpdateScrollRanges;
     VerticalScrollBar.SetActive(
-        FindByNameRecursive('MessageText').Active
-            and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
+        FindByNameRecursive('MessageText').Active and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
     );
-    VerticalScrollBar
-        .SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
+    VerticalScrollBar.SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
     VerticalScrollBar.SetLargeChange(ClientSize.Y);
     VerticalScrollBar.SetPageSize(ClientSize.Y);
   end;

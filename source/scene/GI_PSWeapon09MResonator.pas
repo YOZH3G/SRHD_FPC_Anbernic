@@ -176,8 +176,7 @@ var
 begin
   if RemainingTicks = 60 then
   begin
-    OriginalLength :=
-        Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
+    OriginalLength := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
     if OriginalLength < 1.0 then
       OriginalLength := 1;
     for I := 1 to 5 do
@@ -302,9 +301,7 @@ var
 begin
   if OriginalLength = 0 then
     OriginalLength := 1;
-  Scale :=
-      Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-          / OriginalLength;
+  Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
   PY := -(TargetPoint.Y - LocalPosition.Y);
   if PY = 0 then
     PY := 1;
@@ -340,10 +337,7 @@ begin
         PY := Particle.Position.Y * Scale;
         X := Round(PX * Cosine + PY * Sine) + AbsolutePosition.X;
         Y := Round(PX * Sine - PY * Cosine) + AbsolutePosition.Y;
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := AddPointerOffset(Particle, SizeOf(TMResonatorParticle));
@@ -415,8 +409,7 @@ var
 begin
   if RemainingTicks = 90 then
   begin
-    OriginalLength :=
-        Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
+    OriginalLength := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
     if OriginalLength < 1.0 then
       OriginalLength := 1;
     if Animation <> nil then
@@ -428,8 +421,7 @@ begin
     Animation.SetDepthByName('Weapon');
     Animation.SetPosition(TargetPoint);
     Animation.SetPositionModeW(True);
-    Animation
-        .LoadFrameSequenceFromText('[50,0-' + IntToStr(Animation.GetMainImageFrameCount - 1) + ']');
+    Animation.LoadFrameSequenceFromText('[50,0-' + IntToStr(Animation.GetMainImageFrameCount - 1) + ']');
     Animation.SetSequenceFrame(0);
     Animation.StopAutoPlayback;
     AnimationVelocity := MakePointF(0, (OriginalLength - 24.0) / 30.0);
@@ -454,9 +446,7 @@ begin
     begin
       AnimationPosition.Y := AnimationPosition.Y + AnimationVelocity.Y;
       AnimationPosition.X := AnimationPosition.X + AnimationVelocity.X;
-      Scale :=
-          Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-              / OriginalLength;
+      Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
       PY := -(TargetPoint.Y - LocalPosition.Y);
       if PY = 0 then
         PY := 1;
@@ -465,12 +455,8 @@ begin
       Cosine := Cos(Angle);
       PX := AnimationPosition.X;
       PY := AnimationPosition.Y * Scale;
-      Animation.SetPosition(
-          Classes.Point(
-              Round(PX * Cosine + PY * Sine) + LocalPosition.X,
-              Round(PX * Sine - PY * Cosine) + LocalPosition.Y
-          )
-      );
+      Animation
+          .SetPosition(Classes.Point(Round(PX * Cosine + PY * Sine) + LocalPosition.X, Round(PX * Sine - PY * Cosine) + LocalPosition.Y));
     end
     else
     begin
@@ -504,9 +490,7 @@ var
 begin
   if OriginalLength = 0 then
     OriginalLength := 1;
-  Scale :=
-      Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-          / OriginalLength;
+  Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
   PY := -(TargetPoint.Y - LocalPosition.Y);
   if PY = 0 then
     PY := 1;
@@ -542,10 +526,7 @@ begin
         PY := Particle.Position.Y * Scale;
         X := Round(PX * Cosine + PY * Sine) + AbsolutePosition.X;
         Y := Round(PX * Sine - PY * Cosine) + AbsolutePosition.Y;
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := AddPointerOffset(Particle, SizeOf(TMResonatorParticle));

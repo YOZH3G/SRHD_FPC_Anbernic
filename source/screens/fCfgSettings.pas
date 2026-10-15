@@ -47,22 +47,9 @@ type
     procedure ShowControlHelp(Sender: TObjectGI; Show: Boolean);
     procedure GroupClicked(Sender: TObjectGI);
     procedure RefreshVisibleGroup;
-    function AddOptionLabel(
-        OptionName: WideString;
-        Caption: WideString;
-        UnusedFlag: Boolean
-    ): TLabelGI;
-    procedure AddOptionChoice(
-        Value: Integer;
-        Caption: WideString;
-        Selected: Boolean;
-        Disabled: Boolean
-    );
-    procedure AddMobileOptionChoice(
-        Value: Integer;
-        const Caption: WideString;
-        Selected, Disabled: Boolean
-    );
+    function AddOptionLabel(OptionName: WideString; Caption: WideString; UnusedFlag: Boolean): TLabelGI;
+    procedure AddOptionChoice(Value: Integer; Caption: WideString; Selected: Boolean; Disabled: Boolean);
+    procedure AddMobileOptionChoice(Value: Integer; const Caption: WideString; Selected, Disabled: Boolean);
     procedure OptionChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure OptionChoiceMouseEnter(Sender: TObjectGI);
     procedure OptionChoiceMouseLeave(Sender: TObjectGI);
@@ -172,12 +159,7 @@ begin
       SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
       with NextSibling do
       begin
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2,
-                LocalPosition.Y + ExtraScreenHeight
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight));
         with NextSibling do
         begin
           SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y));
@@ -188,12 +170,8 @@ begin
             with FindByNameRecursive('PanelSet') as TPanelScrollBarGI do
             begin
               SetSize(Classes.Point(ClientSize.X, ClientSize.Y + Max(ExtraScreenHeight, 0)));
-              VerticalScrollBar.SetSize(
-                  Classes.Point(
-                      VerticalScrollBar.ClientSize.X,
-                      VerticalScrollBar.ClientSize.Y + Max(ExtraScreenHeight, 0)
-                  )
-              );
+              VerticalScrollBar
+                  .SetSize(Classes.Point(VerticalScrollBar.ClientSize.X, VerticalScrollBar.ClientSize.Y + Max(ExtraScreenHeight, 0)));
             end;
             with NextSibling do
               SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y));
@@ -339,8 +317,7 @@ begin
   if not SteamInitialized and (RequestedLanguage = '') then
   begin
     AddOptionLabel('Lang', LocalizedText('FormCfgSettings.Lang'), True);
-    if (AvailableLanguageCodes <> '')
-        and (CountDelimitedPartsW(AvailableLanguageCodes, ',') > 0) then
+    if (AvailableLanguageCodes <> '') and (CountDelimitedPartsW(AvailableLanguageCodes, ',') > 0) then
     begin
       LanguageCount := CountDelimitedPartsW(AvailableLanguageCodes, ',');
       for I := 0 to LanguageCount - 1 do
@@ -351,10 +328,7 @@ begin
         begin
           Block := TBlockParEC.Create;
           try
-            Block.LoadFromTextFileWithEncodingProbe(
-                PWideChar('install_' + Language + '.txt'),
-                False
-            );
+            Block.LoadFromTextFileWithEncodingProbe(PWideChar('install_' + Language + '.txt'), False);
             if Block.CountParams('LangName') > 0 then
             begin
               LanguageName := Block.GetParam('LangName');
@@ -387,24 +361,9 @@ begin
   AddOptionChoice(2, LocalizedText('FormCfgSettings.DefaultOrderNear'), DefaultOrder = 2, False);
   AddOptionChoice(3, LocalizedText('FormCfgSettings.DefaultOrderFar'), DefaultOrder = 3, False);
   AddOptionLabel('RightClickOnShip', LocalizedText('FormCfgSettings.RightClickOnShip'), False);
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RightClickOnShipScaner'),
-      RightClickOnShip = 0,
-      False
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RightClickOnShipTalk'),
-      RightClickOnShip = 1,
-      False
-  );
-  AddOptionChoice(
-      2,
-      LocalizedText('FormCfgSettings.RightClickOnShipChangeOrder'),
-      RightClickOnShip = 2,
-      False
-  );
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RightClickOnShipScaner'), RightClickOnShip = 0, False);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RightClickOnShipTalk'), RightClickOnShip = 1, False);
+  AddOptionChoice(2, LocalizedText('FormCfgSettings.RightClickOnShipChangeOrder'), RightClickOnShip = 2, False);
   AddOptionLabel('FilmSpeed', LocalizedText('FormCfgSettings.FilmSpeed'), False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.FilmSpeed0'), FilmSpeed = 0, False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.FilmSpeed1'), FilmSpeed = 1, False);
@@ -418,28 +377,13 @@ begin
     ValueLabel :=
         AddOptionLabel(
             'SpaceZoomPercent',
-            OptionCaption(
-                'SpaceZoomPercent',
-                'Space zoom: <Value>%',
-                'Масштаб в космосе: <Value>%'
-            ),
+            OptionCaption('SpaceZoomPercent', 'Space zoom: <Value>%', 'Масштаб в космосе: <Value>%'),
             False
         );
-    AddOptionSlider(
-        ValueLabel,
-        MinSpaceZoomPercent,
-        MaxSpaceZoomPercent,
-        SpaceZoomPercent,
-        1,
-        FormatInteger
-    );
+    AddOptionSlider(ValueLabel, MinSpaceZoomPercent, MaxSpaceZoomPercent, SpaceZoomPercent, 1, FormatInteger);
     AddOptionLabel(
         'SpacePinchZoom',
-        OptionCaption(
-            'SpacePinchZoom',
-            'Pinch to zoom in space',
-            'Масштабирование двумя пальцами'
-        ),
+        OptionCaption('SpacePinchZoom', 'Pinch to zoom in space', 'Масштабирование двумя пальцами'),
         False
     );
     AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), SpacePinchZoom, False);
@@ -454,67 +398,32 @@ begin
   AddOptionLabel('ClickAutoCloseForm', LocalizedText('FormCfgSettings.ClickAutoCloseForm'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), ClickAutoCloseForm, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not ClickAutoCloseForm, False);
-  ValueLabel :=
-      AddOptionLabel(
-          'ForsageDeactivatePercent',
-          LocalizedText('FormCfgSettings.ForsageTurnOff'),
-          False
-      );
+  ValueLabel := AddOptionLabel('ForsageDeactivatePercent', LocalizedText('FormCfgSettings.ForsageTurnOff'), False);
   AddOptionSlider(ValueLabel, 0, 100, AfterburnerStopCondition, 1, FormatForsageDeactivatePercent);
-  ValueLabel :=
-      AddOptionLabel('MaxSearchResult', LocalizedText('FormCfgSettings.MaxSearchResult'), False);
+  ValueLabel := AddOptionLabel('MaxSearchResult', LocalizedText('FormCfgSettings.MaxSearchResult'), False);
   AddOptionSlider(ValueLabel, 1, 100, MaxSearchResult, 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel('MaxPlayerNews', LocalizedText('FormCfgSettings.MaxPlayerNews'), False);
+  ValueLabel := AddOptionLabel('MaxPlayerNews', LocalizedText('FormCfgSettings.MaxPlayerNews'), False);
   AddOptionSlider(ValueLabel, 0, 100, MaxPlayerNews, 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel('TurnSaveStep', LocalizedText('FormCfgSettings.TurnSaveStep'), False);
+  ValueLabel := AddOptionLabel('TurnSaveStep', LocalizedText('FormCfgSettings.TurnSaveStep'), False);
   AddOptionSlider(ValueLabel, 0, TurnsPerYear, TurnSaveStep, 1, FormatTurnSaveStep);
-  ValueLabel :=
-      AddOptionLabel('QuickSaveExtraSlots', LocalizedText('FormCfgSettings.QuickSaveSlots'), False);
+  ValueLabel := AddOptionLabel('QuickSaveExtraSlots', LocalizedText('FormCfgSettings.QuickSaveSlots'), False);
   AddOptionSlider(ValueLabel, 0, 9, QuickSaveExtraSlots, 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel('CountFilmSave', LocalizedText('FormCfgSettings.CountFilmSave'), False);
+  ValueLabel := AddOptionLabel('CountFilmSave', LocalizedText('FormCfgSettings.CountFilmSave'), False);
   AddOptionSlider(ValueLabel, 1, 100, FilmHistoryLimit, 1, FormatInteger);
   ValueLabel := AddOptionLabel('ScrollSpeed', LocalizedText('FormCfgSettings.ScrollSpeed'), False);
   AddOptionSlider(ValueLabel, 1, 80, ScrollStep, 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel(
-          'BeginCalcNextTurn',
-          LocalizedText('FormCfgSettings.BeginCalcNextTurn'),
-          False
-      );
+  ValueLabel := AddOptionLabel('BeginCalcNextTurn', LocalizedText('FormCfgSettings.BeginCalcNextTurn'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(BeginCalcNextTurn * 100.0), 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel('ChangeAutoPilot', LocalizedText('FormCfgSettings.ChangeAutoPilot'), False);
+  ValueLabel := AddOptionLabel('ChangeAutoPilot', LocalizedText('FormCfgSettings.ChangeAutoPilot'), False);
   AddOptionSlider(ValueLabel, 2, 20, ChangeAutoPilot, 1, FormatInteger);
   AddOptionLabel('DisableAutoPilot', LocalizedText('FormCfgSettings.DisableAutoPilot'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), DisableAutoPilot, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not DisableAutoPilot, False);
   BuildGroupIndex := 1;
-  AddOptionLabel(
-      'MobileUI',
-      OptionCaption('MobileUI', 'Mobile UI', 'Мобильный интерфейс'),
-      True
-  );
-  AddOptionChoice(
-      Ord(gumAutomatic),
-      LocalizedText('FormCfgSettings.HelpButAuto'),
-      GameUiMode = gumAutomatic,
-      False
-  );
-  AddOptionChoice(
-      Ord(gumMobile),
-      LocalizedText('FormCfgSettings.Yes'),
-      GameUiMode = gumMobile,
-      False
-  );
-  AddOptionChoice(
-      Ord(gumDesktop),
-      LocalizedText('FormCfgSettings.No'),
-      GameUiMode = gumDesktop,
-      False
-  );
+  AddOptionLabel('MobileUI', OptionCaption('MobileUI', 'Mobile UI', 'Мобильный интерфейс'), True);
+  AddOptionChoice(Ord(gumAutomatic), LocalizedText('FormCfgSettings.HelpButAuto'), GameUiMode = gumAutomatic, False);
+  AddOptionChoice(Ord(gumMobile), LocalizedText('FormCfgSettings.Yes'), GameUiMode = gumMobile, False);
+  AddOptionChoice(Ord(gumDesktop), LocalizedText('FormCfgSettings.No'), GameUiMode = gumDesktop, False);
   if AltResolutionSwitch or GameWindowUsesRenderResolution then
   begin
     AddOptionLabel('Resolution', LocalizedText('FormCfgSettings.Resolution'), True);
@@ -535,26 +444,14 @@ begin
               False
           )
         else
-          AddOptionChoice(
-              I,
-              WideString(IntToStr(Width) + 'x' + IntToStr(Height)),
-              SelectedGameDisplayMode = I,
-              False
-          );
+          AddOptionChoice(I, WideString(IntToStr(Width) + 'x' + IntToStr(Height)), SelectedGameDisplayMode = I, False);
       Dec(I);
     end;
   end
   else
   begin
     ValueLabel := AddOptionLabel('Resolution', LocalizedText('FormCfgSettings.Resolution'), False);
-    AddOptionSlider(
-        ValueLabel,
-        0,
-        GameDisplayModeCount - 1,
-        SelectedGameDisplayMode,
-        1,
-        FormatResolution
-    );
+    AddOptionSlider(ValueLabel, 0, GameDisplayModeCount - 1, SelectedGameDisplayMode, 1, FormatResolution);
   end;
   AddOptionLabel('VSync', LocalizedText('FormCfgSettings.VSync'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), VSyncEnabled, False);
@@ -569,12 +466,7 @@ begin
   begin
     AddOptionLabel('RenderMode', LocalizedText('FormCfgSettings.RenderMode'), False);
     AddOptionChoice(1, LocalizedText('FormCfgSettings.RenderMode1'), ScaleViewportToWindow, False);
-    AddOptionChoice(
-        0,
-        LocalizedText('FormCfgSettings.RenderMode2'),
-        not ScaleViewportToWindow,
-        False
-    );
+    AddOptionChoice(0, LocalizedText('FormCfgSettings.RenderMode2'), not ScaleViewportToWindow, False);
   end;
   if not AlternateViewportEnabled then
   begin
@@ -603,110 +495,45 @@ begin
   ValueLabel := AddOptionLabel('Contrast', LocalizedText('FormCfgSettings.Contrast'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(DisplayContrast * 50.0 + 50.0), 1, PreviewContrast);
   AddOptionLabel('Intro', LocalizedText('FormCfgSettings.Intro'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      not SkipIntro,
-      not IsInstallFeatureEnabled('Video')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), not SkipIntro, not IsInstallFeatureEnabled('Video'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), SkipIntro, False);
   AddOptionLabel('Video', LocalizedText('FormCfgSettings.Video'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      not SkipVideo,
-      not IsInstallFeatureEnabled('Video')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), not SkipVideo, not IsInstallFeatureEnabled('Video'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), SkipVideo, False);
   AddOptionLabel('SoftwareCursor', LocalizedText('FormCfgSettings.SoftwareCursor'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.SoftwareCursorHardware'),
-      ShowSystemMouse,
-      not GameWindowHasSystemCursor
-  );
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.SoftwareCursorSoftware'),
-      not ShowSystemMouse,
-      False
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.SoftwareCursorHardware'), ShowSystemMouse, not GameWindowHasSystemCursor);
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.SoftwareCursorSoftware'), not ShowSystemMouse, False);
   AddOptionLabel('BGImage', LocalizedText('FormCfgSettings.BGImage'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      BGImage,
-      not IsInstallFeatureEnabled('BGImage')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), BGImage, not IsInstallFeatureEnabled('BGImage'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not BGImage, False);
   AddOptionLabel('AnimCaptain', LocalizedText('FormCfgSettings.AnimCaptain'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      AnimCaptain,
-      not IsInstallFeatureEnabled('AnimCaptain')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), AnimCaptain, not IsInstallFeatureEnabled('AnimCaptain'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not AnimCaptain, False);
   AddOptionLabel('AnimShip', LocalizedText('FormCfgSettings.AnimShip'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.AnimShipFull'),
-      AnimShipFull,
-      not IsInstallFeatureEnabled('AnimShipFull')
-  );
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.AnimShipSmall'),
-      not AnimShipFull,
-      not IsInstallFeatureEnabled('AnimShipSmall')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.AnimShipFull'), AnimShipFull, not IsInstallFeatureEnabled('AnimShipFull'));
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.AnimShipSmall'), not AnimShipFull, not IsInstallFeatureEnabled('AnimShipSmall'));
   AddOptionLabel('AnimItem', LocalizedText('FormCfgSettings.AnimItem'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      AnimItem,
-      not IsInstallFeatureEnabled('AnimItem')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), AnimItem, not IsInstallFeatureEnabled('AnimItem'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not AnimItem, False);
   AddOptionLabel('AnimMenuShip', LocalizedText('FormCfgSettings.AnimMenuShip'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), AnimMenuShip, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not AnimMenuShip, False);
   AddOptionLabel('AnimGov', LocalizedText('FormCfgSettings.AnimGov'), False);
-  AddOptionChoice(
-      2,
-      LocalizedText('FormCfgSettings.AnimGovFull'),
-      AnimGov = 2,
-      not IsInstallFeatureEnabled('AnimGov')
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.AnimGovHalf'),
-      AnimGov = 1,
-      not IsInstallFeatureEnabled('AnimGov')
-  );
+  AddOptionChoice(2, LocalizedText('FormCfgSettings.AnimGovFull'), AnimGov = 2, not IsInstallFeatureEnabled('AnimGov'));
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.AnimGovHalf'), AnimGov = 1, not IsInstallFeatureEnabled('AnimGov'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.AnimGovOff'), AnimGov = 0, False);
   AddOptionLabel('AnimHangar', LocalizedText('FormCfgSettings.AnimHangar'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), AnimHangar, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not AnimHangar, False);
   AddOptionLabel('AnimStar', LocalizedText('FormCfgSettings.AnimStar'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      AnimStar,
-      not IsInstallFeatureEnabled('AnimStar')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), AnimStar, not IsInstallFeatureEnabled('AnimStar'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not AnimStar, False);
   AddOptionLabel('SpaceImage', LocalizedText('FormCfgSettings.SpaceImage'), False);
   AddOptionChoice(2, LocalizedText('FormCfgSettings.CometLarge'), SpaceImage >= 2, False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.CometSmall'), SpaceImage = 1, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.CometOff'), SpaceImage = 0, False);
   AddOptionLabel('SputnikShow', LocalizedText('FormCfgSettings.SputnikShow'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      SputnikShow,
-      not IsInstallFeatureEnabled('SputnikShow')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), SputnikShow, not IsInstallFeatureEnabled('SputnikShow'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not SputnikShow, False);
   AddOptionLabel('CircleAction', LocalizedText('FormCfgSettings.CircleAction'), False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.CircleActionNormal'), not CircleAction, False);
@@ -738,11 +565,7 @@ begin
   AddOptionLabel('BackgroundShade', LocalizedText('FormCfgSettings.BackgroundShade'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), BackgroundShade, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not BackgroundShade, False);
-  AddOptionLabel(
-      'BackgroundGrayscale',
-      LocalizedText('FormCfgSettings.BackgroundGrayscale'),
-      False
-  );
+  AddOptionLabel('BackgroundGrayscale', LocalizedText('FormCfgSettings.BackgroundGrayscale'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), BackgroundGrayscale, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not BackgroundGrayscale, False);
   AddOptionLabel('DynamicTipsPos', LocalizedText('FormCfgSettings.DynamicTipsPos'), False);
@@ -755,84 +578,29 @@ begin
   AddOptionChoice(0, LocalizedText('FormCfgSettings.ShotBMP'), ScreenshotFormat = 0, False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.ShotPNG'), ScreenshotFormat = 1, False);
   AddOptionChoice(2, LocalizedText('FormCfgSettings.ShotJPG'), ScreenshotFormat = 2, False);
-  ValueLabel :=
-      AddOptionLabel(
-          'ScreenShotQuality',
-          LocalizedText('FormCfgSettings.ScreenShotQuality'),
-          False
-      );
+  ValueLabel := AddOptionLabel('ScreenShotQuality', LocalizedText('FormCfgSettings.ScreenShotQuality'), False);
   AddOptionSlider(ValueLabel, 0, 100, ScreenshotJpegQuality, 1, FormatInteger);
   AddOptionLabel('FontGalaxy', LocalizedText('FormCfgSettings.FontGalaxy'), True);
-  AddOptionChoice(
-      6,
-      LocalizedText('FormCfgSettings.FontGalaxyNormalBold'),
-      GalaxyMapFontChoice = gmfNormalBold,
-      False
-  );
-  AddOptionChoice(
-      5,
-      LocalizedText('FormCfgSettings.FontGalaxyNormal'),
-      GalaxyMapFontChoice = gmfNormal,
-      False
-  );
-  AddOptionChoice(
-      4,
-      LocalizedText('FormCfgSettings.FontGalaxySmallBold'),
-      GalaxyMapFontChoice = gmfSmallBold,
-      False
-  );
-  AddOptionChoice(
-      3,
-      LocalizedText('FormCfgSettings.FontGalaxySmall'),
-      GalaxyMapFontChoice = gmfSmall,
-      False
-  );
-  AddOptionChoice(
-      2,
-      LocalizedText('FormCfgSettings.FontGalaxyMini'),
-      GalaxyMapFontChoice = gmfMini,
-      False
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.FontGalaxyRanger'),
-      GalaxyMapFontChoice = gmfRanger,
-      False
-  );
+  AddOptionChoice(6, LocalizedText('FormCfgSettings.FontGalaxyNormalBold'), GalaxyMapFontChoice = gmfNormalBold, False);
+  AddOptionChoice(5, LocalizedText('FormCfgSettings.FontGalaxyNormal'), GalaxyMapFontChoice = gmfNormal, False);
+  AddOptionChoice(4, LocalizedText('FormCfgSettings.FontGalaxySmallBold'), GalaxyMapFontChoice = gmfSmallBold, False);
+  AddOptionChoice(3, LocalizedText('FormCfgSettings.FontGalaxySmall'), GalaxyMapFontChoice = gmfSmall, False);
+  AddOptionChoice(2, LocalizedText('FormCfgSettings.FontGalaxyMini'), GalaxyMapFontChoice = gmfMini, False);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.FontGalaxyRanger'), GalaxyMapFontChoice = gmfRanger, False);
   BuildGroupIndex := 2;
   AddOptionLabel('Sound', LocalizedText('FormCfgSettings.Sound'), True);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      SoundEnabled,
-      not IsInstallFeatureEnabled('Sound')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), SoundEnabled, not IsInstallFeatureEnabled('Sound'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not SoundEnabled, False);
   AddOptionLabel('SoundInSpace', LocalizedText('FormCfgSettings.SoundInSpace'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      SoundInSpaceEnabled,
-      not IsInstallFeatureEnabled('SoundInSpace')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), SoundInSpaceEnabled, not IsInstallFeatureEnabled('SoundInSpace'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not SoundInSpaceEnabled, False);
   ValueLabel := AddOptionLabel('SoundVolume', LocalizedText('FormCfgSettings.SoundVolume'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(SoundVolume * 100.0), 1, FormatInteger);
   AddOptionLabel('Music', LocalizedText('FormCfgSettings.Music'), True);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      MusicEnabled,
-      not IsInstallFeatureEnabled('Music')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), MusicEnabled, not IsInstallFeatureEnabled('Music'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not MusicEnabled, False);
   AddOptionLabel('MusicInSpace', LocalizedText('FormCfgSettings.MusicInSpace'), False);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.Yes'),
-      MusicInSpaceEnabled,
-      not IsInstallFeatureEnabled('MusicInSpace')
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), MusicInSpaceEnabled, not IsInstallFeatureEnabled('MusicInSpace'));
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not MusicInSpaceEnabled, False);
   ValueLabel := AddOptionLabel('MusicVolume', LocalizedText('FormCfgSettings.MusicVolume'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(MusicVolume * 100.0), 1, FormatInteger);
@@ -851,162 +619,57 @@ begin
     begin
       with RobotDisplayModes[I] do
         if Width = 0 then
-          AddOptionChoice(
-              I,
-              LocalizedText('FormCfgSettings.HelpButAuto'),
-              SelectedRobotDisplayMode = I,
-              False
-          )
+          AddOptionChoice(I, LocalizedText('FormCfgSettings.HelpButAuto'), SelectedRobotDisplayMode = I, False)
         else
-          AddOptionChoice(
-              I,
-              WideString(IntToStr(Width) + 'x' + IntToStr(Height)),
-              SelectedRobotDisplayMode = I,
-              False
-          );
+          AddOptionChoice(I, WideString(IntToStr(Width) + 'x' + IntToStr(Height)), SelectedRobotDisplayMode = I, False);
       Dec(I);
     end;
   end
   else
   begin
-    ValueLabel :=
-        AddOptionLabel('RobotResolution', LocalizedText('FormCfgSettings.Resolution'), False);
-    AddOptionSlider(
-        ValueLabel,
-        0,
-        RobotDisplayModeCount - 1,
-        SelectedRobotDisplayMode,
-        1,
-        FormatRobotResolution
-    );
+    ValueLabel := AddOptionLabel('RobotResolution', LocalizedText('FormCfgSettings.Resolution'), False);
+    AddOptionSlider(ValueLabel, 0, RobotDisplayModeCount - 1, SelectedRobotDisplayMode, 1, FormatRobotResolution);
   end;
   AddOptionLabel('RobotVSync', LocalizedText('FormCfgSettings.VSync'), False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), RobotVSync, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not RobotVSync, False);
   if SupportedMultiSampleCount > 1 then
   begin
-    ValueLabel :=
-        AddOptionLabel('RobotFSAASamples', LocalizedText('FormCfgSettings.RobotFSAA'), False);
-    AddOptionSlider(
-        ValueLabel,
-        0,
-        SupportedMultiSampleCount - 1,
-        GetRobotMultiSampleIndex,
-        1,
-        FormatRobotFsaaSamples
-    );
+    ValueLabel := AddOptionLabel('RobotFSAASamples', LocalizedText('FormCfgSettings.RobotFSAA'), False);
+    AddOptionSlider(ValueLabel, 0, SupportedMultiSampleCount - 1, GetRobotMultiSampleIndex, 1, FormatRobotFsaaSamples);
   end;
   if Integer(MaximumAnisotropy) > 0 then
   begin
-    ValueLabel :=
-        AddOptionLabel('RobotAnisotropy', LocalizedText('FormCfgSettings.RobotAnisotropy'), False);
+    ValueLabel := AddOptionLabel('RobotAnisotropy', LocalizedText('FormCfgSettings.RobotAnisotropy'), False);
     AddOptionSlider(ValueLabel, 0, MaximumAnisotropy, RobotAnisotropy, 1, FormatInteger);
   end;
-  ValueLabel :=
-      AddOptionLabel('RobotMaxDistance', LocalizedText('FormCfgSettings.RobotMaxDistance'), False);
+  ValueLabel := AddOptionLabel('RobotMaxDistance', LocalizedText('FormCfgSettings.RobotMaxDistance'), False);
   AddOptionSlider(ValueLabel, 0, 100, RobotMaxDistance, 1, FormatInteger);
-  ValueLabel :=
-      AddOptionLabel('RobotBrightness', LocalizedText('FormCfgSettings.Brightness'), False);
+  ValueLabel := AddOptionLabel('RobotBrightness', LocalizedText('FormCfgSettings.Brightness'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(RobotBrightness * 50.0 + 50.0), 1, FormatInteger);
   ValueLabel := AddOptionLabel('RobotContrast', LocalizedText('FormCfgSettings.Contrast'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(RobotContrast * 50.0 + 50.0), 1, FormatInteger);
-  AddOptionLabel(
-      'RobotShowStencilShadows',
-      LocalizedText('FormCfgSettings.RobotShowStencilShadows'),
-      True
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RobotShowStencilShadowsOn'),
-      RobotSettings.ShowStencilShadows,
-      False
-  );
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RobotShowStencilShadowsOff'),
-      not RobotSettings.ShowStencilShadows,
-      False
-  );
-  AddOptionLabel(
-      'RobotShowProjShadows',
-      LocalizedText('FormCfgSettings.RobotShowProjShadows'),
-      True
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RobotShowProjShadowsOn'),
-      RobotSettings.ShowProjShadows,
-      False
-  );
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RobotShowProjShadowsOff'),
-      not RobotSettings.ShowProjShadows,
-      False
-  );
+  AddOptionLabel('RobotShowStencilShadows', LocalizedText('FormCfgSettings.RobotShowStencilShadows'), True);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotShowStencilShadowsOn'), RobotSettings.ShowStencilShadows, False);
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RobotShowStencilShadowsOff'), not RobotSettings.ShowStencilShadows, False);
+  AddOptionLabel('RobotShowProjShadows', LocalizedText('FormCfgSettings.RobotShowProjShadows'), True);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotShowProjShadowsOn'), RobotSettings.ShowProjShadows, False);
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RobotShowProjShadowsOff'), not RobotSettings.ShowProjShadows, False);
   AddOptionLabel('RobotRobotShadow', LocalizedText('FormCfgSettings.RobotRobotShadow'), True);
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RobotRobotShadowStencil'),
-      RobotSettings.RobotShadow = 1,
-      False
-  );
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RobotRobotShadowOff'),
-      RobotSettings.RobotShadow = 0,
-      False
-  );
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotRobotShadowStencil'), RobotSettings.RobotShadow = 1, False);
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RobotRobotShadowOff'), RobotSettings.RobotShadow = 0, False);
   AddOptionLabel('RobotSelectEx', LocalizedText('FormCfgSettings.RobotSelectEx'), True);
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RobotSelectExNormal'),
-      not RobotSettings.SelectEx,
-      False
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RobotSelectExSpecial'),
-      RobotSettings.SelectEx,
-      False
-  );
-  AddOptionLabel(
-      'RobotLandTexturesGloss',
-      LocalizedText('FormCfgSettings.RobotLandTexturesGloss'),
-      True
-  );
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RobotSelectExNormal'), not RobotSettings.SelectEx, False);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotSelectExSpecial'), RobotSettings.SelectEx, False);
+  AddOptionLabel('RobotLandTexturesGloss', LocalizedText('FormCfgSettings.RobotLandTexturesGloss'), True);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), RobotSettings.LandTexturesGloss, False);
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.No'),
-      not RobotSettings.LandTexturesGloss,
-      False
-  );
-  AddOptionLabel(
-      'RobotObjTexturesGloss',
-      LocalizedText('FormCfgSettings.RobotObjTexturesGloss'),
-      True
-  );
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not RobotSettings.LandTexturesGloss, False);
+  AddOptionLabel('RobotObjTexturesGloss', LocalizedText('FormCfgSettings.RobotObjTexturesGloss'), True);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), RobotSettings.ObjTexturesGloss, False);
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.No'),
-      not RobotSettings.ObjTexturesGloss,
-      False
-  );
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not RobotSettings.ObjTexturesGloss, False);
   AddOptionLabel('RobotSoftwareCursor', LocalizedText('FormCfgSettings.RobotSoftwareCursor'), True);
-  AddOptionChoice(
-      0,
-      LocalizedText('FormCfgSettings.RobotSoftwareCursorHardware'),
-      not RobotSettings.SoftwareCursor,
-      False
-  );
-  AddOptionChoice(
-      1,
-      LocalizedText('FormCfgSettings.RobotSoftwareCursorSoftware'),
-      RobotSettings.SoftwareCursor,
-      False
-  );
+  AddOptionChoice(0, LocalizedText('FormCfgSettings.RobotSoftwareCursorHardware'), not RobotSettings.SoftwareCursor, False);
+  AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotSoftwareCursorSoftware'), RobotSettings.SoftwareCursor, False);
   AddOptionLabel('RobotSky', LocalizedText('FormCfgSettings.RobotSky'), True);
   AddOptionChoice(2, LocalizedText('FormCfgSettings.RobotSkyGood'), RobotSettings.Sky = 2, False);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.RobotSkyLow'), RobotSettings.Sky = 1, False);
@@ -1015,22 +678,18 @@ begin
   AddOptionLabel('RobotMusic', LocalizedText('FormCfgSettings.RobotMusic'), True);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), RobotMusic, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not RobotMusic, False);
-  ValueLabel :=
-      AddOptionLabel('RobotMusicVolume', LocalizedText('FormCfgSettings.MusicVolume'), False);
+  ValueLabel := AddOptionLabel('RobotMusicVolume', LocalizedText('FormCfgSettings.MusicVolume'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(RobotMusicVolume * 100.0), 1, FormatInteger);
   AddOptionLabel('RobotSound', LocalizedText('FormCfgSettings.RobotSound'), True);
   AddOptionChoice(1, LocalizedText('FormCfgSettings.Yes'), RobotSound, False);
   AddOptionChoice(0, LocalizedText('FormCfgSettings.No'), not RobotSound, False);
-  ValueLabel :=
-      AddOptionLabel('RobotSoundVolume', LocalizedText('FormCfgSettings.SoundVolume'), False);
+  ValueLabel := AddOptionLabel('RobotSoundVolume', LocalizedText('FormCfgSettings.SoundVolume'), False);
   AddOptionSlider(ValueLabel, 0, 100, Round(RobotSoundVolume * 100.0), 1, FormatInteger);
   BuildGroupIndex := 3;
   for I := 0 to 5 do
     with GroupPanels[I] do
       SetSize(Classes.Point(ClientSize.X, GroupNextY[I]));
-  Panel.VerticalScrollBar.SetSmallChange(
-      (GetByName('ButGroup0') as TGraphButtonGI).CaptionLabel.GetLineHeight * 2
-  );
+  Panel.VerticalScrollBar.SetSmallChange((GetByName('ButGroup0') as TGraphButtonGI).CaptionLabel.GetLineHeight * 2);
   Panel.VerticalScrollBar.SetLargeChange(Panel.ClientSize.Y);
   Panel.VerticalScrollBar.SetPageSize(Panel.ClientSize.Y);
   ActiveGroupIndex := 0;
@@ -1140,10 +799,7 @@ begin
   end;
 end;
 
-function TfCfgSettings.AddOptionLabel(
-    OptionName, Caption: WideString;
-    UnusedFlag: Boolean
-): TLabelGI;
+function TfCfgSettings.AddOptionLabel(OptionName, Caption: WideString; UnusedFlag: Boolean): TLabelGI;
 begin
   CurrentOptionName := OptionName;
   MobileChoiceCount := 0;
@@ -1198,11 +854,7 @@ begin
     Inc(GroupNextY[BuildGroupIndex], 2);
 end;
 
-procedure TfCfgSettings.AddMobileOptionChoice(
-    Value: Integer;
-    const Caption: WideString;
-    Selected, Disabled: Boolean
-);
+procedure TfCfgSettings.AddMobileOptionChoice(Value: Integer; const Caption: WideString; Selected, Disabled: Boolean);
 var
   Image: TImageGI;
   LabelControl: TLabelGI;
@@ -1271,11 +923,7 @@ begin
   GroupNextY[BuildGroupIndex] := Max(GroupNextY[BuildGroupIndex], Top + RowHeight + 2);
 end;
 
-procedure TfCfgSettings.AddOptionChoice(
-    Value: Integer;
-    Caption: WideString;
-    Selected, Disabled: Boolean
-);
+procedure TfCfgSettings.AddOptionChoice(Value: Integer; Caption: WideString; Selected, Disabled: Boolean);
 var
   Image: TImageGI;
   ValueLabel: TLabelGI;
@@ -1314,10 +962,7 @@ begin
   else
     Image.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchN');
   Image.SetPosition(
-      Classes.Point(
-          GroupPanels[BuildGroupIndex].ClientSize.X - Image.GetContentSize.X - RightMargin,
-          GroupNextY[BuildGroupIndex]
-      )
+      Classes.Point(GroupPanels[BuildGroupIndex].ClientSize.X - Image.GetContentSize.X - RightMargin, GroupNextY[BuildGroupIndex])
   );
   Image.SetSize(Image.GetContentSize);
   Image.SetImageKindY(ikyCenter);
@@ -1330,22 +975,15 @@ begin
   if not Disabled or (CurrentOptionName = 'Lang') then
     Image.SetName(CurrentOptionName);
   Image.UserValue := Value;
-  ValueLabel.SetSize(
-      Classes.Point(
-          ValueLabel.ClientSize.X - Image.ClientSize.X - 10,
-          Max(ValueLabel.ClientSize.Y, Image.ClientSize.Y)
-      )
-  );
+  ValueLabel.SetSize(Classes.Point(ValueLabel.ClientSize.X - Image.ClientSize.X - 10, Max(ValueLabel.ClientSize.Y, Image.ClientSize.Y)));
   Image.SetPosition(
       Classes.Point(
           Image.LocalPosition.X,
-          Image.LocalPosition.Y
-              + (Max(ValueLabel.ClientSize.Y, Image.ClientSize.Y) - ValueLabel.ClientSize.Y) div 2
+          Image.LocalPosition.Y + (Max(ValueLabel.ClientSize.Y, Image.ClientSize.Y) - ValueLabel.ClientSize.Y) div 2
       )
   );
   ValueLabel.UserValue := PtrInt(Image);
-  GroupNextY[BuildGroupIndex] :=
-      GroupNextY[BuildGroupIndex] + ValueLabel.ClientSize.Y + GiScalePixels(5);
+  GroupNextY[BuildGroupIndex] := GroupNextY[BuildGroupIndex] + ValueLabel.ClientSize.Y + GiScalePixels(5);
 end;
 
 procedure TfCfgSettings.OptionChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
@@ -1406,34 +1044,20 @@ begin
   else
     Slider.SetSize(Classes.Point(156, 20));
   TObjectGI(Slider)
-      .SetPosition(
-          Classes.Point(
-              GroupPanels[BuildGroupIndex].ClientSize.X - Slider.ClientSize.X,
-              GroupNextY[BuildGroupIndex]
-          ));
+      .SetPosition(Classes.Point(GroupPanels[BuildGroupIndex].ClientSize.X - Slider.ClientSize.X, GroupNextY[BuildGroupIndex]));
   Slider.DecreaseButton.SetKind(gbkDisable);
   Slider.DecreaseButton.SetImageNormalPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftN');
-  Slider.DecreaseButton.SetImageNormalActivePath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftA'
-  );
+  Slider.DecreaseButton.SetImageNormalActivePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftA');
   Slider.DecreaseButton.SetImageDownPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftD');
-  Slider.DecreaseButton.SetImageDisabledPath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftH'
-  );
+  Slider.DecreaseButton.SetImageDisabledPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeftH');
   Slider.DecreaseButton.EnterSound := 'Sound.ButtonEnter';
   Slider.DecreaseButton.LeaveSound := 'Sound.ButtonLeave';
   Slider.DecreaseButton.ClickSound := 'Sound.ButtonClick';
   Slider.IncreaseButton.SetKind(gbkDisable);
-  Slider.IncreaseButton.SetImageNormalPath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightN'
-  );
-  Slider.IncreaseButton.SetImageNormalActivePath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightA'
-  );
+  Slider.IncreaseButton.SetImageNormalPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightN');
+  Slider.IncreaseButton.SetImageNormalActivePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightA');
   Slider.IncreaseButton.SetImageDownPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightD');
-  Slider.IncreaseButton.SetImageDisabledPath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightH'
-  );
+  Slider.IncreaseButton.SetImageDisabledPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRightH');
   Slider.IncreaseButton.EnterSound := 'Sound.ButtonEnter';
   Slider.IncreaseButton.LeaveSound := 'Sound.ButtonLeave';
   Slider.IncreaseButton.ClickSound := 'Sound.ButtonClick';
@@ -1443,9 +1067,7 @@ begin
   Slider.AfterThumbImage.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackLeft');
   Slider.BeforeThumbImage.SetImagePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackRight');
   Slider.ThumbButton.SetImageNormalPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackPol');
-  Slider.ThumbButton.SetImageNormalActivePath(
-      'GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackPol'
-  );
+  Slider.ThumbButton.SetImageNormalActivePath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackPol');
   Slider.ThumbButton.SetImageDownPath('GI,Bm.FormOptions2.' + GiResourceSuffix + 'TrackPol');
   Slider.PositionChangedCallback := TObjectNotifyEventGI(Callback);
   Slider.UpdateLayout;
@@ -1460,8 +1082,7 @@ begin
     TObjectGI(Slider).SetPosition(Point(0, GroupNextY[BuildGroupIndex]));
     PrepareMobileSettingsSlider(Slider);
   end;
-  GroupNextY[BuildGroupIndex] :=
-      GroupNextY[BuildGroupIndex] + Slider.ClientSize.Y + GiScalePixels(6);
+  GroupNextY[BuildGroupIndex] := GroupNextY[BuildGroupIndex] + Slider.ClientSize.Y + GiScalePixels(6);
   Callback(Slider);
 end;
 
@@ -1475,8 +1096,7 @@ begin
     if Control.ControlName = OptionName then
       if Control is TImageGI then
       begin
-        if (Control as TImageGI).GetImagePath
-            = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD' then
+        if (Control as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD' then
         begin
           Result := True;
           Exit;
@@ -1503,8 +1123,7 @@ begin
     if Control.ControlName = OptionName then
       if Control is TImageGI then
       begin
-        if (Control as TImageGI).GetImagePath
-            = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD' then
+        if (Control as TImageGI).GetImagePath = 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchD' then
         begin
           Result := Control.UserValue;
           Exit;
@@ -1534,8 +1153,7 @@ begin
           and (Assigned(Control.LeftButtonDownCallback)
               or ((MobileDpScale > 0)
                   and (Control.UserIndex <> 0)
-                  and (TImageGI(Control).GetImagePath
-                      <> 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchH'))) then
+                  and (TImageGI(Control).GetImagePath <> 'GI,Bm.FormOptions2.' + GiResourceSuffix + 'SwitchH'))) then
       begin
         OptionChoiceMouseDown(Control, 0, Classes.Point(-1000, -1000));
         Break;
@@ -1560,13 +1178,7 @@ begin
     ValueLabel := TLabelGI(Sender.UserIndex);
     Index := Sender.Position;
     if GameDisplayModes[Index].Width = 0 then
-      ValueLabel.SetText(
-          ValueLabel.HelpText
-              + TextHighlightColorTag
-              + ' '
-              + LocalizedText('FormCfgSettings.HelpAuto')
-              + EndColorTag
-      )
+      ValueLabel.SetText(ValueLabel.HelpText + TextHighlightColorTag + ' ' + LocalizedText('FormCfgSettings.HelpAuto') + EndColorTag)
     else
       ValueLabel.SetText(
           ValueLabel.HelpText
@@ -1590,13 +1202,7 @@ begin
     ValueLabel := TLabelGI(Sender.UserIndex);
     Index := Sender.Position;
     if RobotDisplayModes[Index].Width = 0 then
-      ValueLabel.SetText(
-          ValueLabel.HelpText
-              + TextHighlightColorTag
-              + ' '
-              + LocalizedText('FormCfgSettings.HelpAuto')
-              + EndColorTag
-      )
+      ValueLabel.SetText(ValueLabel.HelpText + TextHighlightColorTag + ' ' + LocalizedText('FormCfgSettings.HelpAuto') + EndColorTag)
     else
       ValueLabel.SetText(
           ValueLabel.HelpText
@@ -1620,12 +1226,7 @@ begin
     ValueLabel := TLabelGI(Sender.UserIndex);
     Index := Sender.Position;
     ValueLabel.SetText(
-        ReplaceColoredToken(
-            ValueLabel.HelpText,
-            '<Value>',
-            WideString(IntToStr(SupportedMultiSamples[Index])),
-            TextHighlightColorTag
-        )
+        ReplaceColoredToken(ValueLabel.HelpText, '<Value>', WideString(IntToStr(SupportedMultiSamples[Index])), TextHighlightColorTag)
     );
   end;
 end;
@@ -1636,22 +1237,12 @@ var
 begin
   if HasOptionValue('Contrast') and HasOptionValue('Brightness') then
   begin
-    ApplyGammaRamp(
-        (GetOptionValue('Brightness') - 50) / 50.0,
-        (GetOptionValue('Contrast') - 50) / 50.0
-    );
+    ApplyGammaRamp((GetOptionValue('Brightness') - 50) / 50.0, (GetOptionValue('Contrast') - 50) / 50.0);
   end;
   if Sender.UserIndex <> 0 then
   begin
     ValueLabel := TLabelGI(Sender.UserIndex);
-    ValueLabel.SetText(
-        ReplaceColoredToken(
-            ValueLabel.HelpText,
-            '<Value>',
-            WideString(IntToStr(Sender.Position)),
-            TextHighlightColorTag
-        )
-    );
+    ValueLabel.SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Value>', WideString(IntToStr(Sender.Position)), TextHighlightColorTag));
   end;
 end;
 
@@ -1661,22 +1252,12 @@ var
 begin
   if HasOptionValue('Contrast') and HasOptionValue('Brightness') then
   begin
-    ApplyGammaRamp(
-        (GetOptionValue('Brightness') - 50) / 50.0,
-        (GetOptionValue('Contrast') - 50) / 50.0
-    );
+    ApplyGammaRamp((GetOptionValue('Brightness') - 50) / 50.0, (GetOptionValue('Contrast') - 50) / 50.0);
   end;
   if Sender.UserIndex <> 0 then
   begin
     ValueLabel := TLabelGI(Sender.UserIndex);
-    ValueLabel.SetText(
-        ReplaceColoredToken(
-            ValueLabel.HelpText,
-            '<Value>',
-            WideString(IntToStr(Sender.Position)),
-            TextHighlightColorTag
-        )
-    );
+    ValueLabel.SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Value>', WideString(IntToStr(Sender.Position)), TextHighlightColorTag));
   end;
 end;
 
@@ -1687,14 +1268,7 @@ begin
   if Sender.UserIndex <> 0 then
   begin
     ValueLabel := TLabelGI(Sender.UserIndex);
-    ValueLabel.SetText(
-        ReplaceColoredToken(
-            ValueLabel.HelpText,
-            '<Value>',
-            WideString(IntToStr(Sender.Position)),
-            TextHighlightColorTag
-        )
-    );
+    ValueLabel.SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Value>', WideString(IntToStr(Sender.Position)), TextHighlightColorTag));
   end;
 end;
 
@@ -1714,12 +1288,7 @@ begin
       Text := LocalizedText('FormCfgSettings.TurnSaveStep1')
     else if (Value >= 2) and (Value <= 4) then
       Text :=
-          ReplaceColoredToken(
-              LocalizedText('FormCfgSettings.TurnSaveStep2'),
-              '<Value>',
-              WideString(IntToStr(Value)),
-              TextHighlightColorTag
-          )
+          ReplaceColoredToken(LocalizedText('FormCfgSettings.TurnSaveStep2'), '<Value>', WideString(IntToStr(Value)), TextHighlightColorTag)
     else
       Text :=
           ReplaceColoredToken(
@@ -1728,8 +1297,7 @@ begin
               WideString(IntToStr(Value)),
               TextHighlightColorTag
           );
-    ValueLabel
-        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
+    ValueLabel.SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
   end;
 end;
 
@@ -1755,8 +1323,7 @@ begin
           )
     else
       Text := LocalizedText('FormCfgSettings.ForsageTurnOffAlways');
-    ValueLabel
-        .SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
+    ValueLabel.SetText(ReplaceColoredToken(ValueLabel.HelpText, '<Text>', Text, TextHighlightColorTag));
   end;
 end;
 
@@ -1876,11 +1443,7 @@ begin
   SetOptionValue('RobotMusic', 1);
   SetOptionValue('RobotMusicVolume', 75);
   ActiveGroupIndex := SavedGroup;
-  ShowMessageBoxGI(
-      Self,
-      LookupLocalizedTextByKey('FormCfgSettings.AutoMiddle'),
-      mbgOK or mbgUnused04
-  );
+  ShowMessageBoxGI(Self, LookupLocalizedTextByKey('FormCfgSettings.AutoMiddle'), mbgOK or mbgUnused04);
 end;
 
 procedure TfCfgSettings.LowPresetClicked(Sender: TObjectGI);
@@ -2001,10 +1564,7 @@ begin
   end;
   // The original only disabled this preset for hosts older than Windows XP.
   SetOptionValue('SoftwareCursor', Ord(GameWindowHasSystemCursor));
-  SetOptionValue(
-      'AnimHangar',
-      Ord((ClockMHz >= 2000) or ((ClockMHz >= 1400) and (MemoryMB > 500)))
-  );
+  SetOptionValue('AnimHangar', Ord((ClockMHz >= 2000) or ((ClockMHz >= 1400) and (MemoryMB > 500))));
   SetOptionValue('AnimStar', Ord(ClockMHz >= 500));
   if (ClockMHz < 500) then
   begin
@@ -2186,42 +1746,22 @@ begin
       CreateEmbeddedControl := CreateWarningImage;
       if RobotAvailability = 1 then
         SetText(
-            WideString(
-                    '<Object=0,'
-                        + IntToStr(GiScalePixels(26))
-                        + ','
-                        + IntToStr(GiScalePixelsEx(24, 18))
-                        + ',0>')
+            WideString('<Object=0,' + IntToStr(GiScalePixels(26)) + ',' + IntToStr(GiScalePixelsEx(24, 18)) + ',0>')
                 + LocalizedText('FormCfgSettings.WarningNoDX9')
         )
       else if RobotAvailability = 2 then
         SetText(
-            WideString(
-                    '<Object=0,'
-                        + IntToStr(GiScalePixels(26))
-                        + ','
-                        + IntToStr(GiScalePixelsEx(24, 18))
-                        + ',0>')
+            WideString('<Object=0,' + IntToStr(GiScalePixels(26)) + ',' + IntToStr(GiScalePixelsEx(24, 18)) + ',0>')
                 + LocalizedText('FormCfgSettings.WarningDriverOld')
         )
       else if RobotAvailability = 3 then
         SetText(
-            WideString(
-                    '<Object=0,'
-                        + IntToStr(GiScalePixels(26))
-                        + ','
-                        + IntToStr(GiScalePixelsEx(24, 18))
-                        + ',0>')
+            WideString('<Object=0,' + IntToStr(GiScalePixels(26)) + ',' + IntToStr(GiScalePixelsEx(24, 18)) + ',0>')
                 + LocalizedText('FormCfgSettings.WarningVideoUnsupported')
         )
       else if RobotAvailability = 4 then
         SetText(
-            WideString(
-                    '<Object=0,'
-                        + IntToStr(GiScalePixels(26))
-                        + ','
-                        + IntToStr(GiScalePixelsEx(24, 18))
-                        + ',0>')
+            WideString('<Object=0,' + IntToStr(GiScalePixels(26)) + ',' + IntToStr(GiScalePixelsEx(24, 18)) + ',0>')
                 + LocalizedText('FormCfgSettings.WarningNoInstall')
         );
     end;
@@ -2398,10 +1938,7 @@ begin
       else
       begin
         LanguageInstallConfig := TBlockParEC.Create;
-        LanguageInstallConfig.LoadFromTextFileWithEncodingProbe(
-            PWideChar('install_' + SelectedLanguage + '.txt'),
-            False
-        );
+        LanguageInstallConfig.LoadFromTextFileWithEncodingProbe(PWideChar('install_' + SelectedLanguage + '.txt'), False);
       end;
       ReloadModsRequested := True;
     end;
@@ -2430,8 +1967,7 @@ begin
   TurnSaveStep := GetOptionValue('TurnSaveStep');
   UserSettingsConfig.SetOrAddParam('TurnSaveStep', WideString(IntToStr(TurnSaveStep)));
   QuickSaveExtraSlots := GetOptionValue('QuickSaveExtraSlots');
-  UserSettingsConfig
-      .SetOrAddParam('QuickSaveExtraSlots', WideString(IntToStr(QuickSaveExtraSlots)));
+  UserSettingsConfig.SetOrAddParam('QuickSaveExtraSlots', WideString(IntToStr(QuickSaveExtraSlots)));
   FilmHistoryLimit := GetOptionValue('CountFilmSave');
   UserSettingsConfig.SetOrAddParam('CountFilmSave', WideString(IntToStr(FilmHistoryLimit)));
   ScrollStep := GetOptionValue('ScrollSpeed');
@@ -2441,8 +1977,7 @@ begin
   MaxSearchResult := GetOptionValue('MaxSearchResult');
   UserSettingsConfig.SetOrAddParam('MaxSearchResult', WideString(IntToStr(MaxSearchResult)));
   AfterburnerStopCondition := GetOptionValue('ForsageDeactivatePercent');
-  UserSettingsConfig
-      .SetOrAddParam('ForsageDeactivatePercent', WideString(IntToStr(AfterburnerStopCondition)));
+  UserSettingsConfig.SetOrAddParam('ForsageDeactivatePercent', WideString(IntToStr(AfterburnerStopCondition)));
   FilmSpeed := GetOptionValue('FilmSpeed');
   UserSettingsConfig.SetOrAddParam('FilmSpeed', WideString(IntToStr(FilmSpeed)));
   ChangeAutoPilot := GetOptionValue('ChangeAutoPilot');
@@ -2450,8 +1985,7 @@ begin
   DisableAutoPilot := Boolean(GetOptionValue('DisableAutoPilot'));
   UserSettingsConfig.SetOrAddParam('DisableAutoPilot', BoolToWideString(DisableAutoPilot));
   BeginCalcNextTurn := GetOptionValue('BeginCalcNextTurn') / 100.0;
-  UserSettingsConfig
-      .SetOrAddParam('BeginCalcNextTurn', WideString(IntToStr(Round(BeginCalcNextTurn * 100.0))));
+  UserSettingsConfig.SetOrAddParam('BeginCalcNextTurn', WideString(IntToStr(Round(BeginCalcNextTurn * 100.0))));
 
   ActiveGroupIndex := 1;
   Index := GetOptionValue('MobileUI');
@@ -2478,10 +2012,7 @@ begin
   end;
   if Index >= 0 then
   begin
-    Text :=
-        WideString(
-            IntToStr(GameDisplayModes[Index].Width) + ',' + IntToStr(GameDisplayModes[Index].Height)
-        );
+    Text := WideString(IntToStr(GameDisplayModes[Index].Width) + ',' + IntToStr(GameDisplayModes[Index].Height));
     if RequestedRefreshRate > 0 then
       Text := Text + ',' + WideString(IntToStr(RequestedRefreshRate));
     UserSettingsConfig.SetOrAddParam('VideoMode', Text);
@@ -2497,36 +2028,27 @@ begin
     VSyncEnabled := not VSyncEnabled;
     UserSettingsConfig.SetOrAddParam('VSync', BoolToWideString(VSyncEnabled));
   end;
-  if not GameWindowIsFullscreenOnly
-      and (Boolean(GetOptionValue('Window')) <> WindowedModeRequested) then
+  if not GameWindowIsFullscreenOnly and (Boolean(GetOptionValue('Window')) <> WindowedModeRequested) then
   begin
     ResetNeeded := True;
     WindowedModeRequested := Boolean(GetOptionValue('Window'));
     UserSettingsConfig.SetOrAddParam('Window', BoolToWideString(WindowedModeRequested));
   end;
-  if AlternateViewportEnabled
-      and not GameWindowUsesNativeRaster
-      and (Boolean(GetOptionValue('RenderMode')) <> ScaleViewportToWindow) then
+  if AlternateViewportEnabled and not GameWindowUsesNativeRaster and (Boolean(GetOptionValue('RenderMode')) <> ScaleViewportToWindow) then
   begin
     RestartNeeded := True;
     ScaleViewportToWindow := Boolean(GetOptionValue('RenderMode'));
     UserSettingsConfig.SetOrAddParam('RenderModeScale', BoolToWideString(ScaleViewportToWindow));
   end;
-  if not AlternateViewportEnabled
-      and (Boolean(GetOptionValue('HardwareRender')) <> HardwareRenderingRequested) then
+  if not AlternateViewportEnabled and (Boolean(GetOptionValue('HardwareRender')) <> HardwareRenderingRequested) then
   begin
     HardwareRenderingRequested := not HardwareRenderingRequested;
-    UserSettingsConfig
-        .SetOrAddParam('HardwareRender', BoolToWideString(HardwareRenderingRequested));
+    UserSettingsConfig.SetOrAddParam('HardwareRender', BoolToWideString(HardwareRenderingRequested));
     HardwareRenderingEnabled :=
         HardwareRenderingRequested
             and (not RunningUnderWine
                 or ((UserSettingsConfig.CountParams('AllowHardwareRenderUnderWine') <> 0)
-                    and ParseEnabledNameGI(
-                        TrimWideString(
-                            UserSettingsConfig
-                                .GetParamByPathOrMarker('AllowHardwareRenderUnderWine')
-                        ))));
+                    and ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('AllowHardwareRenderUnderWine')))));
   end;
   ShowSystemMouse := GameWindowHasSystemCursor and Boolean(GetOptionValue('SoftwareCursor'));
   UserSettingsConfig.SetOrAddParam('ShowSystemMouse', BoolToWideString(ShowSystemMouse));
@@ -2582,8 +2104,7 @@ begin
   ShowFrameRate := Boolean(GetOptionValue('ShowFPS'));
   UserSettingsConfig.SetOrAddParam('ShowFPS', BoolToWideString(ShowFrameRate));
   GalaxyMapFontChoice := TGalaxyMapFontChoice(GetOptionValue('FontGalaxy'));
-  UserSettingsConfig
-      .SetOrAddParam('FontGalaxy', WideString(IntToStr(Integer(GalaxyMapFontChoice))));
+  UserSettingsConfig.SetOrAddParam('FontGalaxy', WideString(IntToStr(Integer(GalaxyMapFontChoice))));
   DynamicTipsPos := Boolean(GetOptionValue('DynamicTipsPos'));
   UserSettingsConfig.SetOrAddParam('DynamicTipsPos', BoolToWideString(DynamicTipsPos));
   if Boolean(GetOptionValue('UseTablesForGov')) <> UseTablesForGov then
@@ -2601,8 +2122,7 @@ begin
   ScreenshotFormat := GetOptionValue('ScreenShotType');
   UserSettingsConfig.SetOrAddParam('ScreenShotType', WideString(IntToStr(ScreenshotFormat)));
   ScreenshotJpegQuality := GetOptionValue('ScreenShotQuality');
-  UserSettingsConfig
-      .SetOrAddParam('ScreenShotQuality', WideString(IntToStr(ScreenshotJpegQuality)));
+  UserSettingsConfig.SetOrAddParam('ScreenShotQuality', WideString(IntToStr(ScreenshotJpegQuality)));
 
   ActiveGroupIndex := 2;
   if Boolean(GetOptionValue('Sound')) <> SoundEnabled then
@@ -2613,8 +2133,7 @@ begin
   SoundInSpaceEnabled := Boolean(GetOptionValue('SoundInSpace'));
   UserSettingsConfig.SetOrAddParam('SoundInSpace', BoolToWideString(SoundInSpaceEnabled));
   SoundVolume := GetOptionValue('SoundVolume') / 100.0;
-  UserSettingsConfig
-      .SetOrAddParam('SoundVolume', WideString(IntToStr(GetOptionValue('SoundVolume'))));
+  UserSettingsConfig.SetOrAddParam('SoundVolume', WideString(IntToStr(GetOptionValue('SoundVolume'))));
   if Boolean(GetOptionValue('Music')) <> MusicEnabled then
   begin
     UserSettingsConfig.SetOrAddParam('Music', BoolToWideString(not MusicEnabled));
@@ -2623,8 +2142,7 @@ begin
   MusicInSpaceEnabled := Boolean(GetOptionValue('MusicInSpace'));
   UserSettingsConfig.SetOrAddParam('MusicInSpace', BoolToWideString(MusicInSpaceEnabled));
   MusicVolume := GetOptionValue('MusicVolume') / 100.0;
-  UserSettingsConfig
-      .SetOrAddParam('MusicVolume', WideString(IntToStr(GetOptionValue('MusicVolume'))));
+  UserSettingsConfig.SetOrAddParam('MusicVolume', WideString(IntToStr(GetOptionValue('MusicVolume'))));
   MusicInHyperEnabled := Boolean(GetOptionValue('MusicInHyper'));
   UserSettingsConfig.SetOrAddParam('MusicInHyper', BoolToWideString(MusicInHyperEnabled));
   MusicInPlanetEnabled := Boolean(GetOptionValue('MusicInPlanet'));
@@ -2635,9 +2153,7 @@ begin
   UserSettingsConfig.SetOrAddParam(
       'RobotResolution',
       WideString(
-          IntToStr(RobotDisplayModes[SelectedRobotDisplayMode].Width)
-              + ','
-              + IntToStr(RobotDisplayModes[SelectedRobotDisplayMode].Height)
+          IntToStr(RobotDisplayModes[SelectedRobotDisplayMode].Width) + ',' + IntToStr(RobotDisplayModes[SelectedRobotDisplayMode].Height)
       )
   );
   RobotVSync := Boolean(GetOptionValue('RobotVSync'));
@@ -2656,29 +2172,22 @@ begin
   UserSettingsConfig.SetOrAddParam('RobotMaxDistance', WideString(IntToStr(RobotMaxDistance)));
   RobotBrightness := (GetOptionValue('RobotBrightness') - 50) / 50.0;
   RobotContrast := (GetOptionValue('RobotContrast') - 50) / 50.0;
-  UserSettingsConfig
-      .SetOrAddParam('RobotBrightness', WideString(Format('%.2f', [RobotBrightness])));
+  UserSettingsConfig.SetOrAddParam('RobotBrightness', WideString(Format('%.2f', [RobotBrightness])));
   UserSettingsConfig.SetOrAddParam('RobotContrast', WideString(Format('%.2f', [RobotContrast])));
   RobotSettings.ShowStencilShadows := Boolean(GetOptionValue('RobotShowStencilShadows'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotShowStencilShadows', BoolToWideString(RobotSettings.ShowStencilShadows));
+  UserSettingsConfig.SetOrAddParam('RobotShowStencilShadows', BoolToWideString(RobotSettings.ShowStencilShadows));
   RobotSettings.ShowProjShadows := Boolean(GetOptionValue('RobotShowProjShadows'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotShowProjShadows', BoolToWideString(RobotSettings.ShowProjShadows));
+  UserSettingsConfig.SetOrAddParam('RobotShowProjShadows', BoolToWideString(RobotSettings.ShowProjShadows));
   RobotSettings.RobotShadow := Byte(GetOptionValue('RobotRobotShadow'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotRobotShadow', WideString(IntToStr(RobotSettings.RobotShadow)));
+  UserSettingsConfig.SetOrAddParam('RobotRobotShadow', WideString(IntToStr(RobotSettings.RobotShadow)));
   RobotSettings.SelectEx := Boolean(GetOptionValue('RobotSelectEx'));
   UserSettingsConfig.SetOrAddParam('RobotSelectEx', BoolToWideString(RobotSettings.SelectEx));
   RobotSettings.LandTexturesGloss := Boolean(GetOptionValue('RobotLandTexturesGloss'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotLandTexturesGloss', BoolToWideString(RobotSettings.LandTexturesGloss));
+  UserSettingsConfig.SetOrAddParam('RobotLandTexturesGloss', BoolToWideString(RobotSettings.LandTexturesGloss));
   RobotSettings.ObjTexturesGloss := Boolean(GetOptionValue('RobotObjTexturesGloss'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotObjTexturesGloss', BoolToWideString(RobotSettings.ObjTexturesGloss));
+  UserSettingsConfig.SetOrAddParam('RobotObjTexturesGloss', BoolToWideString(RobotSettings.ObjTexturesGloss));
   RobotSettings.SoftwareCursor := Boolean(GetOptionValue('RobotSoftwareCursor'));
-  UserSettingsConfig
-      .SetOrAddParam('RobotSoftwareCursor', BoolToWideString(RobotSettings.SoftwareCursor));
+  UserSettingsConfig.SetOrAddParam('RobotSoftwareCursor', BoolToWideString(RobotSettings.SoftwareCursor));
   RobotSettings.Sky := Byte(GetOptionValue('RobotSky'));
   UserSettingsConfig.SetOrAddParam('RobotSky', WideString(IntToStr(RobotSettings.Sky)));
 
@@ -2686,13 +2195,11 @@ begin
   RobotMusic := Boolean(GetOptionValue('RobotMusic'));
   UserSettingsConfig.SetOrAddParam('RobotMusic', BoolToWideString(RobotMusic));
   RobotMusicVolume := GetOptionValue('RobotMusicVolume') / 100.0;
-  UserSettingsConfig
-      .SetOrAddParam('RobotMusicVolume', WideString(IntToStr(GetOptionValue('RobotMusicVolume'))));
+  UserSettingsConfig.SetOrAddParam('RobotMusicVolume', WideString(IntToStr(GetOptionValue('RobotMusicVolume'))));
   RobotSound := Boolean(GetOptionValue('RobotSound'));
   UserSettingsConfig.SetOrAddParam('RobotSound', BoolToWideString(RobotSound));
   RobotSoundVolume := GetOptionValue('RobotSoundVolume') / 100.0;
-  UserSettingsConfig
-      .SetOrAddParam('RobotSoundVolume', WideString(IntToStr(GetOptionValue('RobotSoundVolume'))));
+  UserSettingsConfig.SetOrAddParam('RobotSoundVolume', WideString(IntToStr(GetOptionValue('RobotSoundVolume'))));
 
   ActiveGroupIndex := 3;
   Text := GetGameUserDirectory + 'cfg.txt';
@@ -2752,30 +2259,21 @@ begin
     else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-        MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
       else
         MusicManager.PlayCategory('Nation.PiratePlanetMain');
     end
     else
-      MusicManager
-          .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
   end
   else if GetPlayer.IsDockedToShip then
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
     else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
     else
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-      );
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
   end
   else if GetPlayer.InNormalSpace then
   begin

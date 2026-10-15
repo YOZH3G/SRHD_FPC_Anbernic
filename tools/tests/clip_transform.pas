@@ -1,6 +1,12 @@
 program ClipTransform;
 {$MODE DELPHI}
-uses SysUtils, Types, GameGraphics, GameWindow, Direct3D9, SDL2;
+uses
+  SysUtils,
+  Types,
+  GameGraphics,
+  GameWindow,
+  Direct3D9,
+  SDL2;
 type
   TVertex = packed record
     X, Y, Z, RHW: Single;
@@ -22,19 +28,16 @@ procedure CheckFrame;
 begin
   Device.Clear(0, nil, D3DCLEAR_TARGET, $FF0000FF, 1, 0);
   Device.DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, @Quad, SizeOf(TVertex));
-  if SDL_RenderReadPixels(GameSDLRenderer, nil, SDL_PIXELFORMAT_ARGB8888,
-      @Pixels, 64 * 4) <> 0 then
+  if SDL_RenderReadPixels(GameSDLRenderer, nil, SDL_PIXELFORMAT_ARGB8888, @Pixels, 64 * 4) <> 0 then
     raise Exception.Create(string(SDL_GetError));
   for Y := 0 to 63 do
     for X := 0 to 63 do
     begin
       Color := $FF0000FF;
-      if (X >= Expected.Left) and (X < Expected.Right)
-          and (Y >= Expected.Top) and (Y < Expected.Bottom) then
+      if (X >= Expected.Left) and (X < Expected.Right) and (Y >= Expected.Top) and (Y < Expected.Bottom) then
         Color := $FFFF0000;
       if Pixels[Y * 64 + X] <> Color then
-        raise Exception.CreateFmt('Clip mismatch: cycle %d, mapping %d, pixel %d,%d',
-            [Cycle, Mapping, X, Y]);
+        raise Exception.CreateFmt('Clip mismatch: cycle %d, mapping %d, pixel %d,%d', [Cycle, Mapping, X, Y]);
     end;
 end;
 
@@ -54,13 +57,18 @@ begin
     Quad[I].RHW := 1;
     Quad[I].Color := $FFFF0000;
   end;
-  Quad[0].X := -0.5; Quad[0].Y := -0.5;
-  Quad[1].X := 127.5; Quad[1].Y := -0.5;
-  Quad[2].X := 127.5; Quad[2].Y := 127.5;
-  Quad[3].X := -0.5; Quad[3].Y := 127.5;
+  Quad[0].X := -0.5;
+  Quad[0].Y := -0.5;
+  Quad[1].X := 127.5;
+  Quad[1].Y := -0.5;
+  Quad[2].X := 127.5;
+  Quad[2].Y := 127.5;
+  Quad[3].X := -0.5;
+  Quad[3].Y := 127.5;
   for Cycle := 0 to 2 do
   begin
-    if Cycle = 1 then Device.Reset(Params);
+    if Cycle = 1 then
+      Device.Reset(Params);
     if Cycle = 2 then
     begin
       Inc(GameTextureGeneration);
@@ -102,17 +110,22 @@ begin
           Expected := Types.Rect(15, 15, 55, 55);
         end;
       end;
-      for RepeatDraw := 0 to 2 do CheckFrame;
+      for RepeatDraw := 0 to 2 do
+        CheckFrame;
       // Intermediate surfaces use their own mapping, even while a screen
       // transform is active. Returning must restore the screen calculation.
       Device.SetRenderTarget(0, Target);
       Expected := Types.Rect(10, 10, 30, 30);
       CheckFrame;
       Device.SetRenderTarget(0, Screen);
-      if Mapping = 0 then Expected := Types.Rect(10, 10, 30, 30)
-      else if Mapping = 1 then Expected := Types.Rect(5, 5, 15, 15)
-      else if Mapping = 2 then Expected := Types.Rect(11, 11, 21, 21)
-      else Expected := Types.Rect(15, 15, 55, 55);
+      if Mapping = 0 then
+        Expected := Types.Rect(10, 10, 30, 30)
+      else if Mapping = 1 then
+        Expected := Types.Rect(5, 5, 15, 15)
+      else if Mapping = 2 then
+        Expected := Types.Rect(11, 11, 21, 21)
+      else
+        Expected := Types.Rect(15, 15, 55, 55);
       CheckFrame;
     end;
     GameGraphicsTransform := GameGraphicsIdentityTransform;
@@ -122,6 +135,9 @@ begin
     CheckFrame;
   end;
   WriteLn('PASS: scissor changes, camera mapping, target switches, reset and recreation');
-  Target := nil; Screen := nil; Device := nil; Graphics := nil;
+  Target := nil;
+  Screen := nil;
+  Device := nil;
+  Graphics := nil;
   CloseGameWindow;
 end.

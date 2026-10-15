@@ -430,10 +430,7 @@ end;
 
 procedure TAchievementStats.CheckFirstPlaceRatingAchievement;
 begin
-  if (GetPlayer <> nil)
-      and (Galaxy <> nil)
-      and (Galaxy.CurrentTurn >= GalaxyWarmupTurns)
-      and (GetPlayer.PlaceInRating = 1) then
+  if (GetPlayer <> nil) and (Galaxy <> nil) and (Galaxy.CurrentTurn >= GalaxyWarmupTurns) and (GetPlayer.PlaceInRating = 1) then
     TryUnlockAchievement('RATING');
 end;
 
@@ -629,10 +626,7 @@ begin
   for I := 0 to Star.Ships.Count - 1 do
   begin
     Ship := Star.Ships[I];
-    if Ship.InNormalSpace
-        and not Ship.IsHullDestroyed
-        and (Ship is TTranclucator)
-        and ((Ship as TTranclucator).OwnerShip = GetPlayer) then
+    if Ship.InNormalSpace and not Ship.IsHullDestroyed and (Ship is TTranclucator) and ((Ship as TTranclucator).OwnerShip = GetPlayer) then
       Inc(Count);
   end;
   if Count >= 10 then
@@ -648,8 +642,7 @@ begin
   // Entry zero is the native NONE sentinel and is not registered.
   for Index := 1 to High(AchievementDefinitionTable) do
   begin
-    Block :=
-        AchievementDefinitions.AddChildBlock(WideString(AchievementDefinitionTable[Index].Key));
+    Block := AchievementDefinitions.AddChildBlock(WideString(AchievementDefinitionTable[Index].Key));
     Block.AddParam('Id', WideString(AchievementDefinitionTable[Index].Key));
     Block.AddParam('Num', WideString(IntToStr(Index - 1)));
     Block.AddParam('MaxValue', WideString(IntToStr(AchievementDefinitionTable[Index].MaxValue)));

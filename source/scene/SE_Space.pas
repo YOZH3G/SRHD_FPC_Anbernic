@@ -121,12 +121,7 @@ type
     destructor Destroy; override;
     procedure LinkObject(Obj: TObjectSE);
     procedure UnlinkObject(Obj: TObjectSE);
-    function CreateTimer(
-        DelayMs: Integer;
-        RepeatMs: Integer;
-        Callback: TSpaceTimerEventSE;
-        UserData: Integer
-    ): PSpaceTimerSE;
+    function CreateTimer(DelayMs: Integer; RepeatMs: Integer; Callback: TSpaceTimerEventSE; UserData: Integer): PSpaceTimerSE;
     procedure DeleteTimer(Timer: PSpaceTimerSE);
     procedure AdvanceTimers;
     procedure AdvanceObjects;
@@ -360,19 +355,10 @@ begin
           Now := GameTickCount;
           if NextSoundTime < Now then
           begin
-            Delay :=
-                RandomIntRange(
-                    RandomSound.Groups[RandomSoundGroup].NextTimeMin,
-                    RandomSound.Groups[RandomSoundGroup].NextTimeMax
-                );
+            Delay := RandomIntRange(RandomSound.Groups[RandomSoundGroup].NextTimeMin, RandomSound.Groups[RandomSoundGroup].NextTimeMax);
             NextSoundTime := Now + Delay;
             if Space.ContainsMapPoint(Position) then
-              SoundManager.PlayEffect(
-                  RandomSound.SelectSound(RandomSoundGroup),
-                  RandomSound.Groups[RandomSoundGroup].Group,
-                  1,
-                  0
-              );
+              SoundManager.PlayEffect(RandomSound.SelectSound(RandomSoundGroup), RandomSound.Groups[RandomSoundGroup].Group, 1, 0);
           end;
         end;
     except
@@ -431,10 +417,7 @@ begin
   RandomSound := FindRandomSound(Name, RandomSoundGroup);
   if RandomSoundGroup >= 0 then
     NextSoundTime :=
-        GameTickCount
-            + RandomIntRange(
-                RandomSound.Groups[RandomSoundGroup].NextTimeMin,
-                RandomSound.Groups[RandomSoundGroup].NextTimeMax);
+        GameTickCount + RandomIntRange(RandomSound.Groups[RandomSoundGroup].NextTimeMin, RandomSound.Groups[RandomSoundGroup].NextTimeMax);
 end;
 
 procedure TObjectSE.LoadTemplate(Block: TBlockParEC);
@@ -550,11 +533,7 @@ begin
     FirstObject := Obj.Next;
 end;
 
-function TSpaceSE.CreateTimer(
-    DelayMs, RepeatMs: Integer;
-    Callback: TSpaceTimerEventSE;
-    UserData: Integer
-): PSpaceTimerSE;
+function TSpaceSE.CreateTimer(DelayMs, RepeatMs: Integer; Callback: TSpaceTimerEventSE; UserData: Integer): PSpaceTimerSE;
 var
   Timer: PSpaceTimerSE;
 begin
@@ -702,16 +681,7 @@ begin
         Color := CurrentPixelFormat.PackRgbBytes($C3, $31, 0)
       else
         Color := CurrentPixelFormat.PackRgbBytes($8F, $C1, 0);
-      Ex_OKGR_Line_DrawClip_WORD(
-          RenderScratchBuffer.GetPixels,
-          RenderScratchBuffer.PitchBytes,
-          X1,
-          Y1,
-          X2,
-          Y2,
-          Color,
-          Clip
-      );
+      Ex_OKGR_Line_DrawClip_WORD(RenderScratchBuffer.GetPixels, RenderScratchBuffer.PitchBytes, X1, Y1, X2, Y2, Color, Clip);
       X1 := X2;
       Y1 := Y2;
     end;
@@ -725,10 +695,8 @@ begin
         )
     );
     MinimapRangeShade.SetRadius(Round(CurrentProcess.ActionRange * MinimapScale));
-    MinimapRangeShade.HitTestBounds :=
-        Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
-    MinimapRangeShade
-        .Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
+    MinimapRangeShade.HitTestBounds := Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
+    MinimapRangeShade.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
     MinimapRangeCircle.SetCenter(
         Classes.Point(
             (RenderScratchBuffer.Width shr 1) + Round(CurrentProcess.RadarCenter.X * MinimapScale),
@@ -737,13 +705,10 @@ begin
     );
     MinimapRangeCircle.SetRadius(Round(CurrentProcess.ActionRange * MinimapScale));
     MinimapRangeCircle.SetColor(CurrentProcess.ActionColor);
-    MinimapRangeCircle.HitTestBounds :=
-        Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
-    MinimapRangeCircle
-        .Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
+    MinimapRangeCircle.HitTestBounds := Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
+    MinimapRangeCircle.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
   end;
-  MinimapViewportFrame
-      .Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
+  MinimapViewportFrame.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
   HardwareRenderingEnabled := SavedHardware;
   ScreenRenderBuffer := SavedBuffer;
 end;
@@ -783,12 +748,8 @@ begin
         );
     MinimapViewportFrame.SetSize(ViewSize);
     MinimapViewportFrame.SetOrigin(Classes.Point(ViewSize.X div 2, ViewSize.Y div 2));
-    MinimapViewportFrame.SetPosition(
-        Classes.Point(
-            Round(MapPanel.ScrollOffset.X * MinimapScale),
-            Round(MapPanel.ScrollOffset.Y * MinimapScale)
-        )
-    );
+    MinimapViewportFrame
+        .SetPosition(Classes.Point(Round(MapPanel.ScrollOffset.X * MinimapScale), Round(MapPanel.ScrollOffset.Y * MinimapScale)));
   end;
   if StarField <> nil then
     StarField.SetViewPosition(PointToPointF(MapPanel.ScrollOffset));
@@ -832,8 +793,7 @@ begin
   MinimapDragging := True;
   FilmCameraFollow := False;
   Local := Sender.ToLocalPoint(Point);
-  MapPanel
-      .SetScrollOffset(Classes.Point(Round(Local.X / MinimapScale), Round(Local.Y / MinimapScale)));
+  MapPanel.SetScrollOffset(Classes.Point(Round(Local.X / MinimapScale), Round(Local.Y / MinimapScale)));
   MapScrollChanged(nil);
   MinimapFrameCounter := 0;
 end;
@@ -848,8 +808,7 @@ var
   Local: TPoint;
 begin
   if MinimapDragging then
-    if (Integer(KeyState and MK_LBUTTON) = MK_LBUTTON)
-        or ((KeyState and MK_RBUTTON) = MK_RBUTTON) then
+    if (Integer(KeyState and MK_LBUTTON) = MK_LBUTTON) or ((KeyState and MK_RBUTTON) = MK_RBUTTON) then
     begin
       if Sender.IsOccludedAtPoint(Point) then
         Exit;
@@ -860,9 +819,7 @@ begin
         if FilmScreen.CenterShipButton.HitTest(Point) then
           Exit;
       Local := Sender.ToLocalPoint(Point);
-      MapPanel.SetScrollOffset(
-          Classes.Point(Round(Local.X / MinimapScale), Round(Local.Y / MinimapScale))
-      );
+      MapPanel.SetScrollOffset(Classes.Point(Round(Local.X / MinimapScale), Round(Local.Y / MinimapScale)));
       MapScrollChanged(nil);
       MinimapFrameCounter := 0;
     end;

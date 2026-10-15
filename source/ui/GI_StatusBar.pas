@@ -136,9 +136,7 @@ begin
   else
   begin
     LeftImage.SetSize(Classes.Point(LeftImage.GetContentSize.X, ClientSize.Y));
-    CenterImage.SetSize(
-        Classes.Point(Width - LeftImage.ClientSize.X - RightImage.ClientSize.X, ClientSize.Y)
-    );
+    CenterImage.SetSize(Classes.Point(Width - LeftImage.ClientSize.X - RightImage.ClientSize.X, ClientSize.Y));
     RightImage.SetSize(Classes.Point(RightImage.GetContentSize.X, ClientSize.Y));
     LeftImage.SetPosition(Classes.Point(0, 0));
     CenterImage.SetPosition(Classes.Point(LeftImage.ClientSize.X, 0));
@@ -168,10 +166,7 @@ begin
   if Block.CountParams('ImageRight') > 0 then
     RightImage.SetImagePath(Block.GetParam('ImageRight'));
   if (Block.CountParams('Min') > 0) and (Block.CountParams('Max') > 0) then
-    SetRange(
-        ExtractDecimalToSingleW(Block.GetParam('Min')),
-        ExtractDecimalToSingleW(Block.GetParam('Max'))
-    );
+    SetRange(ExtractDecimalToSingleW(Block.GetParam('Min')), ExtractDecimalToSingleW(Block.GetParam('Max')));
   if Block.CountParams('Cur') > 0 then
     SetValue(ExtractDecimalToSingleW(Block.GetParam('Cur')));
   UpdateImageLayout;

@@ -97,11 +97,7 @@ begin
         OrbitAngle := WrapHeadingDegrees(OrbitAngle + 3.75);
       State :=
           AdvanceSphericalStateOnCurrentSphere(
-              MakeSphericalBearingState(
-                  SourceObject.State.LongitudeDegrees,
-                  SourceObject.State.PolarAngleDegrees,
-                  OrbitAngle
-              ),
+              MakeSphericalBearingState(SourceObject.State.LongitudeDegrees, SourceObject.State.PolarAngleDegrees, OrbitAngle),
               OrbitRadius
           );
       if ArcadeTickCount mod 3 = 0 then
@@ -113,9 +109,7 @@ begin
         Obj := FirstArcadeObject;
         while Obj <> nil do
         begin
-          if (Obj is TabW18)
-              and (Obj <> Self)
-              and ((Obj as TabW18).SourceObject = SourceObject) then
+          if (Obj is TabW18) and (Obj <> Self) and ((Obj as TabW18).SourceObject = SourceObject) then
           begin
             Delta := WrapSignedHeadingDegrees((Obj as TabW18).OrbitAngle - OrbitAngle);
             if (Delta < 0) and ((Collision = nil) or (NegativeDelta < Delta)) then
@@ -132,11 +126,9 @@ begin
           Obj := Obj.Next;
         end;
         if Collision <> nil then
-          (Collision as TabW18).AngleCorrection :=
-              (Collision as TabW18).AngleCorrection - (180 + NegativeDelta) * 0.03;
+          (Collision as TabW18).AngleCorrection := (Collision as TabW18).AngleCorrection - (180 + NegativeDelta) * 0.03;
         if NextNeighbor <> nil then
-          (NextNeighbor as TabW18).AngleCorrection :=
-              (NextNeighbor as TabW18).AngleCorrection + (180 - PositiveDelta) * 0.03;
+          (NextNeighbor as TabW18).AngleCorrection := (NextNeighbor as TabW18).AngleCorrection + (180 - PositiveDelta) * 0.03;
       end;
     end;
     Velocity := MakePointF(0, 0);
@@ -149,8 +141,7 @@ begin
     if Collision = SourceObject then
       Collision := nil;
   end;
-  if ((ArcadeTickCount > ExpireTick) or (Collision <> nil) or (SourceObject = nil))
-      and not Exploding then
+  if ((ArcadeTickCount > ExpireTick) or (Collision <> nil) or (SourceObject = nil)) and not Exploding then
   begin
     if Collision <> nil then
     begin

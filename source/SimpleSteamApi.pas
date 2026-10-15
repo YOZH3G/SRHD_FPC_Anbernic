@@ -29,18 +29,12 @@ type
 
   TSteamUserId = function: Int64; cdecl;
 
-  TSteamInit =
-      function(var Language: WideString; var AvailableLanguages: WideString): Boolean; cdecl;
+  TSteamInit = function(var Language: WideString; var AvailableLanguages: WideString): Boolean; cdecl;
 
   TSteamCreateAchievements = procedure(Count: Integer); cdecl;
 
   TSteamInitAchievement =
-      procedure(
-          Index: Integer;
-          const AchievementName: AnsiString;
-          const StatName: AnsiString;
-          MaxValue: Integer
-      ); cdecl;
+      procedure(Index: Integer; const AchievementName: AnsiString; const StatName: AnsiString; MaxValue: Integer); cdecl;
 
   TSteamLocal = function(AppId: Integer): Boolean; cdecl;
 

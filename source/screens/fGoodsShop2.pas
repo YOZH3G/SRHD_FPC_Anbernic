@@ -182,30 +182,17 @@ begin
     FindByNameRecursive('BGCity2').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGCity').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('ADD_WarningSpace') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('ADD_WarningMoney') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('ADD_Space') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('ADD_Money') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('GS_Help') do
       SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight));
     with FindByNameRecursive('GoodsPanel') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + MainPanel.VerticalContentOffset
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
     FindByNameRecursive('BGShrLight').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   end;
   MainPanel.FitContent(GetByName('GoodsPanel'));
@@ -280,8 +267,7 @@ begin
     else
       UpCallback := CloseClicked;
   DraggedGoodsIndex := -1;
-  (GetByName('NameFace') as TLabelGI)
-      .SetSize(Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, NameFaceHeight));
+  (GetByName('NameFace') as TLabelGI).SetSize(Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, NameFaceHeight));
   GetByName('GraphBufFace').SetActive(False);
   GetByName('CloseLine').SetActive(False);
   if GetPlayer.IsOnPlanet then
@@ -295,8 +281,7 @@ begin
               PlanetEconomyInfo[GetPlayer.CurrentPlanet.Economy].ShortDisplayName
                   + #13#10
                   + PlanetGovernmentMarket[GetPlayer.CurrentPlanet.Government].DisplayName);
-    (GetByName('ImageFace') as TImageGI)
-        .SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'PlanetL');
+    (GetByName('ImageFace') as TImageGI).SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'PlanetL');
     with GetByName('GraphBufFace') as TGraphBufGI do
     begin
       SetActive(True);
@@ -310,37 +295,20 @@ begin
     (GetByName('NameFace') as TLabelGI).SetText(GetPlayer.DockedTo.GetFullName(#13#10));
     (GetByName('CharFace') as TLabelGI).SetText('');
     GetByName('CloseLine').SetActive(True);
-    (GetByName('NameFace') as TLabelGI)
-        .SetSize(
-            Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, FaceCaptionHeight));
-    (GetByName('ImageFace') as TImageGI)
-        .SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllL');
+    (GetByName('NameFace') as TLabelGI).SetSize(Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, FaceCaptionHeight));
+    (GetByName('ImageFace') as TImageGI).SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllL');
     with GetByName('GraphBufFace') as TGraphBufGI do
     begin
       SetActive(True);
       SourceHasPerPixelAlpha := True;
       if GetPlayer.DockedTo.Graphic is TRuinsSE then
-        LoadGiByPathIntoGraphBuf(
-            ExtractDelimitedPartW((GetPlayer.DockedTo.Graphic as TRuinsSE).StaticImagePath, 1, ','),
-            GraphBuf
-        )
+        LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW((GetPlayer.DockedTo.Graphic as TRuinsSE).StaticImagePath, 1, ','), GraphBuf)
       else
-        LoadGiByPathIntoGraphBuf(
-            ExtractDelimitedPartW(GetPlayer.DockedTo.GetShipPortraitImagePath, 1, ','),
-            GraphBuf
-        );
+        LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW(GetPlayer.DockedTo.GetShipPortraitImagePath, 1, ','), GraphBuf);
       if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-        GraphBuf.RescaleRgba(
-            ClientSize.X,
-            Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-            5
-        )
+        GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
       else
-        GraphBuf.RescaleRgba(
-            Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-            ClientSize.Y,
-            5
-        );
+        GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
     end;
   end
   else if GetPlayer.InNormalSpace then
@@ -355,38 +323,21 @@ begin
       (GetByName('NameFace') as TLabelGI).SetText(TalkShip.GetFullName(#13#10));
       (GetByName('CharFace') as TLabelGI).SetText('');
       GetByName('CloseLine').SetActive(True);
-      (GetByName('NameFace') as TLabelGI)
-          .SetSize(
-              Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, FaceCaptionHeight));
+      (GetByName('NameFace') as TLabelGI).SetSize(Classes.Point((GetByName('NameFace') as TLabelGI).ClientSize.X, FaceCaptionHeight));
     end;
-    (GetByName('ImageFace') as TImageGI)
-        .SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllL');
+    (GetByName('ImageFace') as TImageGI).SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllL');
     with GetByName('GraphBufFace') as TGraphBufGI do
     begin
       SetActive(True);
       SourceHasPerPixelAlpha := True;
       if TalkShip.Graphic is TRuinsSE then
-        LoadGiByPathIntoGraphBuf(
-            ExtractDelimitedPartW((TalkShip.Graphic as TRuinsSE).StaticImagePath, 1, ','),
-            GraphBuf
-        )
+        LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW((TalkShip.Graphic as TRuinsSE).StaticImagePath, 1, ','), GraphBuf)
       else
-        LoadGiByPathIntoGraphBuf(
-            ExtractDelimitedPartW(TalkShip.GetShipPortraitImagePath, 1, ','),
-            GraphBuf
-        );
+        LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW(TalkShip.GetShipPortraitImagePath, 1, ','), GraphBuf);
       if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-        GraphBuf.RescaleRgba(
-            ClientSize.X,
-            Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-            5
-        )
+        GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
       else
-        GraphBuf.RescaleRgba(
-            Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-            ClientSize.Y,
-            5
-        );
+        GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
     end;
   end;
   if ReopenRequested then
@@ -502,34 +453,19 @@ begin
     (GetByName('NameCaptain') as TLabelGI).SetText(GetPlayer.GetFullName(#13#10));
     (GetByName('CharCaptain') as TLabelGI).SetText(GetPlayer.GetCharacterName);
   end;
-  (GetByName('ImageCaptain') as TImageGI)
-      .SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllR');
+  (GetByName('ImageCaptain') as TImageGI).SetImagePath('GI,Bm.FormGoods2.' + GiResourceSuffix + 'AllR');
   with GetByName('GraphBufCaptain') as TGraphBufGI do
   begin
     SetActive(True);
     SourceHasPerPixelAlpha := True;
     if GetPlayer.Graphic is TRuinsSE then
-      LoadGiByPathIntoGraphBuf(
-          ExtractDelimitedPartW((GetPlayer.Graphic as TRuinsSE).StaticImagePath, 1, ','),
-          GraphBuf
-      )
+      LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW((GetPlayer.Graphic as TRuinsSE).StaticImagePath, 1, ','), GraphBuf)
     else
-      LoadGiByPathIntoGraphBuf(
-          ExtractDelimitedPartW(GetPlayer.GetShipPortraitImagePath, 1, ','),
-          GraphBuf
-      );
+      LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW(GetPlayer.GetShipPortraitImagePath, 1, ','), GraphBuf);
     if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-      GraphBuf.RescaleRgba(
-          ClientSize.X,
-          Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-          5
-      )
+      GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
     else
-      GraphBuf.RescaleRgba(
-          Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-          ClientSize.Y,
-          5
-      );
+      GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
   end;
   if GetPlayer.IsOnPlanet then
   begin
@@ -563,33 +499,21 @@ begin
     if GetPlayer.IsOnPlanet then
     begin
       SetActive(True);
-      (FindByNameRecursive('BGCity') as TImageGI)
-          .SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
+      (FindByNameRecursive('BGCity') as TImageGI).SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
     end
     else if GetPlayer.IsDockedToShip then
     begin
       SetActive(True);
       if GetPlayer.DockedTo.TypeNameOverrideKey <> '' then
       begin
-        BackgroundPath :=
-            'Bm.FormRuins.' + GiResourceSuffix + GetPlayer.DockedTo.TypeNameOverrideKey + 'bg';
+        BackgroundPath := 'Bm.FormRuins.' + GiResourceSuffix + GetPlayer.DockedTo.TypeNameOverrideKey + 'bg';
         if CacheDataRoot.FileExistsByPath(BackgroundPath) then
           SetImagePath('GI,' + BackgroundPath)
         else
-          SetImagePath(
-              'GI,Bm.FormRuins.'
-                  + GiResourceSuffix
-                  + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name
-                  + 'bg'
-          );
+          SetImagePath('GI,Bm.FormRuins.' + GiResourceSuffix + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name + 'bg');
       end
       else
-        SetImagePath(
-            'GI,Bm.FormRuins.'
-                + GiResourceSuffix
-                + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name
-                + 'bg'
-        );
+        SetImagePath('GI,Bm.FormRuins.' + GiResourceSuffix + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name + 'bg');
     end
     else
       SetActive(False);
@@ -673,19 +597,9 @@ begin
       else
       begin
         TradeRows[Good].PurchasePrice :=
-            Round(
-                Max(
-                    GoodsMarket[Good].AveragePrice * 1.1,
-                    TalkShip.CargoGoods[Good].TotalCost / TalkShip.CargoGoods[Good].Count * 1.3
-                )
-            );
+            Round(Max(GoodsMarket[Good].AveragePrice * 1.1, TalkShip.CargoGoods[Good].TotalCost / TalkShip.CargoGoods[Good].Count * 1.3));
         TradeRows[Good].BaseSalePrice :=
-            Round(
-                Max(
-                    GoodsMarket[Good].MinPrice,
-                    TalkShip.CargoGoods[Good].TotalCost / TalkShip.CargoGoods[Good].Count * 0.7
-                )
-            );
+            Round(Max(GoodsMarket[Good].MinPrice, TalkShip.CargoGoods[Good].TotalCost / TalkShip.CargoGoods[Good].Count * 0.7));
       end;
     end;
     PartnerCargoLimit := TalkShip.GetCargoFreeSpace - TalkShip.GetDesiredCargoFreeSpace;
@@ -703,11 +617,8 @@ begin
       MouseEnterCallback := GoodsMouseEnter;
       MouseLeaveCallback := GoodsMouseLeave;
       SetDisabled(
-          (((DraggedGoodsIndex >= 10) and (DraggedGoodsIndex < 20))
-                  or (GetPlayer.GetLocationGoodsEntry(ShopGoodsOrder[I]).Count <= 0))
-              and ((DraggedGoodsIndex < 10)
-                  or (DraggedGoodsIndex >= 20)
-                  or (DraggedGoodsIndex mod 10 <> I))
+          (((DraggedGoodsIndex >= 10) and (DraggedGoodsIndex < 20)) or (GetPlayer.GetLocationGoodsEntry(ShopGoodsOrder[I]).Count <= 0))
+              and ((DraggedGoodsIndex < 10) or (DraggedGoodsIndex >= 20) or (DraggedGoodsIndex mod 10 <> I))
       );
     end;
     with GetByName('Tov' + IntToStr(I + 10)) as TGraphButtonGI do
@@ -715,33 +626,19 @@ begin
       MouseEnterCallback := GoodsMouseEnter;
       MouseLeaveCallback := GoodsMouseLeave;
       SetDisabled(
-          (((DraggedGoodsIndex >= 0) and (DraggedGoodsIndex < 10))
-                  or (GetPlayer.CargoGoods[ShopGoodsOrder[I]].Count <= 0))
-              and ((DraggedGoodsIndex < 0)
-                  or (DraggedGoodsIndex >= 10)
-                  or (DraggedGoodsIndex mod 10 <> I))
+          (((DraggedGoodsIndex >= 0) and (DraggedGoodsIndex < 10)) or (GetPlayer.CargoGoods[ShopGoodsOrder[I]].Count <= 0))
+              and ((DraggedGoodsIndex < 0) or (DraggedGoodsIndex >= 10) or (DraggedGoodsIndex mod 10 <> I))
       );
     end;
-    GetByName('TovPermit' + IntToStr(I + 1))
-        .SetActive(GetPlayer.IsCargoGoodIllegalOnCurrentPlanet(ShopGoodsOrder[I]));
-    GetByName('TovPermit' + IntToStr(I + 10 + 1))
-        .SetActive(GetByName('TovPermit' + IntToStr(I + 1)).Active);
+    GetByName('TovPermit' + IntToStr(I + 1)).SetActive(GetPlayer.IsCargoGoodIllegalOnCurrentPlanet(ShopGoodsOrder[I]));
+    GetByName('TovPermit' + IntToStr(I + 10 + 1)).SetActive(GetByName('TovPermit' + IntToStr(I + 1)).Active);
     Panel := GetByName('TovCool' + IntToStr(I + 1)) as TPanelGI;
     Panel.Invalidate;
     Panel.FreeOwnedChildren;
     if GetPlayer.GetLocationGoodsEntry(Good).Count <= 0 then
       IconCount := 0
     else
-      IconCount :=
-          Round(
-              RemapClamped(
-                  Galaxy.GetGoodsPricePercent(Good, GetPlayer.ShopGoodsPurchasePrice(Good, nil)),
-                  0,
-                  30,
-                  3,
-                  0
-              )
-          );
+      IconCount := Round(RemapClamped(Galaxy.GetGoodsPricePercent(Good, GetPlayer.ShopGoodsPurchasePrice(Good, nil)), 0, 30, 3, 0));
     ImageName := 'Good';
     for J := 0 to IconCount - 1 do
     begin
@@ -779,8 +676,7 @@ begin
     Panel := GetByName('TovImgCnt' + IntToStr(I)) as TPanelGI;
     Panel.FreeOwnedChildren;
     Panel.Invalidate;
-    IconCount :=
-        Round(GetPlayer.GetLocationGoodsEntry(Good).Count / GoodsMarket[Good].BaseStock * 6);
+    IconCount := Round(GetPlayer.GetLocationGoodsEntry(Good).Count / GoodsMarket[Good].BaseStock * 6);
     if (IconCount <= 0) and (GetPlayer.GetLocationGoodsEntry(Good).Count >= 1) then
       IconCount := 1
     else if IconCount > 6 then
@@ -804,8 +700,7 @@ begin
     { Native writes this sell-price label once with the market color, then again with the cargo color below. }
     (GetByName('TovPrice' + IntToStr(I + 10)) as TLabelGI)
         .SetText(WrapTextInColor(IntToStr(GetPlayer.ShopGoodsSellPrice(Good, nil)), Color));
-    (GetByName('TovCnt' + IntToStr(I)) as TLabelGI)
-        .SetText(WrapTextInColor(IntToStr(GetPlayer.GetLocationGoodsEntry(Good).Count), Color));
+    (GetByName('TovCnt' + IntToStr(I)) as TLabelGI).SetText(WrapTextInColor(IntToStr(GetPlayer.GetLocationGoodsEntry(Good).Count), Color));
     (GetByName('TovPrice' + IntToStr(I)) as TLabelGI)
         .SetText(WrapTextInColor(IntToStr(GetPlayer.ShopGoodsPurchasePrice(Good, nil)), Color));
     Panel := GetByName('TovImgCnt' + IntToStr(I + 10)) as TPanelGI;
@@ -832,8 +727,7 @@ begin
       RaiseWideMessage('Player.FGoods[it].Cnt<0')
     else if GetPlayer.CargoGoods[Good].Count = 0 then
       Color := OutOfStockColor;
-    (GetByName('TovCnt' + IntToStr(I + 10)) as TLabelGI)
-        .SetText(WrapTextInColor(IntToStr(GetPlayer.CargoGoods[Good].Count), Color));
+    (GetByName('TovCnt' + IntToStr(I + 10)) as TLabelGI).SetText(WrapTextInColor(IntToStr(GetPlayer.CargoGoods[Good].Count), Color));
     (GetByName('TovPrice' + IntToStr(I + 10)) as TLabelGI)
         .SetText(WrapTextInColor(IntToStr(GetPlayer.ShopGoodsSellPrice(Good, nil)), Color));
   end;
@@ -901,10 +795,7 @@ begin
   end
   else if (DraggedGoodsIndex < 0)
       or ((DraggedGoodsIndex >= 0) and (DraggedGoodsIndex < 10) and (Index >= 0) and (Index < 10))
-      or ((DraggedGoodsIndex >= 10)
-          and (DraggedGoodsIndex < 20)
-          and (Index >= 10)
-          and (Index < 20)) then
+      or ((DraggedGoodsIndex >= 10) and (DraggedGoodsIndex < 20) and (Index >= 10) and (Index < 20)) then
   begin
     if Index = DraggedGoodsIndex then
       DraggedGoodsIndex := -1
@@ -922,35 +813,23 @@ begin
   if DraggedGoodsIndex >= 0 then
   begin
     Count := GetMaximumTradeCount(DraggedGoodsIndex, False);
-    if (Count <= 0)
-        and ((DraggedGoodsIndex >= 10)
-            or GetPlayer.InNormalSpace
-            or (GetMaximumTradeCount(DraggedGoodsIndex, True) <= 0)) then
+    if (Count <= 0) and ((DraggedGoodsIndex >= 10) or GetPlayer.InNormalSpace or (GetMaximumTradeCount(DraggedGoodsIndex, True) <= 0)) then
     begin
       if GetPlayer.InNormalSpace then
       begin
         if (DraggedGoodsIndex >= 10) and (DraggedGoodsIndex < 20) then
         begin
           if PartnerCargoLimit <= 0 then
-            ShowMessageBoxGI(
-                Self,
-                TalkShip.LookupTalkText('Talk.Trade.NoSpace'),
-                mbgCancel or mbgError
-            )
+            ShowMessageBoxGI(Self, TalkShip.LookupTalkText('Talk.Trade.NoSpace'), mbgCancel or mbgError)
           else
-            ShowMessageBoxGI(
-                Self,
-                TalkShip.LookupTalkText('Talk.Trade.NoMoney'),
-                mbgOK or mbgError
-            );
+            ShowMessageBoxGI(Self, TalkShip.LookupTalkText('Talk.Trade.NoMoney'), mbgOK or mbgError);
         end
         else if DraggedGoodsIndex < 10 then
           if GetPlayer.GetLocationGoodsEntry(ShopGoodsOrder[DraggedGoodsIndex]).Count > 0 then
           begin
             if GetPlayer.GetCargoFreeSpace <= 0 then
               FlashCargoWarning;
-            if GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex], nil)
-                > GetPlayer.Money then
+            if GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex], nil) > GetPlayer.Money then
               FlashMoneyWarning;
             DraggedGoodsIndex := -1;
             UpdateActionCursor(False);
@@ -964,8 +843,7 @@ begin
         begin
           if GetPlayer.GetCargoFreeSpace <= 0 then
             MainPanel.FlashCargoWarning;
-          if GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex], nil)
-              > GetPlayer.Money then
+          if GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex], nil) > GetPlayer.Money then
             MainPanel.FlashMoneyWarning;
         end;
     end
@@ -1025,33 +903,19 @@ begin
               Count)
           = 1 then
       begin
-        if (GetMaximumTradeCount(DraggedGoodsIndex, False) < Count)
-            and (DraggedGoodsIndex >= 10)
-            and GetPlayer.InNormalSpace then
+        if (GetMaximumTradeCount(DraggedGoodsIndex, False) < Count) and (DraggedGoodsIndex >= 10) and GetPlayer.InNormalSpace then
         begin
           if Count > PartnerCargoLimit then
-            ShowMessageBoxGI(
-                Self,
-                TalkShip.LookupTalkText('Talk.Trade.NoSpace'),
-                mbgCancel or mbgError
-            )
+            ShowMessageBoxGI(Self, TalkShip.LookupTalkText('Talk.Trade.NoSpace'), mbgCancel or mbgError)
           else
-            ShowMessageBoxGI(
-                Self,
-                TalkShip.LookupTalkText('Talk.Trade.NoMoney'),
-                mbgOK or mbgError
-            );
+            ShowMessageBoxGI(Self, TalkShip.LookupTalkText('Talk.Trade.NoMoney'), mbgOK or mbgError);
         end
-        else if (Count > 0)
-            and (GetMaximumTradeCount(DraggedGoodsIndex, not GetPlayer.InNormalSpace) >= Count) then
+        else if (Count > 0) and (GetMaximumTradeCount(DraggedGoodsIndex, not GetPlayer.InNormalSpace) >= Count) then
         begin
           // Native legality check uses the hovered row, even when a different
           // row supplied the dragged good; preserve that original selection.
           if GetPlayer.IsCargoGoodIllegalOnCurrentPlanet(ShopGoodsOrder[Index mod 10]) then
-            if ShowMessageBoxGI(
-                    Self,
-                    LanguageDataConfig.GetParamByPathOrMarker('FormGS.NotPermitGoods'),
-                    mbgOK or mbgCancel)
+            if ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormGS.NotPermitGoods'), mbgOK or mbgCancel)
                 <> mbgResultOK then
             begin
               DraggedGoodsIndex := -1;
@@ -1067,32 +931,19 @@ begin
           begin
             if DraggedGoodsIndex < 10 then
             begin
-              TalkShip.SetMoney(
-                  TalkShip.Money
-                      + Count
-                          * GetPlayer
-                              .ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
-              );
+              TalkShip.SetMoney(TalkShip.Money + Count * GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil));
               Dec(
                   TalkShip.CargoGoods[ShopGoodsOrder[DraggedGoodsIndex]].TotalCost,
-                  Count
-                      * GetPlayer
-                          .ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
+                  Count * GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
               );
               Dec(TalkShip.CargoGoods[ShopGoodsOrder[DraggedGoodsIndex]].Count, Count);
             end
             else
             begin
-              TalkShip.SetMoney(
-                  TalkShip.Money
-                      - Count
-                          * GetPlayer
-                              .ShopGoodsSellPrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
-              );
+              TalkShip.SetMoney(TalkShip.Money - Count * GetPlayer.ShopGoodsSellPrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil));
               Inc(
                   TalkShip.CargoGoods[ShopGoodsOrder[DraggedGoodsIndex mod 10]].TotalCost,
-                  Count
-                      * GetPlayer.ShopGoodsSellPrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
+                  Count * GetPlayer.ShopGoodsSellPrice(ShopGoodsOrder[DraggedGoodsIndex mod 10], nil)
               );
               Inc(TalkShip.CargoGoods[ShopGoodsOrder[DraggedGoodsIndex mod 10]].Count, Count);
             end;
@@ -1187,9 +1038,7 @@ begin
         Action := 'Sale';
         Price := GetPlayer.ShopGoodsSellPrice(Good, nil);
         Count := GetPlayer.CargoGoods[Good].Count;
-        Profit :=
-            GetPlayer.ShopGoodsSellPrice(Good, nil)
-                - Integer(Round(GetPlayer.GetAverageCargoCost(Good)));
+        Profit := GetPlayer.ShopGoodsSellPrice(Good, nil) - Integer(Round(GetPlayer.GetAverageCargoCost(Good)));
       end;
       Text := LookupLocalizedTextByKey('FormGS.' + Action + 'Help');
       ReplaceTextToken(Text, '<Goods>', GoodsMarket[Good].TradeName, TextHighlightColorTag);
@@ -1201,12 +1050,7 @@ begin
         Color := RedColorTag
       else if Profit = 0 then
         Color := '';
-      ReplaceTextToken(
-          Text,
-          '<OldCost>',
-          IntToStr(Round(GetPlayer.GetAverageCargoCost(Good))),
-          Color
-      );
+      ReplaceTextToken(Text, '<OldCost>', IntToStr(Round(GetPlayer.GetAverageCargoCost(Good))), Color);
       ReplaceTextToken(Text, '<Profit>', IntToStr(Profit), TextHighlightColorTag);
     end
     else if Index < 10 then
@@ -1249,10 +1093,7 @@ begin
   if GetPlayer = nil then
     Exit;
   if DraggedGoodsIndex >= 0 then
-    SetCursorImage(
-        'GI,' + GetItemTypeBitmapPath(TItemType(ShopGoodsOrder[DraggedGoodsIndex mod 10])),
-        Classes.Point(16, 16)
-    )
+    SetCursorImage('GI,' + GetItemTypeBitmapPath(TItemType(ShopGoodsOrder[DraggedGoodsIndex mod 10])), Classes.Point(16, 16))
   else
   begin
     Found := False;
@@ -1304,8 +1145,7 @@ begin
       Result := GetPlayer.GetCargoFreeSpace;
     Total := Result;
     Total := GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[Index], nil) * Total;
-    if (Result * GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[Index], nil) > GetPlayer.Money)
-        or (Total > MaxMonetaryValue) then
+    if (Result * GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[Index], nil) > GetPlayer.Money) or (Total > MaxMonetaryValue) then
       Result := GetPlayer.Money div GetPlayer.ShopGoodsPurchasePrice(ShopGoodsOrder[Index], nil);
   end
   else
@@ -1315,10 +1155,8 @@ begin
     begin
       if PartnerCargoLimit < Result then
         Result := PartnerCargoLimit;
-      if Result * TalkShip.ShopGoodsSellPrice(ShopGoodsOrder[Index - 10], nil)
-          > PartnerMoneyLimit then
-        Result :=
-            PartnerMoneyLimit div TalkShip.ShopGoodsSellPrice(ShopGoodsOrder[Index - 10], nil);
+      if Result * TalkShip.ShopGoodsSellPrice(ShopGoodsOrder[Index - 10], nil) > PartnerMoneyLimit then
+        Result := PartnerMoneyLimit div TalkShip.ShopGoodsSellPrice(ShopGoodsOrder[Index - 10], nil);
     end;
   end;
 end;
@@ -1346,13 +1184,7 @@ begin
   for RowNumber := 1 to SeparatorLength do
     Separator := Separator + '-';
   if Location is TPlanet then
-    Title :=
-        FormatText1(
-            LocalizedColorText('FormGS.PlanetInfo'),
-            TextHighlightColorTag,
-            '<Planet>',
-            (Location as TPlanet).Name
-        )
+    Title := FormatText1(LocalizedColorText('FormGS.PlanetInfo'), TextHighlightColorTag, '<Planet>', (Location as TPlanet).Name)
   else if Location is TRuins then
     Title := WrapTextInColor((Location as TRuins).GetColoredFullName(TextHighlightColorTag), '')
   else if GetPlayer.InNormalSpace then
@@ -1367,29 +1199,10 @@ begin
           + WrapTextInColor(Galaxy.FormatTurnDate(Galaxy.CurrentTurn), GreenColorTag)
           + '</align>';
   if Location is TPlanet then
-    Info :=
-        FormatText1(
-            LocalizedColorText('FormGS.StarInfo'),
-            TextHighlightColorTag,
-            '<Star>',
-            (Location as TPlanet).CurrentStar.Name
-        )
+    Info := FormatText1(LocalizedColorText('FormGS.StarInfo'), TextHighlightColorTag, '<Star>', (Location as TPlanet).CurrentStar.Name)
   else if Location is TShip then
-    Info :=
-        FormatText1(
-            LocalizedColorText('FormGS.StarInfo'),
-            TextHighlightColorTag,
-            '<Star>',
-            (Location as TShip).CurrentStar.Name
-        );
-  Text :=
-      Text
-          + '<td='
-          + IntToStr(GiScalePixels(400))
-          + '>'
-          + '<align=center>'
-          + WrapTextInColor(Info, '')
-          + '</align>';
+    Info := FormatText1(LocalizedColorText('FormGS.StarInfo'), TextHighlightColorTag, '<Star>', (Location as TShip).CurrentStar.Name);
+  Text := Text + '<td=' + IntToStr(GiScalePixels(400)) + '>' + '<align=center>' + WrapTextInColor(Info, '') + '</align>';
   Text := Text + #13#10 + Separator;
   Text :=
       Text
@@ -1454,22 +1267,8 @@ begin
             + WrapTextInColor(IntToStr(RowNumber), '')
             + '</align>';
     Inc(RowNumber);
-    Text :=
-        Text
-            + '<td='
-            + IntToStr(GiScalePixels(30))
-            + '>'
-            + ''
-            + WrapTextInColor(GoodsMarket[Good].DisplayName, '')
-            + '';
-    Text :=
-        Text
-            + '<td='
-            + IntToStr(GiScalePixels(190))
-            + '>'
-            + '<align=center>'
-            + WrapTextInColor(IntToStr(Stock), '')
-            + '</align>';
+    Text := Text + '<td=' + IntToStr(GiScalePixels(30)) + '>' + '' + WrapTextInColor(GoodsMarket[Good].DisplayName, '') + '';
+    Text := Text + '<td=' + IntToStr(GiScalePixels(190)) + '>' + '<align=center>' + WrapTextInColor(IntToStr(Stock), '') + '</align>';
     Text :=
         Text
             + '<td='
@@ -1477,13 +1276,7 @@ begin
             + '><align=right>'
             + WrapTextInColor(IntToStr(GetPlayer.ShopGoodsPurchasePrice(Good, Location)), '')
             + '</align>';
-    Text :=
-        Text
-            + '<td='
-            + IntToStr(GiScalePixels(300))
-            + '><align=center>'
-            + WrapTextInColor('/', '')
-            + '</align>';
+    Text := Text + '<td=' + IntToStr(GiScalePixels(300)) + '><align=center>' + WrapTextInColor('/', '') + '</align>';
     Text :=
         Text
             + '<td='
@@ -1506,13 +1299,7 @@ begin
       Info := WrapTextInColor(LookupLocalizedTextByKey('FormGS.LegalityNo'), RedColorTag);
     GetPlayer.CurrentPlanet := SavedPlanet;
     GetPlayer.DockedTo := SavedDockedTo;
-    Text :=
-        Text
-            + '<td='
-            + IntToStr(GiScalePixels(405))
-            + '><align=center>'
-            + WrapTextInColor(Info, '')
-            + '</align>';
+    Text := Text + '<td=' + IntToStr(GiScalePixels(405)) + '><align=center>' + WrapTextInColor(Info, '') + '</align>';
   end;
   Result := Text;
 end;
@@ -1531,12 +1318,7 @@ begin
     Location := TalkShip
   else
     Location := nil;
-  AddOrUpdatePlayerBubble(
-      pmUserNote,
-      Galaxy.CurrentTurn,
-      BuildPriceText(Location),
-      StarMapScreen.GetPriceSnapshotKey(Location)
-  );
+  AddOrUpdatePlayerBubble(pmUserNote, Galaxy.CurrentTurn, BuildPriceText(Location), StarMapScreen.GetPriceSnapshotKey(Location));
   MainPanel.RebuildMessageButtons(False);
   FinishModalTrade;
 end;
@@ -1695,9 +1477,7 @@ begin
           GraphBuf.PitchBytes,
           0,
           0,
-          PAnsiChar(ScreenRenderBuffer.GetPixels)
-              + Position.X * 2
-              + Position.Y * ScreenRenderBuffer.PitchBytes,
+          PAnsiChar(ScreenRenderBuffer.GetPixels) + Position.X * 2 + Position.Y * ScreenRenderBuffer.PitchBytes,
           ScreenRenderBuffer.PitchBytes,
           0,
           0,
@@ -1732,13 +1512,7 @@ begin
     Sender.UserValue := Sequence;
     with GetByName('FaceI') as TImageGI do
     begin
-      SetImagePath(
-          'GI,Bm.Captain.'
-              + GiResourceSuffix
-              + 'ShopBot'
-              + IntToStr(Cardinal(Sender.UserValue))
-              + 'i'
-      );
+      SetImagePath('GI,Bm.Captain.' + GiResourceSuffix + 'ShopBot' + IntToStr(Cardinal(Sender.UserValue)) + 'i');
       SetHardwareMirrorHorizontal(HardwareRenderingEnabled);
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
@@ -1747,9 +1521,7 @@ begin
     with GetByName('FaceA') as TgaiGI do
     begin
       FirstFrameOnly := not AnimCaptain;
-      SetImagePath(
-          'Bm.Captain.' + GiResourceSuffix + 'ShopBot' + IntToStr(Cardinal(Sender.UserValue)) + 'a'
-      );
+      SetImagePath('Bm.Captain.' + GiResourceSuffix + 'ShopBot' + IntToStr(Cardinal(Sender.UserValue)) + 'a');
       SetHardwareMirrorHorizontal(HardwareRenderingEnabled);
       SequenceIndex := 0;
       UpdateAutoGeometry;
@@ -1887,20 +1659,12 @@ begin
     ShipClicked(nil)
   else if not GetPlayer.InNormalSpace then
   begin
-    if (Key = Ord('M'))
-        or (Key = Ord('R'))
-        or (Key = VK_ESCAPE)
-        or (Key = VK_F2)
-        or (Key = VK_F3) then
+    if (Key = Ord('M')) or (Key = Ord('R')) or (Key = VK_ESCAPE) or (Key = VK_F2) or (Key = VK_F3) then
       AmbientSound.SetVolume(0);
     MainPanel.ProcessKeyDown(Key);
     PlanetPanel.ProcessKeyDown(Key);
     StationPanel.ProcessKeyDown(Key);
-    if (Key = Ord('M'))
-        or (Key = Ord('R'))
-        or (Key = VK_ESCAPE)
-        or (Key = VK_F2)
-        or (Key = VK_F3) then
+    if (Key = Ord('M')) or (Key = Ord('R')) or (Key = VK_ESCAPE) or (Key = VK_F2) or (Key = VK_F3) then
       AmbientSound.SetVolume(1);
   end;
 end;
@@ -1946,8 +1710,7 @@ begin
     Exit;
   if ExitScreenLoop then
     Exit;
-  if TurnCalculationPhase
-      in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
+  if TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
   begin
     Galaxy.CheckIntegrityChecksum(10006);
     ExecuteGameplayUiCode(Block, Key);
@@ -1969,30 +1732,21 @@ begin
     if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-        MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
       else
         MusicManager.PlayCategory('Nation.PiratePlanetMain');
     end
     else
-      MusicManager
-          .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
   end
   else if GetPlayer.IsDockedToShip then
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
     else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
     else
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-      );
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
   end;
 end;
 

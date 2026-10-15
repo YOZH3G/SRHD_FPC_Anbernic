@@ -1469,8 +1469,7 @@ begin
   begin
     Value := ScriptFunctionScope.GetVarNE(av[2].AsString);
     if Value = nil then
-      raise Exception.Create(
-          'Error.Script GetValueFromScript - var ' + av[2].AsString + ' not found');
+      raise Exception.Create('Error.Script GetValueFromScript - var ' + av[2].AsString + ' not found');
   end
   else
   begin
@@ -1487,11 +1486,7 @@ begin
     if Value = nil then
       Value := ScriptFunctionScope.GetVarNE(av[2].AsString);
     if Value = nil then
-      raise Exception.Create(
-          'Error.Script GetValueFromScript - var '
-              + av[2].AsString
-              + ' not found in script '
-              + av[1].AsString);
+      raise Exception.Create('Error.Script GetValueFromScript - var ' + av[2].AsString + ' not found in script ' + av[1].AsString);
   end;
   Index := 2;
   while (Value.ValueKind = vkArray) and (Index < LastArg) do
@@ -1538,11 +1533,7 @@ begin
   if Value = nil then
     Value := Script.TurnCode.LocalVar.GetVarNE(Name);
   if (Value = nil) or (Value.ValueKind <> vkFunction) then
-    raise Exception.Create(
-        'Error.Script RunFunctionFromScript - function '
-            + Name
-            + ' not found in script '
-            + av[1].AsString);
+    raise Exception.Create('Error.Script RunFunctionFromScript - function ' + Name + ' not found in script ' + av[1].AsString);
   CallCode := TCodeEC.Create;
   CallCode.CopyFromFast(Value.AsFunction);
   for I := 3 to LastArg do
@@ -1562,8 +1553,7 @@ begin
       raise;
     end;
     on E: Exception do
-      raise ExceptionExpressionEC.Create(
-          'Error in function ' + Value.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
+      raise ExceptionExpressionEC.Create('Error in function ' + Value.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
   end;
   { Native exceptions bypass context restoration; only EBreakMessageGI frees CallCode. }
   CurrentScript := SavedScript;
@@ -1610,8 +1600,7 @@ begin
     Entry.Text := av[1].AsString;
     Entry.DateTurn := Turn;
     if (GetPlayer.JournalRecords.Count <= 0)
-        or (TJournalRecord(GetPlayer.JournalRecords[GetPlayer.JournalRecords.Count - 1]).DateTurn
-            <= Turn) then
+        or (TJournalRecord(GetPlayer.JournalRecords[GetPlayer.JournalRecords.Count - 1]).DateTurn <= Turn) then
     begin
       GetPlayer.JournalRecords.Add(Entry);
       Exit;
@@ -1704,11 +1693,7 @@ begin
     end;
     Count := 0;
     for Index := 0 to Ship.AwardIds.Count - 1 do
-      if SysToReward(
-              LookupLocalizedTextByKey(
-                  'Reward.' + SysUtils.IntToStr(Integer(Ship.AwardIds[Index])) + '.Type'
-              ))
-          = Kind then
+      if SysToReward(LookupLocalizedTextByKey('Reward.' + SysUtils.IntToStr(Integer(Ship.AwardIds[Index])) + '.Type')) = Kind then
         Inc(Count);
     av[0].AsInteger := Count;
   end;
@@ -2072,13 +2057,7 @@ begin
       Ship.CurrentStar.Ships.Add(Drone);
       if Ship.InNormalSpace then
       begin
-        Angle :=
-            SeededRandomIntRange(
-                    0,
-                    360,
-                    Drone.Id * (Ship.CurrentStar.GenerationSeed * Cardinal(Galaxy.CurrentTurn)))
-                * Pi
-                / 180;
+        Angle := SeededRandomIntRange(0, 360, Drone.Id * (Ship.CurrentStar.GenerationSeed * Cardinal(Galaxy.CurrentTurn))) * Pi / 180;
         Drone.Position.X := Sin(Angle) * 100 + Ship.Position.X;
         Drone.Position.Y := Ship.Position.Y - Cos(Angle) * 100;
       end
@@ -2283,8 +2262,7 @@ procedure SF_SetRelationPlanet(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 3 then
     raise Exception.Create('Error.Script SetRelationPlanet');
-  CurrentScript
-      .SetPlanetRelation(av[2].AsInteger, TPlanet(av[1].AsDword), TRelationLevel(av[3].AsInteger));
+  CurrentScript.SetPlanetRelation(av[2].AsInteger, TPlanet(av[1].AsDword), TRelationLevel(av[3].AsInteger));
 end;
 
 procedure SF_GetRelationPlanet(av: array of TVarEC; code: TCodeEC);
@@ -2386,8 +2364,7 @@ procedure SF_IdToShip(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) < 1 then
     raise Exception.Create('Error.Script IdToShip');
-  av[0].AsDword :=
-      PtrUInt(Galaxy.IdToShip(av[1].AsDword, (High(av) > 1) and (av[2].AsInteger <> 0)));
+  av[0].AsDword := PtrUInt(Galaxy.IdToShip(av[1].AsDword, (High(av) > 1) and (av[2].AsInteger <> 0)));
 end;
 
 procedure SF_IdToItem(av: array of TVarEC; code: TCodeEC);
@@ -2934,8 +2911,7 @@ begin
     else if av[2].AsString = 'EminentPirate' then
       av[0].AsInteger := Ord(Galaxy.EminentCareerShips[rcPirate] = Obj)
     else
-      raise Exception.Create(
-          AnsiString('Error.Script RangerStatus - unknown keyword ' + av[2].AsString));
+      raise Exception.Create(AnsiString('Error.Script RangerStatus - unknown keyword ' + av[2].AsString));
     Exit;
   end;
   if not (Obj is TRanger) then
@@ -3120,13 +3096,7 @@ begin
     Exit;
   if Ship.CurrentPlanet <> nil then
     AppendLogLineThreadSafe(
-        AnsiString(
-            'Warning! '
-                + GetScriptContextDescription
-                + ' orders ship '
-                + Ship.GetFullName(' ')
-                + ' to jump while landed on planet!'
-        )
+        AnsiString('Warning! ' + GetScriptContextDescription + ' orders ship ' + Ship.GetFullName(' ') + ' to jump while landed on planet!')
     );
   SavedOrderLock := Ship.AbsoluteScriptOrder;
   Ship.AbsoluteScriptOrder := 0;
@@ -3134,9 +3104,7 @@ begin
   Ship.AbsoluteScriptOrder := SavedOrderLock;
   if GetPlayer = Ship then
     PendingPlayerFollowTarget := nil;
-  if (GetPlayer = Ship)
-      and (GetInnermostScreenLoop = StarMapScreen)
-      and (StarMapScreen.Mode = smmOrders) then
+  if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
   begin
     StarMapScreen.ClearPathOverlay(True);
     StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -3163,9 +3131,7 @@ begin
   Ship.AbsoluteScriptOrder := SavedOrderLock;
   if GetPlayer = Ship then
     PendingPlayerFollowTarget := nil;
-  if (GetPlayer = Ship)
-      and (GetInnermostScreenLoop = StarMapScreen)
-      and (StarMapScreen.Mode = smmOrders) then
+  if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
   begin
     StarMapScreen.ClearPathOverlay(True);
     StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -3354,8 +3320,7 @@ begin
         Binding := CurrentScript.Ships[I];
         if ExcludeHyperspace and Binding.Ship.InHyperspace then
           Continue;
-        if (Binding.GroupIndex = GroupIndex)
-            and (Binding.Ship.CurrentStar.Constellation = Location) then
+        if (Binding.GroupIndex = GroupIndex) and (Binding.Ship.CurrentStar.Constellation = Location) then
           Inc(FoundCount);
       end;
     end
@@ -3367,9 +3332,7 @@ begin
         Binding := CurrentScript.Ships[I];
         if ExcludeHyperspace and Binding.Ship.InHyperspace then
           Continue;
-        if ExcludeHyperspace
-            and (Binding.Ship.DockedTo <> nil)
-            and Binding.Ship.DockedTo.InHyperspace then
+        if ExcludeHyperspace and (Binding.Ship.DockedTo <> nil) and Binding.Ship.DockedTo.InHyperspace then
           Continue;
         if (Binding.GroupIndex = GroupIndex) and (Binding.Ship.CurrentStar = Location) then
           Inc(FoundCount);
@@ -3386,9 +3349,7 @@ begin
             and (GetPlayer.RuinsMode <> 0)
             and (GetPlayer.RuinsSavedPlanet = Location) then
           Inc(FoundCount)
-        else if (Binding.GroupIndex = GroupIndex)
-            and Binding.Ship.IsOnPlanet
-            and (Binding.Ship.CurrentPlanet = Location) then
+        else if (Binding.GroupIndex = GroupIndex) and Binding.Ship.IsOnPlanet and (Binding.Ship.CurrentPlanet = Location) then
           Inc(FoundCount);
       end;
     end
@@ -3403,9 +3364,7 @@ begin
             and (GetPlayer.RuinsMode <> 0)
             and (GetPlayer.RuinsSavedDockedTo = Location) then
           Inc(FoundCount)
-        else if (Binding.GroupIndex = GroupIndex)
-            and Binding.Ship.IsDockedToShip
-            and (Binding.Ship.DockedTo = Location) then
+        else if (Binding.GroupIndex = GroupIndex) and Binding.Ship.IsDockedToShip and (Binding.Ship.DockedTo = Location) then
           Inc(FoundCount);
       end;
     end
@@ -3415,8 +3374,7 @@ begin
       for I := 0 to Count - 1 do
       begin
         Binding := CurrentScript.Ships[I];
-        if (Binding.GroupIndex = GroupIndex)
-            and TScriptPlace(Location).ShipInPlace(Binding.Ship) then
+        if (Binding.GroupIndex = GroupIndex) and TScriptPlace(Location).ShipInPlace(Binding.Ship) then
           Inc(FoundCount);
       end;
     end;
@@ -3582,20 +3540,13 @@ begin
   end;
   if not (Kind in [pmRadio, pmRadioPlayer]) or (Obj = nil) or InPlayerSystem then
   begin
-    if (Kind = pmQuestActive)
-        and (Key <> '')
-        and (CurrentScript <> nil)
-        and (CurrentScript.EtherIds.IndexOf(Key) < 0) then
+    if (Kind = pmQuestActive) and (Key <> '') and (CurrentScript <> nil) and (CurrentScript.EtherIds.IndexOf(Key) < 0) then
       CurrentScript.EtherIds.Add(Key);
     MessageEntry :=
         AddOrUpdatePlayerBubble(
             Kind,
             Galaxy.CurrentTurn,
-            ReplaceAllWideString(
-                ReplaceAllWideString(av[3].AsString, '<clr>', TextHighlightColorTag),
-                '<clrEnd>',
-                EndColorTag
-            ),
+            ReplaceAllWideString(ReplaceAllWideString(av[3].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag),
             Key
         );
     if Obj <> nil then
@@ -3667,20 +3618,13 @@ begin
   end;
   if not (Kind in [pmRadio, pmRadioPlayer]) or (Obj = nil) or InPlayerSystem then
   begin
-    if (Kind = pmQuestActive)
-        and (Key <> '')
-        and (CurrentScript <> nil)
-        and (CurrentScript.EtherIds.IndexOf(Key) < 0) then
+    if (Kind = pmQuestActive) and (Key <> '') and (CurrentScript <> nil) and (CurrentScript.EtherIds.IndexOf(Key) < 0) then
       CurrentScript.EtherIds.Add(Key);
     MessageEntry :=
         AddOrUpdatePlayerBubble(
             Kind,
             Galaxy.CurrentTurn,
-            ReplaceAllWideString(
-                ReplaceAllWideString(av[4].AsString, '<clr>', TextHighlightColorTag),
-                '<clrEnd>',
-                EndColorTag
-            ),
+            ReplaceAllWideString(ReplaceAllWideString(av[4].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag),
             Key
         );
     MessageEntry.ImageNameOverride := av[1].AsString;
@@ -3837,8 +3781,7 @@ procedure SF_ShipData(av: array of TVarEC; code: TCodeEC);
 begin
   av[0].AsDword := GetScriptShipBindingForContext(CurrentScript.CurrentShip, CurrentScript).Data[0];
   if High(av) >= 1 then
-    GetScriptShipBindingForContext(CurrentScript.CurrentShip, CurrentScript).Data[0] :=
-        av[1].AsDword;
+    GetScriptShipBindingForContext(CurrentScript.CurrentShip, CurrentScript).Data[0] := av[1].AsDword;
 end;
 
 procedure SF_Format(av: array of TVarEC; code: TCodeEC);
@@ -3854,12 +3797,7 @@ begin
     Text := ReplaceAllWideString(Text, '<br>', #13#10);
     Text := ReplaceAllWideString(Text, '<ll>', #13#10' '#13#10);
     if GetPlayer <> nil then
-      Text :=
-          ReplaceAllWideString(
-              Text,
-              '<Player>',
-              TextHighlightColorTag + GetPlayer.Name + EndColorTag
-          );
+      Text := ReplaceAllWideString(Text, '<Player>', TextHighlightColorTag + GetPlayer.Name + EndColorTag);
     av[0].AsString := Text;
     Exit;
   end;
@@ -3874,12 +3812,7 @@ begin
   else
     Color := TextHighlightColorTag;
   for I := 0 to Count - 1 do
-    Text :=
-        ReplaceAllWideString(
-            Text,
-            av[2 + I * 2].AsString,
-            WrapTextInColor(av[2 + I * 2 + 1].AsString, Color)
-        );
+    Text := ReplaceAllWideString(Text, av[2 + I * 2].AsString, WrapTextInColor(av[2 + I * 2 + 1].AsString, Color));
   av[0].AsString := Text;
 end;
 
@@ -3913,9 +3846,7 @@ begin
     Exit;
   if TalkDialogActive then
     Exit;
-  Immediate :=
-      TurnCalculationPhase
-          in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared];
+  Immediate := TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared];
   ScriptSnap(Snapshot);
   if High(av) = 1 then
   begin
@@ -4003,25 +3934,13 @@ begin
     raise Exception.Create('Error.Script DText');
   if GetPlayer.IsDockedToShip then
     RuinsTalkScreen.DialogText :=
-        ReplaceAllWideString(
-            ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-            '<clrEnd>',
-            EndColorTag
-        )
+        ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag)
   else if not GetPlayer.IsOnPlanet then
     TalkScreen.DialogText :=
-        ReplaceAllWideString(
-            ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-            '<clrEnd>',
-            EndColorTag
-        )
+        ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag)
   else
     GovernmentScreen.DialogText :=
-        ReplaceAllWideString(
-            ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-            '<clrEnd>',
-            EndColorTag
-        );
+        ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag);
 end;
 
 procedure SF_DAddText(av: array of TVarEC; code: TCodeEC);
@@ -4031,24 +3950,15 @@ begin
   if GetPlayer.IsDockedToShip then
     RuinsTalkScreen.DialogText :=
         RuinsTalkScreen.DialogText
-            + ReplaceAllWideString(
-                ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-                '<clrEnd>',
-                EndColorTag)
+            + ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag)
   else if not GetPlayer.IsOnPlanet then
     TalkScreen.DialogText :=
         TalkScreen.DialogText
-            + ReplaceAllWideString(
-                ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-                '<clrEnd>',
-                EndColorTag)
+            + ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag)
   else
     GovernmentScreen.DialogText :=
         GovernmentScreen.DialogText
-            + ReplaceAllWideString(
-                ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag),
-                '<clrEnd>',
-                EndColorTag);
+            + ReplaceAllWideString(ReplaceAllWideString(av[1].AsString, '<clr>', TextHighlightColorTag), '<clrEnd>', EndColorTag);
 end;
 
 procedure SF_DAdd(av: array of TVarEC; code: TCodeEC);
@@ -4070,8 +3980,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptTakeoffChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptTakeoffChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptTakeoffChoice('');
     end
@@ -4095,8 +4004,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptNewsExitChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptNewsExitChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptNewsExitChoice('');
     end
@@ -4104,8 +4012,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptGameEndChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptGameEndChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptGameEndChoice('');
     end
@@ -4113,8 +4020,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptHangarChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptHangarChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptHangarChoice('');
     end
@@ -4122,8 +4028,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptRestartChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptRestartChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptRestartChoice('');
     end
@@ -4131,8 +4036,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen
-            .AddScriptGoodsChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        RuinsTalkScreen.AddScriptGoodsChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         RuinsTalkScreen.AddScriptGoodsChoice('');
     end
@@ -4140,11 +4044,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        RuinsTalkScreen.AddChoice(
-            '- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'),
-            0,
-            ScriptDialogBlockCallback
-        )
+        RuinsTalkScreen.AddChoice('- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'), 0, ScriptDialogBlockCallback)
       else
         RuinsTalkScreen.AddChoice('', 0, ScriptDialogBlockCallback);
     end
@@ -4158,18 +4058,10 @@ begin
             RuinsTalkScreen.RunScriptAnswerKeepingScroll
         )
       else
-        RuinsTalkScreen.AddChoice(
-            '',
-            CurrentScript.CurrentAnswer,
-            RuinsTalkScreen.RunScriptAnswerKeepingScroll
-        );
+        RuinsTalkScreen.AddChoice('', CurrentScript.CurrentAnswer, RuinsTalkScreen.RunScriptAnswerKeepingScroll);
     end
     else
-      RuinsTalkScreen.AddChoice(
-          '- ' + av[1].AsString,
-          CurrentScript.CurrentAnswer,
-          RuinsTalkScreen.RunScriptAnswer
-      );
+      RuinsTalkScreen.AddChoice('- ' + av[1].AsString, CurrentScript.CurrentAnswer, RuinsTalkScreen.RunScriptAnswer);
   end
   else if not GetPlayer.IsOnPlanet then
   begin
@@ -4186,12 +4078,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        TalkScreen.AddChoice(
-            '- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'),
-            0,
-            TalkScreen.FastExit,
-            0
-        )
+        TalkScreen.AddChoice('- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'), 0, TalkScreen.FastExit, 0)
       else
         TalkScreen.AddChoice('', 0, TalkScreen.FastExit, 0);
     end
@@ -4221,12 +4108,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        TalkScreen.AddChoice(
-            '- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'),
-            0,
-            ScriptDialogBlockCallback,
-            0
-        )
+        TalkScreen.AddChoice('- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'), 0, ScriptDialogBlockCallback, 0)
       else
         TalkScreen.AddChoice('', 0, ScriptDialogBlockCallback, 0);
     end
@@ -4241,16 +4123,10 @@ begin
             0
         )
       else
-        TalkScreen
-            .AddChoice('', CurrentScript.CurrentAnswer, TalkScreen.RunScriptAnswerKeepingScroll, 0);
+        TalkScreen.AddChoice('', CurrentScript.CurrentAnswer, TalkScreen.RunScriptAnswerKeepingScroll, 0);
     end
     else
-      TalkScreen.AddChoice(
-          '- ' + av[1].AsString,
-          CurrentScript.CurrentAnswer,
-          TalkScreen.RunScriptAnswer,
-          0
-      );
+      TalkScreen.AddChoice('- ' + av[1].AsString, CurrentScript.CurrentAnswer, TalkScreen.RunScriptAnswer, 0);
   end
   else
   begin
@@ -4258,8 +4134,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptTakeoffChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptTakeoffChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptTakeoffChoice('');
     end
@@ -4267,8 +4142,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptPlanetChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptPlanetChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptPlanetChoice('');
     end
@@ -4276,8 +4150,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptGoodsChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptGoodsChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptGoodsChoice('');
     end
@@ -4285,8 +4158,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptShopChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptShopChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptShopChoice('');
     end
@@ -4294,8 +4166,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptHangarChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptHangarChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptHangarChoice('');
     end
@@ -4303,8 +4174,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptRestartChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptRestartChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptRestartChoice('');
     end
@@ -4312,8 +4182,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen
-            .AddScriptNewsExitChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
+        GovernmentScreen.AddScriptNewsExitChoice(ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'))
       else
         GovernmentScreen.AddScriptNewsExitChoice('');
     end
@@ -4330,11 +4199,7 @@ begin
     begin
       Count := CountDelimitedPartsW(av[1].AsString, '~');
       if Count > 1 then
-        GovernmentScreen.AddChoice(
-            '- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'),
-            0,
-            ScriptDialogBlockCallback
-        )
+        GovernmentScreen.AddChoice('- ' + ExtractDelimitedRangeW(av[1].AsString, 1, Count - 1, '~'), 0, ScriptDialogBlockCallback)
       else
         GovernmentScreen.AddChoice('', 0, ScriptDialogBlockCallback);
     end
@@ -4348,18 +4213,10 @@ begin
             GovernmentScreen.RunScriptAnswerKeepingScroll
         )
       else
-        GovernmentScreen.AddChoice(
-            '',
-            CurrentScript.CurrentAnswer,
-            GovernmentScreen.RunScriptAnswerKeepingScroll
-        );
+        GovernmentScreen.AddChoice('', CurrentScript.CurrentAnswer, GovernmentScreen.RunScriptAnswerKeepingScroll);
     end
     else
-      GovernmentScreen.AddChoice(
-          '- ' + av[1].AsString,
-          CurrentScript.CurrentAnswer,
-          GovernmentScreen.RunScriptAnswer
-      );
+      GovernmentScreen.AddChoice('- ' + av[1].AsString, CurrentScript.CurrentAnswer, GovernmentScreen.RunScriptAnswer);
   end;
 end;
 
@@ -4420,8 +4277,7 @@ begin
       Binding := CurrentScript.Ships[I];
       { Native group lookup excludes inventory slot zero. }
       if (Binding.GroupIndex = Integer(Obj))
-          and ((Binding.Ship.Inventory.IndexOf(Item) > 0)
-              or (Binding.Ship.Artefacts.IndexOf(Item) > 0)) then
+          and ((Binding.Ship.Inventory.IndexOf(Item) > 0) or (Binding.Ship.Artefacts.IndexOf(Item) > 0)) then
       begin
         av[0].AsInteger := 1;
         Exit;
@@ -4606,8 +4462,7 @@ begin
   begin
     if not GoodsLegalOnPlanet[Kind, Planet.RaceId, Planet.Government] then
       av[0].AsInteger := 1
-    else if (Kind in [Ord(t_Food), Ord(t_Medicine)])
-        and Ship.IsHealthEffectActive(heNewMolizone) then
+    else if (Kind in [Ord(t_Food), Ord(t_Medicine)]) and Ship.IsHealthEffectActive(heNewMolizone) then
       av[0].AsInteger := 1;
   end;
 end;
@@ -4637,11 +4492,7 @@ begin
   if GetPlayer <> Ship then
   begin
     Ship.DropGoodsIntoSpace(Kind, Quantity);
-    Item :=
-        PMovingDropItemEntry(
-                    Ship.CurrentStar.MovingDropItems[Ship.CurrentStar.MovingDropItems.Count - 1])
-                .Payload
-            as TItem;
+    Item := PMovingDropItemEntry(Ship.CurrentStar.MovingDropItems[Ship.CurrentStar.MovingDropItems.Count - 1]).Payload as TItem;
   end
   else
   begin
@@ -4651,13 +4502,7 @@ begin
     Goods := TGoods.Create;
     Goods.Init(TItemType(Kind), Quantity);
     Star.Items.Add(Goods);
-    Angle :=
-        SeededRandomIntRange(
-                0,
-                360,
-                Kind * (Cardinal(Galaxy.CurrentTurn) * GetPlayer.CurrentStar.GenerationSeed))
-            * Pi
-            / 180;
+    Angle := SeededRandomIntRange(0, 360, Kind * (Cardinal(Galaxy.CurrentTurn) * GetPlayer.CurrentStar.GenerationSeed)) * Pi / 180;
     Goods.Position.X := GetPlayer.Position.X + Sin(Angle) * 100;
     Goods.Position.Y := GetPlayer.Position.Y - Cos(Angle) * 100;
     Goods.GetGraphObject.SetPosition(Goods.Position);
@@ -4695,10 +4540,7 @@ begin
     RaiseWideMessage('Error.Script UselessItemCreate place');
   Place.OriginStar.Items.Add(Item);
   Item.Position := Place.GetPoint;
-  Angle :=
-      HeadingDegreesToRadians(
-          SeededRandomIntRange(0, 359, Item.Id * Place.OriginStar.GenerationSeed)
-      );
+  Angle := HeadingDegreesToRadians(SeededRandomIntRange(0, 359, Item.Id * Place.OriginStar.GenerationSeed));
   Item.Position.X := Item.Position.X + Sin(Angle) * Place.Radius;
   Item.Position.Y := Item.Position.Y - Cos(Angle) * Place.Radius;
 end;
@@ -4829,26 +4671,14 @@ begin
     if Ship.CurrentPlanet = nil then
       Inc(Turns, Ceil(PointDistance(Position, Ship.Position) / Max(1, Ship.Speed)))
     else
-      Inc(
-          Turns,
-          Ceil(PointDistance(Position, Ship.CurrentPlanet.GetPosition) / Max(1, Ship.Speed))
-      );
+      Inc(Turns, Ceil(PointDistance(Position, Ship.CurrentPlanet.GetPosition) / Max(1, Ship.Speed)));
   end
   else
   begin
     if Ship.CurrentPlanet = nil then
-      Inc(
-          Turns,
-          Ceil(PointDistance(Ship.GetJumpDeparturePoint(Star), Ship.Position) / Max(1, Ship.Speed))
-      )
+      Inc(Turns, Ceil(PointDistance(Ship.GetJumpDeparturePoint(Star), Ship.Position) / Max(1, Ship.Speed)))
     else
-      Inc(
-          Turns,
-          Ceil(
-              PointDistance(Ship.GetJumpDeparturePoint(Star), Ship.CurrentPlanet.GetPosition)
-                  / Max(1, Ship.Speed)
-          )
-      );
+      Inc(Turns, Ceil(PointDistance(Ship.GetJumpDeparturePoint(Star), Ship.CurrentPlanet.GetPosition) / Max(1, Ship.Speed)));
     Inc(Turns, Ship.CalculateJumpTravelDays(Ship.CurrentStar, Star));
     Inc(Turns, Ceil(PointDistance(Position, Ship.GetArrivalPosition(Star)) / Max(1, Ship.Speed)));
   end;
@@ -4990,8 +4820,7 @@ begin
   if High(av) < 1 then
     raise Exception.Create('Error.Script ShipInScript');
   if TShip(av[1].AsDword).HasScriptBindings
-      or (((High(av) <= 1) or (av[2].AsInteger <> 0))
-          and (TShip(av[1].AsDword).AbsoluteScriptOrder > 0)) then
+      or (((High(av) <= 1) or (av[2].AsInteger <> 0)) and (TShip(av[1].AsDword).AbsoluteScriptOrder > 0)) then
     av[0].AsInteger := 1
   else
     av[0].AsInteger := 0;
@@ -5016,8 +4845,7 @@ begin
   if High(av) <> 1 then
     raise Exception.Create('Error.Script ShipInCurScript');
   if TShip(av[1].AsDword).HasScriptBindings
-      and (GetScriptShipBindingForContext(TShip(av[1].AsDword), CurrentScript).Script
-          = CurrentScript) then
+      and (GetScriptShipBindingForContext(TShip(av[1].AsDword), CurrentScript).Script = CurrentScript) then
     av[0].AsInteger := 1
   else
     av[0].AsInteger := 0;
@@ -5196,9 +5024,7 @@ begin
   Engine := nil;
   if Obj is TEngine then
     Engine := TEngine(Obj)
-  else if (Obj is TScriptItem)
-      and ((Obj as TScriptItem).Item <> nil)
-      and ((Obj as TScriptItem).Item is TEngine) then
+  else if (Obj is TScriptItem) and ((Obj as TScriptItem).Item <> nil) and ((Obj as TScriptItem).Item is TEngine) then
     Engine := TEngine((Obj as TScriptItem).Item)
   else if Obj is TShip then
     Engine := TShip(Obj).GetEngine;
@@ -5301,10 +5127,8 @@ begin
       Continue;
     if Weapon.GetWeaponInfo.ShotType in [wstMissile, wstRocket] then
     begin
-      MinDamage :=
-          MinDamage + Ship.GetWeaponMinDamage(Weapon) * Weapon.GetAttackCount * Weapon.GetShotCount;
-      MaxDamage :=
-          MaxDamage + Ship.GetWeaponMaxDamage(Weapon) * Weapon.GetAttackCount * Weapon.GetShotCount;
+      MinDamage := MinDamage + Ship.GetWeaponMinDamage(Weapon) * Weapon.GetAttackCount * Weapon.GetShotCount;
+      MaxDamage := MaxDamage + Ship.GetWeaponMaxDamage(Weapon) * Weapon.GetAttackCount * Weapon.GetShotCount;
     end
     else
     begin
@@ -5640,8 +5464,7 @@ procedure SF_Dist2Star(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 2 then
     raise Exception.Create('Error.Script DistStar');
-  av[0].AsFloat :=
-      PointDistanceSquared(TStar(av[1].AsDword).Position, TStar(av[2].AsDword).Position);
+  av[0].AsFloat := PointDistanceSquared(TStar(av[1].AsDword).Position, TStar(av[2].AsDword).Position);
 end;
 
 procedure SF_BuyPirate(av: array of TVarEC; code: TCodeEC);
@@ -5753,8 +5576,7 @@ end;
 
 procedure SF_FirstGiveMoney(av: array of TVarEC; code: TCodeEC);
 begin
-  av[0].AsInteger :=
-      Round(300 * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[1]].ArcadeRewardScale);
+  av[0].AsInteger := Round(300 * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[1]].ArcadeRewardScale);
 end;
 
 procedure SF_HaveProgramm(av: array of TVarEC; code: TCodeEC);
@@ -5896,8 +5718,7 @@ begin
   if not (Place.PlaceKind in ScriptSpawnPlaceKinds) then
     RaiseWideMessage('Error.Script HoleCreate place 1');
   Hole.Star1 := Place.OriginStar;
-  Angle :=
-      HeadingDegreesToRadians(SeededRandomIntRange(0, 359, Hole.Id * Hole.Star1.GenerationSeed));
+  Angle := HeadingDegreesToRadians(SeededRandomIntRange(0, 359, Hole.Id * Hole.Star1.GenerationSeed));
   Hole.Position1 := Place.GetPoint;
   Hole.Position1.X := Hole.Position1.X + Sin(Angle) * Place.Radius;
   Hole.Position1.Y := Hole.Position1.Y - Cos(Angle) * Place.Radius;
@@ -5905,8 +5726,7 @@ begin
   if not (Place.PlaceKind in ScriptSpawnPlaceKinds) then
     RaiseWideMessage('Error.Script HoleCreate place 2');
   Hole.Star2 := Place.OriginStar;
-  Angle :=
-      HeadingDegreesToRadians(SeededRandomIntRange(0, 359, Hole.Id * Hole.Star2.GenerationSeed));
+  Angle := HeadingDegreesToRadians(SeededRandomIntRange(0, 359, Hole.Id * Hole.Star2.GenerationSeed));
   Hole.Position2 := Place.GetPoint;
   Hole.Position2.X := Hole.Position2.X + Sin(Angle) * Place.Radius;
   Hole.Position2.Y := Hole.Position2.Y - Cos(Angle) * Place.Radius;
@@ -5918,8 +5738,7 @@ begin
     PrimaryFilm.SetHoleState(0, Film, 1);
     PrimaryFilm.AttachObject(0, Film);
   end
-  else if GetPlayer.InNormalSpace
-      and ((GetPlayer.CurrentStar = Hole.Star1) or (GetPlayer.CurrentStar = Hole.Star2)) then
+  else if GetPlayer.InNormalSpace and ((GetPlayer.CurrentStar = Hole.Star1) or (GetPlayer.CurrentStar = Hole.Star2)) then
     StarMapScreen.PendingHoleRefresh := Hole;
 end;
 
@@ -6103,12 +5922,7 @@ begin
     begin
       Text := ReplaceAllWideString(Text, '<br>', #13#10);
       if GetPlayer <> nil then
-        Text :=
-            ReplaceAllWideString(
-                Text,
-                '<PlayerFull>',
-                WrapTextInColor(GetPlayer.GetFullName(' '), TextHighlightColorTag)
-            );
+        Text := ReplaceAllWideString(Text, '<PlayerFull>', WrapTextInColor(GetPlayer.GetFullName(' '), TextHighlightColorTag));
     end;
     av[0].AsString := ReplaceAllWideString(Text, #13#10' ', #13#10);
   end;
@@ -6231,8 +6045,7 @@ begin
   if High(av) < 1 then
     av[0].AsInteger := CountDelimitedPartsW(SelectedMods, ',')
   else if av[1].ValueKind = vkString then
-    av[0].AsInteger :=
-        Ord(FindTextOffsetW(SelectedModsDisplaySuffix, ', ' + av[1].AsString + ',') >= 0)
+    av[0].AsInteger := Ord(FindTextOffsetW(SelectedModsDisplaySuffix, ', ' + av[1].AsString + ',') >= 0)
   else if av[1].AsInteger = -1 then
     av[0].AsString := SelectedMods
   else
@@ -6499,8 +6312,7 @@ begin
     else if av[2].AsString = 'SeekPermitNode' then
       Kind := 15
     else
-      raise Exception.Create(
-          'Error.Script SF_TranclucatorData - unknown property ' + av[2].AsString);
+      raise Exception.Create('Error.Script SF_TranclucatorData - unknown property ' + av[2].AsString);
   end
   else
     Kind := av[2].AsInteger;
@@ -6603,8 +6415,7 @@ begin
         Ship.CollectionPermissions[tckCountable] := av[3].AsInteger <> 0;
     end;
   else
-    raise Exception.Create(
-        'Error.Script SF_TranclucatorData - unknown property ' + IntToWideString(Kind));
+    raise Exception.Create('Error.Script SF_TranclucatorData - unknown property ' + IntToWideString(Kind));
   end;
 end;
 
@@ -6926,10 +6737,7 @@ begin
   begin
     IsGoods := Item.ItemType in [t_Food..t_Narcotics];
     IsCountable := not IsGoods and (Item is TCountableItem);
-    if (IsCountable or IsGoods)
-        and (High(av) > 1)
-        and (av[2].ValueKind = vkString)
-        and (av[2].AsString = 'Count') then
+    if (IsCountable or IsGoods) and (High(av) > 1) and (av[2].ValueKind = vkString) and (av[2].AsString = 'Count') then
     begin
       if IsCountable then
         av[0].AsDword := TCountableItem(Item).StackCount
@@ -7149,8 +6957,7 @@ begin
         end;
   end
   else
-    for SetIndex := Low(GetPlayer.EquipmentConfigurations)
-        to High(GetPlayer.EquipmentConfigurations) do
+    for SetIndex := Low(GetPlayer.EquipmentConfigurations) to High(GetPlayer.EquipmentConfigurations) do
     begin
       for I := Low(GetPlayer.EquipmentConfigurations[SetIndex].EquipmentIds)
           to High(GetPlayer.EquipmentConfigurations[SetIndex].EquipmentIds) do
@@ -7345,9 +7152,7 @@ begin
       0: av[0].AsInteger := (Item as TWeapon).MaxDamage;
       1: av[0].AsInteger := (Item as TWeapon).MinDamage;
       2: av[0].AsInteger := (Item as TWeapon).Range;
-      3:
-        av[0].AsInteger :=
-            Ord(ClassifyWeaponDamageFlags((Item as TWeapon).GetWeaponInfo.DamageFlags));
+      3: av[0].AsInteger := Ord(ClassifyWeaponDamageFlags((Item as TWeapon).GetWeaponInfo.DamageFlags));
       4: av[0].AsInteger := (Item as TWeapon).GetAttackCount;
       5: av[0].AsInteger := (Item as TWeapon).GetShotCount;
       6: av[0].AsDword := Dword((Item as TWeapon).GetDamageFlags);
@@ -7955,10 +7760,7 @@ begin
   Planet := TPlanet(av[1].AsDword);
   Index := av[2].AsInteger;
   av[0].AsDword := 0;
-  if (Planet <> nil)
-      and (Planet.SurfaceLootEntries <> nil)
-      and (Index >= 0)
-      and (Index < Planet.SurfaceLootEntries.Count) then
+  if (Planet <> nil) and (Planet.SurfaceLootEntries <> nil) and (Index >= 0) and (Index < Planet.SurfaceLootEntries.Count) then
   begin
     Entry := Planet.SurfaceLootEntries[Index];
     av[0].AsDword := PtrUInt(Entry.Item);
@@ -7979,9 +7781,7 @@ begin
   Shop := TObject(av[1].AsDword);
   Item := TItem(av[2].AsDword);
   av[0].AsInteger := 0;
-  Refresh :=
-      (TemporaryShopSlots <> nil)
-          and ((TemporaryShopPlanet = Shop) or (TemporaryShopStation = Shop));
+  Refresh := (TemporaryShopSlots <> nil) and ((TemporaryShopPlanet = Shop) or (TemporaryShopStation = Shop));
   if Item = nil then
     Exit;
   if Shop is TPlanet then
@@ -8027,9 +7827,7 @@ begin
   av[0].AsDword := 0;
   if Shop <> nil then
   begin
-    Refresh :=
-        (TemporaryShopSlots <> nil)
-            and ((TemporaryShopPlanet = Shop) or (TemporaryShopStation = Shop));
+    Refresh := (TemporaryShopSlots <> nil) and ((TemporaryShopPlanet = Shop) or (TemporaryShopStation = Shop));
     if Refresh then
       RestoreTemporaryShopStock;
     if Shop is TPlanet then
@@ -8182,8 +7980,7 @@ procedure SF_GetItemFromVault(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) < 1 then
     raise Exception.Create('Error.Script GetItemFromVault');
-  av[0].AsDword :=
-      PtrUInt(Galaxy.GetStoredItem(av[1].AsString, (High(av) < 2) or (av[2].AsInteger <> 0)));
+  av[0].AsDword := PtrUInt(Galaxy.GetStoredItem(av[1].AsString, (High(av) < 2) or (av[2].AsInteger <> 0)));
 end;
 
 procedure SF_DropItemInSystem(av: array of TVarEC; code: TCodeEC);
@@ -8419,8 +8216,7 @@ begin
   if High(av) = 1 then
   begin
     Count := 0;
-    if (TemporaryShopSlots <> nil)
-        and ((GetPlayer.CurrentPlanet = Shop) or (GetPlayer.DockedTo = Shop)) then
+    if (TemporaryShopSlots <> nil) and ((GetPlayer.CurrentPlanet = Shop) or (GetPlayer.DockedTo = Shop)) then
     begin
       for Index := 0 to TemporaryShopSlots.Count - 1 do
         if TemporaryShopSlots[Index] <> nil then
@@ -8437,8 +8233,7 @@ begin
   begin
     Wanted := av[2].AsInteger;
     av[0].AsDword := 0;
-    if (TemporaryShopSlots <> nil)
-        and ((GetPlayer.CurrentPlanet = Shop) or (GetPlayer.DockedTo = Shop)) then
+    if (TemporaryShopSlots <> nil) and ((GetPlayer.CurrentPlanet = Shop) or (GetPlayer.DockedTo = Shop)) then
     begin
       Count := -1;
       for Index := 0 to TemporaryShopSlots.Count - 1 do
@@ -8615,8 +8410,7 @@ begin
     if Mode = 'block' then
       GovernmentScreen.AddChoice(Text, 0, ScriptDialogBlockCallback)
     else if Mode = 'snap' then
-      GovernmentScreen
-          .AddChoice(Text, PtrInt(Entry), GovernmentScreen.RunInjectedAnswerKeepingScroll)
+      GovernmentScreen.AddChoice(Text, PtrInt(Entry), GovernmentScreen.RunInjectedAnswerKeepingScroll)
     else
       GovernmentScreen.AddChoice(Entry.Answer, PtrInt(Entry), GovernmentScreen.RunInjectedAnswer);
   end
@@ -8754,10 +8548,7 @@ procedure SF_SFT(av: array of TVarEC; code: TCodeEC);
 var
   I: Integer;
 
-  procedure LogArray(
-      Prefix: WideString;
-      Value: TVarEC
-  ); { Nested in SF_SFT; Value must resolve to an array. }
+  procedure LogArray(Prefix: WideString; Value: TVarEC); { Nested in SF_SFT; Value must resolve to an array. }
   var
     I: Integer;
     Item: TVarEC;
@@ -8877,10 +8668,7 @@ begin
     Ship := TabShipAI.Create;
     Ship.RandomRewardsDisabled := True;
     if Source.Graphic is TRuinsSE then
-      Ship.CreateRuinsVisual(
-          Source.Graphic.GraphKey,
-          Max(Source.Graphic.Size.X, Source.Graphic.Size.Y)
-      )
+      Ship.CreateRuinsVisual(Source.Graphic.GraphKey, Max(Source.Graphic.Size.X, Source.Graphic.Size.Y))
     else
       Ship.CreateShipVisual(Source.Graphic.GraphKey, Source.Graphic.Size.X);
     Ship.ConvertedFromGameShip := True;
@@ -9338,8 +9126,7 @@ begin
   end
   else if Obj is TPlanet then
   begin
-    (Obj as TPlanet).Orbit :=
-        TPolarPoint(IntegerPointToPolar(Classes.Point(Round(Position.X), Round(Position.Y))));
+    (Obj as TPlanet).Orbit := TPolarPoint(IntegerPointToPolar(Classes.Point(Round(Position.X), Round(Position.Y))));
     (Obj as TPlanet).Graphic.SetPosition(Position);
   end
   else if Obj is TStar then
@@ -9348,14 +9135,12 @@ begin
       for Index := 0 to Count - 1 do
       begin
         Link := Items[Index];
-        if (Link.StartPoint.X = TStar(Obj).Position.X)
-            and (Link.StartPoint.Y = TStar(Obj).Position.Y) then
+        if (Link.StartPoint.X = TStar(Obj).Position.X) and (Link.StartPoint.Y = TStar(Obj).Position.Y) then
         begin
           Link.StartPoint.X := Position.X;
           Link.StartPoint.Y := Position.Y;
         end;
-        if (Link.EndPoint.X = TStar(Obj).Position.X)
-            and (Link.EndPoint.Y = TStar(Obj).Position.Y) then
+        if (Link.EndPoint.X = TStar(Obj).Position.X) and (Link.EndPoint.Y = TStar(Obj).Position.Y) then
         begin
           Link.EndPoint.X := Position.X;
           Link.EndPoint.Y := Position.Y;
@@ -9425,8 +9210,7 @@ begin
   end
   else if Obj is TPlanet then
   begin
-    (Obj as TPlanet).Orbit :=
-        TPolarPoint(IntegerPointToPolar(Classes.Point(Round(Position.X), Round(Position.Y))));
+    (Obj as TPlanet).Orbit := TPolarPoint(IntegerPointToPolar(Classes.Point(Round(Position.X), Round(Position.Y))));
     (Obj as TPlanet).Graphic.SetPosition(Position);
   end
   else if Obj is TStar then
@@ -9435,14 +9219,12 @@ begin
       for Index := 0 to Count - 1 do
       begin
         Link := Items[Index];
-        if (Link.StartPoint.X = TStar(Obj).Position.X)
-            and (Link.StartPoint.Y = TStar(Obj).Position.Y) then
+        if (Link.StartPoint.X = TStar(Obj).Position.X) and (Link.StartPoint.Y = TStar(Obj).Position.Y) then
         begin
           Link.StartPoint.X := Position.X;
           Link.StartPoint.Y := Position.Y;
         end;
-        if (Link.EndPoint.X = TStar(Obj).Position.X)
-            and (Link.EndPoint.Y = TStar(Obj).Position.Y) then
+        if (Link.EndPoint.X = TStar(Obj).Position.X) and (Link.EndPoint.Y = TStar(Obj).Position.Y) then
         begin
           Link.EndPoint.X := Position.X;
           Link.EndPoint.Y := Position.Y;
@@ -9684,9 +9466,7 @@ begin
     Destination := TObject(av[2].AsDword);
     if Destination <> nil then
     begin
-      if not (Destination is TStar)
-          and not (Destination is TPlanet)
-          and not (Destination is TShip) then
+      if not (Destination is TStar) and not (Destination is TPlanet) and not (Destination is TShip) then
         raise Exception.Create('Error.Script TransferShip - invalid destination');
       Planet := nil;
       Station := nil;
@@ -9765,14 +9545,11 @@ begin
   if High(av) <= 1 then
     Exit;
   if av[2].AsInteger <> 0 then
-    Ship.AfterburnerActive :=
-        (Ship.GetSlotCount(sskAfterburner) > 0) and Ship.IsEquipmentUsable(Ship.GetEngine)
+    Ship.AfterburnerActive := (Ship.GetSlotCount(sskAfterburner) > 0) and Ship.IsEquipmentUsable(Ship.GetEngine)
   else
     Ship.AfterburnerActive := False;
   Ship.RefreshDerivedStats(True);
-  if (GetPlayer = Ship)
-      and (GetInnermostScreenLoop = StarMapScreen)
-      and (StarMapScreen.Mode = smmOrders) then
+  if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
   begin
     StarMapScreen.ClearPathOverlay(True);
     GetPlayer.BuildOrderMovementPath(FullPathNodeLimit);
@@ -9796,9 +9573,7 @@ begin
   Ship.AbsoluteScriptOrder := SavedOrderLock;
   if GetPlayer = Ship then
     PendingPlayerFollowTarget := nil;
-  if (GetPlayer = Ship)
-      and (GetInnermostScreenLoop = StarMapScreen)
-      and (StarMapScreen.Mode = smmOrders) then
+  if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
   begin
     StarMapScreen.ClearPathOverlay(True);
     StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -9836,9 +9611,7 @@ begin
       if High(av) > 2 then
         Absolute := av[3].AsInteger <> 0;
       Ship.OrderMove(
-          TScriptPlace(av[2].AsDword)
-              .GetRandomPoint(
-                  (Ship.Seed + Ship.CurrentStar.GenerationSeed) * Cardinal(Galaxy.CurrentTurn)),
+          TScriptPlace(av[2].AsDword).GetRandomPoint((Ship.Seed + Ship.CurrentStar.GenerationSeed) * Cardinal(Galaxy.CurrentTurn)),
           Absolute
       );
     end
@@ -9848,9 +9621,7 @@ begin
   Ship.AbsoluteScriptOrder := SavedOrderLock;
   if GetPlayer = Ship then
     PendingPlayerFollowTarget := nil;
-  if (GetPlayer = Ship)
-      and (GetInnermostScreenLoop = StarMapScreen)
-      and (StarMapScreen.Mode = smmOrders) then
+  if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
   begin
     StarMapScreen.ClearPathOverlay(True);
     StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -9887,9 +9658,7 @@ begin
         Ship.AbsoluteScriptOrder := SavedOrderLock;
         if GetPlayer = Ship then
           PendingPlayerFollowTarget := nil;
-        if (GetPlayer = Ship)
-            and (GetInnermostScreenLoop = StarMapScreen)
-            and (StarMapScreen.Mode = smmOrders) then
+        if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
         begin
           StarMapScreen.ClearPathOverlay(True);
           StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -9938,9 +9707,7 @@ begin
       Ship.AbsoluteScriptOrder := 0;
       Ship.OrderFollowShip(TShip(av[2].AsDword), FollowMode, Absolute);
       Ship.AbsoluteScriptOrder := SavedOrderLock;
-      if (GetPlayer = Ship)
-          and (GetInnermostScreenLoop = StarMapScreen)
-          and (StarMapScreen.Mode = smmOrders) then
+      if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
       begin
         StarMapScreen.ClearPathOverlay(True);
         StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -9971,9 +9738,7 @@ begin
     Ship.AbsoluteScriptOrder := SavedOrderLock;
     if GetPlayer = Ship then
       PendingPlayerFollowTarget := nil;
-    if (GetPlayer = Ship)
-        and (GetInnermostScreenLoop = StarMapScreen)
-        and (StarMapScreen.Mode = smmOrders) then
+    if (GetPlayer = Ship) and (GetInnermostScreenLoop = StarMapScreen) and (StarMapScreen.Mode = smmOrders) then
     begin
       StarMapScreen.ClearPathOverlay(True);
       StarMapScreen.BuildShipPathOverlay(Ship, False, '');
@@ -10014,9 +9779,7 @@ begin
         av[0].AsInteger := Integer(TShip(Obj).RangerRelations[Galaxy.Rangers.IndexOf(Ranger)])
       else
         av[0].AsInteger := TShip(Obj).RelationToShip(Ranger);
-      if (High(av) > 2)
-          and (TShip(Obj).RangerRelations <> nil)
-          and (TShip(Obj).RangerRelations.Count > 0) then
+      if (High(av) > 2) and (TShip(Obj).RangerRelations <> nil) and (TShip(Obj).RangerRelations.Count > 0) then
       begin
         if av[3].AsInteger < 0 then
           Relation := 0
@@ -10212,10 +9975,7 @@ begin
     Planet.GraphName := av[2].AsString;
     RotationInterval := Planet.Graphic.RotationTimerInterval;
     ReleaseSpaceObject(TObjectSE(Planet.Graphic));
-    RetainSpaceObject(
-        TObjectSE(Planet.Graphic),
-        CreateSpaceObjectByName('Planet', Planet.GraphName, Point(0, 0))
-    );
+    RetainSpaceObject(TObjectSE(Planet.Graphic), CreateSpaceObjectByName('Planet', Planet.GraphName, Point(0, 0)));
     Planet.Graphic.SetRotationTimerInterval(RotationInterval);
   end
   else
@@ -10558,10 +10318,7 @@ begin
     if High(av) > 1 then
       Sector.Visible := av[2].AsInteger <> 0;
   end;
-  if (High(av) > 1)
-      and (av[2].AsInteger = 1)
-      and (MainPiratePlanet <> nil)
-      and (MainPiratePlanet.CurrentStar.Constellation = Sector) then
+  if (High(av) > 1) and (av[2].AsInteger = 1) and (MainPiratePlanet <> nil) and (MainPiratePlanet.CurrentStar.Constellation = Sector) then
     for I := 0 to Galaxy.Constellations.Count - 1 do
       TConstellation(Galaxy.Constellations[I]).RestoreHiddenForm;
 end;
@@ -10760,8 +10517,7 @@ begin
     TEFilm(PrimaryFilm).SetHoleState(0, FilmObject, 1);
     TEFilm(PrimaryFilm).AttachObject(0, FilmObject);
   end
-  else if GetPlayer.InNormalSpace
-      and ((GetPlayer.CurrentStar = Hole.Star1) or (GetPlayer.CurrentStar = Hole.Star2)) then
+  else if GetPlayer.InNormalSpace and ((GetPlayer.CurrentStar = Hole.Star1) or (GetPlayer.CurrentStar = Hole.Star2)) then
     StarMapScreen.PendingHoleRefresh := Hole;
 end;
 
@@ -10936,8 +10692,7 @@ begin
         if Ship is TRuins then
         begin
           if ((Ship.TypeNameOverrideKey <> '') and (Ship.TypeNameOverrideKey = av[2].AsString))
-              or ((Ship.TypeNameOverrideKey = '')
-                  and (ShipTypeNames[Ship.TypeId].Name = av[2].AsString)) then
+              or ((Ship.TypeNameOverrideKey = '') and (ShipTypeNames[Ship.TypeId].Name = av[2].AsString)) then
           begin
             av[0].AsDword := PtrUInt(Ship);
             Exit;
@@ -11332,11 +11087,7 @@ begin
     ReleaseSpaceObject(Asteroid.GraphObject);
     RetainSpaceObject(
         Asteroid.GraphObject,
-        CreateSpaceObjectByName(
-            ExtractDelimitedPartW(av[2].AsString, 0, '.'),
-            av[2].AsString,
-            Point(0, 0)
-        )
+        CreateSpaceObjectByName(ExtractDelimitedPartW(av[2].AsString, 0, '.'), av[2].AsString, Point(0, 0))
     );
   end;
 end;
@@ -11469,8 +11220,7 @@ begin
       for ArrayIndex := 1 to ArrayCount do
       begin
         SwapValue := Args[ArrayIndex + 1].AsArray[ElementIndex];
-        Args[ArrayIndex + 1].AsArray[ElementIndex] :=
-            Args[ArrayIndex + 1].AsArray[ElementIndex - 1];
+        Args[ArrayIndex + 1].AsArray[ElementIndex] := Args[ArrayIndex + 1].AsArray[ElementIndex - 1];
         Args[ArrayIndex + 1].AsArray[ElementIndex - 1] := SwapValue;
       end;
 end;
@@ -11610,10 +11360,7 @@ begin
   end;
   for Pass := 1 to InterpolationPassCount do
   begin
-    ProbeIndex :=
-        Round(
-            (TargetValue - LowValue) * (HighIndex - LowIndex) / (HighValue - LowValue) + LowIndex
-        );
+    ProbeIndex := Round((TargetValue - LowValue) * (HighIndex - LowIndex) / (HighValue - LowValue) + LowIndex);
     ProbeValue := Args[1].AsArray[ProbeIndex].AsInteger;
     if ProbeValue > TargetValue then
     begin
@@ -11720,8 +11467,7 @@ begin
   for J := 0 to Star.Ships.Count - 1 do
   begin
     Ship := Star.Ships[J];
-    if ((Ship.CurrentPlanet = nil) or (Ship.CurrentPlanet.OwnerId <> oiUninhabited))
-        and (Ship.CurrentStanding in Standings) then
+    if ((Ship.CurrentPlanet = nil) or (Ship.CurrentPlanet.OwnerId <> oiUninhabited)) and (Ship.CurrentStanding in Standings) then
     begin
       av[0].AsInteger := 1;
       Exit;
@@ -11742,9 +11488,7 @@ begin
           av[0].AsInteger := 1;
           Exit;
         end;
-        if (Ship is TRuins)
-            and (TRuins(Ship).FlyToStar = Star)
-            and (Ship.CurrentStanding in Standings) then
+        if (Ship is TRuins) and (TRuins(Ship).FlyToStar = Star) and (Ship.CurrentStanding in Standings) then
         begin
           av[0].AsInteger := 1;
           Exit;
@@ -11821,8 +11565,7 @@ begin
     Star := Galaxy.Stars[I];
     if Star.ControlFaction = sfDominators then
       for J := 0 to Star.Ships.Count - 1 do
-        if (TShip(Star.Ships[J]).TypeId = stKling)
-            and (TShip(Star.Ships[J]).OrderTarget is TStar) then
+        if (TShip(Star.Ships[J]).TypeId = stKling) and (TShip(Star.Ships[J]).OrderTarget is TStar) then
         begin
           Candidate := TShip(Star.Ships[J]).OrderTarget as TStar;
           for K := av[1].AsArray.Count - 1 downto 0 do
@@ -12008,8 +11751,7 @@ begin
     raise Exception.Create('Error.Script BonusValue');
   if (av[1].AsInteger < 0) or (av[1].AsInteger >= MicroModuleTemplateCount) then
     raise Exception.Create('Error.Script BonusValue - number out of range');
-  av[0].AsInteger :=
-      MicroModuleTemplates[av[1].AsInteger].StatBonuses[TEquipmentBonusKind(av[2].AsInteger)];
+  av[0].AsInteger := MicroModuleTemplates[av[1].AsInteger].StatBonuses[TEquipmentBonusKind(av[2].AsInteger)];
 end;
 
 procedure SF_FindBonusByName(av: array of TVarEC; code: TCodeEC);
@@ -12086,9 +11828,7 @@ var
 begin
   if High(av) < 1 then
     raise Exception.Create('Error.Script BonusCustomTag');
-  Block :=
-      LanguageDataConfig
-          .GetBlockByPath('MicroModuls.' + MicroModuleTemplates[av[1].AsInteger].ConfigName);
+  Block := LanguageDataConfig.GetBlockByPath('MicroModuls.' + MicroModuleTemplates[av[1].AsInteger].ConfigName);
   if Block.CountParams('CustomTag') <= 0 then
     av[0].AsString := ''
   else
@@ -12108,8 +11848,7 @@ begin
   Mask := MicroModuleTemplates[av[1].AsInteger].AllowedItemTypes;
   Kind := TItemType(PickRandomItemTypeFromSeed(Mask, Galaxy.RandomState));
   if High(av) > 3 then
-    Item :=
-        CreateGeneratedEquipment(Kind, av[2].AsInteger, av[3].AsInteger, TOwnerId(av[4].AsInteger))
+    Item := CreateGeneratedEquipment(Kind, av[2].AsInteger, av[3].AsInteger, TOwnerId(av[4].AsInteger))
   else
     Item := TEquipment(CreateDefaultItemByType(Kind));
   ApplySpecialMicroModule(av[1].AsInteger, Item);
@@ -12157,9 +11896,7 @@ begin
     for Index := 0 to MicroModuleTemplateCount - 1 do
     begin
       if Template.SpecialOnly
-          and ((Template.OfferStationTypes <> [])
-              or (Template.OfferStationNames <> '<>')
-              or Template.OnPlanets)
+          and ((Template.OfferStationTypes <> []) or (Template.OfferStationNames <> '<>') or Template.OnPlanets)
           and (not IsWeapon or IsBonusCompatibleWithWeapon(Index, TWeapon(Item)))
           and (not IsHull or IsBonusCompatibleWithHull(Index, THull(Item)))
           and (not IsOther or IsBonusCompatibleWithEquipment(Index, Item))
@@ -12182,8 +11919,7 @@ begin
       for Index := 0 to 100 do
       begin
         Chosen := NextRandomIntRange(0, Count - 1, Galaxy.RandomState);
-        if MicroModuleTemplates[MicroModuleCandidateIndices[Chosen]].Priority
-            >= MinimumPriority then
+        if MicroModuleTemplates[MicroModuleCandidateIndices[Chosen]].Priority >= MinimumPriority then
           Break;
       end;
       Item.SpecialModuleIndex := 0;
@@ -12341,8 +12077,7 @@ begin
     Item := (Obj as TScriptItem).Item as TEquipment
   else
     Exit;
-  if (Item.SpecialModuleIndex <> 0)
-      and MicroModuleTemplates[Item.SpecialModuleIndex - 1].BlocksMicroModuleSlot then
+  if (Item.SpecialModuleIndex <> 0) and MicroModuleTemplates[Item.SpecialModuleIndex - 1].BlocksMicroModuleSlot then
     Exit;
   if Item is TWeapon then
     av[0].AsInteger := Ord(IsBonusCompatibleWithWeapon(Index, TWeapon(Item)))
@@ -12468,9 +12203,7 @@ var
     av[1].AsArray.AddItem(Value);
   end;
 
-  procedure CheckItem(
-      Item: TItem
-  ); { Requires SF_BuildListOfNewShips' live frame. Ignores nil and non-Tranclucator artefacts. }
+  procedure CheckItem(Item: TItem); { Requires SF_BuildListOfNewShips' live frame. Ignores nil and non-Tranclucator artefacts. }
   begin
     if Item <> nil then
       if Item is TArtefactTranclucator then
@@ -12623,14 +12356,7 @@ begin
       Exit;
     end;
     ReleaseSpaceObject(Ship.Graphic);
-    RetainSpaceObject(
-        Ship.Graphic,
-        CreateSpaceObjectByName(
-            ExtractDelimitedPartW(av[2].AsString, 0, '.'),
-            av[2].AsString,
-            Point(0, 0)
-        )
-    );
+    RetainSpaceObject(Ship.Graphic, CreateSpaceObjectByName(ExtractDelimitedPartW(av[2].AsString, 0, '.'), av[2].AsString, Point(0, 0)));
     Ship.GraphName := av[2].AsString;
     Ship.Graphic.SetPosition(Ship.Position);
     Ship.Graphic.SetAngle(HeadingDegreesToByte(Ship.MovementDirection));
@@ -12745,9 +12471,7 @@ begin
   Hull.SpecialModuleIndex := av[2].AsInteger + 1;
   if Ship.ScriptChameleon or Ship.ChameleonActive or Ship.GraphDominator then
     Exit;
-  Mirror :=
-      CreateSpaceObjectByName('Ship2', 'Ship.Akrin.' + Hull.GetSpecialKindGraph, Point(0, 0))
-          as TShip2SE;
+  Mirror := CreateSpaceObjectByName('Ship2', 'Ship.Akrin.' + Hull.GetSpecialKindGraph, Point(0, 0)) as TShip2SE;
   Mirror.CopyDataFromMirrorImage(Ship.Graphic);
   Mirror.Free;
   Ship.GraphName := Ship.Graphic.GraphKey;
@@ -13032,8 +12756,7 @@ begin
       ShipScreen.CancelCallbackTimer(ShipScreen.ScriptVideoTimer);
       ShipScreen.ScriptVideoTimer := nil;
     end;
-    ShipScreen.ScriptVideoTimer :=
-        ShipScreen.ScheduleCallbackTimer(5, 5, ShipScreen.AdvanceScriptVideo);
+    ShipScreen.ScriptVideoTimer := ShipScreen.ScheduleCallbackTimer(5, 5, ShipScreen.AdvanceScriptVideo);
   end
   else
   begin
@@ -13325,9 +13048,7 @@ begin
   begin
     Partner1 := Ship1.PartnerShip;
     Partner2 := Ship2.PartnerShip;
-    if (Partner1 <> nil)
-        and (Partner2 <> nil)
-        and ((Partner1.EnemyShip = Partner2) or (Partner2.EnemyShip = Partner1)) then
+    if (Partner1 <> nil) and (Partner2 <> nil) and ((Partner1.EnemyShip = Partner2) or (Partner2.EnemyShip = Partner1)) then
       Partner1.TruceWithShip(Partner2);
     if (Partner1 <> nil) and ((Partner1.EnemyShip = Ship2) or (Ship2.EnemyShip = Partner1)) then
       Partner1.TruceWithShip(Ship2);
@@ -13588,10 +13309,7 @@ var
     for I := piHull to piMainTech do
       Score := Score + 2 * Planet.InventionLevels[I];
     Score :=
-        Score
-            + 8 * Planet.InventionLevels[piMainTech]
-            + 4 * Planet.InventionLevels[piHull]
-            + 2 * Planet.InventionLevels[piRepairRobot];
+        Score + 8 * Planet.InventionLevels[piMainTech] + 4 * Planet.InventionLevels[piHull] + 2 * Planet.InventionLevels[piRepairRobot];
   end;
 begin
   if High(av) < 1 then
@@ -13605,8 +13323,7 @@ begin
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
     Star := Galaxy.Stars[I];
-    if (Faction < 0)
-        or ((TStarFaction(Faction) = Star.ControlFaction) and (Star.Status.CustomFaction = '')) then
+    if (Faction < 0) or ((TStarFaction(Faction) = Star.ControlFaction) and (Star.Status.CustomFaction = '')) then
       for J := 0 to Star.Planets.Count - 1 do
       begin
         Planet := Star.Planets[J];
@@ -13624,8 +13341,7 @@ begin
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
     Star := Galaxy.Stars[I];
-    if (Faction < 0)
-        or ((TStarFaction(Faction) = Star.ControlFaction) and (Star.Status.CustomFaction = '')) then
+    if (Faction < 0) or ((TStarFaction(Faction) = Star.ControlFaction) and (Star.Status.CustomFaction = '')) then
       for J := 0 to Star.Planets.Count - 1 do
       begin
         Planet := Star.Planets[J];
@@ -13694,11 +13410,9 @@ begin
         Score := Detour * Weights[Ord(Planet.OwnerId)] / 100;
         if High(av) > 10 then
           for K := 0 to av[10].AsArray.Count - 1 do
-            if (TPlanet(av[10].AsArray[K].AsDword) = Planet)
-                or (av[10].AsArray[K].AsDword = Planet.Id) then
+            if (TPlanet(av[10].AsArray[K].AsDword) = Planet) or (av[10].AsArray[K].AsDword = Planet.Id) then
               Score := Score * Penalty;
-        if ((BestPlanet = nil) and (Limit >= Score) and (Score > 0))
-            or ((Score < BestScore) and (Score > 0)) then
+        if ((BestPlanet = nil) and (Limit >= Score) and (Score > 0)) or ((Score < BestScore) and (Score > 0)) then
         begin
           BestPlanet := Planet;
           BestScore := Score;
@@ -13974,8 +13688,7 @@ begin
   while Index < GetPlayer.StorageEntries.Count do
   begin
     Entry := GetPlayer.StorageEntries[Index];
-    if ((Entry.LocationOwner = Location) or (Location = nil))
-        and (Entry.Item.ItemType = t_Protoplasm) then
+    if ((Entry.LocationOwner = Location) or (Location = nil)) and (Entry.Item.ItemType = t_Protoplasm) then
     begin
       Nodes := TProtoplasm(Entry.Item);
       // Native does not advance Index when the series differs.
@@ -14242,12 +13955,7 @@ begin
       else if Target is TPlanet then
         TargetFilm := TPlanet(Target).FilmObject
       else if Target is TStar then
-        TargetFilm :=
-            PrimaryFilm.FindObject(
-                ClassSEtoName(TStar(Target).Graphic),
-                TStar(Target).Graphic.GraphKey,
-                TStar(Target).Id
-            )
+        TargetFilm := PrimaryFilm.FindObject(ClassSEtoName(TStar(Target).Graphic), TStar(Target).Graphic.GraphKey, TStar(Target).Id)
       else if Target is THole then
         TargetFilm := TEFilmObj(THole(Target).FilmObjectId)
       else if Target is TMissile then
@@ -14272,12 +13980,7 @@ begin
         else if Source is TPlanet then
           SourceFilm := TPlanet(Source).FilmObject
         else if Source is TStar then
-          SourceFilm :=
-              PrimaryFilm.FindObject(
-                  ClassSEtoName(TStar(Source).Graphic),
-                  TStar(Source).Graphic.GraphKey,
-                  TStar(Source).Id
-              )
+          SourceFilm := PrimaryFilm.FindObject(ClassSEtoName(TStar(Source).Graphic), TStar(Source).Graphic.GraphKey, TStar(Source).Id)
         else if Source is THole then
           SourceFilm := TEFilmObj(THole(Source).FilmObjectId)
         else if Source is TMissile then
@@ -14476,12 +14179,7 @@ begin
   else if Obj is TPlanet then
     FilmObject := TPlanet(Obj).FilmObject
   else if Obj is TStar then
-    FilmObject :=
-        PrimaryFilm.FindObject(
-            ClassSEtoName(TStar(Obj).Graphic),
-            TStar(Obj).Graphic.GraphKey,
-            TStar(Obj).Id
-        )
+    FilmObject := PrimaryFilm.FindObject(ClassSEtoName(TStar(Obj).Graphic), TStar(Obj).Graphic.GraphKey, TStar(Obj).Id)
   else if Obj is THole then
     FilmObject := TEFilmObj(THole(Obj).FilmObjectId)
   else if Obj is TMissile then
@@ -14675,36 +14373,13 @@ begin
   begin
     Missile := TCustomMissile.Create;
     TCustomMissile(Missile)
-        .InitializeUnownedShot(
-            Star,
-            Target,
-            X,
-            Y,
-            Direction,
-            MinDamage,
-            MaxDamage,
-            Speed,
-            av[9].AsString,
-            Module,
-            Special);
+        .InitializeUnownedShot(Star, Target, X, Y, Direction, MinDamage, MaxDamage, Speed, av[9].AsString, Module, Special);
   end
   else
   begin
     Kind := TItemType(av[9].AsInteger);
     Missile := TMissile.Create;
-    Missile.InitializeUnownedShot(
-        Star,
-        Target,
-        X,
-        Y,
-        Direction,
-        MinDamage,
-        MaxDamage,
-        Speed,
-        Kind,
-        Module,
-        Special
-    );
+    Missile.InitializeUnownedShot(Star, Target, X, Y, Direction, MinDamage, MaxDamage, Speed, Kind, Module, Special);
   end;
   av[0].AsDword := PtrUInt(Missile);
   if Star.RecordingTurnFilm then
@@ -14747,26 +14422,11 @@ begin
       begin
         Value := Count * MicroModuleTemplates[Index].StatBonuses[Bonus];
         if Value > 0 then
-          ReplaceTextToken(
-              Text,
-              '<' + EquipmentBonusNames[Bonus] + '>',
-              '+' + IntToStr(Value),
-              TextHighlightColorTag
-          )
+          ReplaceTextToken(Text, '<' + EquipmentBonusNames[Bonus] + '>', '+' + IntToStr(Value), TextHighlightColorTag)
         else if Value < 0 then
-          ReplaceTextToken(
-              Text,
-              '<' + EquipmentBonusNames[Bonus] + '>',
-              IntToStr(Value),
-              TextHighlightColorTag
-          )
+          ReplaceTextToken(Text, '<' + EquipmentBonusNames[Bonus] + '>', IntToStr(Value), TextHighlightColorTag)
         else
-          ReplaceTextToken(
-              Text,
-              '<' + EquipmentBonusNames[Bonus] + '>',
-              '--',
-              TextHighlightColorTag
-          );
+          ReplaceTextToken(Text, '<' + EquipmentBonusNames[Bonus] + '>', '--', TextHighlightColorTag);
       end;
   end;
   av[0].AsString := WrapTextInColor(Text, GetMicroModuleTextColorTag(Index));
@@ -14840,8 +14500,7 @@ begin
     for Index := 0 to PlayerOldQuests.Count - 1 do
     begin
       Quest := PlayerOldQuests[Index];
-      if ((High(av) < 1) or (TQuestType(av[1].AsInteger) = Quest.QuestType))
-          and (Quest.Successful) then
+      if ((High(av) < 1) or (TQuestType(av[1].AsInteger) = Quest.QuestType)) and (Quest.Successful) then
         av[0].AsInteger := av[0].AsInteger + 1;
     end;
 end;
@@ -14950,8 +14609,7 @@ begin
   Ship.RefreshDerivedStats(True);
   if Ship.GetDesiredCargoFreeSpace > Ship.CargoFreeSpace then
   begin
-    Ship.GetHull.Weight :=
-        Ship.GetHull.Weight - Ship.CargoFreeSpace + Ship.GetDesiredCargoFreeSpace;
+    Ship.GetHull.Weight := Ship.GetHull.Weight - Ship.CargoFreeSpace + Ship.GetDesiredCargoFreeSpace;
     if (Ship.CurrentPlanet <> nil) or (Ship.DockedTo <> nil) or (Ship.CurrentStar = nil) then
       Ship.GetHull.HullPoints := Ship.GetHull.Weight;
   end;
@@ -15048,12 +14706,10 @@ begin
   end
   else
   begin
-    av[0].AsInteger :=
-        TKillCounts((Obj as TNormalShip).CurrentSystemKills)[TKillFactionIndex(av[2].AsInteger)];
+    av[0].AsInteger := TKillCounts((Obj as TNormalShip).CurrentSystemKills)[TKillFactionIndex(av[2].AsInteger)];
     if High(av) > 2 then
     begin
-      TKillCounts((Obj as TNormalShip).CurrentSystemKills)[TKillFactionIndex(av[2].AsInteger)] :=
-          av[3].AsInteger;
+      TKillCounts((Obj as TNormalShip).CurrentSystemKills)[TKillFactionIndex(av[2].AsInteger)] := av[3].AsInteger;
       TShip(Obj).RefreshCurrentStanding;
     end;
   end;
@@ -15369,12 +15025,7 @@ begin
   av[0].AsString := Info.Description;
   if av[0].AsString = '' then
   begin
-    Block :=
-        LanguageDataConfig
-            .GetBlock('ShipInfo')
-            .GetBlock('AddInfo')
-            .GetBlock('CustomInfos')
-            .GetBlock(Info.TypeName);
+    Block := LanguageDataConfig.GetBlock('ShipInfo').GetBlock('AddInfo').GetBlock('CustomInfos').GetBlock(Info.TypeName);
     if Block.CountParams('Description') <> 0 then
       av[0].AsString := Block.GetParam('Description');
   end;
@@ -15650,11 +15301,7 @@ begin
     CanBreak :=
         (Item.ItemType in [t_FuelTanks..t_CustomWeapon, t_Satellite])
             or (Item.ItemType
-                in [
-                    t_Artefact,
-                    t_ArtefactHull..t_ArtefactAntigrav,
-                    t_ArtDefToEnergy..t_ArtGiperJump,
-                    t_ArtBio..t_ArtFastRacks]);
+                in [t_Artefact, t_ArtefactHull..t_ArtefactAntigrav, t_ArtDefToEnergy..t_ArtGiperJump, t_ArtBio..t_ArtFastRacks]);
   av[0].AsDword := Ord(CanBreak);
 end;
 
@@ -15731,20 +15378,8 @@ begin
         NewLevel := Max(1, av[2].AsInteger);
         if Item is TWeapon then
         begin
-          OldBase :=
-              CreateGeneratedWeapon(
-                  TWeapon(Item).GetWeaponInfo,
-                  Item.Weight,
-                  OldLevel,
-                  Item.OwnerId
-              );
-          NewBase :=
-              CreateGeneratedWeapon(
-                  TWeapon(Item).GetWeaponInfo,
-                  Item.Weight,
-                  NewLevel,
-                  Item.OwnerId
-              );
+          OldBase := CreateGeneratedWeapon(TWeapon(Item).GetWeaponInfo, Item.Weight, OldLevel, Item.OwnerId);
+          NewBase := CreateGeneratedWeapon(TWeapon(Item).GetWeaponInfo, Item.Weight, NewLevel, Item.OwnerId);
         end
         else
         begin
@@ -15760,82 +15395,57 @@ begin
           t_FuelTanks:
           begin
             TFuelTanks(Item).TechLevel := NewLevel;
-            TFuelTanks(Item).Capacity :=
-                TFuelTanks(Item).Capacity
-                    + TFuelTanks(NewBase).Capacity
-                    - TFuelTanks(OldBase).Capacity;
+            TFuelTanks(Item).Capacity := TFuelTanks(Item).Capacity + TFuelTanks(NewBase).Capacity - TFuelTanks(OldBase).Capacity;
             TFuelTanks(Item).Fuel := Max(0, Min(TFuelTanks(Item).Fuel, TFuelTanks(Item).Capacity));
           end;
           t_Engine:
           begin
             TEngine(Item).TechLevel := NewLevel;
-            TEngine(Item).Speed :=
-                TEngine(Item).Speed + TEngine(NewBase).Speed - TEngine(OldBase).Speed;
-            TEngine(Item).JumpRange :=
-                TEngine(Item).JumpRange + TEngine(NewBase).JumpRange - TEngine(OldBase).JumpRange;
+            TEngine(Item).Speed := TEngine(Item).Speed + TEngine(NewBase).Speed - TEngine(OldBase).Speed;
+            TEngine(Item).JumpRange := TEngine(Item).JumpRange + TEngine(NewBase).JumpRange - TEngine(OldBase).JumpRange;
           end;
           t_Radar:
           begin
             TRadar(Item).TechLevel := NewLevel;
-            TRadar(Item).Range :=
-                TRadar(Item).Range + TRadar(NewBase).Range - TRadar(OldBase).Range;
+            TRadar(Item).Range := TRadar(Item).Range + TRadar(NewBase).Range - TRadar(OldBase).Range;
           end;
           t_Scaner:
           begin
             TScaner(Item).TechLevel := NewLevel;
-            TScaner(Item).ScanPower :=
-                TScaner(Item).ScanPower + TScaner(NewBase).ScanPower - TScaner(OldBase).ScanPower;
+            TScaner(Item).ScanPower := TScaner(Item).ScanPower + TScaner(NewBase).ScanPower - TScaner(OldBase).ScanPower;
           end;
           t_RepairRobot:
           begin
             TRepairRobot(Item).TechLevel := NewLevel;
             TRepairRobot(Item).RepairPoints :=
-                TRepairRobot(Item).RepairPoints
-                    + TRepairRobot(NewBase).RepairPoints
-                    - TRepairRobot(OldBase).RepairPoints;
+                TRepairRobot(Item).RepairPoints + TRepairRobot(NewBase).RepairPoints - TRepairRobot(OldBase).RepairPoints;
           end;
           t_CargoHook:
           begin
             TCargoHook(Item).TechLevel := NewLevel;
             TCargoHook(Item).PickupPower :=
-                TCargoHook(Item).PickupPower
-                    + TCargoHook(NewBase).PickupPower
-                    - TCargoHook(OldBase).PickupPower;
-            TCargoHook(Item).Range :=
-                TCargoHook(Item).Range + TCargoHook(NewBase).Range - TCargoHook(OldBase).Range;
+                TCargoHook(Item).PickupPower + TCargoHook(NewBase).PickupPower - TCargoHook(OldBase).PickupPower;
+            TCargoHook(Item).Range := TCargoHook(Item).Range + TCargoHook(NewBase).Range - TCargoHook(OldBase).Range;
             TCargoHook(Item).MinPullSpeed :=
-                TCargoHook(Item).MinPullSpeed
-                    + TCargoHook(NewBase).MinPullSpeed
-                    - TCargoHook(OldBase).MinPullSpeed;
+                TCargoHook(Item).MinPullSpeed + TCargoHook(NewBase).MinPullSpeed - TCargoHook(OldBase).MinPullSpeed;
             TCargoHook(Item).MaxPullSpeed :=
-                TCargoHook(Item).MaxPullSpeed
-                    + TCargoHook(NewBase).MaxPullSpeed
-                    - TCargoHook(OldBase).MaxPullSpeed;
+                TCargoHook(Item).MaxPullSpeed + TCargoHook(NewBase).MaxPullSpeed - TCargoHook(OldBase).MaxPullSpeed;
           end;
           t_DefGenerator:
           begin
             TDefGenerator(Item).TechLevel := NewLevel;
             TDefGenerator(Item).DamageFactor :=
-                TDefGenerator(Item).DamageFactor
-                    + TDefGenerator(NewBase).DamageFactor
-                    - TDefGenerator(OldBase).DamageFactor;
+                TDefGenerator(Item).DamageFactor + TDefGenerator(NewBase).DamageFactor - TDefGenerator(OldBase).DamageFactor;
           end;
         else
           if Item.ItemType in WeaponItemTypes then
           begin
             TWeapon(Item).TechLevel := NewLevel;
-            TWeapon(Item).Range :=
-                TWeapon(Item).Range + TWeapon(NewBase).Range - TWeapon(OldBase).Range;
-            TWeapon(Item).MinDamage :=
-                TWeapon(Item).MinDamage + TWeapon(NewBase).MinDamage - TWeapon(OldBase).MinDamage;
-            TWeapon(Item).MaxDamage :=
-                TWeapon(Item).MaxDamage + TWeapon(NewBase).MaxDamage - TWeapon(OldBase).MaxDamage;
-            TWeapon(Item).AmmoCapacity :=
-                TWeapon(Item).AmmoCapacity
-                    + TWeapon(NewBase).AmmoCapacity
-                    - TWeapon(OldBase).AmmoCapacity;
-            TWeapon(Item).Ammo :=
-                Max(0, TWeapon(Item).Ammo + TWeapon(NewBase).Ammo - TWeapon(OldBase).Ammo);
+            TWeapon(Item).Range := TWeapon(Item).Range + TWeapon(NewBase).Range - TWeapon(OldBase).Range;
+            TWeapon(Item).MinDamage := TWeapon(Item).MinDamage + TWeapon(NewBase).MinDamage - TWeapon(OldBase).MinDamage;
+            TWeapon(Item).MaxDamage := TWeapon(Item).MaxDamage + TWeapon(NewBase).MaxDamage - TWeapon(OldBase).MaxDamage;
+            TWeapon(Item).AmmoCapacity := TWeapon(Item).AmmoCapacity + TWeapon(NewBase).AmmoCapacity - TWeapon(OldBase).AmmoCapacity;
+            TWeapon(Item).Ammo := Max(0, TWeapon(Item).Ammo + TWeapon(NewBase).Ammo - TWeapon(OldBase).Ammo);
           end;
         end;
         OldBase.Free;
@@ -15908,14 +15518,7 @@ begin
       if High(av) > 1 then
       begin
         Count := av[2].AsInteger;
-        TWeapon(Item as TEquipment).Ammo :=
-            Max(
-                0,
-                Min(
-                    TWeapon(Item as TEquipment).AmmoCapacity,
-                    TWeapon(Item as TEquipment).Ammo + Count
-                )
-            );
+        TWeapon(Item as TEquipment).Ammo := Max(0, Min(TWeapon(Item as TEquipment).AmmoCapacity, TWeapon(Item as TEquipment).Ammo + Count));
       end;
     end;
   av[0].AsInteger := Needed;
@@ -16220,22 +15823,14 @@ begin
     if Block = nil then
     begin
       AppendLogLineThreadSafe(
-          AnsiString(
-              'Warning.Script SF_GenerateCodeStringFromBlock - cant find block '
-                  + av[1].AsString
-                  + ' ['
-                  + IntToStr(I)
-                  + ']'
-          )
+          AnsiString('Warning.Script SF_GenerateCodeStringFromBlock - cant find block ' + av[1].AsString + ' [' + IntToStr(I) + ']')
       );
       Exit;
     end;
   end;
   av[0].AsString := Block.ConcatenateValues;
   if av[0].AsString = '' then
-    AppendLogLineThreadSafe(
-        AnsiString('Warning.Script SF_GenerateCodeStringFromBlock - no code at ' + av[1].AsString)
-    );
+    AppendLogLineThreadSafe(AnsiString('Warning.Script SF_GenerateCodeStringFromBlock - no code at ' + av[1].AsString));
 end;
 
 procedure SF_ItemOnUseCode(av: array of TVarEC; code: TCodeEC);
@@ -16330,8 +15925,7 @@ begin
         Param := av[6].AsInteger
       else
         Param := 0;
-      av[0].AsInteger :=
-          RunCustomShipInfoActionCode(Info, ActionType, Ship, Object1, Object2, Param);
+      av[0].AsInteger := RunCustomShipInfoActionCode(Info, ActionType, Ship, Object1, Object2, Param);
       Exit;
     end;
     av[0].AsInteger := 0;
@@ -16374,12 +15968,9 @@ begin
     else
       Param := 0;
     if TItem(Obj).ScriptItem <> nil then
-      av[0].AsInteger :=
-          TScriptItem(TItem(Obj).ScriptItem)
-              .RunActionCode(ActionType, Ship, Object1, Object2, Param);
+      av[0].AsInteger := TScriptItem(TItem(Obj).ScriptItem).RunActionCode(ActionType, Ship, Object1, Object2, Param);
     if Obj is TEquipmentWithActCode then
-      av[0].AsInteger :=
-          RunItemConfigActionCode(TItem(Obj), ActionType, Ship, Object1, Object2, Param);
+      av[0].AsInteger := RunItemConfigActionCode(TItem(Obj), ActionType, Ship, Object1, Object2, Param);
   end;
 end;
 
@@ -16438,8 +16029,7 @@ begin
       if av[1].AsInteger = 43 then
         Matches := PtrUInt(ScriptActionParamStack[ScriptActionParamStack.Count - 1]) = av[2].AsDword
       else
-        Matches :=
-            Integer(ScriptActionParamStack[ScriptActionParamStack.Count - 1]) = av[2].AsInteger;
+        Matches := Integer(ScriptActionParamStack[ScriptActionParamStack.Count - 1]) = av[2].AsInteger;
     av[0].AsDword := Ord(Matches);
   end;
 end;
@@ -16450,8 +16040,7 @@ begin
   // 32-bit numbers. Keep the pointer intact through both reads and writes.
   if ScriptActionParamStack.Count < 1 then
     av[0].AsInteger := 0
-  else if (ScriptActionTypeStack.Count > 0)
-      and (PtrUInt(ScriptActionTypeStack[ScriptActionTypeStack.Count - 1]) = 43) then
+  else if (ScriptActionTypeStack.Count > 0) and (PtrUInt(ScriptActionTypeStack[ScriptActionTypeStack.Count - 1]) = 43) then
   begin
     av[0].AsDword := PtrUInt(ScriptActionParamStack[ScriptActionParamStack.Count - 1]);
     if High(av) > 0 then
@@ -16498,11 +16087,7 @@ begin
       Ship.CurrentStar := GetPlayer.CurrentStar;
       GetPlayer.CurrentStar.Ships.Add(Ship);
       Angle :=
-          SeededRandomIntRange(
-                  0,
-                  360,
-                  Cardinal(Ship.Id)
-                      * (Cardinal(Galaxy.CurrentTurn) * GetPlayer.CurrentStar.GenerationSeed))
+          SeededRandomIntRange(0, 360, Cardinal(Ship.Id) * (Cardinal(Galaxy.CurrentTurn) * GetPlayer.CurrentStar.GenerationSeed))
               * Pi
               / 180;
       Ship.Position.X := GetPlayer.Position.X + Sin(Angle) * 100;
@@ -16555,20 +16140,12 @@ begin
         ScriptUseItem := nil;
       GetPlayer.RefreshDerivedStats(True);
       SoundManager.PlaySound('Sound.UseATranc');
-      ShowMessageBoxGI(
-          ShipScreen,
-          LocalizedColorText('FormShip.UseTranclucator'),
-          mbgOK or mbgUnused04
-      );
+      ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.UseTranclucator'), mbgOK or mbgUnused04);
     end
     else
     begin
       SoundManager.PlaySound('Sound.NoMoney');
-      ShowMessageBoxGI(
-          ShipScreen,
-          LocalizedColorText('FormShip.NotUseTranclucator'),
-          mbgCancel or mbgUnused04
-      );
+      ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.NotUseTranclucator'), mbgCancel or mbgUnused04);
     end;
   end;
 end;
@@ -16582,9 +16159,7 @@ begin
     Artefact := TArtefactTransmitter(ScriptUseItem)
   else
   begin
-    if (High(av) < 1)
-        or (av[1].AsDword = 0)
-        or not (TObject(av[1].AsDword) is TArtefactTransmitter) then
+    if (High(av) < 1) or (av[1].AsDword = 0) or not (TObject(av[1].AsDword) is TArtefactTransmitter) then
       Exit;
     Artefact := TArtefactTransmitter(av[1].AsDword);
   end;
@@ -16595,11 +16170,7 @@ begin
   if not (GetPlayer.InNormalSpace or not ShowFeedback) then
   begin
     SoundManager.PlaySound('Sound.NoMoney');
-    ShowMessageBoxGI(
-        ShipScreen,
-        LocalizedColorText('FormShip.UseOnlyInSpace'),
-        mbgCancel or mbgUnused04
-    );
+    ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.UseOnlyInSpace'), mbgCancel or mbgUnused04);
   end
   else if GetPlayer.UseDominatorTransmitter(Artefact) then
   begin
@@ -16608,12 +16179,7 @@ begin
       SoundManager.PlaySound('Sound.UseATranc');
       ShowMessageBoxGI(
           ShipScreen,
-          FormatText1(
-              LocalizedColorText('FormShip.UseTransmitter'),
-              TextHighlightColorTag,
-              '<Star>',
-              GetPlayer.CurrentStar.Name
-          ),
+          FormatText1(LocalizedColorText('FormShip.UseTransmitter'), TextHighlightColorTag, '<Star>', GetPlayer.CurrentStar.Name),
           mbgCancel or mbgUnused04
       );
     end;
@@ -16628,9 +16194,7 @@ begin
             LocalizedColorText('FormShip.NotUseTransmitter'),
             TextHighlightColorTag,
             '<Count>',
-            WideString(
-                IntToStr(MinTransmitterPower - (ScriptUseItem as TArtefactTransmitter).Power)
-            )
+            WideString(IntToStr(MinTransmitterPower - (ScriptUseItem as TArtefactTransmitter).Power))
         ),
         mbgCancel or mbgUnused04
     );
@@ -16663,11 +16227,7 @@ begin
     if not GetPlayer.InNormalSpace then
     begin
       SoundManager.PlaySound('Sound.NoMoney');
-      ShowMessageBoxGI(
-          ShipScreen,
-          LocalizedColorText('FormShip.UseOnlyInSpace'),
-          mbgCancel or mbgUnused04
-      );
+      ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.UseOnlyInSpace'), mbgCancel or mbgUnused04);
     end
     else
     begin
@@ -16687,21 +16247,13 @@ begin
       THoleSE(Hole.Graphic).SetState(1);
       Hole.Star1 := GetPlayer.CurrentStar;
       Angle := ArcTan2(GetPlayer.Position.X, -GetPlayer.Position.Y);
-      Distance :=
-          Max(
-              GetPlayer.CurrentStar.SafeRadius + 100,
-              Sqrt(PointDistanceSquared(GetPlayer.Position, MakePointF(0, 0))) + 200
-          );
+      Distance := Max(GetPlayer.CurrentStar.SafeRadius + 100, Sqrt(PointDistanceSquared(GetPlayer.Position, MakePointF(0, 0))) + 200);
       Hole.Position1 := MakePointF(Sin(Angle) * Distance, -Cos(Angle) * Distance);
       Hole.Star2 := nil;
       for Index := 0 to Galaxy.Stars.Count - 1 do
         if TStar(Galaxy.Stars[Index]).IsConstellationVisible then
         begin
-          Distance :=
-              PointDistanceSquared(
-                  GetPlayer.CurrentStar.Position,
-                  TStar(Galaxy.Stars[Index]).Position
-              );
+          Distance := PointDistanceSquared(GetPlayer.CurrentStar.Position, TStar(Galaxy.Stars[Index]).Position);
           if (Distance > 400) and (Distance < 2500) then
             if (Hole.Star2 = nil) or (NextRandomIntRange(0, 100, GetPlayer.RandomState) < 50) then
             begin
@@ -16737,11 +16289,7 @@ begin
   if not GetPlayer.InNormalSpace then
   begin
     SoundManager.PlaySound('Sound.NoMoney');
-    ShowMessageBoxGI(
-        ShipScreen,
-        LocalizedColorText('FormShip.UseOnlyInSpace'),
-        mbgCancel or mbgUnused04
-    );
+    ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.UseOnlyInSpace'), mbgCancel or mbgUnused04);
   end
   else
   begin
@@ -16749,11 +16297,7 @@ begin
       with TMissile(GetPlayer.CurrentStar.Missiles[I]) do
         if GetPlayer = OwnerShip then
           FlightTicks := 10000;
-    ShowMessageBoxGI(
-        ShipScreen,
-        LocalizedColorText('FormShip.UseMissileDef'),
-        mbgCancel or mbgUnused04
-    );
+    ShowMessageBoxGI(ShipScreen, LocalizedColorText('FormShip.UseMissileDef'), mbgCancel or mbgUnused04);
   end;
 end;
 
@@ -16799,8 +16343,7 @@ begin
   else
     OffsetY := av[4].AsInteger;
   av[0].AsInteger := 0;
-  if ShowMessageBoxGI(GetInnermostScreenLoop, av[1].AsString, Options, 0, OffsetX, OffsetY)
-      = mbgResultOK then
+  if ShowMessageBoxGI(GetInnermostScreenLoop, av[1].AsString, Options, 0, OffsetX, OffsetY) = mbgResultOK then
     av[0].AsInteger := 1;
 end;
 
@@ -16898,17 +16441,7 @@ begin
         Choices.Add(Entry);
       end;
   end;
-  if ShowNumberDialog(
-          GetInnermostScreenLoop,
-          Caption,
-          AlternateCaption,
-          Description,
-          Minimum,
-          Maximum,
-          Limit,
-          Choices,
-          Value)
-      = 1 then
+  if ShowNumberDialog(GetInnermostScreenLoop, Caption, AlternateCaption, Description, Minimum, Maximum, Limit, Choices, Value) = 1 then
     av[0].AsInteger := Value
   else
     av[0].AsString := 'Cancel';
@@ -16946,8 +16479,7 @@ begin
   else
     OffsetY := av[5].AsInteger;
   av[0].AsString := Value;
-  if ShowTextInputDialog(GetInnermostScreenLoop, Caption, Value, MaximumLength, OffsetX, OffsetY)
-      = 1 then
+  if ShowTextInputDialog(GetInnermostScreenLoop, Caption, Value, MaximumLength, OffsetX, OffsetY) = 1 then
     av[0].AsString := Value;
 end;
 
@@ -17108,8 +16640,7 @@ begin
   if Form <> nil then
     Control := Form.FindControlByPath(Path);
   if Control = nil then
-    raise Exception.Create(
-        'Error.Script UICheckElement - cant find ' + Path + ' (' + FormName + ')');
+    raise Exception.Create('Error.Script UICheckElement - cant find ' + Path + ' (' + FormName + ')');
   Query := av[3].AsString;
   if Query = 'IsActive' then
     av[0].AsInteger := Ord(Control.Active)
@@ -17124,8 +16655,7 @@ begin
   else if Query = 'IsDisable' then
   begin
     if not (Control is TGraphButtonGI) then
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a button');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a button');
     av[0].AsInteger := Ord(TGraphButtonGI(Control).Disabled);
   end
   else if Query = 'Text' then
@@ -17139,8 +16669,7 @@ begin
     else if Control is TLabelGI then
       av[0].AsString := TLabelGI(Control).GetText
     else
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a label or edit');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a label or edit');
   end
   else if Query = 'Help' then
   begin
@@ -17157,8 +16686,7 @@ begin
         TEditGI(Control).SetCaretPosition(av[4].AsInteger);
     end
     else
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not an edit');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not an edit');
   end
   else if Query = 'IsFocused' then
     av[0].AsInteger := Ord(Form.FocusedControl = Control)
@@ -17175,14 +16703,12 @@ begin
     else if Control is TImageGI then
       av[0].AsString := TImageGI(Control).GetImagePath
     else
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a image');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a image');
   end
   else if Query = 'CurFrame' then
   begin
     if not (Control is TgaiGI) then
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a gai');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a gai');
     av[0].AsInteger := TgaiGI(Control).SequenceFrame;
     if High(av) > 3 then
       TgaiGI(Control).SetSequenceFrame(av[4].AsInteger);
@@ -17196,24 +16722,21 @@ begin
         TGraphButtonGI(Control).SetDown(av[4].AsInteger <> 0);
     end
     else
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a button');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a button');
   end
   else if Query = 'Rescale' then
   begin
     if Control is TGraphBufGI then
     begin
       if High(av) < 4 then
-        raise Exception.Create(
-            'Error.Script UICheckElement - Rescale option can not be used without image path');
+        raise Exception.Create('Error.Script UICheckElement - Rescale option can not be used without image path');
       if (High(av) > 4) and (av[5].AsString = 'GI') then
         TGraphBufGI(Control).LoadScaledGiPath(av[4].AsString)
       else
         TGraphBufGI(Control).LoadScaledBitmapPathAsRgba(av[4].AsString);
     end
     else
-      raise Exception.Create(
-          'Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a graph buffer');
+      raise Exception.Create('Error.Script UICheckElement - ' + Path + ' (' + FormName + ') is not a graph buffer');
   end
   else
     raise Exception.Create('Error.Script UICheckElement - query not recognized - ' + Query);
@@ -17371,8 +16894,7 @@ begin
         av[0].AsString := Control.ConfigPath;
       if High(av) > 2 then
       begin
-        if (CountDelimitedPartsW(av[3].AsString, ':') > 1)
-            and (ExtractDelimitedPartW(av[3].AsString, 0, ':') = 'Style') then
+        if (CountDelimitedPartsW(av[3].AsString, ':') > 1) and (ExtractDelimitedPartW(av[3].AsString, 0, ':') = 'Style') then
           Control.SetConfigPath(ExtractDelimitedPartW(av[3].AsString, 1, ':'))
         else if Control is TgaiGI then
         begin
@@ -17621,8 +17143,7 @@ begin
     else if av[1].AsString = 'Replace' then
       Query := 7
     else
-      raise Exception.Create(
-          'Error.Script FormShipCurItem - query not recognized: ' + av[1].AsString);
+      raise Exception.Create('Error.Script FormShipCurItem - query not recognized: ' + av[1].AsString);
   end
   // The native numeric-query path reads argument 3, without an additional arity check.
   else
@@ -17658,8 +17179,7 @@ begin
     begin
       if (High(av) < 2) or (av[2].AsDword = 0) then
         raise Exception.Create('Error.Script FormShipCurItem no replacing item');
-      if (ShipScreen.SelectedHoldItem = nil)
-          or not (ShipScreen.SelectedHoldKind in [phkEquipment, phkArtefact]) then
+      if (ShipScreen.SelectedHoldItem = nil) or not (ShipScreen.SelectedHoldKind in [phkEquipment, phkArtefact]) then
         raise Exception.Create('Error.Script FormShipCurItem no item to replace');
       Item := TObject(av[2].AsDword);
       av[0].AsDword := PtrUInt(ShipScreen.SelectedHoldItem);
@@ -17674,8 +17194,7 @@ begin
     end;
   else
     // Native creates this exception without raising or freeing it.
-    Exception
-        .Create('Error.Script FormShipCurItem - query not recognized: ' + IntToWideString(Query));
+    Exception.Create('Error.Script FormShipCurItem - query not recognized: ' + IntToWideString(Query));
   end;
 end;
 
@@ -17722,16 +17241,13 @@ begin
         ShipReturnScreenId := CurrentScreenId;
         if (CurrentScreenId = screenStarMap)
             or not (RegisteredScreens[CurrentScreenId] is TMessageLoopGIWithMainPanel)
-            or (TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel
-                = nil) then
+            or (TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel = nil) then
         begin
           ShipReturnScreenId := CurrentScreenId;
           GetInnermostScreenLoop.RequestClose(1);
         end
         else
-          TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId])
-              .MainPanel
-              .ShipClicked(nil);
+          TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel.ShipClicked(nil);
         Exit;
       end;
       if ScannerScreen = RegisteredScreens[Id] then
@@ -17877,15 +17393,13 @@ begin
     raise Exception.Create('Error.Script CustomInterfaceText - no custom form');
   Control := Form.FindControlByPath(av[1].AsString);
   if Control = nil then
-    raise Exception.Create(
-        'Error.Script CustomInterfaceText - object not found: ' + av[1].AsString);
+    raise Exception.Create('Error.Script CustomInterfaceText - object not found: ' + av[1].AsString);
   if Control is TLabelGI then
     av[0].AsString := TLabelGI(Control).GetText
   else if Control is TEditGI then
     av[0].AsString := TEditGI(Control).Text
   else
-    raise Exception.Create(
-        'Error.Script CustomInterfaceText - object is not a label or edit: ' + av[1].AsString);
+    raise Exception.Create('Error.Script CustomInterfaceText - object is not a label or edit: ' + av[1].AsString);
   if High(av) > 1 then
   begin
     if Control is TLabelGI then
@@ -17907,8 +17421,7 @@ begin
     raise Exception.Create('Error.Script CustomInterfaceImage - no custom form');
   Control := Form.FindControlByPath(av[1].AsString);
   if Control = nil then
-    raise Exception.Create(
-        'Error.Script CustomInterfaceImage - object not found: ' + av[1].AsString);
+    raise Exception.Create('Error.Script CustomInterfaceImage - object not found: ' + av[1].AsString);
   if Control is TgaiGI then
   begin
     av[0].AsString := TgaiGI(Control).GetImagePath;
@@ -17923,8 +17436,7 @@ begin
     av[0].AsString := Control.ConfigPath;
   if High(av) <= 1 then
     Exit;
-  if (CountDelimitedPartsW(av[2].AsString, ':') > 1)
-      and (ExtractDelimitedPartW(av[2].AsString, 0, ':') = 'Style') then
+  if (CountDelimitedPartsW(av[2].AsString, ':') > 1) and (ExtractDelimitedPartW(av[2].AsString, 0, ':') = 'Style') then
     Control.SetConfigPath(ExtractDelimitedPartW(av[2].AsString, 1, ':'))
   else if Control is TgaiGI then
   begin
@@ -17945,8 +17457,7 @@ begin
   else if Control is TImageGI then
     TImageGI(Control).SetImagePath(av[2].AsString)
   else
-    raise Exception.Create(
-        'Error.Script CustomInterfaceImage - object is not a image: ' + av[1].AsString);
+    raise Exception.Create('Error.Script CustomInterfaceImage - object is not a image: ' + av[1].AsString);
 end;
 
 procedure SF_CustomInterfacePos(av: array of TVarEC; code: TCodeEC);
@@ -18047,8 +17558,7 @@ begin
   StarMapScreen.CustomSelectionSuccessText := av[5].AsString;
   StarMapScreen.CustomSelectionOutOfRangeText := av[6].AsString;
   StarMapScreen.CustomSelectionFailureText := av[7].AsString;
-  StarMapScreen.CustomSelectionColor :=
-      CurrentPixelFormat.PackRgb(av[8].AsInteger, av[9].AsInteger, av[10].AsInteger);
+  StarMapScreen.CustomSelectionColor := CurrentPixelFormat.PackRgb(av[8].AsInteger, av[9].AsInteger, av[10].AsInteger);
   StarMapScreen.BeginCustomSelection;
 end;
 
@@ -18112,8 +17622,7 @@ begin
   else
     Kind := t_IndustrialLaser;
   if not (Kind in [t_IndustrialLaser..t_Lirecron]) then
-    raise Exception.Create(
-        AnsiString('Error.Script InventNewCustomWeapon - invalid type ' + av[2].AsString));
+    raise Exception.Create(AnsiString('Error.Script InventNewCustomWeapon - invalid type ' + av[2].AsString));
   Base := @WeaponInfos[Kind];
   Info.TechLevel := Base.TechLevel;
   Info.InventionIndex := Base.InventionIndex;
@@ -18324,8 +17833,7 @@ begin
     Text := av[5].AsString;
     Count := CountDelimitedPartsW(Text, ',');
     for I := Low(Info.DamageScaleByLevel) to Min(High(Info.DamageScaleByLevel), Count) do
-      Info.DamageScaleByLevel[I] :=
-          ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, I - 1, ','));
+      Info.DamageScaleByLevel[I] := ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, I - 1, ','));
   end
   else
     for I := Low(Info.DamageScaleByLevel) to Min(High(Info.DamageScaleByLevel), High(av) - 4) do
@@ -18545,10 +18053,8 @@ begin
   Scope.Add('HullDamage', vkExternFun).AsExternFun := @SF_HullDamage;
   Scope.Add('Hitpoints', vkExternFun).AsExternFun := @SF_Hitpoints;
   Scope.Add('Hit', vkExternFun).AsExternFun := @SF_Hit;
-  Scope.Add('ChangeGlobalRelationsShips', vkExternFun).AsExternFun :=
-      @SF_ChangeGlobalRelationsShips;
-  Scope.Add('ChangeGlobalRelationsPlanets', vkExternFun).AsExternFun :=
-      @SF_ChangeGlobalRelationsPlanets;
+  Scope.Add('ChangeGlobalRelationsShips', vkExternFun).AsExternFun := @SF_ChangeGlobalRelationsShips;
+  Scope.Add('ChangeGlobalRelationsPlanets', vkExternFun).AsExternFun := @SF_ChangeGlobalRelationsPlanets;
   Scope.Add('GlobalRelationsShips', vkExternFun).AsExternFun := @SF_GlobalRelationsShips;
   Scope.Add('GlobalRelationsPlanets', vkExternFun).AsExternFun := @SF_GlobalRelationsPlanets;
   Scope.Add('SetRelationGroup', vkExternFun).AsExternFun := @SF_SetRelationGroup;
@@ -18669,8 +18175,7 @@ begin
   Scope.Add('ShipFuel', vkExternFun).AsExternFun := @SF_ShipFuel;
   Scope.Add('ShipFuelLow', vkExternFun).AsExternFun := @SF_ShipFuelLow;
   Scope.Add('ShipStrengthInBestRanger', vkExternFun).AsExternFun := @SF_ShipStrengthInBestRanger;
-  Scope.Add('ShipStrengthInAverageRanger', vkExternFun).AsExternFun :=
-      @SF_ShipStrengthInAverageRanger;
+  Scope.Add('ShipStrengthInAverageRanger', vkExternFun).AsExternFun := @SF_ShipStrengthInAverageRanger;
   Scope.Add('ChanceToWin', vkExternFun).AsExternFun := @SF_ChanceToWin;
   Scope.Add('ShipFind', vkExternFun).AsExternFun := @SF_ShipFind;
   Scope.Add('RangerStatus', vkExternFun).AsExternFun := @SF_RangerStatus;
@@ -18955,10 +18460,8 @@ begin
   Scope.Add('PlanetWarriors', vkExternFun).AsExternFun := @SF_PlanetWarriors;
   Scope.Add('GalaxySectors', vkExternFun).AsExternFun := @SF_GalaxySectors;
   Scope.Add('GalaxyTechLevel', vkExternFun).AsExternFun := @SF_GalaxyTechLevel;
-  Scope.Add('GalaxyDominatorResearchPercent', vkExternFun).AsExternFun :=
-      @SF_GalaxyDominatorResearchPercent;
-  Scope.Add('GalaxyDominatorResearchMaterial', vkExternFun).AsExternFun :=
-      @SF_GalaxyDominatorResearchMaterial;
+  Scope.Add('GalaxyDominatorResearchPercent', vkExternFun).AsExternFun := @SF_GalaxyDominatorResearchPercent;
+  Scope.Add('GalaxyDominatorResearchMaterial', vkExternFun).AsExternFun := @SF_GalaxyDominatorResearchMaterial;
   Scope.Add('GalaxyDiffLevels', vkExternFun).AsExternFun := @SF_GalaxyDiffLevels;
   Scope.Add('SectorVisible', vkExternFun).AsExternFun := @SF_SectorVisible;
   Scope.Add('HullHP', vkExternFun).AsExternFun := @SF_HullHP;
@@ -19015,8 +18518,7 @@ begin
   Scope.Add('ArrayFindInSorted', vkExternFun).AsExternFun := @SF_ArrayFindInSorted;
   Scope.Add('DistToNearestEnemySystem', vkExternFun).AsExternFun := @SF_DistToNearestEnemySystem;
   Scope.Add('StarEnemyThreatLevel', vkExternFun).AsExternFun := @SF_StarEnemyThreatLevel;
-  Scope.Add('BuildListOfQuestPossibleLocations', vkExternFun).AsExternFun :=
-      @SF_BuildListOfQuestPossibleLocations;
+  Scope.Add('BuildListOfQuestPossibleLocations', vkExternFun).AsExternFun := @SF_BuildListOfQuestPossibleLocations;
   Scope.Add('FindItemInShip', vkExternFun).AsExternFun := @SF_FindItemInShip;
   Scope.Add('GalaxyRangers', vkExternFun).AsExternFun := @SF_GalaxyRangers;
   Scope.Add('MakeShipEnterStar', vkExternFun).AsExternFun := @SF_MakeShipEnterStar;
@@ -19036,8 +18538,7 @@ begin
   Scope.Add('FindBonusByCustomTag', vkExternFun).AsExternFun := @SF_FindBonusByCustomTag;
   Scope.Add('FindBonusByNameInCfg', vkExternFun).AsExternFun := @SF_FindBonusByNameInCfg;
   Scope.Add('BonusCustomTag', vkExternFun).AsExternFun := @SF_BonusCustomTag;
-  Scope.Add('CreateEquipmentWithSpecial', vkExternFun).AsExternFun :=
-      @SF_CreateEquipmentWithSpecial;
+  Scope.Add('CreateEquipmentWithSpecial', vkExternFun).AsExternFun := @SF_CreateEquipmentWithSpecial;
   Scope.Add('SpecialToEquipment', vkExternFun).AsExternFun := @SF_SpecialToEquipment;
   Scope.Add('ModuleToEquipment', vkExternFun).AsExternFun := @SF_ModuleToEquipment;
   Scope.Add('EqSpecial', vkExternFun).AsExternFun := @SF_EqSpecial;
@@ -19090,8 +18591,7 @@ begin
   Scope.Add('ShipRepairEq', vkExternFun).AsExternFun := @SF_ShipRepairEq;
   Scope.Add('ItemInScript', vkExternFun).AsExternFun := @SF_ItemInScript;
   Scope.Add('FindPlanetByAdvancement', vkExternFun).AsExternFun := @SF_FindPlanetByAdvancement;
-  Scope.Add('StarListToTransitPlanetList', vkExternFun).AsExternFun :=
-      @SF_StarListToTransitPlanetList;
+  Scope.Add('StarListToTransitPlanetList', vkExternFun).AsExternFun := @SF_StarListToTransitPlanetList;
   Scope.Add('GalaxyEvents', vkExternFun).AsExternFun := @SF_GalaxyEvents;
   Scope.Add('GalaxyEventDate', vkExternFun).AsExternFun := @SF_GalaxyEventDate;
   Scope.Add('GalaxyEventType', vkExternFun).AsExternFun := @SF_GalaxyEventType;
@@ -19134,8 +18634,7 @@ begin
   Scope.Add('PlayerQuestInProgress', vkExternFun).AsExternFun := @SF_PlayerQuestInProgress;
   Scope.Add('PlayerQuestsCompleted', vkExternFun).AsExternFun := @SF_PlayerQuestsCompleted;
   Scope.Add('QuestsStatusByNom', vkExternFun).AsExternFun := @SF_QuestsStatusByNom;
-  Scope.Add('PlayerPlanetaryBattlesCompleted', vkExternFun).AsExternFun :=
-      @SF_PlayerPlanetaryBattlesCompleted;
+  Scope.Add('PlayerPlanetaryBattlesCompleted', vkExternFun).AsExternFun := @SF_PlayerPlanetaryBattlesCompleted;
   Scope.Add('PlayerMayTakeSubCrack', vkExternFun).AsExternFun := @SF_PlayerMayTakeSubCrack;
   Scope.Add('SubCrackCost', vkExternFun).AsExternFun := @SF_SubCrackCost;
   Scope.Add('ShipCalcParam', vkExternFun).AsExternFun := @SF_ShipCalcParam;
@@ -19143,8 +18642,7 @@ begin
   Scope.Add('ShipImproveItems', vkExternFun).AsExternFun := @SF_ShipImproveItems;
   Scope.Add('ItemImprovement', vkExternFun).AsExternFun := @SF_ItemImprovement;
   Scope.Add('ShipFreeFlight', vkExternFun).AsExternFun := @SF_ShipFreeFlight;
-  Scope.Add('ShipKillFactionInCurSystem', vkExternFun).AsExternFun :=
-      @SF_ShipKillFactionInCurSystem;
+  Scope.Add('ShipKillFactionInCurSystem', vkExternFun).AsExternFun := @SF_ShipKillFactionInCurSystem;
   Scope.Add('CapitalShipStats', vkExternFun).AsExternFun := @SF_CapitalShipStats;
   Scope.Add('PlayerBridge', vkExternFun).AsExternFun := @SF_PlayerBridge;
   Scope.Add('PlayerDebt', vkExternFun).AsExternFun := @SF_PlayerDebt;
@@ -19158,18 +18656,14 @@ begin
   Scope.Add('ShipCustomShipInfosCount', vkExternFun).AsExternFun := @SF_ShipCustomShipInfosCount;
   Scope.Add('ShipAddCustomShipInfo', vkExternFun).AsExternFun := @SF_ShipAddCustomShipInfo;
   Scope.Add('ShipDeleteCustomShipInfo', vkExternFun).AsExternFun := @SF_ShipDeleteCustomShipInfo;
-  Scope.Add('ShipFindCustomShipInfoByType', vkExternFun).AsExternFun :=
-      @SF_ShipFindCustomShipInfoByType;
-  Scope.Add('ShipCustomShipInfoDescription', vkExternFun).AsExternFun :=
-      @SF_ShipCustomShipInfoDescription;
+  Scope.Add('ShipFindCustomShipInfoByType', vkExternFun).AsExternFun := @SF_ShipFindCustomShipInfoByType;
+  Scope.Add('ShipCustomShipInfoDescription', vkExternFun).AsExternFun := @SF_ShipCustomShipInfoDescription;
   Scope.Add('ShipCustomShipInfoData', vkExternFun).AsExternFun := @SF_ShipCustomShipInfoData;
-  Scope.Add('ShipCustomShipInfoTextData', vkExternFun).AsExternFun :=
-      @SF_ShipCustomShipInfoTextData;
+  Scope.Add('ShipCustomShipInfoTextData', vkExternFun).AsExternFun := @SF_ShipCustomShipInfoTextData;
   Scope.Add('StarCustomStarInfosCount', vkExternFun).AsExternFun := @SF_StarCustomStarInfosCount;
   Scope.Add('StarAddCustomStarInfo', vkExternFun).AsExternFun := @SF_StarAddCustomStarInfo;
   Scope.Add('StarDeleteCustomStarInfo', vkExternFun).AsExternFun := @SF_StarDeleteCustomStarInfo;
-  Scope.Add('StarFindCustomStarInfoByType', vkExternFun).AsExternFun :=
-      @SF_StarFindCustomStarInfoByType;
+  Scope.Add('StarFindCustomStarInfoByType', vkExternFun).AsExternFun := @SF_StarFindCustomStarInfoByType;
   Scope.Add('StarCustomStarInfoData', vkExternFun).AsExternFun := @SF_StarCustomStarInfoData;
   Scope.Add('ItemCanBeBroken', vkExternFun).AsExternFun := @SF_ItemCanBeBroken;
   Scope.Add('ItemFragility', vkExternFun).AsExternFun := @SF_ItemFragility;
@@ -19182,15 +18676,11 @@ begin
   Scope.Add('WeaponMaxAmmunition', vkExternFun).AsExternFun := @SF_WeaponMaxAmmunition;
   Scope.Add('ShipSpecialBonuses', vkExternFun).AsExternFun := @SF_ShipSpecialBonuses;
   Scope.Add('ItemExtraSpecials', vkExternFun).AsExternFun := @SF_ItemExtraSpecials;
-  Scope.Add('ItemExtraSpecialsCountByType', vkExternFun).AsExternFun :=
-      @SF_ItemExtraSpecialsCountByType;
-  Scope.Add('ItemExtraSpecialsAddByType', vkExternFun).AsExternFun :=
-      @SF_ItemExtraSpecialsAddByType;
-  Scope.Add('ItemExtraSpecialsDeleteByType', vkExternFun).AsExternFun :=
-      @SF_ItemExtraSpecialsDeleteByType;
+  Scope.Add('ItemExtraSpecialsCountByType', vkExternFun).AsExternFun := @SF_ItemExtraSpecialsCountByType;
+  Scope.Add('ItemExtraSpecialsAddByType', vkExternFun).AsExternFun := @SF_ItemExtraSpecialsAddByType;
+  Scope.Add('ItemExtraSpecialsDeleteByType', vkExternFun).AsExternFun := @SF_ItemExtraSpecialsDeleteByType;
   Scope.Add('ExecuteCodeFromString', vkExternFun).AsExternFun := @SF_ExecuteCodeFromString;
-  Scope.Add('GenerateCodeStringFromBlock', vkExternFun).AsExternFun :=
-      @SF_GenerateCodeStringFromBlock;
+  Scope.Add('GenerateCodeStringFromBlock', vkExternFun).AsExternFun := @SF_GenerateCodeStringFromBlock;
   Scope.Add('ItemOnUseCode', vkExternFun).AsExternFun := @SF_ItemOnUseCode;
   Scope.Add('ItemOnActCode', vkExternFun).AsExternFun := @SF_ItemOnActCode;
   Scope.Add('CreateActCodeEvent', vkExternFun).AsExternFun := @SF_CreateActCodeEvent;
@@ -19244,27 +18734,21 @@ begin
   Scope.Add('StarMapCenterView', vkExternFun).AsExternFun := @SF_StarMapCenterView;
   Scope.Add('StarMapCurPosX', vkExternFun).AsExternFun := @SF_StarMapCurPosX;
   Scope.Add('StarMapCurPosY', vkExternFun).AsExternFun := @SF_StarMapCurPosY;
-  Scope.Add('StarMapCustomSelectionMode', vkExternFun).AsExternFun :=
-      @SF_StarMapCustomSelectionMode;
+  Scope.Add('StarMapCustomSelectionMode', vkExternFun).AsExternFun := @SF_StarMapCustomSelectionMode;
   Scope.Add('StarMapBlinkingMessage', vkExternFun).AsExternFun := @SF_StarMapBlinkingMessage;
   Scope.Add('BlinkingWarning', vkExternFun).AsExternFun := @SF_BlinkingWarning;
   Scope.Add('CustomWeaponTypes', vkExternFun).AsExternFun := @SF_CustomWeaponTypes;
   Scope.Add('InventNewCustomWeapon', vkExternFun).AsExternFun := @SF_InventNewCustomWeapon;
   Scope.Add('GetCustomWeaponInfo', vkExternFun).AsExternFun := @SF_GetCustomWeaponInfo;
   Scope.Add('GetCustomWeaponData', vkExternFun).AsExternFun := @SF_GetCustomWeaponData;
-  Scope.Add('GetCustomWeaponPrimaryDamageType', vkExternFun).AsExternFun :=
-      @SF_GetCustomWeaponPrimaryDamageType;
-  Scope.Add('SetCustomWeaponAvailability', vkExternFun).AsExternFun :=
-      @SF_SetCustomWeaponAvailability;
+  Scope.Add('GetCustomWeaponPrimaryDamageType', vkExternFun).AsExternFun := @SF_GetCustomWeaponPrimaryDamageType;
+  Scope.Add('SetCustomWeaponAvailability', vkExternFun).AsExternFun := @SF_SetCustomWeaponAvailability;
   Scope.Add('SetCustomWeaponSE', vkExternFun).AsExternFun := @SF_SetCustomWeaponSE;
-  Scope.Add('SetCustomWeaponPrimaryData', vkExternFun).AsExternFun :=
-      @SF_SetCustomWeaponPrimaryData;
-  Scope.Add('SetCustomWeaponSizeAndCost', vkExternFun).AsExternFun :=
-      @SF_SetCustomWeaponSizeAndCost;
+  Scope.Add('SetCustomWeaponPrimaryData', vkExternFun).AsExternFun := @SF_SetCustomWeaponPrimaryData;
+  Scope.Add('SetCustomWeaponSizeAndCost', vkExternFun).AsExternFun := @SF_SetCustomWeaponSizeAndCost;
   Scope.Add('SetCustomWeaponDamageData', vkExternFun).AsExternFun := @SF_SetCustomWeaponDamageData;
   Scope.Add('SetCustomWeaponShotData', vkExternFun).AsExternFun := @SF_SetCustomWeaponShotData;
-  Scope.Add('SetCustomMissileWeaponStats', vkExternFun).AsExternFun :=
-      @SF_SetCustomMissileWeaponStats;
+  Scope.Add('SetCustomMissileWeaponStats', vkExternFun).AsExternFun := @SF_SetCustomMissileWeaponStats;
   Scope.Add('StarCustomFaction', vkExternFun).AsExternFun := @SF_StarCustomFaction;
   Scope.Add('ShipCustomFaction', vkExternFun).AsExternFun := @SF_ShipCustomFaction;
   Scope.Add('EqCustomFaction', vkExternFun).AsExternFun := @SF_EqCustomFaction;

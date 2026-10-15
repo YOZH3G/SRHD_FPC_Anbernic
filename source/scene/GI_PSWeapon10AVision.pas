@@ -150,8 +150,7 @@ var
 begin
   if RemainingTicks = 40 then
   begin
-    OriginalLength :=
-        Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
+    OriginalLength := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
     for I := 0 to 3 do
     begin
       Y := 0;
@@ -255,9 +254,7 @@ var
 begin
   if OriginalLength = 0 then
     OriginalLength := 1;
-  Scale :=
-      Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-          / OriginalLength;
+  Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
   PY := -(TargetPoint.Y - LocalPosition.Y);
   if PY = 0 then
     PY := 1;
@@ -293,10 +290,7 @@ begin
         PY := Particle.Position.Y * Scale;
         X := Round(PX * Cosine + PY * Sine) + AbsolutePosition.X;
         Y := Round(PX * Sine - PY * Cosine) + AbsolutePosition.Y;
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := AddPointerOffset(Particle, SizeOf(TAVisionParticle));

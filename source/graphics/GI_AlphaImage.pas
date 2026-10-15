@@ -187,11 +187,7 @@ begin
     begin
       Exit;
     end;
-    Pixels :=
-        AddPointerOffset(
-            @Pixel,
-            -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word))
-        );
+    Pixels := AddPointerOffset(@Pixel, -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word)));
     Y := Top;
     while (Y < Bottom) and (Pixel = 0) do
     begin
@@ -230,12 +226,7 @@ begin
   if Block.CountParams('Size') > 0 then
   begin
     Text := Block.GetParam('Size');
-    SetSize(
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(Text, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(Text, 1, ','))
-        )
-    );
+    SetSize(Classes.Point(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), StrToInt(ExtractDelimitedPartW(Text, 1, ','))));
   end;
   if Block.CountParams('KindX') > 0 then
     SetImageKindX(ParseImageKindXName(Block.GetParam('KindX')));
@@ -263,12 +254,7 @@ begin
   if Block.CountParams('Size') > 0 then
   begin
     Text := Block.GetParam('Size');
-    SetSize(
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(Text, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(Text, 1, ','))
-        )
-    );
+    SetSize(Classes.Point(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), StrToInt(ExtractDelimitedPartW(Text, 1, ','))));
   end;
   if Block.CountParams('KindX') > 0 then
     SetImageKindX(ParseImageKindXName(Block.GetParam('KindX')));
@@ -373,8 +359,7 @@ begin
         X := Left;
         while (X < Right) do
         begin
-          Bitmap
-              .Draw16(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, ClipRect);
+          Bitmap.Draw16(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, ClipRect);
           Inc(X, Width);
         end;
         Inc(Y, Height);

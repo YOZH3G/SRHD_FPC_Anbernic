@@ -66,9 +66,7 @@ begin
   MapImage := TImageGI.Create(SpaceObjectUiLoop.ContentPanel);
   MapImage.SetPositionModeW(True);
   MapImage.SetDepthByName(DepthExpression);
-  MapImage.SetPosition(
-      TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-  );
+  MapImage.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
   MapImage.SetImagePath(MapImagePath);
   MapImage.SetSize(MapImage.GetContentSize);
   MapImage.SetOrigin(HalfPoint(MapImage.GetContentSize));
@@ -98,11 +96,7 @@ begin
   if IsAttachedToSpace then
   begin
     Animation.SetPosition(TruncatePointF(APosition));
-    MapImage.SetPosition(
-        TruncatePointF(
-            MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-        )
-    );
+    MapImage.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
   end;
 end;
 

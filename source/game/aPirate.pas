@@ -36,17 +36,9 @@ type
     function GetStrengthScaledPirateStatus: TPercent; override;
     function GetDesiredCargoFreeSpace: Integer; override;
     procedure RefuelAtLocation; override;
-    function AdjustItemEvaluation(
-        Item: TItem;
-        PriceMode: Byte;
-        Effectiveness: Single
-    ): Single; override;
+    function AdjustItemEvaluation(Item: TItem; PriceMode: Byte; Effectiveness: Single): Single; override;
     function EvaluateStatBonus(BonusKind: TEquipmentBonusKind; Value: Integer): Single; override;
-    function EvaluateWeaponDamage(
-        Weapon: TWeapon;
-        IncludeAdditiveBonuses: Boolean;
-        BaseDamage: Single
-    ): Single; override;
+    function EvaluateWeaponDamage(Weapon: TWeapon; IncludeAdditiveBonuses: Boolean; BaseDamage: Single): Single; override;
     procedure RepairBrokenEquipmentAtLocation; override;
     procedure BuildReachablePlanetQueue; override;
     function CanQueueReachablePlanet(Planet: TPlanet): Boolean; override;
@@ -64,35 +56,12 @@ type
     function AcceptPickupDistance(Item: TItem; Distance: Double): Boolean; override;
     procedure ProcessCombatDialogue; override;
     procedure ReactToExtortionDemand(Ranger: Pointer); override;
-    function BuildMoneyExtortionResponse(
-        OtherShip: TShip;
-        var Response: WideString;
-        DemandedAmount: Integer
-    ): Boolean; override;
-    function BuildCargoExtortionResponse(
-        OtherShip: TShip;
-        var Response: WideString
-    ): Boolean; override;
-    function BuildTrucePaymentResponse(
-        OtherShip: TShip;
-        var Response: WideString;
-        OfferedAmount: Integer
-    ): Boolean; override;
-    function BuildAttackRequestResponse(
-        Requester: TShip;
-        var Response: WideString;
-        Target: TShip
-    ): Boolean; override;
-    function AcceptPartnershipOffer(
-        OtherShip: TShip;
-        var Response: WideString;
-        PaymentAmount: Integer
-    ): Boolean; override;
-    function BuildPartnershipOfferResponse(
-        OtherShip: TShip;
-        var Response: WideString;
-        PaymentAmount: Integer
-    ): Boolean; override;
+    function BuildMoneyExtortionResponse(OtherShip: TShip; var Response: WideString; DemandedAmount: Integer): Boolean; override;
+    function BuildCargoExtortionResponse(OtherShip: TShip; var Response: WideString): Boolean; override;
+    function BuildTrucePaymentResponse(OtherShip: TShip; var Response: WideString; OfferedAmount: Integer): Boolean; override;
+    function BuildAttackRequestResponse(Requester: TShip; var Response: WideString; Target: TShip): Boolean; override;
+    function AcceptPartnershipOffer(OtherShip: TShip; var Response: WideString; PaymentAmount: Integer): Boolean; override;
+    function BuildPartnershipOfferResponse(OtherShip: TShip; var Response: WideString; PaymentAmount: Integer): Boolean; override;
     function RefusesFactionNegotiation(OtherShip: TShip): Boolean; override;
     procedure RefreshCurrentStanding; override;
     destructor Destroy; override;
@@ -116,8 +85,7 @@ const
 
   PirateSkillBonusWeights: array[bonSkill1..bonSkill6] of Integer = (90, 90, 90, 90, 30, 5);
 
-  PirateSlotBonusWeights: array[bonSlotRadar..bonSlotForsage] of Integer =
-      (100, 150, 150, 400, 150, 100, 20, 100);
+  PirateSlotBonusWeights: array[bonSlotRadar..bonSlotForsage] of Integer = (100, 150, 150, 400, 150, 100, 20, 100);
 
 implementation
 
@@ -251,26 +219,13 @@ begin
       Rank := 3;
     AddRankPoints(NextRandomIntRange(0, CoalitionRankPointThresholds[Rank] div 2, RandomState));
     if not Galaxy.IsZeroStartingExperienceEnabled then
-      GainExperience(
-          Round(
-              RemapClamped(
-                  Ord(Rank),
-                  0,
-                  3,
-                  TotalSkillTrainingCost div 8,
-                  TotalSkillTrainingCost div 2
-              )
-          ),
-          esUnscaled
-      );
+      GainExperience(Round(RemapClamped(Ord(Rank), 0, 3, TotalSkillTrainingCost div 8, TotalSkillTrainingCost div 2)), esUnscaled);
     if OwnerId = oiPirate then
     begin
       PirateRank := NextRandomIntRange(0, GetPlayer.PirateRank, RandomState);
       if PirateRank > 3 then
         PirateRank := 3;
-      AddPirateRankPoints(
-          NextRandomIntRange(0, PirateRankPointThresholds[PirateRank] div 2, RandomState)
-      );
+      AddPirateRankPoints(NextRandomIntRange(0, PirateRankPointThresholds[PirateRank] div 2, RandomState));
     end;
   end;
   ChameleonActive := False;
@@ -278,21 +233,9 @@ begin
   if not HasHull then
   begin
     if OwnerId = oiPirate then
-      CreateAndEquipHull(
-          Round(HullBaseSize * EquipmentSizeFactors[5]),
-          1,
-          RaceToOwner(PilotRace),
-          SelectRandomHullSeries,
-          True
-      )
+      CreateAndEquipHull(Round(HullBaseSize * EquipmentSizeFactors[5]), 1, RaceToOwner(PilotRace), SelectRandomHullSeries, True)
     else
-      CreateAndEquipHull(
-          Round(HullBaseSize * EquipmentSizeFactors[5]),
-          1,
-          OwnerId,
-          SelectRandomHullSeries,
-          False
-      );
+      CreateAndEquipHull(Round(HullBaseSize * EquipmentSizeFactors[5]), 1, OwnerId, SelectRandomHullSeries, False);
     CreateAndEquipFuelTanks(Round(FuelTanksBaseSize * EquipmentSizeFactors[5]), 1, OwnerId);
     CreateAndEquipEngine(
         Round(EquipmentSizeFactors[NextRandomIntRange(1, 2, RandomState)] * EngineBaseSize),
@@ -302,18 +245,9 @@ begin
     if GetSlotCountForItemType(t_CargoHook) > 0 then
       CreateAndEquipCargoHook(CargoHookBaseSize, NextRandomIntRange(1, 2, RandomState), OwnerId);
     if GetSlotCount(sskWeapon) > WeaponCount then
-      CreateAndEquipWeapon(
-          t_IndustrialLaser,
-          WeaponInfos[t_IndustrialLaser].AverageSize,
-          1,
-          OwnerId
-      );
+      CreateAndEquipWeapon(t_IndustrialLaser, WeaponInfos[t_IndustrialLaser].AverageSize, 1, OwnerId);
     if GetSlotCountForItemType(t_Radar) > 0 then
-      CreateAndEquipRadar(
-          Round(EquipmentSizeFactors[NextRandomIntRange(2, 4, RandomState)] * RadarBaseSize),
-          1,
-          OwnerId
-      );
+      CreateAndEquipRadar(Round(EquipmentSizeFactors[NextRandomIntRange(2, 4, RandomState)] * RadarBaseSize), 1, OwnerId);
   end
   else
     RefreshGraphic;
@@ -460,14 +394,11 @@ begin
         RestoreEssentialEquipment;
         ProcessUnseenProgression;
         TrainSkillsAutomatically;
-        if DockedTo.InNormalSpace
-            and ((TRuins(DockedTo).FlyToStar = nil)
-                or (TRuins(DockedTo).FlyToStar = CurrentStar)) then
+        if DockedTo.InNormalSpace and ((TRuins(DockedTo).FlyToStar = nil) or (TRuins(DockedTo).FlyToStar = CurrentStar)) then
           OrderTakeoff
         else
         begin
-          if ((TRuins(DockedTo).FlyToStar = nil)
-                  or (TRuins(DockedTo).FlyToStar.Dominion <> DockedTo))
+          if ((TRuins(DockedTo).FlyToStar = nil) or (TRuins(DockedTo).FlyToStar.Dominion <> DockedTo))
               and ((DockedTo.OrderTarget = nil)
                   or not (DockedTo.OrderTarget is TStar)
                   or (TStar(DockedTo.OrderTarget).Dominion <> DockedTo)) then
@@ -536,8 +467,7 @@ begin
                 and (EnemyShip.EstimateOrderTravelTurns < 3)
                 and (NextRandomUnitFloat(RandomState) < 0.2)
                 and (Integer(Seed + Cardinal(Galaxy.CurrentTurn)) mod 2 = 0) then
-              if JettisonCargoGoodsTowardTargetValue(
-                  Max(200, Galaxy.ComputeScaledMiniMoney(OwnerId))) then
+              if JettisonCargoGoodsTowardTargetValue(Max(200, Galaxy.ComputeScaledMiniMoney(OwnerId))) then
                 NotifyFearCargoDrop(EnemyShip);
           end;
         end;
@@ -603,12 +533,9 @@ begin
         Stage := 22;
         if (Order = soNone)
             and not TryCollectBestFloatingItem(50)
-            and ((GetDesiredCargoFreeSpace > CargoFreeSpace)
-                or (NextRandomIntRange(1, 10, RandomState) <= 2)) then
+            and ((GetDesiredCargoFreeSpace > CargoFreeSpace) or (NextRandomIntRange(1, 10, RandomState) <= 2)) then
           NavigateToQueuedPlanet(True);
-        if (Order = soMove)
-            and (PickupTargets = nil)
-            and (NextRandomIntRange(1, 10, RandomState) <= 3) then
+        if (Order = soMove) and (PickupTargets = nil) and (NextRandomIntRange(1, 10, RandomState) <= 3) then
           TryCollectBestFloatingItem(50);
         Stage := 23;
         if (Order = soNone) and (NextRandomIntRange(1, 10, RandomState) <= 2) then
@@ -644,15 +571,12 @@ begin
         if Count >= 3 then
         begin
           OrderLanding(CurrentStar.Dominion, False);
-          if Galaxy.CurrentTurn + EstimateOrderTravelTurns + 1
-              > TRuins(CurrentStar.Dominion).FlyDate then
+          if Galaxy.CurrentTurn + EstimateOrderTravelTurns + 1 > TRuins(CurrentStar.Dominion).FlyDate then
             UpdateAfterburnerState;
         end;
       end;
       Stage := 27;
-      if (CurrentStar.Dominion <> nil)
-          and TShip(CurrentStar.Dominion).InNormalSpace
-          and (Order in [soNone, soMove]) then
+      if (CurrentStar.Dominion <> nil) and TShip(CurrentStar.Dominion).InNormalSpace and (Order in [soNone, soMove]) then
         for I := 0 to CurrentStar.Ships.Count - 1 do
         begin
           Ship := CurrentStar.Ships[I];
@@ -675,11 +599,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(
-          'Error in procedure TPirate.NextDayLogic '
-              + GetFullName(' ')
-              + ' label = '
-              + IntToStr(Stage));
+      raise Exception.Create('Error in procedure TPirate.NextDayLogic ' + GetFullName(' ') + ' label = ' + IntToStr(Stage));
     end;
   end;
 end;
@@ -717,9 +637,7 @@ begin
   if PlanetQueue.Count > 0 then
   begin
     Result := PlanetQueue[0];
-    if (GetFuelTanks.Fuel < GetFuelTanks.Capacity)
-        or HasHullDamageOrBrokenEquippedItems
-        or (NextRandomUnitFloat(RandomState) < 0.1) then
+    if (GetFuelTanks.Fuel < GetFuelTanks.Capacity) or HasHullDamageOrBrokenEquippedItems or (NextRandomUnitFloat(RandomState) < 0.1) then
       Exit;
     Result := PlanetQueue[NextRandomIntRange(0, PlanetQueue.Count - 1, RandomState)];
   end
@@ -760,8 +678,7 @@ begin
         for J := 0 to Star.Planets.Count - 1 do
         begin
           Planet := Star.Planets[J];
-          if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate])
-              and CanQueueReachablePlanet(Planet) then
+          if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate]) and CanQueueReachablePlanet(Planet) then
             PlanetQueue.Add(Planet);
         end;
       end;
@@ -788,8 +705,7 @@ begin
       Break;
     Star := CurrentStar.StarDistances[I].Star;
     if (Star.Battle <> 0)
-        and ((Star.ControlFaction = sfCoalition)
-            or (GetFuelTanks.Fuel div 2 > CurrentStar.StarDistances[I].Distance))
+        and ((Star.ControlFaction = sfCoalition) or (GetFuelTanks.Fuel div 2 > CurrentStar.StarDistances[I].Distance))
         and (Star.Ships.Count - 3 >= Star.ShipTypeCounts[stKling])
         and (Star.Ships.Count < 13) then
     begin
@@ -842,8 +758,7 @@ begin
             or (GetHullIntegrityPercent < 70)
             or HasHullDamageOrBrokenEquippedItems then
         begin
-          if not (PartnerShip.OrderTarget is TRuins)
-              or (PartnerShip.OrderTarget as TRuins).CanDock(Self) then
+          if not (PartnerShip.OrderTarget is TRuins) or (PartnerShip.OrderTarget as TRuins).CanDock(Self) then
             OrderLanding(PartnerShip.OrderTarget, True);
           Exit;
         end;
@@ -858,9 +773,7 @@ begin
         end;
       end;
     end
-    else if (PartnerShip.Order = soJump)
-        and (PartnerShip.OrderTarget is TStar)
-        and (PartnerShip.OrderTarget <> CurrentStar) then
+    else if (PartnerShip.Order = soJump) and (PartnerShip.OrderTarget is TStar) and (PartnerShip.OrderTarget <> CurrentStar) then
     begin
       Star := PartnerShip.OrderTarget as TStar;
       if (Star.ControlFaction = sfCoalition) and (Star.Status.CustomFaction = '') then
@@ -907,10 +820,7 @@ begin
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
     Ship := CurrentStar.Ships[I];
-    if (Ship.TypeId in [rstRangerCenter..rstCustomStation])
-        and Ship.CanDock(Self)
-        and (Ship.EnemyShip <> Self)
-        and (EnemyShip <> Ship) then
+    if (Ship.TypeId in [rstRangerCenter..rstCustomStation]) and Ship.CanDock(Self) and (Ship.EnemyShip <> Self) and (EnemyShip <> Ship) then
     begin
       CandidateTurns := EstimateTravelTurnsToObject(Ship);
       if BestTurns > CandidateTurns then
@@ -965,8 +875,7 @@ begin
     for I := 1 to Inventory.Count - 1 do
     begin
       Equipment := Inventory[I];
-      if (not (Equipment is TWeapon)
-              or (TWeapon(Equipment).GetWeaponInfo.Availability <> waNotSoldAndNodeRepair))
+      if (not (Equipment is TWeapon) or (TWeapon(Equipment).GetWeaponInfo.Availability <> waNotSoldAndNodeRepair))
           and CanRepairEquipmentTech(Equipment)
           and ((Equipment.BrokenFlag <> 0) or (Equipment.ConditionPercent < 30))
           and (Equipment.EquippedFlag <> 0) then
@@ -986,8 +895,7 @@ begin
     for I := Inventory.Count - 1 downto 0 do
     begin
       Equipment := Inventory[I];
-      if (not (Equipment is TWeapon)
-              or (TWeapon(Equipment).GetWeaponInfo.Availability <> waNotSoldAndNodeRepair))
+      if (not (Equipment is TWeapon) or (TWeapon(Equipment).GetWeaponInfo.Availability <> waNotSoldAndNodeRepair))
           and CanRepairEquipmentTech(Equipment)
           and ((Equipment.BrokenFlag <> 0) or (Equipment.ConditionPercent < 50))
           and (Equipment.EquippedFlag <> 0) then
@@ -1002,8 +910,7 @@ begin
       for I := 0 to Artefacts.Count - 1 do
       begin
         Artefact := Artefacts[I];
-        if ((Artefact.BrokenFlag <> 0) or (Artefact.ConditionPercent < 50))
-            and (Artefact.EquippedFlag <> 0) then
+        if ((Artefact.BrokenFlag <> 0) or (Artefact.ConditionPercent < 50)) and (Artefact.EquippedFlag <> 0) then
         begin
           Cost := Artefact.CalculateRepairCost;
           if Money > Cost then
@@ -1066,27 +973,9 @@ end;
 function TPirate.GetDesiredCargoFreeSpace: Integer;
 begin
   if PirateType <> 0 then
-    Result :=
-        Trunc(
-            RemapClamped(
-                GetHull.Weight,
-                HullBaseSize * EquipmentSizeFactors[5],
-                HullBaseSize * EquipmentSizeFactors[1],
-                10,
-                50
-            )
-        )
+    Result := Trunc(RemapClamped(GetHull.Weight, HullBaseSize * EquipmentSizeFactors[5], HullBaseSize * EquipmentSizeFactors[1], 10, 50))
   else
-    Result :=
-        Trunc(
-            RemapClamped(
-                GetHull.Weight,
-                HullBaseSize * EquipmentSizeFactors[5],
-                HullBaseSize * EquipmentSizeFactors[1],
-                30,
-                150
-            )
-        );
+    Result := Trunc(RemapClamped(GetHull.Weight, HullBaseSize * EquipmentSizeFactors[5], HullBaseSize * EquipmentSizeFactors[1], 30, 150));
 end;
 
 procedure TPirate.RefuelAtLocation;
@@ -1104,12 +993,10 @@ begin
     if (OwnerId = oiPirate) and (PirateType <> 0) then
     begin
       ProgressFactor := Ord(Galaxy.DifficultyLevels[0]) * 0.2 + 0.6;
-      ProgressFactor :=
-          RemapClamped(Galaxy.WarDeltaWin[sfPirates], -10, 10, 1.3, 0.7) * ProgressFactor;
+      ProgressFactor := RemapClamped(Galaxy.WarDeltaWin[sfPirates], -10, 10, 1.3, 0.7) * ProgressFactor;
       StrengthFactor := Ord(Galaxy.DifficultyLevels[0]) * 0.1 + 0.6;
       if (0.1 * ProgressFactor > NextRandomUnitFloat(RandomState))
-          and ((0.4 * StrengthFactor > StrengthInBestRanger)
-              or (NextRandomUnitFloat(RandomState) < 0.1)) then
+          and ((0.4 * StrengthFactor > StrengthInBestRanger) or (NextRandomUnitFloat(RandomState) < 0.1)) then
         if (NextRandomFloatRange(0, 0.7, RandomState) > WealthInBestRanger) and (Money < 25000) then
           SetMoney(Money + Galaxy.ComputeScaledBigMoney(oiHuman))
         else
@@ -1121,9 +1008,7 @@ begin
         GenerateExtraWeapon;
       if 0.05 * ProgressFactor > NextRandomUnitFloat(RandomState) then
         GainExperience(SeededRandomIntRange(100, 500, RandomState), esUnscaled);
-      if (GetPlayer.PirateRank > PirateRank)
-          and (NextRandomUnitFloat(RandomState) < 0.01)
-          and (PirateRank < 4) then
+      if (GetPlayer.PirateRank > PirateRank) and (NextRandomUnitFloat(RandomState) < 0.01) and (PirateRank < 4) then
       begin
         // Native adds Coalition rank points before attempting a pirate promotion.
         AddRankPoints(NextRandomIntRange(16, 32, RandomState));
@@ -1134,27 +1019,20 @@ begin
           and ((AwardIds = nil) or (2 * (Rank + 1) > AwardIds.Count)) then
       begin
         Award :=
-            SelectAward(
-                RaceToOwner(CurrentPlanet.RaceId),
-                [atAccomplishment, atSecretMission, atPerfidy],
-                [stKling..rstCustomStation]
-            );
+            SelectAward(RaceToOwner(CurrentPlanet.RaceId), [atAccomplishment, atSecretMission, atPerfidy], [stKling..rstCustomStation]);
         if Award <> AwardNotFound then
           AddAward(Award);
       end;
     end
     else
     begin
-      if (NextRandomUnitFloat(RandomState) < 0.2)
-          and ((StrengthInBestRanger < 0.7) or (NextRandomUnitFloat(RandomState) < 0.3)) then
+      if (NextRandomUnitFloat(RandomState) < 0.2) and ((StrengthInBestRanger < 0.7) or (NextRandomUnitFloat(RandomState) < 0.3)) then
         if (NextRandomFloatRange(0, 0.7, RandomState) > WealthInBestRanger) and (Money < 25000) then
           SetMoney(Money + Galaxy.ComputeScaledBigMoney(oiHuman))
         else
           ImproveRandomEquipment(True);
       if (NextRandomUnitFloat(RandomState) < 0.05)
-          and ((StrengthInBestRanger < 0.5)
-              or (StrengthInAverageRanger < 1)
-              or (NextRandomUnitFloat(RandomState) < 0.001)) then
+          and ((StrengthInBestRanger < 0.5) or (StrengthInAverageRanger < 1) or (NextRandomUnitFloat(RandomState) < 0.001)) then
         GenerateExtraWeapon;
       if NextRandomUnitFloat(RandomState) < 0.2 then
         GainExperience(NextRandomIntRange(250, 1000, RandomState), esUnscaled);
@@ -1175,12 +1053,7 @@ begin
           and (CurrentPlanet <> nil)
           and ((AwardIds = nil) or (2 * (Rank + 1) > AwardIds.Count)) then
       begin
-        Award :=
-            SelectAward(
-                RaceToOwner(CurrentPlanet.RaceId),
-                [atAccomplishment..atPerfidy],
-                [stKling..rstCustomStation]
-            );
+        Award := SelectAward(RaceToOwner(CurrentPlanet.RaceId), [atAccomplishment..atPerfidy], [stKling..rstCustomStation]);
         if Award <> AwardNotFound then
           AddAward(Award);
       end;
@@ -1207,12 +1080,7 @@ begin
           Result := Min(100, 100 + SeededRandomIntRange(-20, 20, Seed + Ship.Seed))
         else
           Result := Max(50, OwnerRelations[OwnerId, Ship.OwnerId]);
-      stWarrior:
-        Result :=
-            Min(
-                50,
-                Max(10, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 30)
-            );
+      stWarrior: Result := Min(50, Max(10, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 30));
       stKling, stTranclucator: Result := 50;
       rstRangerCenter..rstCustomStation:
         if Ship.CurrentStanding in [ssCoalitionMilitary, ssCoalitionActive] then
@@ -1233,24 +1101,12 @@ begin
       Exit;
     end;
     case Ship.TypeId of
-      stTransport:
-        Result :=
-            Min(
-                50,
-                Max(20, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 20)
-            );
-      stPirate:
-        Result := Max(60, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)]);
-      stWarrior:
-        Result :=
-            Min(
-                50,
-                Max(10, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 30)
-            );
+      stTransport: Result := Min(50, Max(20, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 20));
+      stPirate: Result := Max(60, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)]);
+      stWarrior: Result := Min(50, Max(10, OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ship.PilotRace)] - 30));
       stKling, stTranclucator: Result := 50;
       rstRangerCenter..rstCustomStation:
-        if (Ship.CurrentStanding in [ssCoalitionMilitary, ssCoalitionActive])
-            and (OwnerId = oiPirate) then
+        if (Ship.CurrentStanding in [ssCoalitionMilitary, ssCoalitionActive]) and (OwnerId = oiPirate) then
           Result := 30
         else
           Result := 100;
@@ -1282,8 +1138,7 @@ begin
   Value := Max(0, Min(100, Amount + Relation));
   Relation := Value;
   RangerRelations[Index] := Pointer(Relation);
-  if (Relation < RelationBadMin)
-      and ((EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar)) then
+  if (Relation < RelationBadMin) and ((EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar)) then
     EnemyShip := TShip(Ranger);
   if GetPlayer = Ranger then
   begin
@@ -1356,9 +1211,7 @@ begin
   begin
     Result :=
         (GetHull.HullPoints < GetHull.Weight * 0.2)
-            or ((EnemyShip <> nil)
-                and ((EnemyShip.OrderTarget = Self) or (GetPlayer = EnemyShip))
-                and AcceptsRansomDemandFrom(EnemyShip));
+            or ((EnemyShip <> nil) and ((EnemyShip.OrderTarget = Self) or (GetPlayer = EnemyShip)) and AcceptsRansomDemandFrom(EnemyShip));
     if not Result then
     begin
       Threat := 0;
@@ -1375,18 +1228,14 @@ begin
             Inc(EnemyCount);
           end
           else if ((Ship.EnemyShip = Self) and (Ship.OrderTarget = Self))
-              or ((Ship.RelationToShip(Self) < RelationBadMin)
-                  and (PointDistanceSquared(Position, Ship.Position) < 250000)) then
+              or ((Ship.RelationToShip(Self) < RelationBadMin) and (PointDistanceSquared(Position, Ship.Position) < 250000)) then
           begin
             Inc(EnemyCount);
             Threat := Ship.ChanceToWin(Self) + Threat;
-            if (EnemyShip = nil)
-                or (EnemyShip.CurrentStar <> CurrentStar)
-                or EnemyShip.IsOutsideStarSpace then
+            if (EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar) or EnemyShip.IsOutsideStarSpace then
               EnemyShip := Ship
             else if (EnemyShip <> Ship) and (OrderTarget <> EnemyShip) then
-              if PointDistanceSquared(EnemyShip.Position, Position)
-                  > PointDistanceSquared(Ship.Position, Position) then
+              if PointDistanceSquared(EnemyShip.Position, Position) > PointDistanceSquared(Ship.Position, Position) then
                 EnemyShip := Ship;
           end;
         end;
@@ -1417,20 +1266,14 @@ begin
       and not (EnemyShip.TypeId in NonNegotiatingShipTypes)
       and not NoTalk
       and not EnemyShip.NoTalk
-      and ((OwnerId <> oiPirate)
-          or (PirateType = 0)
-          or not (EnemyShip.CurrentStanding in [ssCoalitionMilitary, ssCoalitionActive])) then
-    if (EnemyShip.GetMaxWeaponRange * EnemyShip.GetMaxWeaponRange
-            >= PointDistanceSquared(Position, EnemyShip.Position))
-        and (((Galaxy.CurrentTurn * EnemyShip.Id mod 3 = 0)
-                and (NextRandomUnitFloat(RandomState) > 0.2))
+      and ((OwnerId <> oiPirate) or (PirateType = 0) or not (EnemyShip.CurrentStanding in [ssCoalitionMilitary, ssCoalitionActive])) then
+    if (EnemyShip.GetMaxWeaponRange * EnemyShip.GetMaxWeaponRange >= PointDistanceSquared(Position, EnemyShip.Position))
+        and (((Galaxy.CurrentTurn * EnemyShip.Id mod 3 = 0) and (NextRandomUnitFloat(RandomState) > 0.2))
             or (GetHullIntegrityPercent < 20)) then
     begin
       LowOffer := Min(Money, GetWealthScaledAmount(1));
-      HighOffer :=
-          Min(Money, (GetWealthScaledAmount(3) + EnemyShip.GetWealthScaledAmount(4)) * 0.5);
-      Amount :=
-          Round(Max(100, RemapClamped(GetHull.HullPoints, 0, GetHull.Weight, HighOffer, LowOffer)));
+      HighOffer := Min(Money, (GetWealthScaledAmount(3) + EnemyShip.GetWealthScaledAmount(4)) * 0.5);
+      Amount := Round(Max(100, RemapClamped(GetHull.HullPoints, 0, GetHull.Weight, HighOffer, LowOffer)));
       Ship := EnemyShip;
       Accepted := Ship.BuildTrucePaymentResponse(Self, Response, Amount);
       if (GetPlayer <> Ship) and (GetPlayer.CurrentStar = CurrentStar) then
@@ -1456,9 +1299,7 @@ end;
 
 function TPirate.AcceptsAppealFrom(Ship: TShip): Boolean;
 begin
-  Result :=
-      RelationToShip(Ship) + RemapClamped(Ship.Strength, 0.9 * Strength, Strength * 3, 0, 100)
-          > 130;
+  Result := RelationToShip(Ship) + RemapClamped(Ship.Strength, 0.9 * Strength, Strength * 3, 0, 100) > 130;
 end;
 
 function TPirate.ProcessImprisonment: Boolean;
@@ -1489,24 +1330,13 @@ var
       if Self = Ship.EnemyShip then
         Ship.EnemyShip := nil;
     end;
-    Text :=
-        PickLocalizedTextVariant(
-            'GalaxyNews.GoToPrison.' + GetTypeNameKey,
-            Seed + Cardinal(Galaxy.CurrentTurn div 10)
-        );
+    Text := PickLocalizedTextVariant('GalaxyNews.GoToPrison.' + GetTypeNameKey, Seed + Cardinal(Galaxy.CurrentTurn div 10));
     ReplaceTextToken(Text, '<Star>', CurrentStar.Name, TextHighlightColorTag);
     ReplaceTextToken(Text, '<Planet>', CurrentPlanet.Name, TextHighlightColorTag);
-    ReplaceTextToken(
-        Text,
-        '<Month>',
-        IntToStr(Int64(PrisonTermRemaining div 30)),
-        TextHighlightColorTag
-    );
+    ReplaceTextToken(Text, '<Month>', IntToStr(Int64(PrisonTermRemaining div 30)), TextHighlightColorTag);
     ReplaceTextToken(Text, '<Name>', GetName, TextHighlightColorTag);
     ReplaceTextToken(Text, '<FullName>', GetFullName(' '), TextHighlightColorTag);
-    if (GetPlayer.CurrentStar = CurrentStar)
-        and GetPlayer.InNormalSpace
-        and (Galaxy.CoalitionDefeatedTurn = 0) then
+    if (GetPlayer.CurrentStar = CurrentStar) and GetPlayer.InNormalSpace and (Galaxy.CoalitionDefeatedTurn = 0) then
       AddOrUpdatePlayerBubble(pmGalaxyNews, Galaxy.CurrentTurn, Text, '');
   end;
 begin
@@ -1515,8 +1345,7 @@ begin
     Exit;
   if PrisonTermRemaining > 0 then
   begin
-    if ((CurrentStar.Battle <> 0)
-            and (CurrentStar.LastDominatorPresenceTurn >= Galaxy.CurrentTurn - 1))
+    if ((CurrentStar.Battle <> 0) and (CurrentStar.LastDominatorPresenceTurn >= Galaxy.CurrentTurn - 1))
         or (CurrentPlanet.OwnerId = oiPirate) then
     begin
       PrisonTermRemaining := 0;
@@ -1534,8 +1363,7 @@ begin
       Result := True;
   end
   else if (CurrentPlanet.OwnerId <> oiPirate)
-      and ((CurrentStar.Battle = 0)
-          or (CurrentStar.LastDominatorPresenceTurn < Galaxy.CurrentTurn - 1)) then
+      and ((CurrentStar.Battle = 0) or (CurrentStar.LastDominatorPresenceTurn < Galaxy.CurrentTurn - 1)) then
   begin
     for I := 0 to CurrentPlanet.Warriors.Count - 1 do
     begin
@@ -1547,8 +1375,7 @@ begin
         Exit;
       end;
     end;
-    if (NextRandomUnitFloat(RandomState) < 0.01)
-        or (CurrentPlanet.GetRelationLevelToShip(Self) = rlHostile) then
+    if (NextRandomUnitFloat(RandomState) < 0.01) or (CurrentPlanet.GetRelationLevelToShip(Self) = rlHostile) then
     begin
       Imprison;
       RefreshCurrentStanding;
@@ -1615,16 +1442,13 @@ begin
     Ship := CurrentStar.Ships[I];
     if Ship.InNormalSpace
         and (Ship <> Self)
-        and ((RelationToShip(Ship) < RelationBadMin)
-            or (Ship = EnemyShip)
-            or (Ship.EnemyShip = Self))
+        and ((RelationToShip(Ship) < RelationBadMin) or (Ship = EnemyShip) or (Ship.EnemyShip = Self))
         and (TruceShip <> Ship) then
       for J := 1 to WeaponCount do
       begin
         Weapon := Weapons[J];
         // Native hostile-ship pass can replace an earlier weapon target.
-        if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
-            and IsEquipmentUsable(Weapon) then
+        if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0)) and IsEquipmentUsable(Weapon) then
           if PointDistanceSquared(Position, Ship.Position) <= Sqr(GetWeaponRange(Weapon)) then
           begin
             Weapon.Target := Ship;
@@ -1641,9 +1465,7 @@ begin
       for J := 1 to WeaponCount do
       begin
         Weapon := Weapons[J];
-        if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes)
-            and (Weapon.Target = nil)
-            and IsEquipmentUsable(Weapon) then
+        if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) and (Weapon.Target = nil) and IsEquipmentUsable(Weapon) then
           if PointDistanceSquared(Position, Missile.Position) <= Sqr(GetWeaponRange(Weapon)) then
           begin
             Weapon.Target := Missile;
@@ -1666,8 +1488,7 @@ begin
         begin
           Weapon := Weapons[J];
           // Native asteroid targeting can overwrite an existing assignment.
-          if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
-              and IsEquipmentUsable(Weapon) then
+          if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes) and IsEquipmentUsable(Weapon) then
             if Sqr(GetWeaponRange(Weapon)) >= Distance then
             begin
               Weapon.Target := Asteroid;
@@ -1689,15 +1510,12 @@ begin
         if (GetPlayer.CurrentStar <> CurrentStar)
             or (GetRelationLevelToShip(GetPlayer) <= rlBad)
             or (PointDistance(GetPlayer.Position, Item.Position) >= 600)
-            or ((NextRandomUnitFloat(RandomState) <= 0.2)
-                and (PointDistance(GetPlayer.Position, Item.Position) >= 200)) then
+            or ((NextRandomUnitFloat(RandomState) <= 0.2) and (PointDistance(GetPlayer.Position, Item.Position) >= 200)) then
           if CanSafelyDetonateItem(Item) then
             for J := 1 to WeaponCount do
             begin
               Weapon := Weapons[J];
-              if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
-                  and (Weapon.Target = nil)
-                  and IsEquipmentUsable(Weapon) then
+              if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes) and (Weapon.Target = nil) and IsEquipmentUsable(Weapon) then
                 if PointDistanceSquared(Position, Item.Position) <= Sqr(GetWeaponRange(Weapon)) then
                 begin
                   Weapon.Target := Item;
@@ -1718,9 +1536,7 @@ var
   PriorityTargetFound: Boolean;
 begin
   if ((GetCargoHook <> nil) or (PirateType <> 0))
-      and ((EnemyShip = nil)
-          or (EnemyShip.CurrentStar <> CurrentStar)
-          or ((EnemyShip.ConsecutiveDockedDays > 3) and (PirateType <> 0)))
+      and ((EnemyShip = nil) or (EnemyShip.CurrentStar <> CurrentStar) or ((EnemyShip.ConsecutiveDockedDays > 3) and (PirateType <> 0)))
       and (UsableWeaponCount <> 0) then
   begin
     if GetPlayer.QuestTargetDefendShip <> nil then
@@ -1755,16 +1571,12 @@ begin
             or (Ship.LiberationGroup <> nil)
             or (GetPlayer.QuestTargetKillShip = Ship)
             or ((Ship.TypeId in [rstRangerCenter..rstCustomStation])
-                and ((OwnerId <> oiPirate)
-                    or (CurrentStar.Battle = 0)
-                    or (Ship.CurrentStanding in [ssNeutral..ssPirateMilitary])))
+                and ((OwnerId <> oiPirate) or (CurrentStar.Battle = 0) or (Ship.CurrentStanding in [ssNeutral..ssPirateMilitary])))
             or (Ship.TypeId = stTranclucator) then
           Continue;
         if (CurrentStar.ControlFaction = sfDominators)
             or (CurrentStar.Status.CustomFaction <> '')
-            or ((CurrentStar.ControlFaction = sfPirates)
-                and (OwnerId = oiPirate)
-                and (Galaxy.CoalitionDefeatedTurn = 0)) then
+            or ((CurrentStar.ControlFaction = sfPirates) and (OwnerId = oiPirate) and (Galaxy.CoalitionDefeatedTurn = 0)) then
         begin
           if not (Ship is TNormalShip) or ((OwnerId = oiPirate) and (Ship.OwnerId <> oiPirate)) then
           begin
@@ -1783,43 +1595,29 @@ begin
           end
           else
           begin
-            if (NextRandomIntRange(0, 30, RandomState) + 60 < RelationToShip(Ship))
-                and not Ship.AbductedByPirateClan then
+            if (NextRandomIntRange(0, 30, RandomState) + 60 < RelationToShip(Ship)) and not Ship.AbductedByPirateClan then
               Continue;
             Chance := ChanceToWin(Ship);
             if GetPlayer = Ship then
             begin
               if (Galaxy.CurrentTurn
-                      < 100
-                              / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]]
-                                  .GoodsEventDurationFactor
-                          + GalaxyWarmupTurns)
-                  or (NextRandomIntRange(0, 100, RandomState)
-                          * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]]
-                              .GoodsEventDurationFactor
+                      < 100 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor + GalaxyWarmupTurns)
+                  or (NextRandomIntRange(0, 100, RandomState) * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor
                       < 40) then
                 Continue;
-              Chance :=
-                  Chance
-                      * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor;
+              Chance := Chance * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[7]].GoodsEventDurationFactor;
             end
             else if GetPlayer.QuestTargetDefendShip = Ship then
               Chance := Chance * 5;
             if (Chance < 0.3) and (StrengthInAverageRanger < 0.7) then
               Continue;
-            if (Chance < 1.5)
-                and (Ship.TypeId = stRanger)
-                and (Ship.GetDominantCareer <> rcPirate) then
+            if (Chance < 1.5) and (Ship.TypeId = stRanger) and (Ship.GetDominantCareer <> rcPirate) then
               Continue;
-            if (Chance < 3.5)
-                and (Ship.TypeId = stRanger)
-                and (Ship.GetDominantCareer = rcPirate) then
+            if (Chance < 3.5) and (Ship.TypeId = stRanger) and (Ship.GetDominantCareer = rcPirate) then
               Continue;
             if (Chance < 3.5) and (Ship.TypeId = stPirate) then
               Continue;
-            if not IsTargetStillPursuable(Ship)
-                and (GetPlayer <> Ship)
-                and (GetPlayer.QuestTargetDefendShip <> Ship) then
+            if not IsTargetStillPursuable(Ship) and (GetPlayer <> Ship) and (GetPlayer.QuestTargetDefendShip <> Ship) then
               Continue;
             if Chance > BestChance then
             begin
@@ -1856,8 +1654,7 @@ begin
         if Ship.InNormalSpace
             and (TruceShip <> Ship)
             and (Ship.TruceShip <> Self)
-            and (not (Ship.TypeId in [rstRangerCenter..rstCustomStation])
-                or not (Ship.CurrentStanding in [ssNeutral..ssPirateMilitary]))
+            and (not (Ship.TypeId in [rstRangerCenter..rstCustomStation]) or not (Ship.CurrentStanding in [ssNeutral..ssPirateMilitary]))
             and ((RelationToShip(Ship) < RelationBadMin) or Ship.AbductedByPirateClan) then
         begin
           Distance := PointDistance(Position, Ship.Position);
@@ -1883,8 +1680,7 @@ begin
   BestDistance := 100000;
   Aggression := Round(RemapClamped(Galaxy.GetCoalitionToPirateSystemRatio, 0.5, 1, 100, -200));
   if NextRandomIntRange(1, 100, RandomState)
-      < RemapClamped(CurrentStar.CountPirateShips(True), 30, 60, 0, 100)
-          * (1 + RaidPressure * 0.1) then
+      < RemapClamped(CurrentStar.CountPirateShips(True), 30, 60, 0, 100) * (1 + RaidPressure * 0.1) then
     Aggression := 100;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
@@ -1896,28 +1692,16 @@ begin
         and (Ship <> Self)
         and not (Ship.TargetingRestriction in [1..3, 5])
         and not AcceptsRansomDemandFrom(Ship)
-        and ((RelationToShip(Ship) < RelationExcellentMin)
-            or (NextRandomIntRange(1, 100, RandomState) <= Aggression - 1))
-        and ((RelationToShip(Ship) < RelationGoodMin)
-            or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 33))
-        and ((RelationToShip(Ship) < RelationNormalMin)
-            or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 66))
-        and ((RelationToShip(Ship) < RelationBadMin)
-            or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 100))
-        and ((not (Ship is TPirate)
-                and (GetPlayer <> Ship)
-                and ((Ship.OwnerId <> oiPirate) or not (Ship is TNormalShip)))
-            or (((Ship.OwnerId <> oiPirate)
-                    or (Ship.PilotRace <> PilotRace)
-                    or (NextRandomIntRange(1, 100, RandomState) <= 50))
-                and (((Ship as TNormalShip).PirateRank <= Ord(PirateRank))
-                    or (NextRandomIntRange(1, 100, RandomState) <= 70))
-                and (((Ship as TNormalShip).PirateRank <= Integer(PirateRank) + 1)
-                    or (NextRandomIntRange(1, 100, RandomState) <= 70))
-                and (((Ship as TNormalShip).PirateRank <= Integer(PirateRank) + 2)
-                    or (NextRandomIntRange(1, 100, RandomState) <= 70))
-                and (((Ship as TNormalShip).PirateRank <> 7)
-                    or (NextRandomIntRange(1, 100, RandomState) <= 50)))) then
+        and ((RelationToShip(Ship) < RelationExcellentMin) or (NextRandomIntRange(1, 100, RandomState) <= Aggression - 1))
+        and ((RelationToShip(Ship) < RelationGoodMin) or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 33))
+        and ((RelationToShip(Ship) < RelationNormalMin) or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 66))
+        and ((RelationToShip(Ship) < RelationBadMin) or (NextRandomIntRange(1, 100, RandomState) <= Aggression + 100))
+        and ((not (Ship is TPirate) and (GetPlayer <> Ship) and ((Ship.OwnerId <> oiPirate) or not (Ship is TNormalShip)))
+            or (((Ship.OwnerId <> oiPirate) or (Ship.PilotRace <> PilotRace) or (NextRandomIntRange(1, 100, RandomState) <= 50))
+                and (((Ship as TNormalShip).PirateRank <= Ord(PirateRank)) or (NextRandomIntRange(1, 100, RandomState) <= 70))
+                and (((Ship as TNormalShip).PirateRank <= Integer(PirateRank) + 1) or (NextRandomIntRange(1, 100, RandomState) <= 70))
+                and (((Ship as TNormalShip).PirateRank <= Integer(PirateRank) + 2) or (NextRandomIntRange(1, 100, RandomState) <= 70))
+                and (((Ship as TNormalShip).PirateRank <> 7) or (NextRandomIntRange(1, 100, RandomState) <= 50)))) then
     begin
       Distance := PointDistance(Position, Ship.Position);
       if NextRandomFloatRange(0.3, 3, RandomState) * BestDistance > Distance then
@@ -1942,9 +1726,7 @@ begin
       if ChanceToWin(EnemyShip) < 0.8 then
         RequestAlliesAttackShip(EnemyShip);
     end
-    else if (ChanceToWin(EnemyShip) > 2)
-        and (GetHullIntegrityPercent > 70)
-        and (EnemyShip.GetHullIntegrityPercent > 70) then
+    else if (ChanceToWin(EnemyShip) > 2) and (GetHullIntegrityPercent > 70) and (EnemyShip.GetHullIntegrityPercent > 70) then
       if EnemyShip.CurrentPlanet <> nil then
       begin
         if (EnemyShip is TRanger) and ((EnemyShip as TRanger).PrisonTermRemaining > 0) then
@@ -1992,11 +1774,7 @@ begin
   end;
 end;
 
-function TPirate.BuildMoneyExtortionResponse(
-    OtherShip: TShip;
-    var Response: WideString;
-    DemandedAmount: Integer
-): Boolean;
+function TPirate.BuildMoneyExtortionResponse(OtherShip: TShip; var Response: WideString; DemandedAmount: Integer): Boolean;
 var
   NextDemandTurn: Integer;
 
@@ -2037,13 +1815,7 @@ begin
     Response := LookupVisibleTalkText('Talk.Money.' + GetTypeNameKey + 'No', OtherShip)
   else if CanEscapePursuer(OtherShip) then
     Response := LookupVisibleTalkText('Talk.Money.' + GetTypeNameKey + 'LongDistance', OtherShip)
-  else if DemandedAmount
-      > RemapClamped(
-          GetWinChancePercent(OtherShip),
-          0,
-          100,
-          GetWealthScaledAmount(4),
-          GetWealthScaledAmount(2)) then
+  else if DemandedAmount > RemapClamped(GetWinChancePercent(OtherShip), 0, 100, GetWealthScaledAmount(4), GetWealthScaledAmount(2)) then
     Response := LookupVisibleTalkText('Talk.Money.' + GetTypeNameKey + 'SumIsVeryBig', OtherShip)
   else if Money < DemandedAmount then
     Response := LookupVisibleTalkText('Talk.Money.AnswerNotMoney', OtherShip)
@@ -2077,14 +1849,7 @@ var
       for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
         if CargoGoods[Good].Count > 0 then
         begin
-          Divisor :=
-              RemapClamped(
-                  CargoGoods[Good].Count * GoodsMarket[Good].AveragePrice,
-                  LowValue,
-                  HighValue,
-                  2,
-                  8
-              );
+          Divisor := RemapClamped(CargoGoods[Good].Count * GoodsMarket[Good].AveragePrice, LowValue, HighValue, 2, 8);
           Count := Max(Int64(1), Round(CargoGoods[Good].Count / Divisor));
           Inc(TotalValue, Count * GoodsMarket[Good].AveragePrice);
           DropGoodsIntoSpace(Good, Count);
@@ -2126,8 +1891,7 @@ begin
     Response := LookupVisibleTalkText('Talk.Goods.WeAlreadyHavePact', OtherShip)
   else if (GetPlayer = OtherShip) and (Galaxy.CurrentTurn < NextDemandTurn) then
     Response := LookupVisibleTalkText('Talk.Goods.WeAlreadyHavePact', OtherShip)
-  else if RefusesFactionNegotiation(OtherShip)
-      or not (AcceptsRansomDemandFrom(OtherShip) or Forced) then
+  else if RefusesFactionNegotiation(OtherShip) or not (AcceptsRansomDemandFrom(OtherShip) or Forced) then
     Response := LookupVisibleTalkText('Talk.Goods.' + GetTypeNameKey + 'No', OtherShip)
   else if CanEscapePursuer(OtherShip) and not Forced then
     Response := LookupVisibleTalkText('Talk.Goods.' + GetTypeNameKey + 'LongDistance', OtherShip)
@@ -2143,11 +1907,7 @@ begin
   end;
 end;
 
-function TPirate.BuildTrucePaymentResponse(
-    OtherShip: TShip;
-    var Response: WideString;
-    OfferedAmount: Integer
-): Boolean;
+function TPirate.BuildTrucePaymentResponse(OtherShip: TShip; var Response: WideString; OfferedAmount: Integer): Boolean;
 var
   NextDemandTurn: Integer;
 
@@ -2221,17 +1981,9 @@ begin
       Response := LookupVisibleTalkText('Talk.Truce.' + GetTypeNameKey + 'No', OtherShip);
   end
   else if RecomputeFearState
-      or ((ChanceToWin(OtherShip) < 1)
-          and (GetHullIntegrityPercent < 40)
-          and AcceptsRansomDemandFrom(OtherShip))
+      or ((ChanceToWin(OtherShip) < 1) and (GetHullIntegrityPercent < 40) and AcceptsRansomDemandFrom(OtherShip))
       or ((ChanceToWin(OtherShip) < 0.2) and AcceptsRansomDemandFrom(OtherShip))
-      or (OfferedAmount
-          > RemapClamped(
-              GetWinChancePercent(OtherShip),
-              0,
-              100,
-              GetWealthScaledAmount(1),
-              GetWealthScaledAmount(5))) then
+      or (OfferedAmount > RemapClamped(GetWinChancePercent(OtherShip), 0, 100, GetWealthScaledAmount(1), GetWealthScaledAmount(5))) then
   begin
     Response := LookupVisibleTalkText('Talk.Truce.' + GetTypeNameKey + 'Ok', OtherShip);
     AcceptPayment;
@@ -2241,11 +1993,7 @@ begin
     Response := LookupVisibleTalkText('Talk.Truce.' + GetTypeNameKey + 'No', OtherShip);
 end;
 
-function TPirate.BuildAttackRequestResponse(
-    Requester: TShip;
-    var Response: WideString;
-    Target: TShip
-): Boolean;
+function TPirate.BuildAttackRequestResponse(Requester: TShip; var Response: WideString; Target: TShip): Boolean;
 
   procedure AcceptRequest; { Nested helper with caller-popped static link. }
   begin
@@ -2258,9 +2006,7 @@ function TPirate.BuildAttackRequestResponse(
   begin
     Result :=
         Cardinal(RelationToShip(Target))
-            >= Round(
-                RelationToShip(Requester)
-                    * RemapClamped(Galaxy.GetCoalitionToPirateSystemRatio, 0.33, 1, 1.3, 0));
+            >= Round(RelationToShip(Requester) * RemapClamped(Galaxy.GetCoalitionToPirateSystemRatio, 0.33, 1, 1.3, 0));
   end;
 begin
   Result := False;
@@ -2277,12 +2023,7 @@ begin
     AcceptRequest
   else if TruceShip = Target then
     Response :=
-        FormatText1(
-            LookupVisibleTalkText('Talk.Attack.WeAlreadyHavePact', Requester),
-            TextHighlightColorTag,
-            '<Target>',
-            Target.GetName
-        )
+        FormatText1(LookupVisibleTalkText('Talk.Attack.WeAlreadyHavePact', Requester), TextHighlightColorTag, '<Target>', Target.GetName)
   else if (RelationToShip(Target) >= RelationGoodMin) and FriendsPreferred then
   begin
     if not (Target is TTranclucator) then
@@ -2292,8 +2033,7 @@ begin
     else if TTranclucator(Target).OwnerShip = Requester then
       Response := LookupVisibleTalkText('Talk.Attack.' + GetTypeNameKey + 'ItsYourTranc', Requester)
     else
-      Response :=
-          LookupVisibleTalkText('Talk.Attack.' + GetTypeNameKey + 'WeFriendsTranc', Requester);
+      Response := LookupVisibleTalkText('Talk.Attack.' + GetTypeNameKey + 'WeFriendsTranc', Requester);
   end
   else if AcceptsRansomDemandFrom(Target) or InFear then
     Response := LookupVisibleTalkText('Talk.Attack.' + GetTypeNameKey + 'Fear', Requester)
@@ -2305,11 +2045,7 @@ begin
     AcceptRequest;
 end;
 
-function TPirate.AcceptPartnershipOffer(
-    OtherShip: TShip;
-    var Response: WideString;
-    PaymentAmount: Integer
-): Boolean;
+function TPirate.AcceptPartnershipOffer(OtherShip: TShip; var Response: WideString; PaymentAmount: Integer): Boolean;
 begin
   if BuildPartnershipOfferResponse(OtherShip, Response, PaymentAmount) then
   begin
@@ -2335,11 +2071,7 @@ begin
     Result := False;
 end;
 
-function TPirate.BuildPartnershipOfferResponse(
-    OtherShip: TShip;
-    var Response: WideString;
-    PaymentAmount: Integer
-): Boolean;
+function TPirate.BuildPartnershipOfferResponse(OtherShip: TShip; var Response: WideString; PaymentAmount: Integer): Boolean;
 begin
   if PartnerShip = OtherShip then
   begin
@@ -2357,13 +2089,10 @@ begin
             '<Partner>',
             (PartnerShip as TRanger).Name
         )
-  else if ((OtherShip is TPlayer)
-          and (TPlayer(OtherShip).GetMaxPiratePartners <= TPlayer(OtherShip).PiratePartners.Count))
+  else if ((OtherShip is TPlayer) and (TPlayer(OtherShip).GetMaxPiratePartners <= TPlayer(OtherShip).PiratePartners.Count))
       or ((OwnerId = oiPirate) and (GetPlayer.PirateRank < PirateRank)) then
     Response := LookupVisibleTalkText('Talk.Pirate.NeedPirate', OtherShip)
-  else if (OtherShip is TRanger)
-      and (OtherShip.GetEffectiveSkillLevel(psLeadership)
-          <= (OtherShip as TRanger).CountWingmen) then
+  else if (OtherShip is TRanger) and (OtherShip.GetEffectiveSkillLevel(psLeadership) <= (OtherShip as TRanger).CountWingmen) then
     Response := LookupVisibleTalkText('Talk.Partner.NeedLeadership', OtherShip)
   else if CalculatePartnershipMonths(PaymentAmount, OtherShip) = 0 then
     Response := LookupVisibleTalkText('Talk.Pirate.SmallMoney', OtherShip)
@@ -2376,12 +2105,9 @@ procedure TPirate.ReviewPartnership;
 var
   Leader: TShip;
   Longest, I: Integer;
-  function CanNotifyPartner:
-      Boolean; { Nested in the partnership check; caller-popped static link. }
+  function CanNotifyPartner: Boolean; { Nested in the partnership check; caller-popped static link. }
   begin
-    if (CurrentStar <> PartnerShip.CurrentStar)
-        or not InNormalSpace
-        or not PartnerShip.InNormalSpace then
+    if (CurrentStar <> PartnerShip.CurrentStar) or not InNormalSpace or not PartnerShip.InNormalSpace then
       Result := False
     else if CanContactShip(PartnerShip) then
       Result := True
@@ -2421,9 +2147,7 @@ begin
         NotifyPiratePartnerRelationBreak(Leader);
       end;
     end
-    else if (EnemyShip <> nil)
-        and (EnemyShip.PartnerShip <> nil)
-        and (EnemyShip.PartnerShip = PartnerShip) then
+    else if (EnemyShip <> nil) and (EnemyShip.PartnerShip <> nil) and (EnemyShip.PartnerShip = PartnerShip) then
     begin
       if CanNotifyPartner then
       begin
@@ -2483,8 +2207,7 @@ function TPirate.TryRetreatFromSystem: Boolean;
 var
   I: Integer;
   Ship: TShip;
-  DominatorAndCustomStrength, CoalitionStrength, PirateStrength, RetreatFactor, StrengthScale:
-      Single;
+  DominatorAndCustomStrength, CoalitionStrength, PirateStrength, RetreatFactor, StrengthScale: Single;
   Star, PirateStar, AnyStar: TStar;
   Angle, PirateAngle, AnyAngle: Single;
   Station: TRuins;
@@ -2493,10 +2216,8 @@ begin
   Result := False;
   if CurrentStar.Constellation.Id = 20 then
     Exit;
-  PirateSystem :=
-      (CurrentStar.ControlFaction = sfPirates) and (CurrentStar.Status.CustomFaction = '');
-  HostileSystem :=
-      (CurrentStar.ControlFaction = sfDominators) or (CurrentStar.Status.CustomFaction <> '');
+  PirateSystem := (CurrentStar.ControlFaction = sfPirates) and (CurrentStar.Status.CustomFaction = '');
+  HostileSystem := (CurrentStar.ControlFaction = sfDominators) or (CurrentStar.Status.CustomFaction <> '');
   Station := nil;
   if not PirateSystem then
     for I := 0 to CurrentStar.Ships.Count - 1 do
@@ -2514,9 +2235,7 @@ begin
       end;
     end;
   RetreatFactor := (100 + SeededRandomIntRange(-15, 15, Seed + Id)) * 0.02;
-  if (EnemyShip = nil)
-      or (EnemyShip.OrderTarget <> Self)
-      or (EnemyShip.EstimateOrderTravelTurns > 2) then
+  if (EnemyShip = nil) or (EnemyShip.OrderTarget <> Self) or (EnemyShip.EstimateOrderTravelTurns > 2) then
     RetreatFactor := RetreatFactor * 0.5;
   if Station = nil then
     RetreatFactor := RemapClamped(RaidPressure, 0, 15, 1, 0.1) * RetreatFactor;
@@ -2534,19 +2253,13 @@ begin
       for I := 0 to CurrentStar.Ships.Count - 1 do
       begin
         Ship := CurrentStar.Ships[I];
-        if (Ship.CurrentStanding in [ssPirateActive, ssPirateMilitary])
-            and (Ship.OrderTarget = CurrentStar) then
-          PirateStrength :=
-              Min(10, Max(0.1, Ship.Strength * StrengthScale)) * 0.75 + PirateStrength;
+        if (Ship.CurrentStanding in [ssPirateActive, ssPirateMilitary]) and (Ship.OrderTarget = CurrentStar) then
+          PirateStrength := Min(10, Max(0.1, Ship.Strength * StrengthScale)) * 0.75 + PirateStrength;
       end;
     if (Abs(CoalitionStrength - 2.5 * DominatorAndCustomStrength) * RetreatFactor >= PirateStrength)
         or (HasNoUsableWeapons and not PirateSystem) then
     begin
-      Urgent :=
-          InFear
-              and (EnemyShip <> nil)
-              and (EnemyShip.OrderTarget = Self)
-              and (EnemyShip.EstimateOrderTravelTurns <= 2);
+      Urgent := InFear and (EnemyShip <> nil) and (EnemyShip.OrderTarget = Self) and (EnemyShip.EstimateOrderTravelTurns <= 2);
       if Order = soJump then
       begin
         if Urgent then
@@ -2573,9 +2286,7 @@ begin
         begin
           Star := CurrentStar.StarDistances[I].Star;
           Inc(I);
-          Angle :=
-              PointBearingDegrees(CurrentStar.Position, Star.Position)
-                  - PointBearingDegrees(MakeFloatPoint(0, 0), Position);
+          Angle := PointBearingDegrees(CurrentStar.Position, Star.Position) - PointBearingDegrees(MakeFloatPoint(0, 0), Position);
           Angle := WrapSignedHeadingDegrees(Angle);
           if (AnyStar = nil) or (Abs(Angle) < AnyAngle) then
           begin
@@ -2591,8 +2302,7 @@ begin
           end;
         end;
         if InFear
-            and (2 * RetreatFactor * PirateStrength
-                < Abs(CoalitionStrength - DominatorAndCustomStrength))
+            and (2 * RetreatFactor * PirateStrength < Abs(CoalitionStrength - DominatorAndCustomStrength))
             and (NextRandomIntRange(0, 9, RandomState) < 5) then
           PirateStar := AnyStar;
         if PirateStar <> nil then
@@ -2645,16 +2355,11 @@ begin
     FragilityScale := FragilityScale * 0.5;
   DesiredMoneyFraction := 0.1;
   DesiredFreeFraction := Max(0.01, Min(0.99, GetDesiredCargoFreeSpace / Max(100, GetHull.Weight)));
-  MoneyPenalty :=
-      Sqr((1 / Max(0.01, SmoothedMoneyFraction) - 1) / (1 / DesiredMoneyFraction - 1))
-          / Max(SmoothedWealth * 0.05, 1000);
+  MoneyPenalty := Sqr((1 / Max(0.01, SmoothedMoneyFraction) - 1) / (1 / DesiredMoneyFraction - 1)) / Max(SmoothedWealth * 0.05, 1000);
   EffectivenessScale := 2 / Max(10, SmoothedEquipmentEffectiveness);
-  WeightPenalty :=
-      Sqr((1 / Max(0.01, SmoothedFreeCapacityFraction) - 1) / (1 / DesiredFreeFraction - 1))
-          / Max(10, GetHull.Weight * 0.1);
+  WeightPenalty := Sqr((1 / Max(0.01, SmoothedFreeCapacityFraction) - 1) / (1 / DesiredFreeFraction - 1)) / Max(10, GetHull.Weight * 0.1);
   MoneyPenalty := MoneyPenalty * 0.01 * (100 + SeededRandomIntRange(-25, 25, Id + Seed));
-  EffectivenessScale :=
-      EffectivenessScale * 0.01 * (100 + SeededRandomIntRange(-25, 25, Seed + 3 * Id));
+  EffectivenessScale := EffectivenessScale * 0.01 * (100 + SeededRandomIntRange(-25, 25, Seed + 3 * Id));
   WeightPenalty := WeightPenalty * 0.01 * (100 + SeededRandomIntRange(-25, 25, Seed + 5 * Id));
   case PriceMode of
     4: Price := Item.Cost;
@@ -2673,16 +2378,12 @@ begin
   end;
   if Item.ItemType <> t_Hull then
     Result :=
-        Effectiveness
-                * EffectivenessScale
-                * (1 + (2 - TEquipment(Item).GetFragilityFactor(NoFlags)) * FragilityScale)
+        Effectiveness * EffectivenessScale * (1 + (2 - TEquipment(Item).GetFragilityFactor(NoFlags)) * FragilityScale)
             - Item.Weight * WeightPenalty
             - Price * MoneyPenalty
   else
     Result :=
-        (Item.Weight * HullValueScale / Max(0.01, TEquipment(Item).GetFragilityFactor(NoFlags))
-                    + Effectiveness)
-                * EffectivenessScale
+        (Item.Weight * HullValueScale / Max(0.01, TEquipment(Item).GetFragilityFactor(NoFlags)) + Effectiveness) * EffectivenessScale
             + Item.Weight * WeightPenalty
             - Price * 0.25 * MoneyPenalty;
 end;
@@ -2710,33 +2411,19 @@ begin
     bonWMissile: Result := Value * 12 * (0.1 + ShortInt(GetRadarRange > 0) * 0.9);
     bonWRadius: Result := Value * Sqr(Max(100, SmoothedEnemySpeed) / Max(100, SmoothedSpeed));
     bonHookRadius: Result := Value * 0.1;
-    bonMass:
-      Result :=
-          RemapClamped(
-                  Value + GetHull.Weight * 0.1,
-                  HullMassEvaluationStart,
-                  HullMassEvaluationEnd,
-                  1,
-                  0.333)
-              * 6000;
+    bonMass: Result := RemapClamped(Value + GetHull.Weight * 0.1, HullMassEvaluationStart, HullMassEvaluationEnd, 1, 0.333) * 6000;
     bonSlotRadar:
       if (GetSlotCount(sskRadar) = 0) and (Value > 0) then
         Result := PirateSlotBonusWeights[BonusKind] * 0.3
       else if (GetRadar <> nil) and (Value < 0) then
-        Result :=
-            -PirateSlotBonusWeights[BonusKind]
-                - PirateSlotBonusWeights[bonSlotWeapon] * CountMissileWeapons
+        Result := -PirateSlotBonusWeights[BonusKind] - PirateSlotBonusWeights[bonSlotWeapon] * CountMissileWeapons
       else if (GetSlotCount(sskRadar) = 1) and (Value < 0) then
         Result := PirateSlotBonusWeights[BonusKind] * -0.3;
     bonSlotScaner:
       if (GetSlotCount(sskScanner) = 0) and (Value > 0) then
         Result := PirateSlotBonusWeights[BonusKind] * 0.3
       else if (GetScanner <> nil) and (Value < 0) then
-        Result :=
-            -PirateSlotBonusWeights[BonusKind]
-                - CountWeaponsByDamageFlags(ScannerFlags)
-                    * 0.1
-                    * PirateSlotBonusWeights[bonSlotWeapon]
+        Result := -PirateSlotBonusWeights[BonusKind] - CountWeaponsByDamageFlags(ScannerFlags) * 0.1 * PirateSlotBonusWeights[bonSlotWeapon]
       else if (GetSlotCount(sskScanner) = 1) and (Value < 0) then
         Result := PirateSlotBonusWeights[BonusKind] * -0.3;
     bonSlotDroid:
@@ -2767,17 +2454,12 @@ begin
       if Value < 0 then
         Result := Max(Value, -GetSlotCount(sskWeapon)) * PirateSlotBonusWeights[BonusKind];
       if CountEquippedWeapons > Max(Value + GetSlotCount(sskWeapon), 1) then
-        Result :=
-            Result
-                - (PirateSlotBonusWeights[BonusKind] * 0.6)
-                    * (CountEquippedWeapons - Max(1, Value + GetSlotCount(sskWeapon)));
+        Result := Result - (PirateSlotBonusWeights[BonusKind] * 0.6) * (CountEquippedWeapons - Max(1, Value + GetSlotCount(sskWeapon)));
     end;
     bonSlotArt:
     begin
       if (GetSlotCount(sskArtefact) < DefaultHullSlotCounts[sskArtefact]) and (Value > 0) then
-        Result :=
-            Min(Value, DefaultHullSlotCounts[sskArtefact] - GetSlotCount(sskArtefact))
-                * PirateSlotBonusWeights[BonusKind];
+        Result := Min(Value, DefaultHullSlotCounts[sskArtefact] - GetSlotCount(sskArtefact)) * PirateSlotBonusWeights[BonusKind];
       if Value < 0 then
         Result := Max(Value, -GetSlotCount(sskArtefact)) * PirateSlotBonusWeights[BonusKind];
       if Artefacts <> nil then
@@ -2792,23 +2474,14 @@ begin
     bonSkill1..bonSkill6:
     begin
       if Value > 0 then
-        Result :=
-            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
-                * PirateSkillBonusWeights[BonusKind];
+        Result := Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value) * PirateSkillBonusWeights[BonusKind];
       if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
-            Result
-                + (PirateSkillBonusWeights[BonusKind] * 0.05)
-                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
+            Result + (PirateSkillBonusWeights[BonusKind] * 0.05) * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
-        Result :=
-            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
-                * -PirateSkillBonusWeights[BonusKind];
+        Result := Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value) * -PirateSkillBonusWeights[BonusKind];
       if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
-        Result :=
-            Result
-                + (PirateSkillBonusWeights[BonusKind] * 0.03)
-                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
+        Result := Result + (PirateSkillBonusWeights[BonusKind] * 0.03) * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -2835,11 +2508,7 @@ begin
     Result := Result * 0.01 * (100 + SeededRandomIntRange(-25, 25, Seed + 131 * Ord(BonusKind)));
 end;
 
-function TPirate.EvaluateWeaponDamage(
-    Weapon: TWeapon;
-    IncludeAdditiveBonuses: Boolean;
-    BaseDamage: Single
-): Single;
+function TPirate.EvaluateWeaponDamage(Weapon: TWeapon; IncludeAdditiveBonuses: Boolean; BaseDamage: Single): Single;
 const
   ScannerFlags = [dkScanBonus..dkDroidBlock];
   ShockFlags = [dkShock];
@@ -2854,15 +2523,7 @@ begin
   Flags := Weapon.GetDamageFlags;
   if (Flags * ScannerFlags <> []) and (GetScanner <> nil) and (GetRadar <> nil) then
     ScannerFactor :=
-        RemapClamped(
-            GetScannerPower
-                - DefenseDamageFactorToPercent(GetGeneratedDefenseDamageFactor(Galaxy.TechLevel))
-                + 1,
-            -5,
-            10,
-            0.1,
-            2
-        )
+        RemapClamped(GetScannerPower - DefenseDamageFactorToPercent(GetGeneratedDefenseDamageFactor(Galaxy.TechLevel)) + 1, -5, 10, 0.1, 2)
   else
     ScannerFactor := 0;
   Result := BaseDamage * GetWeaponArtefactDamageFactor(Weapon);
@@ -2896,24 +2557,18 @@ begin
     DisruptionFactor := DisruptionFactor + 1;
   if (CountActiveArtefacts(t_ArtDecelerate) > 0) and (dkSplinter in Flags) then
     DisruptionFactor :=
-        DisruptionFactor
-            + CountActiveArtefacts(t_ArtDecelerate)
-                * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
+        DisruptionFactor + CountActiveArtefacts(t_ArtDecelerate) * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
   TotalDisruption := DisruptionFactor;
   for I := 1 to CountEquippedWeapons do
   begin
     if dkDecelerate in Weapons[I].GetDamageFlags then
       TotalDisruption := TotalDisruption + 1;
-    if (CountActiveArtefacts(t_ArtDecelerate) > 0)
-        and (dkSplinter in Weapons[I].GetDamageFlags) then
+    if (CountActiveArtefacts(t_ArtDecelerate) > 0) and (dkSplinter in Weapons[I].GetDamageFlags) then
       // The native loop tests each equipped weapon but boosts the candidate.
       TotalDisruption :=
-          TotalDisruption
-              + CountActiveArtefacts(t_ArtDecelerate)
-                  * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
+          TotalDisruption + CountActiveArtefacts(t_ArtDecelerate) * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
   end;
-  DisruptionFactor :=
-      DisruptionFactor / Max(TotalDisruption, 1) * RemapClamped(TotalDisruption, 1, 3, 1, 2);
+  DisruptionFactor := DisruptionFactor / Max(TotalDisruption, 1) * RemapClamped(TotalDisruption, 1, 3, 1, 2);
   if SlowFactor > 0.01 then
     case PirateType of
       2: Result := Result * (1 + SlowFactor * 0.1);
@@ -2966,37 +2621,20 @@ begin
     if dkDroidBlock in Flags then
       Result := Result + ScannerFactor * 5;
   end;
-  SpeedFactor :=
-      Max(100, SmoothedEnemySpeed)
-          * GetHull.Weight
-          / (HullBaseSize * Max(100, SmoothedSpeed * EquipmentSizeFactors[1]));
+  SpeedFactor := Max(100, SmoothedEnemySpeed) * GetHull.Weight / (HullBaseSize * Max(100, SmoothedSpeed * EquipmentSizeFactors[1]));
   case Weapon.GetWeaponInfo.ShotType of
     wstRocket: Result := Result * 0.9 * Weapon.GetShotCount * (1 + StatusFactor);
-    wstMissile:
-      Result :=
-          Result
-              * (0.9 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.2 * 0.01 + StatusFactor)
-              * Weapon.GetShotCount;
-    wstTorpedo:
-      Result :=
-          Result * (1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.2 * 0.01 + StatusFactor);
+    wstMissile: Result := Result * (0.9 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.2 * 0.01 + StatusFactor) * Weapon.GetShotCount;
+    wstTorpedo: Result := Result * (1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.2 * 0.01 + StatusFactor);
     wstChain: Result := Result * (1.3 + (Weapon.GetShotCount - 1) * 0.1) * (1 + StatusFactor);
-    wstSplash:
-      Result :=
-          Result
-              * (1
-                  + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.4 * 0.01 * SpeedFactor
-                  + StatusFactor);
+    wstSplash: Result := Result * (1 + Weapon.GetWeaponInfo.SecondaryDamageRadius * 0.4 * 0.01 * SpeedFactor + StatusFactor);
     wstAreaDamage: Result := Result * (1 + Weapon.Range * 0.3 * 0.01 * SpeedFactor + StatusFactor);
   else
     Result := Result * (1 + StatusFactor);
   end;
   Result := Result * Weapon.GetAttackCount;
-  Result :=
-      Result * 0.01 * (100 + SeededRandomIntRange(-20, 20, Seed + Weapon.GetWeaponInfo.TypeHash));
-  if (PirateType = 3)
-      and (Flags * DisablingFlags <> [])
-      and (CountWeaponsByDamageFlags(Flags * DisablingFlags) = 0) then
+  Result := Result * 0.01 * (100 + SeededRandomIntRange(-20, 20, Seed + Weapon.GetWeaponInfo.TypeHash));
+  if (PirateType = 3) and (Flags * DisablingFlags <> []) and (CountWeaponsByDamageFlags(Flags * DisablingFlags) = 0) then
     Result := Result * 4
   else if dkMissile in Flags then
     Result := Result * 1.2;
@@ -3038,8 +2676,7 @@ begin
       CurrentStanding := ssNeutral
     else if (Owner = oiPirate) and (PirateType <> 0) then
       CurrentStanding := ssPirateMilitary
-    else if (Owner = oiPirate)
-        and ((CurrentSystemKills.Normal > 0) or (CurrentStar.ControlFaction = sfPirates)) then
+    else if (Owner = oiPirate) and ((CurrentSystemKills.Normal > 0) or (CurrentStar.ControlFaction = sfPirates)) then
       CurrentStanding := ssPirateActive
     else
       CurrentStanding := ssPiratePassive;

@@ -101,18 +101,8 @@ type
     procedure HideItemInfo(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure PositionItemInfo(Window: TWindowGI);
     procedure RefreshItemInfo(Item: TItem);
-    procedure BuildHullSlotOverlays(
-        Parent: TObjectGI;
-        Hull: THull;
-        OffsetX: Integer;
-        OffsetY: Integer
-    );
-    procedure RefreshHullInfo(
-        Target: TMessageLoopGI;
-        Hull: THull;
-        Text: WideString;
-        SuppressImage: Boolean
-    );
+    procedure BuildHullSlotOverlays(Parent: TObjectGI; Hull: THull; OffsetX: Integer; OffsetY: Integer);
+    procedure RefreshHullInfo(Target: TMessageLoopGI; Hull: THull; Text: WideString; SuppressImage: Boolean);
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
   end;
 
@@ -232,8 +222,7 @@ begin
         OtherOrder := Ord(Other.Item.ItemType) - 75
       else
         OtherOrder := Ord(Other.Item.ItemType);
-      if (ItemOrder > OtherOrder)
-          or ((ItemOrder = OtherOrder) and (Slot.Item.Cost > Other.Item.Cost)) then
+      if (ItemOrder > OtherOrder) or ((ItemOrder = OtherOrder) and (Slot.Item.Cost > Other.Item.Cost)) then
       begin
         Item := Slot.Item;
         Slot.Item := Other.Item;
@@ -490,12 +479,7 @@ begin
     with FindByNameRecursive('PanelShop') do
     begin
       SetSize(Classes.Point(ClientSize.X + ExtraWidth, ClientSize.Y));
-      SetPosition(
-          Classes.Point(
-              (GameScreenWidth - ClientSize.X) div 2,
-              LocalPosition.Y + MainPanel.VerticalContentOffset
-          )
-      );
+      SetPosition(Classes.Point((GameScreenWidth - ClientSize.X) div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
       if ExtraWidth > 0 then
       begin
         with FindByNameRecursive('Right') do
@@ -523,8 +507,7 @@ begin
   with GetByName('InfoHullPrice') do
     HullPriceOffset := Classes.Point(LocalPosition.X, LocalPosition.Y - Parent.ClientSize.Y);
   with GetByName('InfoHullEmRace') do
-    HullRaceOffset :=
-        Classes.Point(LocalPosition.X - Parent.ClientSize.X, LocalPosition.Y - Parent.ClientSize.Y);
+    HullRaceOffset := Classes.Point(LocalPosition.X - Parent.ClientSize.X, LocalPosition.Y - Parent.ClientSize.Y);
 end;
 
 procedure TfEquipmentShop.OnOpen;
@@ -570,33 +553,21 @@ begin
     if GetPlayer.IsOnPlanet then
     begin
       SetActive(True);
-      (FindByNameRecursive('BGCity') as TImageGI)
-          .SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
+      (FindByNameRecursive('BGCity') as TImageGI).SetImagePath(GetPlayer.CurrentPlanet.GetGovernmentBackgroundGraph);
     end
     else if GetPlayer.IsDockedToShip then
     begin
       SetActive(True);
       if GetPlayer.DockedTo.TypeNameOverrideKey <> '' then
       begin
-        BackgroundPath :=
-            'Bm.FormRuins.' + GiResourceSuffix + GetPlayer.DockedTo.TypeNameOverrideKey + 'bg';
+        BackgroundPath := 'Bm.FormRuins.' + GiResourceSuffix + GetPlayer.DockedTo.TypeNameOverrideKey + 'bg';
         if CacheDataRoot.FileExistsByPath(BackgroundPath) then
           SetImagePath('GI,' + BackgroundPath)
         else
-          SetImagePath(
-              'GI,Bm.FormRuins.'
-                  + GiResourceSuffix
-                  + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name
-                  + 'bg'
-          );
+          SetImagePath('GI,Bm.FormRuins.' + GiResourceSuffix + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name + 'bg');
       end
       else
-        SetImagePath(
-            'GI,Bm.FormRuins.'
-                + GiResourceSuffix
-                + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name
-                + 'bg'
-        );
+        SetImagePath('GI,Bm.FormRuins.' + GiResourceSuffix + ShipTypeNames[GetPlayer.DockedTo.TypeId].Name + 'bg');
     end
     else
       SetActive(False);
@@ -749,9 +720,7 @@ begin
       SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'Line');
       SetSize(GetContentSize);
       SetOrigin(Classes.Point(ClientSize.X div 2, 0));
-      SetPosition(
-          Classes.Point(Round(I * CellWidth), Panel.ClientSize.Y div 2 - ClientSize.Y div 2)
-      );
+      SetPosition(Classes.Point(Round(I * CellWidth), Panel.ClientSize.Y div 2 - ClientSize.Y div 2));
       SetDepth(4);
       UserData := 1;
     end;
@@ -794,16 +763,8 @@ begin
         begin
           Cost := Slot.Item.GetConditionAdjustedCost;
           if Slot.Item is THull then
-            Cost :=
-                Max(
-                    1,
-                    Cost
-                        - GetPlayer.GetHull.CalculateResaleValue(
-                            GetPlayer.GetEffectiveSkillLevel(psTrading))
-                );
-          if (GetPlayer.Money < Cost)
-              or ((Slot.Item.ItemType <> t_Hull)
-                  and (GetPlayer.GetCargoFreeSpace < Slot.Item.Weight)) then
+            Cost := Max(1, Cost - GetPlayer.GetHull.CalculateResaleValue(GetPlayer.GetEffectiveSkillLevel(psTrading)));
+          if (GetPlayer.Money < Cost) or ((Slot.Item.ItemType <> t_Hull) and (GetPlayer.GetCargoFreeSpace < Slot.Item.Weight)) then
             SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotBorderH')
           else
             SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotBorderN');
@@ -823,26 +784,13 @@ begin
           if TEquipment(Slot.Item).GetLevel <> 0 then
             LevelSuffix := '_' + IntToWideString(TEquipment(Slot.Item).GetLevel)
           else if Slot.Item is TMicroModule then
-            LevelSuffix :=
-                '_'
-                    + IntToWideString(
-                        GetMicroModulePriorityColorTier(TEquipment(Slot.Item).MicroModuleIndex - 1))
+            LevelSuffix := '_' + IntToWideString(GetMicroModulePriorityColorTier(TEquipment(Slot.Item).MicroModuleIndex - 1))
           else
             LevelSuffix := '';
           if (TEquipment(Slot.Item).ConfigBlockName <> '')
               and CacheDataRoot.FileExistsByPath(
-                  'Bm.FormShop2.'
-                      + GiResourceSuffix
-                      + 'Slot'
-                      + TEquipment(Slot.Item).ConfigBlockName
-                      + LevelSuffix) then
-            SetImagePath(
-                'GI,Bm.FormShop2.'
-                    + GiResourceSuffix
-                    + 'Slot'
-                    + TEquipment(Slot.Item).ConfigBlockName
-                    + LevelSuffix
-            )
+                  'Bm.FormShop2.' + GiResourceSuffix + 'Slot' + TEquipment(Slot.Item).ConfigBlockName + LevelSuffix) then
+            SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'Slot' + TEquipment(Slot.Item).ConfigBlockName + LevelSuffix)
           else if (Slot.Item is TMicroModule)
               and (MicroModuleTemplates[TEquipment(Slot.Item).MicroModuleIndex - 1].KindGraph <> '')
               and CacheDataRoot.FileExistsByPath(
@@ -859,33 +807,15 @@ begin
                     + LevelSuffix
             )
           else if CacheDataRoot.FileExistsByPath(
-              'Bm.FormShop2.'
-                  + GiResourceSuffix
-                  + 'Slot'
-                  + ItemTypeNames[Slot.Item.ItemType]
-                  + LevelSuffix) then
-            SetImagePath(
-                'GI,Bm.FormShop2.'
-                    + GiResourceSuffix
-                    + 'Slot'
-                    + ItemTypeNames[Slot.Item.ItemType]
-                    + LevelSuffix
-            )
-          else if (Slot.Item is TArtefact)
-              and CacheDataRoot.FileExistsByPath(
-                  'Bm.FormShop2.' + GiResourceSuffix + 'SlotArtefact') then
+              'Bm.FormShop2.' + GiResourceSuffix + 'Slot' + ItemTypeNames[Slot.Item.ItemType] + LevelSuffix) then
+            SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'Slot' + ItemTypeNames[Slot.Item.ItemType] + LevelSuffix)
+          else if (Slot.Item is TArtefact) and CacheDataRoot.FileExistsByPath('Bm.FormShop2.' + GiResourceSuffix + 'SlotArtefact') then
             SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotArtefact')
           else if (Slot.Item is TWeapon)
-              and CacheDataRoot.FileExistsByPath(
-                  'Bm.FormShop2.' + GiResourceSuffix + 'SlotWeapon' + LevelSuffix) then
+              and CacheDataRoot.FileExistsByPath('Bm.FormShop2.' + GiResourceSuffix + 'SlotWeapon' + LevelSuffix) then
             SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotWeapon' + LevelSuffix)
           else
-            SetImagePath(
-                'GI,Bm.FormShop2.'
-                    + GiResourceSuffix
-                    + 'SlotLevel'
-                    + IntToWideString(TEquipment(Slot.Item).GetLevel)
-            );
+            SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotLevel' + IntToWideString(TEquipment(Slot.Item).GetLevel));
           SetImageKindX(ikxCenter);
           SetImageKindY(ikyCenter);
         end;
@@ -920,25 +850,14 @@ begin
           end;
         end;
       end;
-      if (Slot.Item <> nil)
-          and TEquipment(Slot.Item).HasMicroModule
-          and (Slot.Item.ItemType in [t_Hull..t_CustomWeapon]) then
+      if (Slot.Item <> nil) and TEquipment(Slot.Item).HasMicroModule and (Slot.Item.ItemType in [t_Hull..t_CustomWeapon]) then
       begin
         Slot.MicroModuleImage := TImageGI.Create(Panel);
         with Slot.MicroModuleImage do
         begin
-          SetImagePath(
-              'GI,'
-                  + GetMicroModuleBitmapResourceName(TEquipment(Slot.Item).MicroModuleIndex - 1)
-                  + 'Set'
-          );
+          SetImagePath('GI,' + GetMicroModuleBitmapResourceName(TEquipment(Slot.Item).MicroModuleIndex - 1) + 'Set');
           SetPositionModeW(True);
-          SetPosition(
-              Classes.Point(
-                  Round(X * CellWidth) + GiScalePixels(5),
-                  Round(Y * CellHeight) + GiScalePixels(45)
-              )
-          );
+          SetPosition(Classes.Point(Round(X * CellWidth) + GiScalePixels(5), Round(Y * CellHeight) + GiScalePixels(45)));
           SetSize(GetContentSize);
           SetDepth(0);
           SetImageKindX(ikxCenter);
@@ -1068,8 +987,7 @@ begin
         OpenPreviewTimer := nil;
       end;
       if AnimItem then
-        OpenPreviewTimer :=
-            ScheduleCallbackTimer(RandomIntRange(3000, 6000), 99999, ChooseAnimatedPreview);
+        OpenPreviewTimer := ScheduleCallbackTimer(RandomIntRange(3000, 6000), 99999, ChooseAnimatedPreview);
     end;
   end;
 end;
@@ -1177,9 +1095,7 @@ begin
   TouchSlot := nil;
   if Slot = nil then
     Exit;
-  if (TemporaryShopSlots <> nil)
-      and (TemporaryShopSlots.IndexOf(Slot) >= 0)
-      and (Slot.SlotImage <> nil) then
+  if (TemporaryShopSlots <> nil) and (TemporaryShopSlots.IndexOf(Slot) >= 0) and (Slot.SlotImage <> nil) then
   begin
     Slot.SlotImage.SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotN');
     Slot.SlotImage.SetImageKindX(ikxCenter);
@@ -1202,13 +1118,9 @@ begin
   if TouchSlot <> nil then
   begin
     if not GamePointerInputIsTouch
-        and ((Message = WM_LBUTTONDOWN)
-            or (Message = WM_RBUTTONDOWN)
-            or (Message = WM_LBUTTONDBLCLK)
-            or (Message = WM_MOUSEWHEEL)) then
+        and ((Message = WM_LBUTTONDOWN) or (Message = WM_RBUTTONDOWN) or (Message = WM_LBUTTONDBLCLK) or (Message = WM_MOUSEWHEEL)) then
       ClearTouchSelection
-    else if (Message = WM_GAME_PAN_BEGIN)
-        or ((Message = WM_GAME_TOUCH_BEGIN) and (WParam = MK_RBUTTON)) then
+    else if (Message = WM_GAME_PAN_BEGIN) or ((Message = WM_GAME_TOUCH_BEGIN) and (WParam = MK_RBUTTON)) then
       ClearTouchSelection;
   end;
   inherited ProcessWindowMessage(Message, WParam, LParam);
@@ -1255,10 +1167,7 @@ begin
       Sender.LogicalToScreenPoint(
           Classes.Point(
               Sender.HitTestBounds.Left + Sender.ClientSize.X div 2,
-              Min(
-                  Sender.HitTestBounds.Bottom,
-                  Panel.HitTestBounds.Bottom - Sender.ClientSize.Y - 24
-              )
+              Min(Sender.HitTestBounds.Bottom, Panel.HitTestBounds.Bottom - Sender.ClientSize.Y - 24)
           )
       );
   RefreshItemInfo(Slot.Item);
@@ -1290,11 +1199,7 @@ var
 begin
   ClearTouchSelection;
   Panel := GetByName('PanelGoods') as TPanelGI;
-  Column :=
-      Round(
-          (Panel.ScrollOffset.X - Panel.ClientSize.X / ShopVisibleColumnCount)
-              / (Panel.ClientSize.X / ShopVisibleColumnCount)
-      );
+  Column := Round((Panel.ScrollOffset.X - Panel.ClientSize.X / ShopVisibleColumnCount) / (Panel.ClientSize.X / ShopVisibleColumnCount));
   if Column < 0 then
     Column := 0;
   TargetScrollX := Round(Panel.ClientSize.X / ShopVisibleColumnCount * Column);
@@ -1310,11 +1215,7 @@ var
 begin
   ClearTouchSelection;
   Panel := GetByName('PanelGoods') as TPanelGI;
-  Column :=
-      Round(
-          (Panel.ScrollOffset.X + Panel.ClientSize.X / ShopVisibleColumnCount)
-              / (Panel.ClientSize.X / ShopVisibleColumnCount)
-      );
+  Column := Round((Panel.ScrollOffset.X + Panel.ClientSize.X / ShopVisibleColumnCount) / (Panel.ClientSize.X / ShopVisibleColumnCount));
   if Column > ContentColumnCount - ShopVisibleColumnCount then
     Column := Max(ContentColumnCount - ShopVisibleColumnCount, 0);
   TargetScrollX := Round(Panel.ClientSize.X / ShopVisibleColumnCount * Column);
@@ -1398,9 +1299,7 @@ begin
       Galaxy.PendingEquipmentPurchasePrice :=
           Max(
               1,
-              Galaxy.PendingEquipmentPurchasePrice
-                  - GetPlayer.GetHull.CalculateResaleValue(
-                      GetPlayer.GetEffectiveSkillLevel(psTrading))
+              Galaxy.PendingEquipmentPurchasePrice - GetPlayer.GetHull.CalculateResaleValue(GetPlayer.GetEffectiveSkillLevel(psTrading))
           );
     Galaxy.PrimeIntegrityChecksum(199);
     if GetPlayer.Money < Galaxy.PendingEquipmentPurchasePrice then
@@ -1509,9 +1408,7 @@ begin
         begin
           Event := AddGalaxyEvent('PlayerSellsEquipment');
           Event.AddData(Ord(GetPlayer.GetHull.ItemType));
-          Event.AddData(
-              GetPlayer.GetHull.CalculateResaleValue(GetPlayer.GetEffectiveSkillLevel(psTrading))
-          );
+          Event.AddData(GetPlayer.GetHull.CalculateResaleValue(GetPlayer.GetEffectiveSkillLevel(psTrading)));
           Event.AddData(GetPlayer.GetHull.Weight);
           Event.AddData(GetPlayer.GetHull.Id);
           if GetPlayer.CurrentPlanet <> nil then
@@ -1540,8 +1437,7 @@ begin
           GetPlayer.GetHull.OwnerShip := GetPlayer;
           GetPlayer.GetHull.AssignedSlotData := 0;
           if Slot.Item.ScriptItem <> nil then
-            TScriptItem(Slot.Item.ScriptItem)
-                .RunActionCode(satOnPlayerChangeHull, GetPlayer, Slot.Item, nil, 0);
+            TScriptItem(Slot.Item.ScriptItem).RunActionCode(satOnPlayerChangeHull, GetPlayer, Slot.Item, nil, 0);
           Slot.Item := nil;
           GetPlayer.RefreshAssignedItemSlots;
           GetPlayer.RebuildEquipmentCache;
@@ -1561,11 +1457,7 @@ begin
           else
             GetPlayer.AddItemToPlayerStorage(Slot.Item, GetPlayer.DockedTo, -1);
           Slot.Item := nil;
-          ShowMessageBoxGI(
-              Self,
-              LanguageDataConfig.GetParamByPathOrMarker('FormShop.AfterBuyHull'),
-              mbgOK
-          );
+          ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormShop.AfterBuyHull'), mbgOK);
           if GetPlayer.CurrentPlanet <> nil then
             Destination := PtrInt(GetPlayer.CurrentPlanet)
           else
@@ -1634,16 +1526,8 @@ begin
             begin
               Cost := Slot.Item.GetConditionAdjustedCost;
               if Slot.Item is THull then
-                Cost :=
-                    Max(
-                        1,
-                        Cost
-                            - GetPlayer.GetHull.CalculateResaleValue(
-                                GetPlayer.GetEffectiveSkillLevel(psTrading))
-                    );
-              if (GetPlayer.Money < Cost)
-                  or ((Slot.Item.ItemType <> t_Hull)
-                      and (GetPlayer.CargoFreeSpace < Slot.Item.Weight)) then
+                Cost := Max(1, Cost - GetPlayer.GetHull.CalculateResaleValue(GetPlayer.GetEffectiveSkillLevel(psTrading)));
+              if (GetPlayer.Money < Cost) or ((Slot.Item.ItemType <> t_Hull) and (GetPlayer.CargoFreeSpace < Slot.Item.Weight)) then
                 SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotBorderH')
               else
                 SetImagePath('GI,Bm.FormShop2.' + GiResourceSuffix + 'SlotBorderN');
@@ -1684,8 +1568,7 @@ begin
     OpenPreviewTimer := nil;
   end;
   if AnimItem then
-    OpenPreviewTimer :=
-        ScheduleCallbackTimer(RandomIntRange(3000, 6000), 99999, ChooseAnimatedPreview);
+    OpenPreviewTimer := ScheduleCallbackTimer(RandomIntRange(3000, 6000), 99999, ChooseAnimatedPreview);
 end;
 
 procedure TfEquipmentShop.PreviewCycleComplete(Sender: TObjectGI);
@@ -1722,43 +1605,18 @@ begin
       Target.BottomRight := TouchSlot.SlotImage.LogicalToScreenPoint(Target.BottomRight);
     end
     else
-      Target :=
-          Classes.Rect(
-              ItemInfoAnchor.X - 24,
-              ItemInfoAnchor.Y - 24,
-              ItemInfoAnchor.X + 24,
-              ItemInfoAnchor.Y + 24
-          );
+      Target := Classes.Rect(ItemInfoAnchor.X - 24, ItemInfoAnchor.Y - 24, ItemInfoAnchor.X + 24, ItemInfoAnchor.Y + 24);
     if Window = ItemInfoWindow then
     begin
-      FitInspectionWindow(
-          Window,
-          GetByName('InfoText'),
-          ItemInfoScroll,
-          MainPanel.ContentBounds,
-          Target,
-          True
-      );
+      FitInspectionWindow(Window, GetByName('InfoText'), ItemInfoScroll, MainPanel.ContentBounds, Target, True);
       Title := GetByName('InfoName') as TLabelGI;
     end
     else
     begin
-      FitInspectionWindow(
-          Window,
-          GetByName('InfoHullText'),
-          HullInfoScroll,
-          MainPanel.ContentBounds,
-          Target,
-          True
-      );
+      FitInspectionWindow(Window, GetByName('InfoHullText'), HullInfoScroll, MainPanel.ContentBounds, Target, True);
       Title := GetByName('InfoHullName') as TLabelGI;
     end;
-    Title.SetSize(
-        Classes.Point(
-            Window.ClientSize.X - Window.WorkSubRect.Right - Title.LocalPosition.X - 15,
-            Title.ClientSize.Y
-        )
-    );
+    Title.SetSize(Classes.Point(Window.ClientSize.X - Window.WorkSubRect.Right - Title.LocalPosition.X - 15, Title.ClientSize.Y));
     Exit;
   end;
   if DynamicTipsPos then
@@ -1806,14 +1664,7 @@ begin
     with MainPanel.HelpLabel do
     begin
       SetActive(True);
-      SetText(
-          FormatText1(
-              LookupLocalizedTextByKey('FormShop.BuyHelp'),
-              InfoNameColorTag,
-              '<Item>',
-              Equipment.GetDisplayName
-          )
-      );
+      SetText(FormatText1(LookupLocalizedTextByKey('FormShop.BuyHelp'), InfoNameColorTag, '<Item>', Equipment.GetDisplayName));
     end;
     MainPanel.SlideMessagesOut;
     if (Galaxy <> nil) and not Galaxy.Destroying and (GetPlayer <> nil) then
@@ -1821,28 +1672,21 @@ begin
       if GetPlayer.CurrentPlanet <> nil then
       begin
         if Item.ScriptItem <> nil then
-          TScriptItem(Item.ScriptItem)
-              .RunActionCode(satOnShowingItemInfo, nil, GetPlayer.CurrentPlanet, nil, 0);
+          TScriptItem(Item.ScriptItem).RunActionCode(satOnShowingItemInfo, nil, GetPlayer.CurrentPlanet, nil, 0);
         if Item is TEquipmentWithActCode then
           RunItemConfigActionCode(Item, satOnShowingItemInfo, nil, GetPlayer.CurrentPlanet, nil, 0);
       end
       else
       begin
         if Item.ScriptItem <> nil then
-          TScriptItem(Item.ScriptItem)
-              .RunActionCode(satOnShowingItemInfo, nil, GetPlayer.DockedTo, nil, 0);
+          TScriptItem(Item.ScriptItem).RunActionCode(satOnShowingItemInfo, nil, GetPlayer.DockedTo, nil, 0);
         if Item is TEquipmentWithActCode then
           RunItemConfigActionCode(Item, satOnShowingItemInfo, nil, GetPlayer.DockedTo, nil, 0);
       end;
     end;
     if Item.ItemType = t_Hull then
     begin
-      RefreshHullInfo(
-          Self,
-          Item as THull,
-          Equipment.GetInfoText(TextHighlightColorTag, nil),
-          False
-      );
+      RefreshHullInfo(Self, Item as THull, Equipment.GetInfoText(TextHighlightColorTag, nil), False);
       ItemInfoWindow.SetActive(False);
     end
     else
@@ -1857,10 +1701,8 @@ begin
         SetPosition(SubtractPoints(ShipScreen.ItemImageCenter, GetVisualCenter));
       end;
       (GetByName('InfoName') as TLabelGI).SetText('');
-      (GetByName('InfoName') as TLabelGI)
-          .SetText(WrapTextInColor(Equipment.GetDisplayName, InfoNameColorTag));
-      (GetByName('InfoText') as TLabelGI)
-          .SetText(Equipment.GetInfoText(TextHighlightColorTag, nil));
+      (GetByName('InfoName') as TLabelGI).SetText(WrapTextInColor(Equipment.GetDisplayName, InfoNameColorTag));
+      (GetByName('InfoText') as TLabelGI).SetText(Equipment.GetInfoText(TextHighlightColorTag, nil));
       (GetByName('InfoSize') as TLabelGI).SetText(IntToWideString(Equipment.Weight));
       Price := IntToWideString(Equipment.GetConditionAdjustedCost);
       if Equipment.GetConditionAdjustedCost < Equipment.Cost then
@@ -1884,12 +1726,7 @@ begin
         with GetByName('InfoDurableLeft') as TImageGI do
         begin
           CapWidth := GetContentSize.X;
-          MinimumWidth :=
-              2 * CapWidth
-                  + BarWidth
-                  + LocalPosition.X
-                  + Parent.LocalPosition.X
-                  + 2 * Parent.Parent.LocalPosition.X;
+          MinimumWidth := 2 * CapWidth + BarWidth + LocalPosition.X + Parent.LocalPosition.X + 2 * Parent.Parent.LocalPosition.X;
         end;
         with GetByName('InfoDurable') as TImageGI do
         begin
@@ -1899,18 +1736,12 @@ begin
           if Equipment.ItemType = t_Hull then
             SetPosition(
                 Classes.Point(
-                    Round((Equipment as THull).HullPoints / (Equipment as THull).Weight * BarWidth)
-                        - (GetContentSize.X - 5),
+                    Round((Equipment as THull).HullPoints / (Equipment as THull).Weight * BarWidth) - (GetContentSize.X - 5),
                     LocalPosition.Y
                 )
             )
           else
-            SetPosition(
-                Classes.Point(
-                    Round(BarWidth * (Equipment.ConditionPercent / 100)) - (GetContentSize.X - 5),
-                    LocalPosition.Y
-                )
-            );
+            SetPosition(Classes.Point(Round(BarWidth * (Equipment.ConditionPercent / 100)) - (GetContentSize.X - 5), LocalPosition.Y));
         end;
         with GetByName('InfoDurableRight') as TImageGI do
         begin
@@ -1924,27 +1755,14 @@ begin
           Parent.SetSize(Classes.Point(BarWidth + CapWidth, Parent.ClientSize.Y));
         end;
       end;
-      ShipScreen.LayoutItemInfo(
-          ItemInfoWindow,
-          GetByName('InfoName') as TLabelGI,
-          GetByName('InfoText') as TLabelGI,
-          True,
-          True,
-          MinimumWidth
-      );
+      ShipScreen
+          .LayoutItemInfo(ItemInfoWindow, GetByName('InfoName') as TLabelGI, GetByName('InfoText') as TLabelGI, True, True, MinimumWidth);
       PositionItemInfo(ItemInfoWindow);
       GetByName('InfoSize')
-          .SetPosition(
-              Classes.Point(
-                  ShipScreen.ItemSizeLabelPosition.X,
-                  ItemInfoWindow.ClientSize.Y + ShipScreen.ItemSizeLabelPosition.Y
-              ));
+          .SetPosition(Classes.Point(ShipScreen.ItemSizeLabelPosition.X, ItemInfoWindow.ClientSize.Y + ShipScreen.ItemSizeLabelPosition.Y));
       GetByName('InfoPrice')
           .SetPosition(
-              Classes.Point(
-                  ShipScreen.ItemPriceLabelPosition.X,
-                  ItemInfoWindow.ClientSize.Y + ShipScreen.ItemPriceLabelPosition.Y
-              ));
+              Classes.Point(ShipScreen.ItemPriceLabelPosition.X, ItemInfoWindow.ClientSize.Y + ShipScreen.ItemPriceLabelPosition.Y));
       GetByName('EmRace')
           .SetPosition(
               Classes.Point(
@@ -1955,18 +1773,12 @@ begin
   end;
 end;
 
-procedure TfEquipmentShop.BuildHullSlotOverlays(
-    Parent: TObjectGI;
-    Hull: THull;
-    OffsetX, OffsetY: Integer
-);
+procedure TfEquipmentShop.BuildHullSlotOverlays(Parent: TObjectGI; Hull: THull; OffsetX, OffsetY: Integer);
 var
   Root: TObjectGI;
   I: Integer;
 
-  procedure AddOverlay(
-      Name: WideString
-  ); { Nested in BuildHullSlotOverlays; captures root, parent and offsets. }
+  procedure AddOverlay(Name: WideString); { Nested in BuildHullSlotOverlays; captures root, parent and offsets. }
   var
     Control: TObjectGI;
     Path: WideString;
@@ -1977,9 +1789,7 @@ var
     begin
       Graph := TGraphBufGI.Create(Parent, False);
       Graph.SetPositionModeW(True);
-      Graph.SetPosition(
-          Classes.Point(Control.LocalPosition.X + OffsetX, Control.LocalPosition.Y + OffsetY)
-      );
+      Graph.SetPosition(Classes.Point(Control.LocalPosition.X + OffsetX, Control.LocalPosition.Y + OffsetY));
       Graph.SetSize(Control.ClientSize);
       Graph.SourceHasPerPixelAlpha := True;
       Path := (Control as TImageGI).GetImagePath;
@@ -2026,12 +1836,7 @@ var
   // Native managed-string initialization pairs at $7E3C0C, $7E3C04 and $7E3BFC.
   ShopDominatorImagePrefixes: TDominatorSeriesNameTable = ('B', 'K', 'T');
 
-procedure TfEquipmentShop.RefreshHullInfo(
-    Target: TMessageLoopGI;
-    Hull: THull;
-    Text: WideString;
-    SuppressImage: Boolean
-);
+procedure TfEquipmentShop.RefreshHullInfo(Target: TMessageLoopGI; Hull: THull; Text: WideString; SuppressImage: Boolean);
 var
   Window: TWindowGI;
   TextLabel: TLabelGI;
@@ -2046,13 +1851,11 @@ begin
   Window := Target.GetByName('InfoHull') as TWindowGI;
   TextLabel := Target.GetByName('InfoHullText') as TLabelGI;
   Window.SetActive(True);
-  (Target.GetByName('InfoHullName') as TLabelGI)
-      .SetText(WrapTextInColor(Hull.GetDisplayName, InfoNameColorTag));
+  (Target.GetByName('InfoHullName') as TLabelGI).SetText(WrapTextInColor(Hull.GetDisplayName, InfoNameColorTag));
   SeriesName := Hull.GetSeriesName;
   if SeriesName <> '' then
     SeriesName := #13#10 + WrapTextInColor(SeriesName, InfoHullSeriesColorTag);
-  (Target.GetByName('InfoHullName') as TLabelGI)
-      .SetText((Target.GetByName('InfoHullName') as TLabelGI).GetText + SeriesName);
+  (Target.GetByName('InfoHullName') as TLabelGI).SetText((Target.GetByName('InfoHullName') as TLabelGI).GetText + SeriesName);
   TextLabel.SetText(Text);
   Target.GetByName('InfoHull_Forsage').SetActive(Hull.GetSlotCount(sskAfterburner) >= 1);
   Target.GetByName('InfoHull_W1').SetActive(not (Hull.GetSlotCount(sskWeapon) >= 1));
@@ -2072,9 +1875,7 @@ begin
   Target.GetByName('InfoHull_Radar').SetActive(not (Hull.GetSlotCount(sskRadar) >= 1));
   Target.GetByName('InfoHull_RepairRobot').SetActive(not (Hull.GetSlotCount(sskRepairRobot) >= 1));
   Target.GetByName('InfoHull_CargoHook').SetActive(not (Hull.GetSlotCount(sskCargoHook) >= 1));
-  Target
-      .GetByName('InfoHull_DefGenerator')
-      .SetActive(not (Hull.GetSlotCount(sskDefGenerator) >= 1));
+  Target.GetByName('InfoHull_DefGenerator').SetActive(not (Hull.GetSlotCount(sskDefGenerator) >= 1));
   DisplayKind := ktBoss;
   Series := dsBlazer;
   HullKind := Hull.HullType;
@@ -2119,17 +1920,9 @@ begin
             SourceHasPerPixelAlpha := True;
             LoadGiByPathIntoGraphBuf(ExtractDelimitedPartW(PreviewPath, 1, ','), GraphBuf);
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-              GraphBuf.RescaleRgba(
-                  ClientSize.X,
-                  Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-                  5
-              )
+              GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
             else
-              GraphBuf.RescaleRgba(
-                  Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-                  ClientSize.Y,
-                  5
-              );
+              GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
           end
         else
           with GraphBufControl do
@@ -2142,17 +1935,9 @@ begin
                 dsBlazer: LoadGiByPathIntoGraphBuf('Bm.Ruins.Blazeri', GraphBuf);
               end;
             if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-              GraphBuf.RescaleRgba(
-                  ClientSize.X,
-                  Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-                  5
-              )
+              GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
             else
-              GraphBuf.RescaleRgba(
-                  Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-                  ClientSize.Y,
-                  5
-              );
+              GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
           end;
       end
       else
@@ -2162,8 +1947,7 @@ begin
       SetPosition(SubtractPoints(ShipScreen.ItemImageCenter, GetVisualCenter));
     end;
   (Target.GetByName('InfoHullSize') as TLabelGI).SetText(IntToWideString(Hull.Weight));
-  (Target.GetByName('InfoHullPrice') as TLabelGI)
-      .SetText(IntToWideString(Hull.GetConditionAdjustedCost));
+  (Target.GetByName('InfoHullPrice') as TLabelGI).SetText(IntToWideString(Hull.GetConditionAdjustedCost));
   with Target.GetByName('InfoHullEmRace') as TImageGI do
   begin
     SetImagePath(GetFactionEmblemPath(Hull.GetOwnerConfigName));
@@ -2175,23 +1959,13 @@ begin
   with GetByName('InfoDurableLeft') as TImageGI do
   begin
     CapWidth := GetContentSize.X;
-    MinimumWidth :=
-        2 * CapWidth
-            + BarWidth
-            + LocalPosition.X
-            + Parent.LocalPosition.X
-            + 2 * Parent.Parent.LocalPosition.X;
+    MinimumWidth := 2 * CapWidth + BarWidth + LocalPosition.X + Parent.LocalPosition.X + 2 * Parent.Parent.LocalPosition.X;
   end;
   with Target.GetByName('InfoHullDurable') as TImageGI do
   begin
     Parent.Parent.SetSize(Classes.Point(2 * CapWidth + BarWidth, Parent.Parent.ClientSize.Y));
     Parent.SetSize(Classes.Point(BarWidth + 2, Parent.Parent.ClientSize.Y));
-    SetPosition(
-        Classes.Point(
-            Round(Hull.HullPoints / Hull.Weight * BarWidth) - (GetContentSize.X - 5),
-            LocalPosition.Y
-        )
-    );
+    SetPosition(Classes.Point(Round(Hull.HullPoints / Hull.Weight * BarWidth) - (GetContentSize.X - 5), LocalPosition.Y));
   end;
   with Target.GetByName('InfoHullDurableRight') as TImageGI do
   begin
@@ -2204,28 +1978,13 @@ begin
     SetPosition(Classes.Point(BarWidth + 1 - GetContentSize.X, LocalPosition.Y));
     Parent.SetSize(Classes.Point(BarWidth + CapWidth, Parent.ClientSize.Y));
   end;
-  ShipScreen.LayoutItemInfo(
-      Window,
-      Target.GetByName('InfoHullName') as TLabelGI,
-      TextLabel,
-      False,
-      True,
-      MinimumWidth
-  );
+  ShipScreen.LayoutItemInfo(Window, Target.GetByName('InfoHullName') as TLabelGI, TextLabel, False, True, MinimumWidth);
   PositionItemInfo(Window);
-  Target
-      .GetByName('InfoHullSize')
-      .SetPosition(Classes.Point(HullSizeOffset.X, Window.ClientSize.Y + HullSizeOffset.Y));
-  Target
-      .GetByName('InfoHullPrice')
-      .SetPosition(Classes.Point(HullPriceOffset.X, Window.ClientSize.Y + HullPriceOffset.Y));
+  Target.GetByName('InfoHullSize').SetPosition(Classes.Point(HullSizeOffset.X, Window.ClientSize.Y + HullSizeOffset.Y));
+  Target.GetByName('InfoHullPrice').SetPosition(Classes.Point(HullPriceOffset.X, Window.ClientSize.Y + HullPriceOffset.Y));
   Target
       .GetByName('InfoHullEmRace')
-      .SetPosition(
-          Classes.Point(
-              Window.ClientSize.X + HullRaceOffset.X,
-              Window.ClientSize.Y + HullRaceOffset.Y
-          ));
+      .SetPosition(Classes.Point(Window.ClientSize.X + HullRaceOffset.X, Window.ClientSize.Y + HullRaceOffset.Y));
 end;
 
 procedure TfEquipmentShop.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
@@ -2249,21 +2008,16 @@ begin
     ClearTouchSelection;
     BreakUiMessage;
   end;
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU)
-      and (ExitCode = 0) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) and (ExitCode = 0) then
   begin
     if Key = Ord('S') then
       ShipClicked(nil)
-    else if ((Key = VK_LEFT) or (Key = VK_UP))
-        and not (GetByName('Left') as TGraphButtonGI).Disabled then
+    else if ((Key = VK_LEFT) or (Key = VK_UP)) and not (GetByName('Left') as TGraphButtonGI).Disabled then
     begin
       ScrollLeft(nil);
       RefreshItemInfo(nil);
     end
-    else if ((Key = VK_RIGHT) or (Key = VK_DOWN))
-        and not (GetByName('Right') as TGraphButtonGI).Disabled then
+    else if ((Key = VK_RIGHT) or (Key = VK_DOWN)) and not (GetByName('Right') as TGraphButtonGI).Disabled then
     begin
       ScrollRight(nil);
       RefreshItemInfo(nil);
@@ -2288,8 +2042,7 @@ begin
     Exit;
   if ExitScreenLoop then
     Exit;
-  if TurnCalculationPhase
-      in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
+  if TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared] then
   begin
     Galaxy.CheckIntegrityChecksum(10011);
     ExecuteGameplayUiCode(Block, Key);
@@ -2311,30 +2064,21 @@ begin
     if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-        MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
       else
         MusicManager.PlayCategory('Nation.PiratePlanetMain');
     end
     else
-      MusicManager
-          .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
   end
   else if GetPlayer.IsDockedToShip then
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
     else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
     else
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-      );
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
   end;
 end;
 

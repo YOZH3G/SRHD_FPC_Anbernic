@@ -87,9 +87,7 @@ begin
   UtilityRequireGalaxy;
   // Never inspect a script-supplied VMT before proving that the address is an
   // allocated game object. TStar predates TObjectEx and belongs to Stars.
-  if (Value = 0)
-      or (not IsLiveGameObject(Pointer(Value))
-          and ((Galaxy.Stars = nil) or (Galaxy.Stars.IndexOf(Pointer(Value)) < 0))) then
+  if (Value = 0) or (not IsLiveGameObject(Pointer(Value)) and ((Galaxy.Stars = nil) or (Galaxy.Stars.IndexOf(Pointer(Value)) < 0))) then
     UtilityError('Invalid or expired object');
   Result := TObject(Value);
 end;
@@ -592,14 +590,7 @@ begin
   if av[1].GetString = '' then
     av[0].SetString('')
   else
-    av[0]
-        .SetString(
-            UtilityPart(
-                UtilityDllText(av[1].GetString),
-                UtilityDllText(av[2].GetString),
-                av[3].GetInt,
-                av[4].GetInt
-            ));
+    av[0].SetString(UtilityPart(UtilityDllText(av[1].GetString), UtilityDllText(av[2].GetString), av[3].GetInt, av[4].GetInt));
 end;
 
 procedure SF_UFP_SetParFromString(av: array of TVarEC; code: TCodeEC);
@@ -676,15 +667,7 @@ end;
 
 procedure SF_UFP_PortionInDiapason(av: array of TVarEC; code: TCodeEC);
 begin
-  av[0]
-      .SetFloat(
-          UtilityPortion(
-              av[1].GetFloat,
-              av[2].GetFloat,
-              av[3].GetFloat,
-              av[4].GetFloat,
-              av[5].GetFloat
-          ));
+  av[0].SetFloat(UtilityPortion(av[1].GetFloat, av[2].GetFloat, av[3].GetFloat, av[4].GetFloat, av[5].GetFloat));
 end;
 
 procedure SF_UFP_RoundTo(av: array of TVarEC; code: TCodeEC);
@@ -801,12 +784,7 @@ var
   Draw, Scale: Single;
 begin
   // Compatibility: this is a scaled integer draw, not the game's float RNG.
-  Draw :=
-      UtilityRandom(
-          UtilityInt(10000000.0 * av[1].GetFloat),
-          UtilityInt(10000000.0 * av[2].GetFloat),
-          TObject(av[3].GetDword)
-      );
+  Draw := UtilityRandom(UtilityInt(10000000.0 * av[1].GetFloat), UtilityInt(10000000.0 * av[2].GetFloat), TObject(av[3].GetDword));
   Scale := 0.0000001;
   Draw := Scale * Draw;
   av[0].SetFloat(Draw);
@@ -1031,21 +1009,8 @@ end;
 
 function UtilityShipType(Ship: TShip): WideString;
 const
-  Names: array[0..12] of WideString = (
-      'Kling',
-      'Ranger',
-      'Transport',
-      'Pirate',
-      'Warrior',
-      'Tranclucator',
-      'RC',
-      'PB',
-      'WB',
-      'SB',
-      'BK',
-      'MC',
-      'CB'
-  );
+  Names: array[0..12] of WideString =
+      ('Kling', 'Ranger', 'Transport', 'Pirate', 'Warrior', 'Tranclucator', 'RC', 'PB', 'WB', 'SB', 'BK', 'MC', 'CB');
 var
   Binding: TScriptShip;
 begin
@@ -1059,9 +1024,7 @@ begin
       if Ship <> UtilityPlayer then
       begin
         Binding := UtilityBinding(Ship);
-        if (Binding <> nil)
-            and (Binding.Script.ScriptFileName = 'Script.PC_fem_rangers')
-            and (Binding.GetGroup.Name = 'GroupFem') then
+        if (Binding <> nil) and (Binding.Script.ScriptFileName = 'Script.PC_fem_rangers') and (Binding.GetGroup.Name = 'GroupFem') then
           Result := 'FemRanger';
       end;
     2:
@@ -1094,10 +1057,7 @@ var
 begin
   Player := UtilityPlayer;
   if (Ship = Player) and (Player.RuinsMode <> 0) then
-    Result :=
-        (Player.RuinsSavedPlanet = nil)
-            and (Player.RuinsSavedDockedTo = nil)
-            and not Ship.InHyperspace
+    Result := (Player.RuinsSavedPlanet = nil) and (Player.RuinsSavedDockedTo = nil) and not Ship.InHyperspace
   else
     Result := (Ship.CurrentPlanet = nil) and (Ship.DockedTo = nil) and not Ship.InHyperspace;
 end;
@@ -1173,8 +1133,7 @@ begin
         Continue;
       if (Types and (1 shl Ord(Candidate.TypeId))) = 0 then
         Continue;
-      if (TypeFilter <> '')
-          and (Pos(',' + UtilityShipType(Candidate) + ',', ',' + TypeFilter + ',') = 0) then
+      if (TypeFilter <> '') and (Pos(',' + UtilityShipType(Candidate) + ',', ',' + TypeFilter + ',') = 0) then
         Continue;
       if FactionFilter <> '' then
       begin
@@ -1211,9 +1170,7 @@ begin
   begin
     Candidate := UtilityNearbyShips[Index].Ship;
     // Retain cache positions/count, but never hand out a freed/reused address.
-    if IsLiveGameObject(Candidate)
-        and (Candidate is TShip)
-        and (Candidate.Id = UtilityNearbyShips[Index].ShipId) then
+    if IsLiveGameObject(Candidate) and (Candidate is TShip) and (Candidate.Id = UtilityNearbyShips[Index].ShipId) then
       av[0].SetDword(PtrUInt(Candidate));
   end;
 end;
@@ -1310,21 +1267,14 @@ begin
   Binding := UtilityBinding(Ship);
   if Binding = nil then
     Exit;
-  if (av[2].GetInt in [2, 4])
-      and (not IsLiveGameObject(Binding.State) or not (Binding.State is TScriptState)) then
+  if (av[2].GetInt in [2, 4]) and (not IsLiveGameObject(Binding.State) or not (Binding.State is TScriptState)) then
     UtilityError('Ship script binding has no valid state');
   Text := UtilityDllText(Copy(Binding.Script.ScriptFileName, 8, MaxInt));
   case av[2].GetInt of
     1: Text := UtilityDllText(Binding.GetGroup.Name);
     2: Text := UtilityDllText(Binding.State.Name);
     3: Text := Text + '.' + UtilityDllText(Binding.GetGroup.Name);
-    4:
-      Text :=
-          Text
-              + '.'
-              + UtilityDllText(Binding.GetGroup.Name)
-              + '.'
-              + UtilityDllText(Binding.State.Name);
+    4: Text := Text + '.' + UtilityDllText(Binding.GetGroup.Name) + '.' + UtilityDllText(Binding.State.Name);
   end;
   av[0].SetString(Text);
 end;
@@ -1388,9 +1338,7 @@ begin
       UtilityError('Script group has no valid initial state');
     State := Script.States[Group.InitialStateIndex];
     if Name <> '' then
-      AppendDebugLogLine(
-          'UtilityFunctions: ShipJoinToScript using default state: ' + UTF8Encode(Path)
-      );
+      AppendDebugLogLine('UtilityFunctions: ShipJoinToScript using default state: ' + UTF8Encode(Path));
   end;
   Binding := UtilityBinding(Ship);
   OldScript := nil;
@@ -1404,9 +1352,7 @@ begin
         OldScript.Ships.Delete(OldIndex)
       else if OldScript.Ships.Count <> 0 then
       begin
-        AppendDebugLogLine(
-            'UtilityFunctions: ShipJoinToScript missing old binding: ' + UTF8Encode(Path)
-        );
+        AppendDebugLogLine('UtilityFunctions: ShipJoinToScript missing old binding: ' + UTF8Encode(Path));
         Exit;
       end;
     end
@@ -1686,14 +1632,7 @@ begin
     if not (Entry.LocationOwner is TRuins) then
       Continue;
     Station := TRuins(Entry.LocationOwner);
-    Factor :=
-        UtilityPortionSingle(
-            Item.Weight,
-            av[1].GetInt,
-            av[2].GetInt,
-            av[3].GetFloat,
-            av[4].GetFloat
-        );
+    Factor := UtilityPortionSingle(Item.Weight, av[1].GetInt, av[2].GetInt, av[3].GetFloat, av[4].GetFloat);
     UnitCost := Item.Cost;
     UnitCost := UnitCost / Single(Item.Weight);
     Product := Factor * UtilityBankRound(UnitCost);
@@ -1748,11 +1687,7 @@ begin
   end;
 end;
 
-function UtilityNextLine(
-    const Text: WideString;
-    var Position: Integer;
-    out Line: WideString
-): Boolean;
+function UtilityNextLine(const Text: WideString; var Position: Integer; out Line: WideString): Boolean;
 var
   Finish: Integer;
 begin
@@ -2013,10 +1948,7 @@ begin
   if UtilityRegistered then
     Exit;
   UtilityRegistered := True;
-  RegisterExport(
-      'void,AdjustRuinsGoodsPricesToStorage,int,int,float,float',
-      @SF_UFP_AdjustRuinsGoodsPricesToStorage
-  );
+  RegisterExport('void,AdjustRuinsGoodsPricesToStorage,int,int,float,float', @SF_UFP_AdjustRuinsGoodsPricesToStorage);
   RegisterExport('int,AdvancedAdjustmentSet,int,int', @SF_UFP_AdvancedAdjustmentSet);
   RegisterExport('int,CustomArtCostCalc,int', @SF_UFP_CustomArtCostCalc);
   RegisterExport('int,CustomArtSizeCalc,int', @SF_UFP_CustomArtSizeCalc);
@@ -2038,10 +1970,7 @@ begin
   RegisterExport('int,OpenExternalLink,str', @SF_UFP_OpenExternalLink);
   RegisterExport('int,ParsCountFromString,str,str', @SF_UFP_ParsCountFromString);
   RegisterExport('int,PlanetItemsHiddency,dword,int,str,int', @SF_UFP_PlanetItemsHiddency);
-  RegisterExport(
-      'float,PortionInDiapason,float,float,float,float,float',
-      @SF_UFP_PortionInDiapason
-  );
+  RegisterExport('float,PortionInDiapason,float,float,float,float,float', @SF_UFP_PortionInDiapason);
   RegisterExport('float,Power,float,float', @SF_UFP_Power);
   RegisterExport('float,RndFloat,float,float,dword', @SF_UFP_RndFloat);
   RegisterExport('int,RndObject,int,int,dword', @SF_UFP_RndObject);

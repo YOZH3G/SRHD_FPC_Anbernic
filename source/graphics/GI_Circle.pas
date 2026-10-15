@@ -254,9 +254,7 @@ var
 begin
   if Kind = ckSimple then
   begin
-    R :=
-        Min(HitTestBounds.Bottom - HitTestBounds.Top, HitTestBounds.Right - HitTestBounds.Left)
-            div 2;
+    R := Min(HitTestBounds.Bottom - HitTestBounds.Top, HitTestBounds.Right - HitTestBounds.Left) div 2;
     if R > 0 then
       if HardwareRenderingEnabled then
         DrawCircle(
@@ -270,10 +268,7 @@ begin
         )
       else
         ScreenRenderBuffer.DrawAntialiasedCircle16(
-            Classes.Point(
-                (HitTestBounds.Bottom + HitTestBounds.Top) div 2,
-                (HitTestBounds.Right + HitTestBounds.Left) div 2
-            ),
+            Classes.Point((HitTestBounds.Bottom + HitTestBounds.Top) div 2, (HitTestBounds.Right + HitTestBounds.Left) div 2),
             R,
             Color,
             ClipRect
@@ -289,9 +284,7 @@ begin
   end
   else if Kind = ckFill then
   begin
-    R :=
-        Min(HitTestBounds.Bottom - HitTestBounds.Top, HitTestBounds.Right - HitTestBounds.Left)
-            div 2;
+    R := Min(HitTestBounds.Bottom - HitTestBounds.Top, HitTestBounds.Right - HitTestBounds.Left) div 2;
     if R > 0 then
       if HardwareRenderingEnabled then
         DrawCircle(
@@ -305,10 +298,7 @@ begin
         )
       else
         ScreenRenderBuffer.DrawCircle16(
-            Classes.Point(
-                (HitTestBounds.Bottom + HitTestBounds.Top) div 2,
-                (HitTestBounds.Right + HitTestBounds.Left) div 2
-            ),
+            Classes.Point((HitTestBounds.Bottom + HitTestBounds.Top) div 2, (HitTestBounds.Right + HitTestBounds.Left) div 2),
             R,
             Color,
             FillColor,
@@ -389,15 +379,11 @@ begin
         LightBufferDirty := False;
       end;
       Ex_OKGR_ShrLightMask_16(
-          AddPointerOffset(
-              ScreenRenderBuffer.GetPixels,
-              ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2
-          ),
+          AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2),
           ScreenRenderBuffer.PitchBytes,
           AddPointerOffset(
               LightBuffer.GetPixels,
-              (ClipRect.Top - HitTestBounds.Top) * LightBuffer.PitchBytes
-                  + (ClipRect.Left - HitTestBounds.Left)
+              (ClipRect.Top - HitTestBounds.Top) * LightBuffer.PitchBytes + (ClipRect.Left - HitTestBounds.Left)
           ),
           LightBuffer.PitchBytes,
           ClipRect.Right - ClipRect.Left,

@@ -158,8 +158,7 @@ begin
         begin
           FailureBacktrace := BackTraceStrFunc(ExceptAddr);
           for Frame := 0 to ExceptFrameCount - 1 do
-            FailureBacktrace :=
-                FailureBacktrace + LineEnding + BackTraceStrFunc(ExceptFrames[Frame]);
+            FailureBacktrace := FailureBacktrace + LineEnding + BackTraceStrFunc(ExceptFrames[Frame]);
         end;
       finally
         Lock.Leave;

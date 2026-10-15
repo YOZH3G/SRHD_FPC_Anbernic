@@ -161,15 +161,11 @@ begin
   end
   else if Kind = slkBuffer then
     Ex_OKGR_ShrLightMask_16(
-        AddPointerOffset(
-            ScreenRenderBuffer.GetPixels,
-            ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2
-        ),
+        AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2),
         ScreenRenderBuffer.PitchBytes,
         AddPointerOffset(
             LightBuffer.GetPixels,
-            (ClipRect.Top - HitTestBounds.Top) * LightBuffer.PitchBytes
-                + (ClipRect.Left - HitTestBounds.Left)
+            (ClipRect.Top - HitTestBounds.Top) * LightBuffer.PitchBytes + (ClipRect.Left - HitTestBounds.Left)
         ),
         LightBuffer.PitchBytes,
         ClipRect.Right - ClipRect.Left,

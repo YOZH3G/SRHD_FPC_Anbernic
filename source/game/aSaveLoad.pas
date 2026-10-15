@@ -22,14 +22,7 @@ type
     GameStateBuffer: TBufEC;
     FilmBuffer: TBufEC;
     procedure Execute; override;
-    procedure QueueSave(
-        AFileName: WideString;
-        Header: TBufEC;
-        Preview: TBufEC;
-        SecondaryPreview: TBufEC;
-        GameState: TBufEC;
-        Films: TBufEC
-    );
+    procedure QueueSave(AFileName: WideString; Header: TBufEC; Preview: TBufEC; SecondaryPreview: TBufEC; GameState: TBufEC; Films: TBufEC);
   end;
 
 var
@@ -116,8 +109,7 @@ procedure TSaver.Execute;
 var
   F: TFileEC;
   Size, I, Seed: Integer;
-  SourceName, TargetName, NewName, OldName, Prefix, AutoName, TurnName, QuickName, TempName:
-      WideString;
+  SourceName, TargetName, NewName, OldName, Prefix, AutoName, TurnName, QuickName, TempName: WideString;
 begin
   SaveLoadLock.Enter;
   try
@@ -164,10 +156,7 @@ begin
       TargetName := FileName;
       if (FileName = QuickName) and (QuickSaveExtraSlots > 0) then
       begin
-        Prefix :=
-            TrimWideString(ExtractFileDirW(QuickName))
-                + '\'
-                + TrimWideString(ExtractFileNameNoExtW(QuickName));
+        Prefix := TrimWideString(ExtractFileDirW(QuickName)) + '\' + TrimWideString(ExtractFileNameNoExtW(QuickName));
         NewName := Prefix + IntToWideString(QuickSaveExtraSlots + 1) + '.sav';
         for I := QuickSaveExtraSlots downto 1 do
         begin
@@ -220,10 +209,7 @@ begin
   end;
 end;
 
-procedure TSaver.QueueSave(
-    AFileName: WideString;
-    Header, Preview, SecondaryPreview, GameState, Films: TBufEC
-);
+procedure TSaver.QueueSave(AFileName: WideString; Header, Preview, SecondaryPreview, GameState, Films: TBufEC);
 begin
   if IsRunning then
     WaitForIdle(INFINITE);
@@ -262,10 +248,7 @@ begin
       Header.AddWideStringZ(IntToStr(GetPlayer.Money));
       Header.AddWideStringZ(GetPlayer.Name);
       if GetPlayer.OwnerId = oiPirate then
-        Header.AddWideStringZ(
-            OwnerInfo[oiPirate].InternalName
-                + OwnerInfo[RaceToOwner(GetPlayer.PilotRace)].InternalName
-        )
+        Header.AddWideStringZ(OwnerInfo[oiPirate].InternalName + OwnerInfo[RaceToOwner(GetPlayer.PilotRace)].InternalName)
       else
         Header.AddWideStringZ(OwnerInfo[GetPlayer.OwnerId].InternalName);
       Header.AddWideStringZ('EZ');
@@ -327,8 +310,7 @@ begin
       begin
         EditableSaveFileName := SaveManagerScreen.GetSaveConfigPath(FileName);
         if (UserSettingsConfig.CountParams('UnicodeDump') > 0)
-            and ParseEnabledNameGI(
-                TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('UnicodeDump'))) then
+            and ParseEnabledNameGI(TrimWideString(UserSettingsConfig.GetParamByPathOrMarker('UnicodeDump'))) then
           EditableSaveBlock.SaveTextFile(PWideChar(EditableSaveFileName), False, False)
         else
           EditableSaveBlock.SaveTextFile(PWideChar(EditableSaveFileName), True, False);
@@ -750,9 +732,7 @@ begin
       else if GetPlayer.IsDockedToShip then
         RequestedScreenId := screenRuinsTalk;
     end
-    else if GetPlayer.InHyperspace
-        and (GetPlayer.Order = soJumpHole)
-        and ((Loop is TfStarMap) or (Loop is TfAB)) then
+    else if GetPlayer.InHyperspace and (GetPlayer.Order = soJumpHole) and ((Loop is TfStarMap) or (Loop is TfAB)) then
     begin
       RequestedScreenId := screenMainMenu;
       Loop.RequestClose(1);

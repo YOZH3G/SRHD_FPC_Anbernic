@@ -121,62 +121,23 @@ begin
   Bitmap := TGraphBufGR.Create(False);
   Bitmap.LoadImageRgba(SourceBuffer);
   ResidentBytes := 0;
-  ByteCount :=
-      Ex_OKGR_TransBuf_BuildFromRGBA_16(
-          Bitmap.GetPixels,
-          Bitmap.PitchBytes,
-          Bitmap.Width,
-          Bitmap.Height,
-          nil
-      );
+  ByteCount := Ex_OKGR_TransBuf_BuildFromRGBA_16(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, nil);
   if ByteCount < 1 then
     raise Exception.Create('TCAlphaBitmapEC.Load. Error load file.');
   TransBuf16 := AllocEC(ByteCount);
-  Ex_OKGR_TransBuf_BuildFromRGBA_16(
-      Bitmap.GetPixels,
-      Bitmap.PitchBytes,
-      Bitmap.Width,
-      Bitmap.Height,
-      TransBuf16
-  );
+  Ex_OKGR_TransBuf_BuildFromRGBA_16(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, TransBuf16);
   Inc(ResidentBytes, ByteCount);
-  ByteCount :=
-      Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(
-          Bitmap.GetPixels,
-          Bitmap.PitchBytes,
-          Bitmap.Width,
-          Bitmap.Height,
-          nil
-      );
+  ByteCount := Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, nil);
   if ByteCount < 1 then
     raise Exception.Create('TCAlphaBitmapEC.Load. Error load file.');
   TransAlphaBuf16 := AllocEC(ByteCount);
-  Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(
-      Bitmap.GetPixels,
-      Bitmap.PitchBytes,
-      Bitmap.Width,
-      Bitmap.Height,
-      TransAlphaBuf16
-  );
+  Ex_OKGR_TransAlphaBuf_BuildFromRGBA_16(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, TransAlphaBuf16);
   Inc(ResidentBytes, ByteCount);
-  ByteCount :=
-      Ex_OKGR_AlphaBuf_BuildFromRGBA(
-          Bitmap.GetPixels,
-          Bitmap.PitchBytes,
-          Bitmap.Width,
-          Bitmap.Height,
-          nil
-      );
+  ByteCount := Ex_OKGR_AlphaBuf_BuildFromRGBA(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, nil);
   if ByteCount < 1 then
     raise Exception.Create('TCAlphaBitmapEC.Load. Error load file.');
   AlphaBuf := AllocEC(ByteCount);
-  Ex_OKGR_AlphaBuf_BuildFromRGBA(
-      Bitmap.GetPixels,
-      Bitmap.PitchBytes,
-      Bitmap.Width,
-      Bitmap.Height,
-      AlphaBuf
-  );
+  Ex_OKGR_AlphaBuf_BuildFromRGBA(Bitmap.GetPixels, Bitmap.PitchBytes, Bitmap.Width, Bitmap.Height, AlphaBuf);
   Inc(ResidentBytes, ByteCount);
   PixelSize.X := Bitmap.Width;
   PixelSize.Y := Bitmap.Height;
@@ -217,15 +178,7 @@ begin
   begin
     Buffer := TGraphBufGR.Create(False);
     DecodeToGraphBuf(Buffer);
-    Texture :=
-        CreateTextureFromPixels(
-            Buffer.Width,
-            Buffer.Height,
-            21,
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            1
-        );
+    Texture := CreateTextureFromPixels(Buffer.Width, Buffer.Height, 21, Buffer.GetPixels, Buffer.PitchBytes, 1);
     Buffer.Free;
     SurfaceCache.SetSurface(Texture, 0);
   end;

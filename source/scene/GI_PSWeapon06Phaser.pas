@@ -226,8 +226,7 @@ var
 begin
   if RemainingTicks = 60 then
   begin
-    OriginalLength :=
-        Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
+    OriginalLength := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
     ClearParticles;
     Particle := AddParticle;
     Particle.Kind := 1;
@@ -249,8 +248,7 @@ begin
       Particle.Incoming := 0;
       Particle.Displacement := RandomIntRange(-1, 1);
       Particle.Reflected := 0;
-      Particle.Color :=
-          SampleGradientColor(PhaserPalettes[PaletteIndex], Index / OriginalLength * 15.0);
+      Particle.Color := SampleGradientColor(PhaserPalettes[PaletteIndex], Index / OriginalLength * 15.0);
       if Particle.Position.Y < 32.0 then
         Particle.Alpha := Trunc(Particle.Position.Y * 255.0) shr 5
       else
@@ -287,9 +285,7 @@ var
 begin
   if OriginalLength = 0 then
     Advance(nil, 0);
-  Scale :=
-      Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-          / OriginalLength;
+  Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
   PY := -(TargetPoint.Y - LocalPosition.Y);
   if PY = 0 then
     PY := 1;
@@ -327,10 +323,7 @@ begin
         PY := Particle.Position.Y * Scale;
         X := Trunc(PX * Cosine + PY * Sine) + AbsolutePosition.X;
         Y := Trunc(PX * Sine - PY * Cosine) + AbsolutePosition.Y;
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := AddPointerOffset(Particle, SizeOf(TPhaserParticle));
@@ -362,8 +355,7 @@ begin
         begin
           Text := PaletteBlock.GetParam('Color' + IntToStr(ColorIndex));
           for PartIndex := 0 to 2 do
-            PhaserPalettes[Index][3 * ColorIndex + PartIndex] :=
-                ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, PartIndex, ','));
+            PhaserPalettes[Index][3 * ColorIndex + PartIndex] := ExtractDecimalToSingleW(ExtractDelimitedPartW(Text, PartIndex, ','));
         end;
     end;
   end;

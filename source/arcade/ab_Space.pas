@@ -269,14 +269,11 @@ begin
     Count := ArcadeBattleScreen.RandomRange(4, 5);
   end;
   if Count > 0 then
-    if ArcadeBattleScreen.RandomRange(0, 100)
-        < RemapClamped(GetPlayer.HyperspaceKillCount, 20, 300, 0, 90) then
+    if ArcadeBattleScreen.RandomRange(0, 100) < RemapClamped(GetPlayer.HyperspaceKillCount, 20, 300, 0, 90) then
       Count := 0;
-  if GetPlayer.HyperspaceKillCount
-      < 4 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
+  if GetPlayer.HyperspaceKillCount < 4 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
     Count := Min(Count, 2)
-  else if GetPlayer.HyperspaceKillCount
-      < 10 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
+  else if GetPlayer.HyperspaceKillCount < 10 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
     Count := Min(Count, 3);
   if GetPlayer.HyperspaceKillCount = 0 then
     Count := 1;
@@ -296,17 +293,9 @@ begin
       Scale := RemapClamped(GetPlayer.HyperspaceKillCount, 81, 100, 1.3, 1.6);
     end;
     Scale := RemapClamped(Danger, 0, 100, 0.8, 1.2) * Scale;
-    Scale :=
-        RemapClamped(
-                GetPlayer.Wealth,
-                Galaxy.AverageRangerCapital / 2,
-                Galaxy.MaxRangerWealth,
-                0.8,
-                1.1)
-            * Scale;
+    Scale := RemapClamped(GetPlayer.Wealth, Galaxy.AverageRangerCapital / 2, Galaxy.MaxRangerWealth, 0.8, 1.1) * Scale;
     Scale := RemapClamped(GetPlayer.StrengthInBestRanger, 0.2, 1, 0.5, 1.2) * Scale;
-    Scale :=
-        Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Scale := Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     if Index = 0 then
       Scale := ArcadeBattleScreen.RandomFloat(1, 1.3) * Scale
     else if Index = 1 then
@@ -314,21 +303,14 @@ begin
     else
       Scale := ArcadeBattleScreen.RandomFloat(0.2, 0.6) * Scale;
     Hitpoints := Round(Max(150, Min(GetPlayer.GetHull.Weight * 1.2, 525 * Scale)));
-    Ship.CreateShipVisual(
-        'Ship.HS.' + IntToStr(IncrementWrapped(VisualIndex, 1, 5)),
-        Round(RemapClamped(Hitpoints, 150, 900, 50, 80))
-    );
+    Ship.CreateShipVisual('Ship.HS.' + IntToStr(IncrementWrapped(VisualIndex, 1, 5)), Round(RemapClamped(Hitpoints, 150, 900, 50, 80)));
     Hitpoints := Round(Galaxy.GetArcadeHitpointsModifier * Hitpoints);
     Ship.MaxHealth := Hitpoints;
     Ship.Health := Hitpoints;
     Ship.MaxSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 7, 5);
-    Ship.MaxSpeed :=
-        Ship.MaxSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.MaxSpeed := Ship.MaxSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.TurnSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 3, 2);
-    Ship.TurnSpeed :=
-        Ship.TurnSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.TurnSpeed := Ship.TurnSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.Thrust := 0;
     Ship.WeaponCount := 0;
     Kind := ArcadeBattleScreen.RandomRange(Minimum, Maximum);
@@ -344,18 +326,13 @@ begin
     if ArcadeBattleScreen.RandomRange(0, Round(Danger)) < Danger then
       Ship.AddWeapon(IncrementWrapped(Kind, Minimum, Maximum));
     for WeaponIndex := 0 to Ship.WeaponCount - 1 do
-      Ship.Weapons[WeaponIndex].Damage :=
-          Round(Galaxy.GetArcadeDamageModifier * Ship.Weapons[WeaponIndex].Damage);
+      Ship.Weapons[WeaponIndex].Damage := Round(Galaxy.GetArcadeDamageModifier * Ship.Weapons[WeaponIndex].Damage);
     Ship.PrimaryWeapon := 0;
     Ship.EncounterTag := 1;
     Objects.Add(Ship);
   end;
   Kind := 0;
-  MineralBudget :=
-      Min(
-          CargoHookLevelStats[8].PickupPower,
-          GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice
-      );
+  MineralBudget := Min(CargoHookLevelStats[8].PickupPower, GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice);
   MineralBudget := Round(RemapClamped(Danger + ApproachDanger, 0, 250, 0.2, 1.2) * MineralBudget);
   MineralBudget := Round(RemapClamped(Count, 0, 4, 0.8, 1.2) * MineralBudget);
   for Index := 1 to 8 do
@@ -365,10 +342,7 @@ begin
     begin
       Count :=
           Min(
-                  Round(
-                      ArcadeBattleScreen.RandomFloat(0.6, 1.3)
-                          * CargoHookLevelStats[Galaxy.TechLevel].PickupPower
-                  ),
+                  Round(ArcadeBattleScreen.RandomFloat(0.6, 1.3) * CargoHookLevelStats[Galaxy.TechLevel].PickupPower),
                   ArcadeBattleScreen.RandomRange(MineralBudget div 8, MineralBudget div 2))
               + 1;
       Inc(Kind, Count);
@@ -397,8 +371,7 @@ begin
   Count := Min(6, Count + Round(RemapClamped(Galaxy.TechLevel, 4, 8, 0, 2)));
   if GetPlayer.BlackHoleKillCount = 0 then
     Count := 1
-  else if GetPlayer.BlackHoleKillCount
-      < 5 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
+  else if GetPlayer.BlackHoleKillCount < 5 / GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor then
     Count := Min(Count, 2);
   Minimum := Round(RemapClamped(Galaxy.RefreshTechLevel, 3, 8, 0, 6));
   Maximum := Round(RemapClamped(Galaxy.RefreshTechLevel, 3, 8, 6, 15));
@@ -415,16 +388,8 @@ begin
     else
       Scale := RemapClamped(GetPlayer.BlackHoleKillCount, 41, 100, 1.3, 1.6);
     end;
-    Scale :=
-        Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
-    Scale :=
-        RemapClamped(
-                GetPlayer.Wealth,
-                Galaxy.AverageRangerCapital / 2,
-                Galaxy.MaxRangerWealth,
-                0.8,
-                1.1)
-            * Scale;
+    Scale := Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Scale := RemapClamped(GetPlayer.Wealth, Galaxy.AverageRangerCapital / 2, Galaxy.MaxRangerWealth, 0.8, 1.1) * Scale;
     Scale := RemapClamped(GetPlayer.StrengthInBestRanger, 0.2, 1, 0.5, 1.1) * Scale;
     if Index = 0 then
       Scale := ArcadeBattleScreen.RandomFloat(1, 1.5) * Scale
@@ -436,24 +401,17 @@ begin
       Hitpoints := 150
     else
       Hitpoints := Round(Max(150, Min(GetPlayer.GetHull.Weight * 1.2, 525 * Scale)));
-    Ship.CreateShipVisual(
-        'Ship.X.' + IntToStr(IncrementWrapped(VisualIndex, 0, 2)),
-        Round(RemapClamped(Hitpoints, 150, 900, 50, 80))
-    );
+    Ship.CreateShipVisual('Ship.X.' + IntToStr(IncrementWrapped(VisualIndex, 0, 2)), Round(RemapClamped(Hitpoints, 150, 900, 50, 80)));
     if Galaxy <> nil then
       Hitpoints := Round(Galaxy.GetArcadeHitpointsModifier * Hitpoints);
     Ship.MaxHealth := Hitpoints;
     Ship.Health := Hitpoints;
     Ship.MaxSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 7, 5);
     Ship.MaxSpeed := RemapClamped(GetPlayer.BlackHoleKillCount, 0, 30, 0.6, 1) * Ship.MaxSpeed;
-    Ship.MaxSpeed :=
-        Ship.MaxSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.MaxSpeed := Ship.MaxSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.TurnSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 4, 3);
     Ship.TurnSpeed := RemapClamped(GetPlayer.BlackHoleKillCount, 0, 30, 0.6, 1) * Ship.TurnSpeed;
-    Ship.TurnSpeed :=
-        Ship.TurnSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.TurnSpeed := Ship.TurnSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.Thrust := 0;
     Ship.WeaponCount := 0;
     Kind := ArcadeBattleScreen.RandomRange(Minimum, Maximum);
@@ -462,8 +420,7 @@ begin
     if Index = 0 then
     begin
       Ship.AddWeapon(IncrementWrapped(Kind, Minimum, Maximum));
-      if ((GetPlayer.BlackHoleKillCount > 0) and (GetPlayer.StrengthInBestRanger > 0.9))
-          or (GetPlayer.WealthInBestRanger > 0.9) then
+      if ((GetPlayer.BlackHoleKillCount > 0) and (GetPlayer.StrengthInBestRanger > 0.9)) or (GetPlayer.WealthInBestRanger > 0.9) then
         Ship.AddWeapon(IncrementWrapped(Kind, Minimum, Maximum));
     end;
     if GetPlayer.BlackHoleKillCount > 0 then
@@ -475,18 +432,13 @@ begin
     end;
     if Galaxy <> nil then
       for WeaponIndex := 0 to Ship.WeaponCount - 1 do
-        Ship.Weapons[WeaponIndex].Damage :=
-            Round(Galaxy.GetArcadeDamageModifier * Ship.Weapons[WeaponIndex].Damage);
+        Ship.Weapons[WeaponIndex].Damage := Round(Galaxy.GetArcadeDamageModifier * Ship.Weapons[WeaponIndex].Damage);
     Ship.PrimaryWeapon := 0;
     Ship.EncounterTag := 1;
     Objects.Add(Ship);
   end;
   Kind := 0;
-  MineralBudget :=
-      Min(
-          CargoHookLevelStats[8].PickupPower,
-          GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice
-      );
+  MineralBudget := Min(CargoHookLevelStats[8].PickupPower, GetPlayer.Wealth div 40 div GoodsMarket[Ord(t_Minerals)].AveragePrice);
   MineralBudget := Round(RemapClamped(Count, 2, 4, 0.8, 1.2) * MineralBudget);
   for Index := 1 to 8 do
   begin
@@ -495,10 +447,7 @@ begin
     begin
       Count :=
           Min(
-                  Round(
-                      ArcadeBattleScreen.RandomFloat(0.6, 1.3)
-                          * CargoHookLevelStats[Galaxy.TechLevel].PickupPower
-                  ),
+                  Round(ArcadeBattleScreen.RandomFloat(0.6, 1.3) * CargoHookLevelStats[Galaxy.TechLevel].PickupPower),
                   ArcadeBattleScreen.RandomRange(MineralBudget div 8, MineralBudget div 2))
               + 1;
       Inc(Kind, Count);
@@ -535,16 +484,8 @@ var
     else
       Scale := RemapClamped(GetPlayer.BlackHoleKillCount, 41, 100, 1.3, 1.6);
     end;
-    Scale :=
-        Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
-    Scale :=
-        RemapClamped(
-                GetPlayer.Wealth,
-                Galaxy.AverageRangerCapital / 2,
-                Galaxy.MaxRangerWealth,
-                0.8,
-                1.1)
-            * Scale;
+    Scale := Scale * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Scale := RemapClamped(GetPlayer.Wealth, Galaxy.AverageRangerCapital / 2, Galaxy.MaxRangerWealth, 0.8, 1.1) * Scale;
     Scale := RemapClamped(GetPlayer.StrengthInBestRanger, 0.2, 1, 0.5, 1.1) * Scale;
     if Index = 0 then
       Scale := ArcadeBattleScreen.RandomFloat(1, 1.5) * Scale
@@ -570,14 +511,10 @@ var
     end;
     Ship.MaxSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 7, 5);
     Ship.MaxSpeed := RemapClamped(GetPlayer.BlackHoleKillCount, 0, 30, 0.6, 1) * Ship.MaxSpeed;
-    Ship.MaxSpeed :=
-        Ship.MaxSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.MaxSpeed := Ship.MaxSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.TurnSpeed := RemapClamped(Ship.VisualDiameter, 50, 80, 4, 3);
     Ship.TurnSpeed := RemapClamped(GetPlayer.BlackHoleKillCount, 0, 30, 0.6, 1) * Ship.TurnSpeed;
-    Ship.TurnSpeed :=
-        Ship.TurnSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.TurnSpeed := Ship.TurnSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.Thrust := 0;
     if not Ship.ConvertedFromGameShip then
     begin
@@ -588,8 +525,7 @@ var
       if Index = 0 then
       begin
         Ship.AddWeapon(IncrementWrapped(Kind, Minimum, Maximum));
-        if ((GetPlayer.BlackHoleKillCount > 0) and (GetPlayer.StrengthInBestRanger > 0.9))
-            or (GetPlayer.WealthInBestRanger > 0.9) then
+        if ((GetPlayer.BlackHoleKillCount > 0) and (GetPlayer.StrengthInBestRanger > 0.9)) or (GetPlayer.WealthInBestRanger > 0.9) then
           Ship.AddWeapon(IncrementWrapped(Kind, Minimum, Maximum));
       end;
       if GetPlayer.BlackHoleKillCount > 0 then
@@ -601,8 +537,7 @@ var
       end;
     end;
     for WeaponIndex := 0 to Ship.WeaponCount - 1 do
-      Ship.Weapons[WeaponIndex].Damage :=
-          Ship.Weapons[WeaponIndex].Damage * Ship.DamageScalePercent div 100;
+      Ship.Weapons[WeaponIndex].Damage := Ship.Weapons[WeaponIndex].Damage * Ship.DamageScalePercent div 100;
     Ship.PrimaryWeapon := 0;
     Ship.EncounterTag := 1;
   end;
@@ -643,37 +578,25 @@ begin
   Ship.CreateRuinsVisual('Ruins.Keller', 128);
   case GetPlayer.BlackHoleKillCount + GetPlayer.HyperspaceKillCount of
     0..10: Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 2));
-    11..20:
-      Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 1.6));
-    21..52:
-      Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 1.3));
+    11..20: Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 1.6));
+    21..52: Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 1.3));
   else
     Ship.MaxHealth := Max(2000, RoundAndTruncateToHundreds(KellerShip.GetHull.Weight / 1));
   end;
   case GetPlayer.BlackHoleKillCount + GetPlayer.HyperspaceKillCount of
     0..10: Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 2));
-    11..20:
-      Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 1.5));
-    21..52:
-      Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 1.3));
+    11..20: Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 1.5));
+    21..52: Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 1.3));
   else
     Ship.Health := Max(1000, RoundAndTruncateToHundreds(KellerShip.GetHull.HullPoints / 1));
   end;
-  Ship.Health :=
-      Round(
-          Ship.Health
-              * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor
-      );
+  Ship.Health := Round(Ship.Health * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor);
   if Ship.Health > Ship.MaxHealth then
     Ship.Health := Ship.MaxHealth;
   Ship.MaxSpeed := 6;
-  Ship.MaxSpeed :=
-      Ship.MaxSpeed
-          * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+  Ship.MaxSpeed := Ship.MaxSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
   Ship.TurnSpeed := 3;
-  Ship.TurnSpeed :=
-      Ship.TurnSpeed
-          * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+  Ship.TurnSpeed := Ship.TurnSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
   Ship.Thrust := 0;
   Ship.WeaponCount := KellerShip.WeaponCount;
   for I := 0 to KellerShip.WeaponCount - 1 do
@@ -701,25 +624,14 @@ begin
     else
     begin
       VisualIndex := ArcadeBattleScreen.RandomRange(3, 5);
-      Ship.CreateShipVisual(
-          'Ship.Keller.K' + IntToStr(VisualIndex),
-          90 - 10 * VisualIndex + ArcadeBattleScreen.RandomRange(0, 10)
-      );
-      Ship.Health :=
-          Round(
-              (100 * (8 - VisualIndex))
-                  * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor
-          );
+      Ship.CreateShipVisual('Ship.Keller.K' + IntToStr(VisualIndex), 90 - 10 * VisualIndex + ArcadeBattleScreen.RandomRange(0, 10));
+      Ship.Health := Round((100 * (8 - VisualIndex)) * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor);
     end;
     Ship.MaxHealth := Ship.Health;
     Ship.MaxSpeed := 7;
-    Ship.MaxSpeed :=
-        Ship.MaxSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.MaxSpeed := Ship.MaxSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.TurnSpeed := 4;
-    Ship.TurnSpeed :=
-        Ship.TurnSpeed
-            * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
+    Ship.TurnSpeed := Ship.TurnSpeed * GalaxyDifficultyTuning[Galaxy.DifficultyLevels[6]].QuestTimeAndExperienceFactor;
     Ship.Thrust := 0;
     Ship.WeaponCount := 0;
     if I = 0 then
@@ -1042,8 +954,7 @@ begin
   Link := FirstArcadeSpaceLink;
   while Link <> nil do
   begin
-    if ((Link.First = First) and (Link.Last = Last))
-        or ((Link.First = Last) and (Link.Last = First)) then
+    if ((Link.First = First) and (Link.Last = Last)) or ((Link.First = Last) and (Link.Last = First)) then
     begin
       Result := Link;
       Exit;
@@ -1126,36 +1037,16 @@ begin
     WidthY := GiScalePixels(7) * DirectionY;
     Link.Points[0] := Classes.Point(Round(First.X - WidthY), Round(First.Y + WidthX));
     Link.Points[1] := Classes.Point(Round(First.X + WidthY), Round(First.Y - WidthX));
-    Link.Points[2] :=
-        Classes.Point(
-            Round(Last.X + WidthY - DirectionX * 2),
-            Round(Last.Y - WidthX - DirectionY * 2)
-        );
-    Link.Points[3] :=
-        Classes.Point(
-            Round(Last.X - WidthY - DirectionX * 2),
-            Round(Last.Y + WidthX - DirectionY * 2)
-        );
+    Link.Points[2] := Classes.Point(Round(Last.X + WidthY - DirectionX * 2), Round(Last.Y - WidthX - DirectionY * 2));
+    Link.Points[3] := Classes.Point(Round(Last.X - WidthY - DirectionX * 2), Round(Last.Y + WidthX - DirectionY * 2));
     Link.Points[7] := Classes.Point(Round(First.X - 0.7 * WidthY), Round(0.7 * WidthX + First.Y));
     Link.Points[8] := Classes.Point(Round(0.7 * WidthY + First.X), Round(First.Y - 0.7 * WidthX));
-    Link.Points[9] :=
-        Classes.Point(
-            Round(0.7 * WidthY + Last.X - DirectionX * 2),
-            Round(Last.Y - 0.7 * WidthX - DirectionY * 2)
-        );
-    Link.Points[10] :=
-        Classes.Point(
-            Round(Last.X - 0.7 * WidthY - DirectionX * 2),
-            Round(0.7 * WidthX + Last.Y - DirectionY * 2)
-        );
+    Link.Points[9] := Classes.Point(Round(0.7 * WidthY + Last.X - DirectionX * 2), Round(Last.Y - 0.7 * WidthX - DirectionY * 2));
+    Link.Points[10] := Classes.Point(Round(Last.X - 0.7 * WidthY - DirectionX * 2), Round(0.7 * WidthX + Last.Y - DirectionY * 2));
     WidthX := DirectionX * ArrowLength * 0.4;
     WidthY := DirectionY * ArrowLength * 0.4;
     Link.Points[4] := Classes.Point(Round(Last.X - WidthY), Round(Last.Y + WidthX));
-    Link.Points[5] :=
-        Classes.Point(
-            Round(DirectionX * ArrowLength + Last.X),
-            Round(DirectionY * ArrowLength + Last.Y)
-        );
+    Link.Points[5] := Classes.Point(Round(DirectionX * ArrowLength + Last.X), Round(DirectionY * ArrowLength + Last.Y));
     Link.Points[6] := Classes.Point(Round(Last.X + WidthY), Round(Last.Y - WidthX));
     Link := Link.Next;
   end;

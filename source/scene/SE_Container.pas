@@ -71,9 +71,7 @@ begin
     MinimapImage := TAlphaImageGI.Create(SpaceObjectUiLoop.ContentPanel);
     MinimapImage.SetPositionModeW(True);
     MinimapImage.SetDepthByName(DepthExpression);
-    MinimapImage.SetPosition(
-        TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
     MinimapImage.SetImagePath(MinimapImagePath);
     MinimapImage.SetSize(MinimapImage.GetContentSize);
     MinimapImage.SetOrigin(HalfPoint(MinimapImage.ClientSize));
@@ -104,11 +102,7 @@ begin
   if IsAttachedToSpace then
   begin
     Animation.SetPosition(TruncatePointF(APosition));
-    MinimapImage.SetPosition(
-        TruncatePointF(
-            MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-        )
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
   end;
 end;
 
@@ -135,8 +129,7 @@ var
   CurrentProcess: TProcessSE;
 begin
   CurrentProcess := Space.Process as TProcessSE;
-  if PointDistanceSquared(Position, CurrentProcess.RadarCenter)
-      < Sqr(CurrentProcess.RadarRange) then
+  if PointDistanceSquared(Position, CurrentProcess.RadarCenter) < Sqr(CurrentProcess.RadarRange) then
     MinimapImage.Draw(Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height));
 end;
 

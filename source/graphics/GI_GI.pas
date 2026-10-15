@@ -227,11 +227,7 @@ begin
     begin
       Exit;
     end;
-    Pixels :=
-        AddPointerOffset(
-            @Pixel,
-            -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word))
-        );
+    Pixels := AddPointerOffset(@Pixel, -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word)));
     Buffer := TGraphBufGR.Create(False);
     Buffer.AttachPixels(1, 1, ScreenRenderBuffer.PitchBytes, Pixels);
     Y := Top;
@@ -507,16 +503,7 @@ begin
           X := Left;
           while X < Right do
           begin
-            DrawTexture(
-                Image.GetOrCreateSurface(0),
-                X,
-                Y,
-                Alpha,
-                RgbWhite,
-                @ClipRect,
-                False,
-                HardwareMirrorHorizontal
-            );
+            DrawTexture(Image.GetOrCreateSurface(0), X, Y, Alpha, RgbWhite, @ClipRect, False, HardwareMirrorHorizontal);
             Inc(X, Width);
           end;
           Inc(Y, Height);

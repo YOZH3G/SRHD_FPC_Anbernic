@@ -112,16 +112,7 @@ begin
         X := StartX;
         while X < ClipRect.Right do
         begin
-          CopyGraphBuffer16Clipped(
-              ScreenRenderBuffer.GetPixels,
-              ScreenRenderBuffer.PitchBytes,
-              X,
-              Y,
-              Image.Bitmap,
-              ClipRect,
-              False,
-              False
-          );
+          CopyGraphBuffer16Clipped(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, Image.Bitmap, ClipRect, False, False);
           Inc(X, Width);
         end;
         Inc(Y, Height);

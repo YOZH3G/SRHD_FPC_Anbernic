@@ -153,24 +153,14 @@ var
   PlayerMessagePresentations: array[TPlayerMessageKind] of TMessagePlayerTypeGraph = (
       (NormalImage: 'GalaxyN'; ActiveImage: 'GalaxyA'; PressedImage: 'GalaxyD'; LifetimeTurns: 10),
       (NormalImage: 'EtherN'; ActiveImage: 'EtherA'; PressedImage: 'EtherD'; LifetimeTurns: 0),
-      (
-          NormalImage: 'ShipPlusN';
-          ActiveImage: 'ShipPlusA';
-          PressedImage: 'ShipPlusD';
-          LifetimeTurns: 5
-      ),
+      (NormalImage: 'ShipPlusN'; ActiveImage: 'ShipPlusA'; PressedImage: 'ShipPlusD'; LifetimeTurns: 5),
       (
           NormalImage: 'QuestNormalN';
           ActiveImage: 'QuestNormalA';
           PressedImage: 'QuestNormalD';
           LifetimeTurns: PersistentMessageLifetimeTurns
       ),
-      (
-          NormalImage: 'QuestOkN';
-          ActiveImage: 'QuestOkA';
-          PressedImage: 'QuestOkD';
-          LifetimeTurns: PersistentMessageLifetimeTurns
-      ),
+      (NormalImage: 'QuestOkN'; ActiveImage: 'QuestOkA'; PressedImage: 'QuestOkD'; LifetimeTurns: PersistentMessageLifetimeTurns),
       (
           NormalImage: 'QuestCancelN';
           ActiveImage: 'QuestCancelA';
@@ -178,24 +168,9 @@ var
           LifetimeTurns: PersistentMessageLifetimeTurns
       ),
       (NormalImage: 'TipsN'; ActiveImage: 'TipsA'; PressedImage: 'TipsD'; LifetimeTurns: 182),
-      (
-          NormalImage: 'UserN';
-          ActiveImage: 'UserA';
-          PressedImage: 'UserD';
-          LifetimeTurns: PersistentMessageLifetimeTurns
-      ),
-      (
-          NormalImage: 'ShipMinusN';
-          ActiveImage: 'ShipMinusA';
-          PressedImage: 'ShipMinusD';
-          LifetimeTurns: 5
-      ),
-      (
-          NormalImage: 'StorageN';
-          ActiveImage: 'StorageA';
-          PressedImage: 'StorageD';
-          LifetimeTurns: PersistentMessageLifetimeTurns
-      ),
+      (NormalImage: 'UserN'; ActiveImage: 'UserA'; PressedImage: 'UserD'; LifetimeTurns: PersistentMessageLifetimeTurns),
+      (NormalImage: 'ShipMinusN'; ActiveImage: 'ShipMinusA'; PressedImage: 'ShipMinusD'; LifetimeTurns: 5),
+      (NormalImage: 'StorageN'; ActiveImage: 'StorageA'; PressedImage: 'StorageD'; LifetimeTurns: PersistentMessageLifetimeTurns),
       (NormalImage: 'Ether2N'; ActiveImage: 'Ether2A'; PressedImage: 'Ether2D'; LifetimeTurns: 0)
   );
 
@@ -701,11 +676,7 @@ function IsPersistentPlayerMessageQueued(MessageEntry: TMessagePlayer; SkipLock:
 
 procedure RemovePersistentPlayerMessage(MessageEntry: TMessagePlayer; SkipLock: Boolean);
 
-function RemovePlayerMessagesExceptKinds(
-    Key: WideString;
-    ExcludedKinds: TPlayerMessageKindSet;
-    SkipLock: Boolean
-): Boolean;
+function RemovePlayerMessagesExceptKinds(Key: WideString; ExcludedKinds: TPlayerMessageKindSet; SkipLock: Boolean): Boolean;
 
 function FindPlayerBubbleByText(const Text: WideString; SkipLock: Boolean): TMessagePlayer;
 
@@ -715,20 +686,11 @@ procedure RemovePlayerBubbleByKey(const Key: WideString);
 
 procedure RemovePlayerBubblePages(const Prefix: WideString; FirstPage: Integer);
 
-function FindPlayerMessageExceptKinds(
-    const Key: WideString;
-    ExcludedKinds: TPlayerMessageKindSet;
-    SkipLock: Boolean
-): TMessagePlayer;
+function FindPlayerMessageExceptKinds(const Key: WideString; ExcludedKinds: TPlayerMessageKindSet; SkipLock: Boolean): TMessagePlayer;
 
 function CreatePersistentPlayerMessage: TMessagePlayer;
 
-function AddOrUpdatePlayerBubble(
-    Kind: TPlayerMessageKind;
-    Turn: Integer;
-    const Text: WideString;
-    const Key: WideString
-): TMessagePlayer;
+function AddOrUpdatePlayerBubble(Kind: TPlayerMessageKind; Turn: Integer; const Text: WideString; const Key: WideString): TMessagePlayer;
 
 procedure PruneExpiredPersistentPlayerMessages;
 
@@ -905,19 +867,8 @@ begin
 end;
 
 var
-  ScriptVariableTypeNames: TScriptVariableTypeNames = (
-      'Unknown',
-      'Int',
-      'DW',
-      'Float',
-      'Str',
-      'ExternFun',
-      'LibraryFun',
-      'Fun',
-      'Class',
-      'Array',
-      'Ref'
-  );
+  ScriptVariableTypeNames: TScriptVariableTypeNames =
+      ('Unknown', 'Int', 'DW', 'Float', 'Str', 'ExternFun', 'LibraryFun', 'Fun', 'Class', 'Array', 'Ref');
 
 procedure InitializeGlobalUiRuntime;
 var
@@ -957,67 +908,40 @@ begin
   SmoothHugeFontName := 'Font.Verdana12';
   SmoothIntroFontName := 'Font.Verdana13';
   if UserSettingsConfig.CountParamsByPath('ChangeAutoPilot') > 0 then
-    ChangeAutoPilot :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ChangeAutoPilot'));
+    ChangeAutoPilot := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ChangeAutoPilot'));
   if UserSettingsConfig.CountParams('AltResolutionSwitch') > 0 then
-    AltResolutionSwitch :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('AltResolutionSwitch'));
+    AltResolutionSwitch := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('AltResolutionSwitch'));
   if UserSettingsConfig.CountParamsByPath('DisableAutoPilot') > 0 then
-    DisableAutoPilot :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DisableAutoPilot'));
+    DisableAutoPilot := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DisableAutoPilot'));
   AwardDialogsEnabled := True;
   if UserSettingsConfig.CountParamsByPath('PQuestStyle') > 0 then
-    QuestStyleIndex :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('PQuestStyle'));
+    QuestStyleIndex := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('PQuestStyle'));
   if UserSettingsConfig.CountParamsByPath('PQuestAnim') > 0 then
-    QuestPageAnimationEnabled :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('PQuestAnim'));
+    QuestPageAnimationEnabled := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('PQuestAnim'));
   if UserSettingsConfig.CountParamsByPath('DefaultOrder') > 0 then
     DefaultOrder := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('DefaultOrder'));
   if UserSettingsConfig.CountParamsByPath('RightClickOnShip') > 0 then
-    RightClickOnShip :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RightClickOnShip'));
+    RightClickOnShip := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RightClickOnShip'));
   if UserSettingsConfig.CountParamsByPath('DoNotChangeMusicInBattle') > 0 then
-    DoNotChangeMusicInBattle :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DoNotChangeMusicInBattle'));
+    DoNotChangeMusicInBattle := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DoNotChangeMusicInBattle'));
   if UserSettingsConfig.CountParamsByPath('ViewFollowShip') > 0 then
-    ViewFollowShip :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ViewFollowShip'));
+    ViewFollowShip := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ViewFollowShip'));
   if UserSettingsConfig.CountParamsByPath('ViewPathLength') > 0 then
-    ViewPathLength :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ViewPathLength'));
+    ViewPathLength := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ViewPathLength'));
   if UserSettingsConfig.CountParamsByPath('TurnSaveStep') > 0 then
-    TurnSaveStep :=
-        Min(
-            TurnsPerYear,
-            ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('TurnSaveStep'))
-        );
+    TurnSaveStep := Min(TurnsPerYear, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('TurnSaveStep')));
   if UserSettingsConfig.CountParamsByPath('QuickSaveExtraSlots') > 0 then
-    QuickSaveExtraSlots :=
-        Min(
-            9,
-            ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('QuickSaveExtraSlots'))
-        );
+    QuickSaveExtraSlots := Min(9, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('QuickSaveExtraSlots')));
   if UserSettingsConfig.CountParamsByPath('MaxPlayerNews') > 0 then
-    MaxPlayerNews :=
-        Min(100, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('MaxPlayerNews')));
+    MaxPlayerNews := Min(100, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('MaxPlayerNews')));
   if UserSettingsConfig.CountParamsByPath('ForsageDeactivatePercent') > 0 then
-    AfterburnerStopCondition :=
-        Min(
-            100,
-            ExtractDigitsToIntW(
-                UserSettingsConfig.GetParamByPathOrMarker('ForsageDeactivatePercent')
-            )
-        );
+    AfterburnerStopCondition := Min(100, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ForsageDeactivatePercent')));
   if UserSettingsConfig.CountParamsByPath('MaxSearchResult') > 0 then
-    MaxSearchResult :=
-        Min(100, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('MaxSearchResult')));
+    MaxSearchResult := Min(100, ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('MaxSearchResult')));
   if UserSettingsConfig.CountParamsByPath('ClickAutoCloseForm') > 0 then
-    ClickAutoCloseForm :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ClickAutoCloseForm'));
+    ClickAutoCloseForm := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ClickAutoCloseForm'));
   if UserSettingsConfig.CountParamsByPath('ActionDoubleClick') > 0 then
-    ActionDoubleClick :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ActionDoubleClick'));
+    ActionDoubleClick := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ActionDoubleClick'));
   if UserSettingsConfig.CountParamsByPath('SkipGiper') > 0 then
     SkipGiper := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('SkipGiper'));
   Text := 'e';
@@ -1060,8 +984,7 @@ begin
   if UserSettingsConfig.CountParamsByPath('CircleAction') > 0 then
     CircleAction := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('CircleAction'));
   if UserSettingsConfig.CountParamsByPath('StaticBackground') > 0 then
-    StaticBackground :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('StaticBackground'));
+    StaticBackground := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('StaticBackground'));
   if UserSettingsConfig.CountParamsByPath('ScrollTime') > 0 then
     ScrollTime := StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('ScrollTime')));
   if UserSettingsConfig.CountParamsByPath('ScrollStep') > 0 then
@@ -1075,26 +998,16 @@ begin
   if UserSettingsConfig.CountParamsByPath('SpaceZoomPercent') > 0 then
     SpaceZoomPercent :=
         EnsureRange(
-            StrToIntDef(
-                AnsiString(UserSettingsConfig.GetParamByPathOrMarker('SpaceZoomPercent')),
-                SpaceZoomPercent
-            ),
+            StrToIntDef(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('SpaceZoomPercent')), SpaceZoomPercent),
             MinSpaceZoomPercent,
             MaxSpaceZoomPercent
         );
   SpacePinchZoom := True;
   if UserSettingsConfig.CountParamsByPath('SpacePinchZoom') > 0 then
-    SpacePinchZoom :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('SpacePinchZoom'));
+    SpacePinchZoom := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('SpacePinchZoom'));
   if UserSettingsConfig.CountParamsByPath('FilmSpeed') > 0 then
     FilmSpeed := StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('FilmSpeed')));
-  ScrollInteriorRect :=
-      Classes.Rect(
-          ScrollSense,
-          ScrollSense,
-          GameScreenWidth - ScrollSense,
-          GameScreenHeight - ScrollSense
-      );
+  ScrollInteriorRect := Classes.Rect(ScrollSense, ScrollSense, GameScreenWidth - ScrollSense, GameScreenHeight - ScrollSense);
   if not IsInstallFeatureEnabled('AnimGov') then
     AnimGov := 0;
   if not IsInstallFeatureEnabled('AnimCaptain') then
@@ -1109,11 +1022,9 @@ begin
   if UserSettingsConfig.CountParamsByPath('BGOTime') > 0 then
     BGOTime := StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('BGOTime')));
   if UserSettingsConfig.CountParamsByPath('MaxFilmStepSkip') > 0 then
-    MaxFilmStepSkip :=
-        StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('MaxFilmStepSkip')));
+    MaxFilmStepSkip := StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('MaxFilmStepSkip')));
   if UserSettingsConfig.CountParamsByPath('CountFilmSave') > 0 then
-    FilmHistoryLimit :=
-        Max(1, StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('CountFilmSave'))));
+    FilmHistoryLimit := Max(1, StrToInt(AnsiString(UserSettingsConfig.GetParamByPathOrMarker('CountFilmSave'))));
   if UserSettingsConfig.CountParamsByPath('SputnikShow') > 0 then
     SputnikShow := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('SputnikShow'));
   if UserSettingsConfig.CountParamsByPath('SpaceImage') > 0 then
@@ -1121,10 +1032,7 @@ begin
   if UserSettingsConfig.CountParamsByPath('ShowFPS') > 0 then
     ShowFrameRate := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('ShowFPS'));
   if UserSettingsConfig.CountParamsByPath('FontGalaxy') > 0 then
-    GalaxyMapFontChoice :=
-        TGalaxyMapFontChoice(
-            ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('FontGalaxy'))
-        );
+    GalaxyMapFontChoice := TGalaxyMapFontChoice(ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('FontGalaxy')));
   // Mobile font defaults apply only when no explicit user preference is saved.
   if GameMobileUiEnabled then
   begin
@@ -1136,38 +1044,29 @@ begin
   if UserSettingsConfig.CountParamsByPath('FontQuest') > 0 then
     FontQuest := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('FontQuest'));
   if UserSettingsConfig.CountParamsByPath('FontSmooth') > 0 then
-    FontSmoothingEnabled :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('FontSmooth'));
+    FontSmoothingEnabled := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('FontSmooth'));
   if UserSettingsConfig.CountParamsByPath('ScreenShotType') > 0 then
-    ScreenshotFormat :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ScreenShotType'));
+    ScreenshotFormat := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ScreenShotType'));
   if UserSettingsConfig.CountParamsByPath('ScreenShotQuality') > 0 then
-    ScreenshotJpegQuality :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ScreenShotQuality'));
+    ScreenshotJpegQuality := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('ScreenShotQuality'));
   if UserSettingsConfig.CountParamsByPath('DynamicTipsPos') > 0 then
-    DynamicTipsPos :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DynamicTipsPos'));
+    DynamicTipsPos := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('DynamicTipsPos'));
   if UserSettingsConfig.CountParamsByPath('BackgroundShade') > 0 then
-    BackgroundShade :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundShade'));
+    BackgroundShade := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundShade'));
   if UserSettingsConfig.CountParamsByPath('BackgroundBlur') > 0 then
-    BackgroundBlur :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundBlur'));
+    BackgroundBlur := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundBlur'));
   if UserSettingsConfig.CountParamsByPath('BackgroundGrayscale') > 0 then
-    BackgroundGrayscale :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundGrayscale'));
+    BackgroundGrayscale := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('BackgroundGrayscale'));
   if UserSettingsConfig.CountParamsByPath('PlanetClouds') > 0 then
     PlanetClouds := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('PlanetClouds'));
   if UserSettingsConfig.CountParamsByPath('PlanetAtm') > 0 then
     PlanetAtm := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('PlanetAtm'));
   if UserSettingsConfig.CountParamsByPath('AnimChangeForm') > 0 then
-    AnimChangeForm :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('AnimChangeForm'));
+    AnimChangeForm := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('AnimChangeForm'));
   if UserSettingsConfig.CountParamsByPath('AnimMainFon') > 0 then
     AnimMainFon := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('AnimMainFon'));
   if UserSettingsConfig.CountParamsByPath('BeginCalcNextTurn') > 0 then
-    BeginCalcNextTurn :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('BeginCalcNextTurn')) / 100;
+    BeginCalcNextTurn := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('BeginCalcNextTurn')) / 100;
   if BeginCalcNextTurn < 0 then
     BeginCalcNextTurn := 0
   else if BeginCalcNextTurn > 1 then
@@ -1175,31 +1074,23 @@ begin
   if UserSettingsConfig.CountParamsByPath('HalfGovAnim') > 0 then
     HalfGovAnim := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('HalfGovAnim'));
   if UserSettingsConfig.CountParamsByPath('UseTablesForGov') > 0 then
-    UseTablesForGov :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('UseTablesForGov'));
+    UseTablesForGov := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('UseTablesForGov'));
   if UserSettingsConfig.CountParamsByPath('RobotShowStencilShadows') > 0 then
-    RobotSettings.ShowStencilShadows :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotShowStencilShadows'));
+    RobotSettings.ShowStencilShadows := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotShowStencilShadows'));
   if UserSettingsConfig.CountParamsByPath('RobotShowProjShadows') > 0 then
-    RobotSettings.ShowProjShadows :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotShowProjShadows'));
+    RobotSettings.ShowProjShadows := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotShowProjShadows'));
   if UserSettingsConfig.CountParamsByPath('RobotSelectEx') > 0 then
-    RobotSettings.SelectEx :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotSelectEx'));
+    RobotSettings.SelectEx := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotSelectEx'));
   if UserSettingsConfig.CountParamsByPath('RobotLandTexturesGloss') > 0 then
-    RobotSettings.LandTexturesGloss :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotLandTexturesGloss'));
+    RobotSettings.LandTexturesGloss := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotLandTexturesGloss'));
   if UserSettingsConfig.CountParamsByPath('RobotObjTexturesGloss') > 0 then
-    RobotSettings.ObjTexturesGloss :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotObjTexturesGloss'));
+    RobotSettings.ObjTexturesGloss := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotObjTexturesGloss'));
   if UserSettingsConfig.CountParamsByPath('RobotSoftwareCursor') > 0 then
-    RobotSettings.SoftwareCursor :=
-        ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotSoftwareCursor'));
+    RobotSettings.SoftwareCursor := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotSoftwareCursor'));
   if UserSettingsConfig.CountParamsByPath('RobotSky') > 0 then
     RobotSettings.Sky := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotSky'));
   if UserSettingsConfig.CountParamsByPath('RobotRobotShadow') > 0 then
-    RobotSettings.RobotShadow :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotRobotShadow'));
+    RobotSettings.RobotShadow := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotRobotShadow'));
   if UserSettingsConfig.CountParamsByPath('RobotSound') > 0 then
     RobotSound := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotSound'));
   if UserSettingsConfig.CountParamsByPath('RobotMusic') > 0 then
@@ -1207,14 +1098,11 @@ begin
   if UserSettingsConfig.CountParamsByPath('RobotVSync') > 0 then
     RobotVSync := ParseEnabledNameGI(UserSettingsConfig.GetParamByPathOrMarker('RobotVSync'));
   if UserSettingsConfig.CountParamsByPath('RobotFSAASamples') > 0 then
-    RobotFSAASamples :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotFSAASamples'));
+    RobotFSAASamples := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotFSAASamples'));
   if UserSettingsConfig.CountParamsByPath('RobotAnisotropy') > 0 then
-    RobotAnisotropy :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotAnisotropy'));
+    RobotAnisotropy := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotAnisotropy'));
   if UserSettingsConfig.CountParamsByPath('RobotMaxDistance') > 0 then
-    RobotMaxDistance :=
-        ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotMaxDistance'));
+    RobotMaxDistance := ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('RobotMaxDistance'));
   if ReloadScriptTemplates then
   begin
     Section := GameDataConfig.GetBlockByPath('Script');
@@ -1248,28 +1136,19 @@ begin
                   + ScriptVariableTypeNames[Other.RealVType];
           if Variable.RealVType = vkEmpty then
           begin
-            WarningText :=
-                WarningText
-                    + ', '
-                    + ScriptVariableTypeNames[Variable.RealVType]
-                    + ' will be discarded';
+            WarningText := WarningText + ', ' + ScriptVariableTypeNames[Variable.RealVType] + ' will be discarded';
             GlobalScriptVariables.Remove(Variable);
           end
           else
           begin
-            WarningText :=
-                WarningText
-                    + ', '
-                    + ScriptVariableTypeNames[Other.RealVType]
-                    + ' will be discarded';
+            WarningText := WarningText + ', ' + ScriptVariableTypeNames[Other.RealVType] + ' will be discarded';
             GlobalScriptVariables.Remove(Other);
           end;
           AppendLogLineThreadSafe(AnsiString(WarningText));
         end
         else
         begin
-          if Variable.EqualsValue(Other)
-              or not (Variable.RealVType in [vkInt, vkDword, vkFloat, vkString]) then
+          if Variable.EqualsValue(Other) or not (Variable.RealVType in [vkInt, vkDword, vkFloat, vkString]) then
             GlobalScriptVariables.Remove(Other)
           else
           begin
@@ -1302,65 +1181,37 @@ begin
         if ShipBlock.CountBlocks('Ranger') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htRanger],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Ranger',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Ranger', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('Warrior') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htWarrior],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Warrior',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Warrior', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('Pirate') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htPirate],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Pirate',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Pirate', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('Transport') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htTransport],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Transport',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Transport', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('Liner') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htLiner],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Liner',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Liner', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('Diplomat') > 0 then
           RetainSpaceObject(
               RaceShipTemplates[Race, htDiplomat],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.Diplomat',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.Diplomat', Classes.Point(0, 0))
           );
         if ShipBlock.CountBlocks('PirateClan') > 0 then
           RetainSpaceObject(
               PirateClanShipTemplates[Race],
-              CreateSpaceObjectByName(
-                  'Ship2',
-                  'Ship.' + OwnerInfo[Race].InternalName + '.PirateClan',
-                  Classes.Point(0, 0)
-              )
+              CreateSpaceObjectByName('Ship2', 'Ship.' + OwnerInfo[Race].InternalName + '.PirateClan', Classes.Point(0, 0))
           );
       end;
     end;
@@ -1370,27 +1221,15 @@ begin
       begin
         RetainSpaceObject(
             BlazerShipTemplates[KlingKind],
-            CreateSpaceObjectByName(
-                'Ship2',
-                WideString('Ship.Blazer.B' + IntToStr(Index)),
-                Classes.Point(0, 0)
-            )
+            CreateSpaceObjectByName('Ship2', WideString('Ship.Blazer.B' + IntToStr(Index)), Classes.Point(0, 0))
         );
         RetainSpaceObject(
             KellerShipTemplates[KlingKind],
-            CreateSpaceObjectByName(
-                'Ship2',
-                WideString('Ship.Keller.K' + IntToStr(Index)),
-                Classes.Point(0, 0)
-            )
+            CreateSpaceObjectByName('Ship2', WideString('Ship.Keller.K' + IntToStr(Index)), Classes.Point(0, 0))
         );
         RetainSpaceObject(
             TerronShipTemplates[KlingKind],
-            CreateSpaceObjectByName(
-                'Ship2',
-                WideString('Ship.Terron.T' + IntToStr(Index)),
-                Classes.Point(0, 0)
-            )
+            CreateSpaceObjectByName('Ship2', WideString('Ship.Terron.T' + IntToStr(Index)), Classes.Point(0, 0))
         );
         Inc(Index);
       end;
@@ -1418,18 +1257,15 @@ begin
               Classes.Point(0, 0)
           )
       );
-      PlanetSpaceTemplates[TemplateIndex].Radius :=
-          StrToInt(AnsiString(Section.GetParam('Radius')));
+      PlanetSpaceTemplates[TemplateIndex].Radius := StrToInt(AnsiString(Section.GetParam('Radius')));
       PlanetSpaceTemplates[TemplateIndex].Style := 0;
       PlanetSpaceTemplates[TemplateIndex].StyleVariant := 0;
       if Section.CountParams('Style') > 0 then
       begin
         Text := Section.GetParam('Style');
-        PlanetSpaceTemplates[TemplateIndex].Style :=
-            ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 0, ','));
+        PlanetSpaceTemplates[TemplateIndex].Style := ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 0, ','));
         if CountDelimitedPartsW(Text, ',') >= 2 then
-          PlanetSpaceTemplates[TemplateIndex].StyleVariant :=
-              ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 1, ','));
+          PlanetSpaceTemplates[TemplateIndex].StyleVariant := ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 1, ','));
       end;
       Inc(TemplateIndex);
     end;
@@ -1546,15 +1382,10 @@ begin
   AchievementsScreen.InitializeFromConfig(UiStyleConfig, 'Achievements', True);
   SpaceObjectUiLoop := TMessageLoopGI.Create;
   SpaceObjectUiLoop.InitializeDefaults;
-  SpaceObjectUiLoop.ViewportRect :=
-      Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
+  SpaceObjectUiLoop.ViewportRect := Classes.Rect(0, 0, RenderScratchBuffer.Width, RenderScratchBuffer.Height);
   SpaceObjectUiLoop.UpdateRectsEnabled := False;
-  SpaceObjectUiLoop.ContentPanel.SetOrigin(
-      Classes.Point(RenderScratchBuffer.Width shr 1, RenderScratchBuffer.Height shr 1)
-  );
-  SpaceObjectUiLoop.ContentPanel.SetPosition(
-      Classes.Point(RenderScratchBuffer.Width shr 1, RenderScratchBuffer.Height shr 1)
-  );
+  SpaceObjectUiLoop.ContentPanel.SetOrigin(Classes.Point(RenderScratchBuffer.Width shr 1, RenderScratchBuffer.Height shr 1));
+  SpaceObjectUiLoop.ContentPanel.SetPosition(Classes.Point(RenderScratchBuffer.Width shr 1, RenderScratchBuffer.Height shr 1));
   PrimaryFilm := TEFilm.Create;
   SecondaryFilm := TEFilm.Create;
   RecreateSpaceProcess('Process.Normal');
@@ -1632,8 +1463,7 @@ begin
     SpaceImageTemplates[Index].CacheControl := TCGaiControlEC.Create;
     SpaceImageTemplates[Index].CachedData := nil;
     GlobalCache.ResetControl(TCGaiControlEC(SpaceImageTemplates[Index].CacheControl));
-    TCGaiControlEC(SpaceImageTemplates[Index].CacheControl)
-        .SetCacheKey(ExtractDelimitedPartW(Text, 1, ','));
+    TCGaiControlEC(SpaceImageTemplates[Index].CacheControl).SetCacheKey(ExtractDelimitedPartW(Text, 1, ','));
   end;
   Section := GameDataConfig.GetBlock('StarFieldImg');
   Count := Section.GetParamCount;
@@ -1644,8 +1474,7 @@ begin
     StarFieldImageTemplates[Index].CacheControl := TCGaiControlEC.Create;
     StarFieldImageTemplates[Index].CachedData := nil;
     GlobalCache.ResetControl(TCGaiControlEC(StarFieldImageTemplates[Index].CacheControl));
-    TCGaiControlEC(StarFieldImageTemplates[Index].CacheControl)
-        .SetCacheKey(Section.GetParamValue(Index));
+    TCGaiControlEC(StarFieldImageTemplates[Index].CacheControl).SetCacheKey(Section.GetParamValue(Index));
   end;
   ReloadScriptTemplates := False;
   InitializeGameplayConfig;
@@ -1653,8 +1482,7 @@ begin
   InitializeGovernmentGreetingDefinitions;
   InitializePlanetAdvertDefinitions;
   InitializeRobotMapDefinitions;
-  UselessItemRemainsCount :=
-      StrToInt(AnsiString(LookupLocalizedTextByKey('UselessItems.CntRemains')));
+  UselessItemRemainsCount := StrToInt(AnsiString(LookupLocalizedTextByKey('UselessItems.CntRemains')));
   Section := GameDataConfig.GetBlock('ABSound').GetBlock('Explosion');
   Count := Section.GetParamCount;
   SetLength(ArcadeExplosionSounds, Count);
@@ -1686,8 +1514,7 @@ begin
     else
     begin
       Text := Section.GetParam(WideString(IntToStr(Index)));
-      ArcadeWeaponLoopTicks[Index] :=
-          ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 0, ',')) div ArcadeTickMs;
+      ArcadeWeaponLoopTicks[Index] := ExtractDigitsToIntW(ExtractDelimitedPartW(Text, 0, ',')) div ArcadeTickMs;
       ArcadeWeaponLoopSounds[Index] := ExtractDelimitedPartW(Text, 1, ',');
     end;
 end;
@@ -2134,9 +1961,7 @@ begin
   begin
     if ExitScreenLoop then
       Break;
-    if (RequestedScreenId = screenStarMap)
-        or (RequestedScreenId = screenFilm)
-        or (RequestedScreenId = screenArcadeBattle) then
+    if (RequestedScreenId = screenStarMap) or (RequestedScreenId = screenFilm) or (RequestedScreenId = screenArcadeBattle) then
     begin
       CurrentScreenId := RequestedScreenId;
       RequestedScreenId := screenNone;
@@ -2320,11 +2145,7 @@ begin
   end;
 end;
 
-function RemovePlayerMessagesExceptKinds(
-    Key: WideString;
-    ExcludedKinds: TPlayerMessageKindSet;
-    SkipLock: Boolean
-): Boolean;
+function RemovePlayerMessagesExceptKinds(Key: WideString; ExcludedKinds: TPlayerMessageKindSet; SkipLock: Boolean): Boolean;
 var
   MessageEntry: TMessagePlayer;
 begin
@@ -2439,8 +2260,7 @@ begin
       if PrefixLength = 1 then
       begin
         PrefixLength := Length(Prefix);
-        Suffix :=
-            CopyWideStringUnchecked(Entry.Key, PrefixLength + 1, Length(Entry.Key) - PrefixLength);
+        Suffix := CopyWideStringUnchecked(Entry.Key, PrefixLength + 1, Length(Entry.Key) - PrefixLength);
         if IsIntegerTextW(Suffix) and (ExtractDigitsToIntW(Suffix) >= FirstPage) then
         begin
           if Entry.Prev <> nil then
@@ -2461,11 +2281,7 @@ begin
   end;
 end;
 
-function FindPlayerMessageExceptKinds(
-    const Key: WideString;
-    ExcludedKinds: TPlayerMessageKindSet;
-    SkipLock: Boolean
-): TMessagePlayer;
+function FindPlayerMessageExceptKinds(const Key: WideString; ExcludedKinds: TPlayerMessageKindSet; SkipLock: Boolean): TMessagePlayer;
 var
   MessageEntry: TMessagePlayer;
 begin
@@ -2476,8 +2292,7 @@ begin
     MessageEntry := FirstPersistentPlayerMessage;
     while MessageEntry <> nil do
     begin
-      if not (MessageEntry.Kind in ExcludedKinds)
-          and ((Length(Key) = 0) or (Pos(Key, MessageEntry.Key) > 0)) then
+      if not (MessageEntry.Kind in ExcludedKinds) and ((Length(Key) = 0) or (Pos(Key, MessageEntry.Key) > 0)) then
       begin
         Result := MessageEntry;
         Exit;
@@ -2510,11 +2325,7 @@ begin
   Result := Entry;
 end;
 
-function AddOrUpdatePlayerBubble(
-    Kind: TPlayerMessageKind;
-    Turn: Integer;
-    const Text, Key: WideString
-): TMessagePlayer;
+function AddOrUpdatePlayerBubble(Kind: TPlayerMessageKind; Turn: Integer; const Text, Key: WideString): TMessagePlayer;
 var
   Entry: TMessagePlayer;
 begin
@@ -2577,16 +2388,9 @@ begin
       Next := Next.Next;
       if Entry.WasRead and (Entry.Kind in [pmTip]) and (Galaxy.CurrentTurn - Entry.Turn >= 7) then
         RemovePersistentPlayerMessage(Entry, True)
-      else if Galaxy.CurrentTurn - Entry.Turn
-          >= PlayerMessagePresentations[Entry.Kind].LifetimeTurns then
+      else if Galaxy.CurrentTurn - Entry.Turn >= PlayerMessagePresentations[Entry.Kind].LifetimeTurns then
         RemovePersistentPlayerMessage(Entry, True)
-      else if Entry.WasRead
-          and (Entry.Kind
-              in [
-                  pmGalaxyNews..pmShipPositive,
-                  pmQuestSucceeded,
-                  pmQuestCancelled,
-                  pmShipNegative]) then
+      else if Entry.WasRead and (Entry.Kind in [pmGalaxyNews..pmShipPositive, pmQuestSucceeded, pmQuestCancelled, pmShipNegative]) then
         RemovePersistentPlayerMessage(Entry, True)
       else if not GetPlayer.InNormalSpace and (Entry.Kind = pmRadio) then
         RemovePersistentPlayerMessage(Entry, True);
@@ -2646,18 +2450,8 @@ begin
     Count := Dest.Count * 2;
     for Index := 0 to Count - 1 do
     begin
-      First :=
-          SeededRandomIntRange(
-              0,
-              Dest.Count - 1,
-              Galaxy.GenerationSeed * Cardinal(Galaxy.CurrentTurn) * Cardinal(Index)
-          );
-      Second :=
-          SeededRandomIntRange(
-              0,
-              Dest.Count - 1,
-              Galaxy.GenerationSeed * Cardinal(Galaxy.CurrentTurn + Index)
-          );
+      First := SeededRandomIntRange(0, Dest.Count - 1, Galaxy.GenerationSeed * Cardinal(Galaxy.CurrentTurn) * Cardinal(Index));
+      Second := SeededRandomIntRange(0, Dest.Count - 1, Galaxy.GenerationSeed * Cardinal(Galaxy.CurrentTurn + Index));
       if First <> Second then
       begin
         Item := Dest[First];
@@ -2675,19 +2469,9 @@ begin
   begin
     ShownPlayerTips := ShownPlayerTips or (1 shl Index);
     if Index < 10 then
-      AddOrUpdatePlayerBubble(
-          pmTip,
-          Galaxy.CurrentTurn,
-          LocalizedColorText('Tips.0' + SysUtils.IntToStr(Index)),
-          ''
-      )
+      AddOrUpdatePlayerBubble(pmTip, Galaxy.CurrentTurn, LocalizedColorText('Tips.0' + SysUtils.IntToStr(Index)), '')
     else
-      AddOrUpdatePlayerBubble(
-          pmTip,
-          Galaxy.CurrentTurn,
-          LocalizedColorText('Tips.' + SysUtils.IntToStr(Index)),
-          ''
-      );
+      AddOrUpdatePlayerBubble(pmTip, Galaxy.CurrentTurn, LocalizedColorText('Tips.' + SysUtils.IntToStr(Index)), '');
     Result := True;
   end;
 end;
@@ -2764,9 +2548,7 @@ var
   Previous, Index, Count: Integer;
   Text: WideString;
 
-  function ReadMapText(
-      const Path: WideString
-  ): WideString; { Nested in InitializeRobotMapDefinitions; joins repeated fields with CRLF. }
+  function ReadMapText(const Path: WideString): WideString; { Nested in InitializeRobotMapDefinitions; joins repeated fields with CRLF. }
   var
     Part, PartCount: Integer;
   begin
@@ -2826,12 +2608,10 @@ begin
     RobotMapDefinitions[Index].MinWins := ExtractSignedDigitsToIntW(ReadMapText('MinWins'));
     RobotMapDefinitions[Index].MaxWins := ExtractSignedDigitsToIntW(ReadMapText('MaxWins'));
     RobotMapDefinitions[Index].Reiteration := ExtractDigitsToIntW(ReadMapText('Reiteration'));
-    RobotMapDefinitions[Index].ReinforcementsDisabled :=
-        ParseEnabledNameGI(ReadMapText('ReinforcementsDisabled'));
+    RobotMapDefinitions[Index].ReinforcementsDisabled := ParseEnabledNameGI(ReadMapText('ReinforcementsDisabled'));
     RobotMapDefinitions[Index].Terron := ParseEnabledNameGI(ReadMapText('Terron'));
     RobotMapDefinitions[Index].Demo := ParseEnabledNameGI(ReadMapText('Demo'));
-    RobotMapDefinitions[Index].AfterLiberation :=
-        ParseEnabledNameGI(ReadMapText('AfterLiberation'));
+    RobotMapDefinitions[Index].AfterLiberation := ParseEnabledNameGI(ReadMapText('AfterLiberation'));
     RobotMapDefinitions[Index].GovTextStart := ReadMapText('GovTextStart');
     RobotMapDefinitions[Index].GovTextWin := ReadMapText('GovTextWin');
     RobotMapDefinitions[Index].GovTextLoss := ReadMapText('GovTextLoss');
@@ -2860,8 +2640,7 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(PlanetSpaceTemplates) do
-    if (PlanetSpaceTemplates[Index].Style = Style)
-        and (PlanetSpaceTemplates[Index].StyleVariant = StyleVariant) then
+    if (PlanetSpaceTemplates[Index].Style = Style) and (PlanetSpaceTemplates[Index].StyleVariant = StyleVariant) then
     begin
       Result := Index;
       Exit;
@@ -2888,14 +2667,12 @@ begin
   ShipGreetingCount := 0;
   Count := StrToInt(AnsiString(LookupLocalizedTextByKey('ShipGreetings.CountShipGreetings')));
   for Index := 0 to Count - 1 do
-    if LanguageDataConfig.GetBlock('ShipGreetings').CountBlocks(WideString(IntToStr(Index)))
-        > 0 then
+    if LanguageDataConfig.GetBlock('ShipGreetings').CountBlocks(WideString(IntToStr(Index))) > 0 then
       Inc(ShipGreetingCount);
   SetLength(ShipGreetingDefinitions, ShipGreetingCount);
   ShipGreetingCount := 0;
   for Index := 0 to Count - 1 do
-    if LanguageDataConfig.GetBlock('ShipGreetings').CountBlocks(WideString(IntToStr(Index)))
-        <> 0 then
+    if LanguageDataConfig.GetBlock('ShipGreetings').CountBlocks(WideString(IntToStr(Index))) <> 0 then
     begin
       Inc(ShipGreetingCount);
       EntryIndex := ShipGreetingCount - 1;
@@ -3990,8 +3767,7 @@ begin
   SetLength(GovernmentGreetingDefinitions, GovernmentGreetingCount);
   GovernmentGreetingCount := 0;
   for Index := 0 to Count - 1 do
-    if LanguageDataConfig.GetBlock('GovGreetings').CountBlocks(WideString(IntToStr(Index)))
-        <> 0 then
+    if LanguageDataConfig.GetBlock('GovGreetings').CountBlocks(WideString(IntToStr(Index))) <> 0 then
     begin
       Inc(GovernmentGreetingCount);
       EntryIndex := GovernmentGreetingCount - 1;
@@ -4511,14 +4287,11 @@ begin
   for GroupIndex := 0 to High(PlanetAdvertDefinitions) do
   begin
     GroupBlock := Root.GetBlockByIndex(GroupIndex);
-    PlanetAdvertDefinitions[GroupIndex].Position :=
-        GetPointGI(GroupBlock.GetParamByPathOrMarker('Info.Pos'));
+    PlanetAdvertDefinitions[GroupIndex].Position := GetPointGI(GroupBlock.GetParamByPathOrMarker('Info.Pos'));
     if GroupBlock.GetBlock('Info').CountParams('Image1') > 0 then
-      PlanetAdvertDefinitions[GroupIndex].Image1 :=
-          GroupBlock.GetParamByPathOrMarker('Info.Image1');
+      PlanetAdvertDefinitions[GroupIndex].Image1 := GroupBlock.GetParamByPathOrMarker('Info.Image1');
     if GroupBlock.GetBlock('Info').CountParams('Image2') > 0 then
-      PlanetAdvertDefinitions[GroupIndex].Image2 :=
-          GroupBlock.GetParamByPathOrMarker('Info.Image2');
+      PlanetAdvertDefinitions[GroupIndex].Image2 := GroupBlock.GetParamByPathOrMarker('Info.Image2');
     Count := GroupBlock.GetBlockCount;
     SetLength(PlanetAdvertDefinitions[GroupIndex].Adverts, Count - 2);
     AdvertIndex := 0;
@@ -4530,16 +4303,13 @@ begin
         Block := GroupBlock.GetBlockByIndex(BlockIndex);
         PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].Name := Text;
         if Block.CountParams('Image1') > 0 then
-          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].Image1 :=
-              Block.GetParam('Image1');
+          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].Image1 := Block.GetParam('Image1');
         if Block.CountParams('Image2') > 0 then
-          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].Image2 :=
-              Block.GetParam('Image2');
+          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].Image2 := Block.GetParam('Image2');
         PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War := 0;
         if Block.CountParams('War') > 0 then
         begin
-          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War :=
-              ExtractSignedDigitsToIntW(Block.GetParam('War'));
+          PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War := ExtractSignedDigitsToIntW(Block.GetParam('War'));
           if PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War < -1 then
             PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War := -1
           else if PlanetAdvertDefinitions[GroupIndex].Adverts[AdvertIndex].War > 1 then
@@ -4592,8 +4362,7 @@ begin
     SetLength(PlanetAdvertDefinitions[GroupIndex].Lists, Block.GetParamCount);
     for BlockIndex := 0 to High(PlanetAdvertDefinitions[GroupIndex].Lists) do
     begin
-      PlanetAdvertDefinitions[GroupIndex].Lists[BlockIndex].Weight :=
-          ExtractDigitsToIntW(Block.GetParamName(BlockIndex));
+      PlanetAdvertDefinitions[GroupIndex].Lists[BlockIndex].Weight := ExtractDigitsToIntW(Block.GetParamName(BlockIndex));
       Text := Block.GetParamValue(BlockIndex);
       Count := CountDelimitedPartsW(Text, ',');
       SetLength(PlanetAdvertDefinitions[GroupIndex].Lists[BlockIndex].Indices, Count);

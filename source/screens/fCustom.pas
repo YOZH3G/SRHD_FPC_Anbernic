@@ -54,9 +54,7 @@ end;
 
 procedure TfCustomLoop.ExecuteUiCode(Block: TBlockParEC; Key: Cardinal);
 begin
-  if not ExitScreenLoop
-      and (TurnCalculationPhase
-          in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
+  if not ExitScreenLoop and (TurnCalculationPhase in [tcpIdle, tcpGalaxyFinished, tcpPlayerStarFinished, tcpPlayerStarPrepared]) then
   begin
     if Galaxy <> nil then
       Galaxy.CheckIntegrityChecksum(30011);

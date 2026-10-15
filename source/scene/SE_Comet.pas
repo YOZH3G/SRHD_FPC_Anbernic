@@ -366,8 +366,7 @@ begin
         RemoveTrailEntry(Entry)
       else
       begin
-        Entry.Position :=
-            MakePointF(Entry.Position.X + Entry.Velocity.X, Entry.Position.Y + Entry.Velocity.Y);
+        Entry.Position := MakePointF(Entry.Position.X + Entry.Velocity.X, Entry.Position.Y + Entry.Velocity.Y);
         if CurrentExplosion <> nil then
           Entry.Velocity := HalfPointF(Entry.Velocity);
         if Entry.Animation <> nil then
@@ -375,9 +374,7 @@ begin
       end;
     end;
     ApplyAttraction(MakePointF(0, 0), StarAttraction);
-    if (Abs(Position.X) < 200)
-        and (Abs(Position.Y) < 200)
-        and (Position.X * Position.X + Position.Y * Position.Y < 40000) then
+    if (Abs(Position.X) < 200) and (Abs(Position.Y) < 200) and (Position.X * Position.X + Position.Y * Position.Y < 40000) then
       ExplodeAndRespawn;
     Circle := FirstPlanetCollisionCircle;
     while Circle <> nil do

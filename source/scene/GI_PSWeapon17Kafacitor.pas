@@ -182,11 +182,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - 24;
   Rect.Right := Target.X + 24;
@@ -206,8 +202,7 @@ begin
   if (FirstParticle = nil) and (RemainingTicks >= 24) then
   begin
     I := 0;
-    Distance :=
-        Round(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
+    Distance := Round(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
     OriginalLength := Distance;
     if OriginalLength = 0 then
       OriginalLength := 1;
@@ -257,9 +252,7 @@ begin
   else
   begin
     Distance := OriginalLength;
-    LengthScale :=
-        Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y))
-            / OriginalLength;
+    LengthScale := Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)) / OriginalLength;
     UpdateHitTestBounds;
     Particle := FirstParticle;
     NextControl := Particle;
@@ -281,8 +274,7 @@ begin
           NextControl := NextControl.Next;
           Inc(SegmentLength);
         end;
-        if (Abs(NextControl.Position.X) > 0.1 * Distance)
-            and (NextControl.Position.X * NextControl.Velocity.X > 0.0) then
+        if (Abs(NextControl.Position.X) > 0.1 * Distance) and (NextControl.Position.X * NextControl.Velocity.X > 0.0) then
           NextControl.Velocity.X := NextControl.Velocity.X * -1.0
         else if (NextControl.Position.X * NextControl.Velocity.X > 0.0)
             and (Random(101) < (Abs(NextControl.Position.X) / (0.05 * Distance) - 1.0) * 100.0) then
@@ -340,10 +332,7 @@ begin
       PY := -Particle.Position.Y * LengthScale;
       X := Round(PX * Cosine - PY * Sine + AbsolutePosition.X);
       Y := Round(PX * Sine + PY * Cosine + AbsolutePosition.Y);
-      if (X >= ClipRect.Left)
-          and (X < ClipRect.Right)
-          and (Y >= ClipRect.Top)
-          and (Y < ClipRect.Bottom) then
+      if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
         ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       Particle := Particle.Next;
     end;

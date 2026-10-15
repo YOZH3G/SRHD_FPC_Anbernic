@@ -205,29 +205,14 @@ type
   );
 
   {$Z1}
-  TAwardKind = (
-      atLiberation = 0,
-      atAccomplishment = 1,
-      atSecretMission = 2,
-      atCowardice = 3,
-      atPerfidy = 4,
-      atPlanetBattle = 5
-  );
+  TAwardKind = (atLiberation = 0, atAccomplishment = 1, atSecretMission = 2, atCowardice = 3, atPerfidy = 4, atPlanetBattle = 5);
 
   {$Z4}
   TScriptStandingOverrideMode = (ssmNormal = 0, ssmCustomFaction = 1, ssmFixed = 2);
 
   {$Z1}
-  TGreetingShipCategory = (
-      gscTransport = 0,
-      gscLiner = 1,
-      gscDiplomat = 2,
-      gscRanger = 3,
-      gscPirate = 4,
-      gscWarrior = 5,
-      gscKling = 6,
-      gscPirateClan = 7
-  );
+  TGreetingShipCategory =
+      (gscTransport = 0, gscLiner = 1, gscDiplomat = 2, gscRanger = 3, gscPirate = 4, gscWarrior = 5, gscKling = 6, gscPirateClan = 7);
 
   {$Z1}
   TCoalitionProject = (
@@ -246,33 +231,18 @@ type
   );
 
   {$Z1}
-  TTalkKind = (
-      tkMoneyDemand = 0,
-      tkGoodsDemand = 1,
-      tkTruceOffer = 2,
-      tkAttack = 3,
-      tkPartnerBreak = 4,
-      tkPartnerEnd = 5,
-      tkPartnerRiot = 6
-  );
+  TTalkKind =
+      (tkMoneyDemand = 0, tkGoodsDemand = 1, tkTruceOffer = 2, tkAttack = 3, tkPartnerBreak = 4, tkPartnerEnd = 5, tkPartnerRiot = 6);
 
   {$Z1}
-  TExperienceSource =
-      (esUnscaled = 0, esDominators = 1, esPirates = 2, esNormalShips = 3, esTraderCareer = 4);
+  TExperienceSource = (esUnscaled = 0, esDominators = 1, esPirates = 2, esNormalShips = 3, esTraderCareer = 4);
 
   TPercent = 0..100;
 
   TShipRank = 0..7;
 
   {$Z1}
-  TPilotSkill = (
-      psAccuracy = 0,
-      psManeuverability = 1,
-      psTechnical = 2,
-      psTrading = 3,
-      psCharisma = 4,
-      psLeadership = 5
-  );
+  TPilotSkill = (psAccuracy = 0, psManeuverability = 1, psTechnical = 2, psTrading = 3, psCharisma = 4, psLeadership = 5);
 
   {$Z1}
   TProgramIndex = (
@@ -304,16 +274,8 @@ type
   TGreetingCountMask = set of 0..15;
 
   {$Z1}
-  TWeaponShotType = (
-      wstNormal = 0,
-      wstChain = 1,
-      wstSplash = 2,
-      wstExploder = 3,
-      wstAreaDamage = 4,
-      wstTorpedo = 5,
-      wstMissile = 6,
-      wstRocket = 7
-  );
+  TWeaponShotType =
+      (wstNormal = 0, wstChain = 1, wstSplash = 2, wstExploder = 3, wstAreaDamage = 4, wstTorpedo = 5, wstMissile = 6, wstRocket = 7);
 
   TShipTypeMask = set of TShipType;
 
@@ -335,16 +297,7 @@ type
   TWeaponAvailabilityMask = set of TWeaponAvailability;
 
   {$Z1}
-  TKlingType = (
-      ktBoss = 0,
-      ktEquantor = 1,
-      ktUrgant = 2,
-      ktSmersh = 3,
-      ktMenoc = 4,
-      ktShtip = 5,
-      ktBertor = 6,
-      ktKlig = 7
-  );
+  TKlingType = (ktBoss = 0, ktEquantor = 1, ktUrgant = 2, ktSmersh = 3, ktMenoc = 4, ktShtip = 5, ktBertor = 6, ktKlig = 7);
 
   {$Z1}
   TDominatorSeries = (dsBlazer = 0, dsKeller = 1, dsTerron = 2);
@@ -390,8 +343,7 @@ type
   TPlanetEconomies = set of TPlanetEconomy;
 
   {$Z1}
-  TPlanetGovernment =
-      (pgAnarchy = 0, pgDictatorship = 1, pgMonarchy = 2, pgRepublic = 3, pgDemocracy = 4);
+  TPlanetGovernment = (pgAnarchy = 0, pgDictatorship = 1, pgMonarchy = 2, pgRepublic = 3, pgDemocracy = 4);
 
   TPlanetGovernments = set of TPlanetGovernment;
 
@@ -515,27 +467,11 @@ type
   TTransportType = (ttTransport = 0, ttLiner = 1, ttDiplomat = 2);
 
   {$Z1}
-  TCombatStatusEffectType = (
-      cseShock = 0,
-      cseAcid = 1,
-      cseMagnetic = 2,
-      cseWeaponBlock = 3,
-      cseDroidBlock = 4,
-      cseBWBuff = 5,
-      cseBWRepairDebuff = 6
-  );
+  TCombatStatusEffectType =
+      (cseShock = 0, cseAcid = 1, cseMagnetic = 2, cseWeaponBlock = 3, cseDroidBlock = 4, cseBWBuff = 5, cseBWRepairDebuff = 6);
 
   {$Z1}
-  TOwnerId = (
-      oiMaloc = 0,
-      oiPeleng = 1,
-      oiHuman = 2,
-      oiFeyan = 3,
-      oiGaal = 4,
-      oiDominator = 5,
-      oiUninhabited = 6,
-      oiPirate = 7
-  );
+  TOwnerId = (oiMaloc = 0, oiPeleng = 1, oiHuman = 2, oiFeyan = 3, oiGaal = 4, oiDominator = 5, oiUninhabited = 6, oiPirate = 7);
 
   TPlanetGoodsFactors = record
     PriceFactor: Double;
@@ -577,8 +513,7 @@ type
   TFactionStandingMasks = array[TStarFaction] of TShipStandings;
 
   {$Z1}
-  TQuestType =
-      (qtSendLetter = 0, qtKillShip = 1, qtPlanetQuest = 2, qtDefendSystem = 3, qtDefendShip = 4);
+  TQuestType = (qtSendLetter = 0, qtKillShip = 1, qtPlanetQuest = 2, qtDefendSystem = 3, qtDefendShip = 4);
 
   TQuestTypes = set of TQuestType;
 

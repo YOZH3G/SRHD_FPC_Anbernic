@@ -25,13 +25,7 @@ type
     procedure UpdateVisuals; override;
     constructor Create;
     destructor Destroy; override;
-    procedure Launch(
-        Owner: TabObject;
-        Amount: Integer;
-        Angle: Single;
-        AGeneration: Integer;
-        Origin: TabObject
-    );
+    procedure Launch(Owner: TabObject; Amount: Integer; Angle: Single; AGeneration: Integer; Origin: TabObject);
   end;
 
 implementation
@@ -60,13 +54,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TabW13.Launch(
-    Owner: TabObject;
-    Amount: Integer;
-    Angle: Single;
-    AGeneration: Integer;
-    Origin: TabObject
-);
+procedure TabW13.Launch(Owner: TabObject; Amount: Integer; Angle: Single; AGeneration: Integer; Origin: TabObject);
 begin
   SourceObject := Owner;
   Damage := Amount;
@@ -87,14 +75,12 @@ begin
   { Native W13 shares W08 projectile and explosion resources. }
   if Generation = 0 then
   begin
-    Image :=
-        ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w08_f', 'GAI,Bm.AB.w08_s', False);
+    Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w08_f', 'GAI,Bm.AB.w08_s', False);
     ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
   end
   else
   begin
-    Image :=
-        ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w08b_f', 'GAI,Bm.AB.w08b_s', False);
+    Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w08b_f', 'GAI,Bm.AB.w08b_s', False);
     ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
   end;
 end;

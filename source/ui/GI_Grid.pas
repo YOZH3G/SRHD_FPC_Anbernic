@@ -152,10 +152,8 @@ begin
   if Child is TLabelGI then
   begin
     Child.SetSize(
-        Classes.Point(
-            GetColumnWidth(Child.UserValue and GridCellCoordinateMask) + 1,
-            GetRowHeight(Child.UserValue shr GridCellRowShift) + 1
-        )
+        Classes
+            .Point(GetColumnWidth(Child.UserValue and GridCellCoordinateMask) + 1, GetRowHeight(Child.UserValue shr GridCellRowShift) + 1)
     );
     X := 0;
     Y := 0;
@@ -205,10 +203,7 @@ begin
     Y := Y + GetRowHeight(I);
   if BackgroundImage <> nil then
     BackgroundImage.SetSize(Classes.Point(X, Y));
-  if (ActiveCell.X < 0)
-      or (ActiveCell.X >= ColumnCount)
-      or (ActiveCell.Y < 0)
-      or (ActiveCell.Y >= RowCount) then
+  if (ActiveCell.X < 0) or (ActiveCell.X >= ColumnCount) or (ActiveCell.Y < 0) or (ActiveCell.Y >= RowCount) then
     ActiveCell := Classes.Point(-1, -1);
   RebuildGridLines;
   UpdateScrollRanges;
@@ -360,9 +355,7 @@ begin
     begin
       Current := Child;
       Child := Child.NextSibling;
-      if (Current is TLabelGI)
-          and (Current.UserValue and GridCellCoordinateMask >= Value)
-          and (Current.UserValue <> GridDecorationTag) then
+      if (Current is TLabelGI) and (Current.UserValue and GridCellCoordinateMask >= Value) and (Current.UserValue <> GridDecorationTag) then
         FreeOwnedChild(Current);
     end;
   end
@@ -441,13 +434,7 @@ function TGridGI.GetColumnWidth(ColumnIndex: Integer): Integer;
 begin
   if (ColumnIndex < 0) or (ColumnIndex >= ColumnCount) then
     raise Exception.Create(
-        'TGridGI.GetSizeX. ('
-            + IntToStr(ColumnIndex)
-            + '<0) or ('
-            + IntToStr(ColumnIndex)
-            + '>0'
-            + IntToStr(ColumnCount)
-            + ')');
+        'TGridGI.GetSizeX. (' + IntToStr(ColumnIndex) + '<0) or (' + IntToStr(ColumnIndex) + '>0' + IntToStr(ColumnCount) + ')');
   Result := ReadIntegerEC(AddPointerOffset(ColumnWidths, ColumnIndex * SizeOf(Integer)));
 end;
 
@@ -465,14 +452,7 @@ end;
 function TGridGI.GetRowHeight(RowIndex: Integer): Integer;
 begin
   if (RowIndex < 0) or (RowIndex >= RowCount) then
-    raise Exception.Create(
-        'TGridGI.GetSizeX. ('
-            + IntToStr(RowIndex)
-            + '<0) or ('
-            + IntToStr(RowIndex)
-            + '>='
-            + IntToStr(RowCount)
-            + ')');
+    raise Exception.Create('TGridGI.GetSizeX. (' + IntToStr(RowIndex) + '<0) or (' + IntToStr(RowIndex) + '>=' + IntToStr(RowCount) + ')');
   Result := Rows[RowIndex].Height;
 end;
 
@@ -509,20 +489,11 @@ var
 begin
   if (CellX < 0) or (ColumnCount <= CellX) or (CellY < 0) or (RowCount <= CellY) then
     raise Exception.Create(
-        'TGridGI.GetCell. Cell='
-            + IntToStr(CellX)
-            + ','
-            + IntToStr(CellY)
-            + '  Count='
-            + IntToStr(ColumnCount)
-            + ','
-            + IntToStr(RowCount));
+        'TGridGI.GetCell. Cell=' + IntToStr(CellX) + ',' + IntToStr(CellY) + '  Count=' + IntToStr(ColumnCount) + ',' + IntToStr(RowCount));
   Child := FirstChild;
   while Child <> nil do
   begin
-    if (Child is TLabelGI)
-        and (Child.UserValue and GridCellCoordinateMask = CellX)
-        and (Child.UserValue shr GridCellRowShift = CellY) then
+    if (Child is TLabelGI) and (Child.UserValue and GridCellCoordinateMask = CellX) and (Child.UserValue shr GridCellRowShift = CellY) then
     begin
       Result := Child as TLabelGI;
       Exit;
@@ -530,14 +501,7 @@ begin
     Child := Child.NextSibling;
   end;
   raise Exception.Create(
-      'TGridGI.GetCell. Cell='
-          + IntToStr(CellX)
-          + ','
-          + IntToStr(CellY)
-          + '  Count='
-          + IntToStr(ColumnCount)
-          + ','
-          + IntToStr(RowCount));
+      'TGridGI.GetCell. Cell=' + IntToStr(CellX) + ',' + IntToStr(CellY) + '  Count=' + IntToStr(ColumnCount) + ',' + IntToStr(RowCount));
 end;
 
 procedure TGridGI.SetRowSelectEnabled(Value: Boolean);
@@ -616,10 +580,7 @@ begin
   if (ActiveCell.X = Cell.X) and (ActiveCell.Y = Cell.Y) then
     Exit;
   ActiveCell := Cell;
-  if (ActiveCell.X >= 0)
-      and (ActiveCell.X < ColumnCount)
-      and (ActiveCell.Y >= 0)
-      and (ActiveCell.Y < RowCount) then
+  if (ActiveCell.X >= 0) and (ActiveCell.X < ColumnCount) and (ActiveCell.Y >= 0) and (ActiveCell.Y < RowCount) then
   begin
     if ActiveCellImage <> nil then
     begin
@@ -634,24 +595,14 @@ begin
         LabelControl := GetCell(0, ActiveCell.Y);
         ActiveCellImage.SetPosition(LabelControl.LocalPosition);
         LabelControl := GetCell(ColumnCount - 1, ActiveCell.Y);
-        ActiveCellImage.SetSize(
-            Classes.Point(
-                LabelControl.LocalPosition.X + LabelControl.ClientSize.X,
-                LabelControl.ClientSize.Y
-            )
-        );
+        ActiveCellImage.SetSize(Classes.Point(LabelControl.LocalPosition.X + LabelControl.ClientSize.X, LabelControl.ClientSize.Y));
       end
       else if ColSelect then
       begin
         LabelControl := GetCell(ActiveCell.X, 0);
         ActiveCellImage.SetPosition(LabelControl.LocalPosition);
         LabelControl := GetCell(ActiveCell.X, RowCount - 1);
-        ActiveCellImage.SetSize(
-            Classes.Point(
-                LabelControl.ClientSize.X,
-                LabelControl.LocalPosition.Y + LabelControl.ClientSize.Y
-            )
-        );
+        ActiveCellImage.SetSize(Classes.Point(LabelControl.ClientSize.X, LabelControl.LocalPosition.Y + LabelControl.ClientSize.Y));
       end;
     end;
     if not RowSelect and not ColSelect then
@@ -665,24 +616,14 @@ begin
       LabelControl := GetCell(0, ActiveCell.Y);
       ActiveCellFrame.SetPosition(LabelControl.LocalPosition);
       LabelControl := GetCell(ColumnCount - 1, ActiveCell.Y);
-      ActiveCellFrame.SetSize(
-          Classes.Point(
-              LabelControl.LocalPosition.X + LabelControl.ClientSize.X,
-              LabelControl.ClientSize.Y
-          )
-      );
+      ActiveCellFrame.SetSize(Classes.Point(LabelControl.LocalPosition.X + LabelControl.ClientSize.X, LabelControl.ClientSize.Y));
     end
     else if ColSelect then
     begin
       LabelControl := GetCell(ActiveCell.X, 0);
       ActiveCellFrame.SetPosition(LabelControl.LocalPosition);
       LabelControl := GetCell(ActiveCell.X, RowCount - 1);
-      ActiveCellFrame.SetSize(
-          Classes.Point(
-              LabelControl.ClientSize.X,
-              LabelControl.LocalPosition.Y + LabelControl.ClientSize.Y
-          )
-      );
+      ActiveCellFrame.SetSize(Classes.Point(LabelControl.ClientSize.X, LabelControl.LocalPosition.Y + LabelControl.ClientSize.Y));
     end;
   end
   else
@@ -708,11 +649,7 @@ var
   Cell: TPoint;
   Repeated: Boolean;
 begin
-  Cell :=
-      Classes.Point(
-          Sender.UserValue and GridCellCoordinateMask,
-          Sender.UserValue shr GridCellRowShift
-      );
+  Cell := Classes.Point(Sender.UserValue and GridCellCoordinateMask, Sender.UserValue shr GridCellRowShift);
   if Assigned(CanSelectCellCallback) then
     if not CanSelectCellCallback(Self, Cell) then
       Exit;
@@ -859,8 +796,7 @@ begin
     begin
       Text := Properties.GetParamName(I);
       RowIndex := StrToInt(ExtractDelimitedPartW(Text, 1, ','));
-      GetCell(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), RowIndex)
-          .LoadTextLinesFromBlockParam(Properties, Text);
+      GetCell(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), RowIndex).LoadTextLinesFromBlockParam(Properties, Text);
       if Rows[RowIndex].AutoHeight then
         UpdateRowAutoHeight(RowIndex);
     end;
@@ -873,29 +809,21 @@ begin
       LabelControl := GetCell(CellX, CellY);
       CellProperties := Properties.GetBlockByIndex(I);
       if CellProperties.CountParams('WordWrap') > 0 then
-        LabelControl.SetWordWrapEnabled(
-            ParseEnabledNameGI(TrimWideString(CellProperties.GetParam('WordWrap')))
-        );
+        LabelControl.SetWordWrapEnabled(ParseEnabledNameGI(TrimWideString(CellProperties.GetParam('WordWrap'))));
       if CellProperties.CountParams('AlignY') > 0 then
-        LabelControl
-            .SetTextAlignY(ParseTextAlignYName(TrimWideString(CellProperties.GetParam('AlignY'))));
+        LabelControl.SetTextAlignY(ParseTextAlignYName(TrimWideString(CellProperties.GetParam('AlignY'))));
       if CellProperties.CountParams('AlignX') > 0 then
-        LabelControl
-            .SetTextAlignX(ParseTextAlignXName(TrimWideString(CellProperties.GetParam('AlignX'))));
+        LabelControl.SetTextAlignX(ParseTextAlignXName(TrimWideString(CellProperties.GetParam('AlignX'))));
       if CellProperties.CountParams('TextColor') > 0 then
         LabelControl.SetTextColor(GetColorGI(Block.GetParam('TextColor')));
       if CellProperties.CountParams('Image') > 0 then
         LabelControl.SetEmbeddedImagePath(CellProperties.GetParam('Image'));
       if CellProperties.CountParams('ImageKindX') > 0 then
-        LabelControl
-            .SetEmbeddedImageKindX(ParseImageKindXName(CellProperties.GetParam('ImageKindX')));
+        LabelControl.SetEmbeddedImageKindX(ParseImageKindXName(CellProperties.GetParam('ImageKindX')));
       if CellProperties.CountParams('ImageKindY') > 0 then
-        LabelControl
-            .SetEmbeddedImageKindY(ParseImageKindYName(CellProperties.GetParam('ImageKindY')));
+        LabelControl.SetEmbeddedImageKindY(ParseImageKindYName(CellProperties.GetParam('ImageKindY')));
       if CellProperties.CountParams('ImageHalfAlpha') > 0 then
-        LabelControl.SetEmbeddedImageHalfAlpha(
-            ParseEnabledNameGI(CellProperties.GetParam('ImageHalfAlpha'))
-        );
+        LabelControl.SetEmbeddedImageHalfAlpha(ParseEnabledNameGI(CellProperties.GetParam('ImageHalfAlpha')));
       UpdateRowAutoHeight(CellY);
     end;
   end;
@@ -920,12 +848,7 @@ begin
   if Block.CountParams('ActiveCell') > 0 then
   begin
     Text := Block.GetParam('ActiveCell');
-    SetActiveCell(
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(Text, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(Text, 1, ','))
-        )
-    );
+    SetActiveCell(Classes.Point(StrToInt(ExtractDelimitedPartW(Text, 0, ',')), StrToInt(ExtractDelimitedPartW(Text, 1, ','))));
   end;
   if Block.CountParams('ActiveCellImageHalfAlpha') > 0 then
     SetActiveCellImageHalfAlpha(ParseEnabledNameGI(Block.GetParam('ActiveCellImageHalfAlpha')));

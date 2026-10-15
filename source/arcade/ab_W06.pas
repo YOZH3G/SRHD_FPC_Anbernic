@@ -69,13 +69,7 @@ begin
   begin
     Heading := WrapHeadingDegrees(State.BearingDegrees + 90);
     HeadingDelta := HeadingDifferenceDegrees(Heading, State.BearingDegrees);
-    AdvanceSphericalBearingState(
-        State.LongitudeDegrees,
-        State.PolarAngleDegrees,
-        Heading,
-        SphereRadius,
-        Offset
-    );
+    AdvanceSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, Heading, SphereRadius, Offset);
     State.BearingDegrees := WrapHeadingDegrees(Heading + HeadingDelta);
   end;
   Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w06_f', 'GAI,Bm.AB.w06_s', False);

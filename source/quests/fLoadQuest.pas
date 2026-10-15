@@ -133,19 +133,9 @@ begin
   Root.FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
   Panel := Root.FindByNameRecursive('MainPanel');
   if ExtraScreenHeight < 0 then
-    Panel.SetPosition(
-        Classes.Point(
-            ExtraScreenWidth div 2 + Panel.LocalPosition.X,
-            (GameScreenHeight - Panel.ClientSize.Y) div 2
-        )
-    )
+    Panel.SetPosition(Classes.Point(ExtraScreenWidth div 2 + Panel.LocalPosition.X, (GameScreenHeight - Panel.ClientSize.Y) div 2))
   else
-    Panel.SetPosition(
-        Classes.Point(
-            ExtraScreenWidth div 2 + Panel.LocalPosition.X,
-            ExtraScreenHeight div 2 + Panel.LocalPosition.Y
-        )
-    );
+    Panel.SetPosition(Classes.Point(ExtraScreenWidth div 2 + Panel.LocalPosition.X, ExtraScreenHeight div 2 + Panel.LocalPosition.Y));
   FitMobileControl(Panel, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12));
   AppendLogLineThreadSafe('ok');
   GetByName('MainPanel').KeyDownCallback := QuestListKeyDown;
@@ -224,13 +214,10 @@ begin
         if Entries[SelectedIndex].QuestId >= 0 then
         begin
           LoadCompletionData;
-          if (Entries[SelectedIndex].QuestId >= 0)
-              and (Entries[SelectedIndex].QuestId < FirstLicensedQuestId) then
+          if (Entries[SelectedIndex].QuestId >= 0) and (Entries[SelectedIndex].QuestId < FirstLicensedQuestId) then
           begin
             QuestId := Entries[SelectedIndex].QuestId;
-            if (QuestId < 0)
-                or ((High(CompletionData) + 1) div 2 <= QuestId)
-                or (CompletionData[QuestId * 2 + 1] = 0) then
+            if (QuestId < 0) or ((High(CompletionData) + 1) div 2 <= QuestId) or (CompletionData[QuestId * 2 + 1] = 0) then
             begin
               RecordCompletion(QuestId, 0, 1);
               SaveCompletionData;
@@ -317,17 +304,13 @@ begin
   if Delta = WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position - Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end
   else if Delta = -WHEEL_DELTA then
   begin
     if Panel.VerticalScrollBar.Active then
-      Panel.VerticalScrollBar.SetPosition(
-          Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange
-      );
+      Panel.VerticalScrollBar.SetPosition(Panel.VerticalScrollBar.Position + Panel.VerticalScrollBar.SmallChange);
     PostMouseMoveMessage;
   end;
 end;
@@ -377,8 +360,7 @@ begin
           Index := InsertEntryByAccess(ExtractDigitsToIntW(Entry.GetParam('Access')));
           Entries[Index].Name := Name;
           Entries[Index].Title := Entry.GetParam('Name');
-          Entries[Index].Description :=
-              LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuest').GetParam(Name);
+          Entries[Index].Description := LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuest').GetParam(Name);
           Entries[Index].QuestId := QuestIdAndTop;
           Entries[Index].Image := Entry.GetParamOrMarker('Image');
           Entries[Index].Genre := Entry.GetParamOrMarker('Genre');
@@ -404,8 +386,7 @@ begin
           Index := InsertEntryByAccess(0);
           Entries[Index].Name := Name;
           Entries[Index].Title := Entry.GetParam('Name');
-          Entries[Index].Description :=
-              LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuest').GetParam(Name);
+          Entries[Index].Description := LanguageDataConfig.GetBlock('PlanetQuest').GetBlock('PlanetQuest').GetParam(Name);
           Entries[Index].QuestId := QuestIdAndTop;
           Entries[Index].Image := Entry.GetParamOrMarker('Image');
           Entries[Index].Genre := Entry.GetParamOrMarker('Genre');
@@ -483,24 +464,11 @@ begin
     LengthImage := TImageGI.Create(Row);
     LengthImage.SetDepth(9);
     if Entries[Index].RequiredAccess <= AccessLevel then
-      LengthImage.SetImagePath(
-          'GI,Bm.FormLoadQuest.' + GiResourceSuffix + 'D' + IntToStr(Entries[Index].Length + 1)
-      )
+      LengthImage.SetImagePath('GI,Bm.FormLoadQuest.' + GiResourceSuffix + 'D' + IntToStr(Entries[Index].Length + 1))
     else
-      LengthImage.SetImagePath(
-          'GI,Bm.FormLoadQuest.'
-              + GiResourceSuffix
-              + 'D'
-              + IntToStr(Entries[Index].Length + 1)
-              + 'D'
-      );
+      LengthImage.SetImagePath('GI,Bm.FormLoadQuest.' + GiResourceSuffix + 'D' + IntToStr(Entries[Index].Length + 1) + 'D');
     LengthImage.SetSize(LengthImage.GetContentSize);
-    LengthImage.SetPosition(
-        Classes.Point(
-            TitleRight - LengthImage.ClientSize.X,
-            Row.ClientSize.Y div 2 - LengthImage.ClientSize.Y div 2
-        )
-    );
+    LengthImage.SetPosition(Classes.Point(TitleRight - LengthImage.ClientSize.X, Row.ClientSize.Y div 2 - LengthImage.ClientSize.Y div 2));
     LengthImage.SetActive(True);
     TitleRight := TitleRight - LengthImage.ClientSize.X - 1;
   end;
@@ -765,40 +733,15 @@ begin
         end;
       end;
       Text := Quest.QuestDescriptionText.Text;
-      ReplaceTextToken(
-          Text,
-          '<Ranger>',
-          LocalizedText('FormLoadQuest.PRanger'),
-          BrightBlueColorTag
-      );
-      ReplaceTextToken(
-          Text,
-          '<ToPlanet>',
-          LocalizedText('FormLoadQuest.PToPlanet'),
-          BrightBlueColorTag
-      );
-      ReplaceTextToken(
-          Text,
-          '<ToStar>',
-          LocalizedText('FormLoadQuest.PToStar'),
-          BrightBlueColorTag
-      );
+      ReplaceTextToken(Text, '<Ranger>', LocalizedText('FormLoadQuest.PRanger'), BrightBlueColorTag);
+      ReplaceTextToken(Text, '<ToPlanet>', LocalizedText('FormLoadQuest.PToPlanet'), BrightBlueColorTag);
+      ReplaceTextToken(Text, '<ToStar>', LocalizedText('FormLoadQuest.PToStar'), BrightBlueColorTag);
       ReplaceTextToken(Text, '<Parsec>', IntToStr(10), BrightBlueColorTag);
       ReplaceTextToken(Text, '<Date>', FormatGameTurnDate(1000), BrightBlueColorTag);
       ReplaceTextToken(Text, '<Day>', IntToStr(30), BrightBlueColorTag);
       ReplaceTextToken(Text, '<Money>', IntToStr(10000), BrightBlueColorTag);
-      ReplaceTextToken(
-          Text,
-          '<FromPlanet>',
-          LocalizedText('FormLoadQuest.PFromPlanet'),
-          BrightBlueColorTag
-      );
-      ReplaceTextToken(
-          Text,
-          '<FromStar>',
-          LocalizedText('FormLoadQuest.PFromStar'),
-          BrightBlueColorTag
-      );
+      ReplaceTextToken(Text, '<FromPlanet>', LocalizedText('FormLoadQuest.PFromPlanet'), BrightBlueColorTag);
+      ReplaceTextToken(Text, '<FromStar>', LocalizedText('FormLoadQuest.PFromStar'), BrightBlueColorTag);
       Text := ReplaceAllWideString(Text, '<clr>', BrightBlueColorTag);
       ExpandLocalizedTextMarkup(Text);
       Quest.Free;
@@ -811,11 +754,9 @@ begin
     SetScrollOffset(Classes.Point(0, 0));
     UpdateScrollRanges;
     VerticalScrollBar.SetActive(
-        FindByNameRecursive('MessageText').Active
-            and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
+        FindByNameRecursive('MessageText').Active and ((FindByNameRecursive('MessageText') as TLabelGI).ClientSize.Y > ClientSize.Y)
     );
-    VerticalScrollBar
-        .SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
+    VerticalScrollBar.SetSmallChange((FindByNameRecursive('MessageText') as TLabelGI).GetLineHeight);
     VerticalScrollBar.SetLargeChange(ClientSize.Y);
     VerticalScrollBar.SetPageSize(ClientSize.Y);
   end;
@@ -827,8 +768,7 @@ var
   I, Count: Integer;
 begin
   CompletionData := nil;
-  if SysUtils.FileExists(
-      NativeGamePath(AnsiString(GetGameUserDirectory + 'QuestComplate.dat'))) then
+  if SysUtils.FileExists(NativeGamePath(AnsiString(GetGameUserDirectory + 'QuestComplate.dat'))) then
   begin
     try
       Buffer := TBufEC.Create;

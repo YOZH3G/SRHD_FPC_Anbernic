@@ -35,16 +35,8 @@ const
   VorbisOutputBytesPerSecond = VorbisOutputSampleRate * VorbisOutputBlockAlign;
 
 function ReadVorbisSource(Buffer: Pointer; Size, Count: csize_t; Source: Pointer): csize_t; cdecl;
-function OpenVorbisStream(
-    Decoder: TOggWorker;
-    var Format: TSoundWaveFormat;
-    var Stream: TFileStreamEC
-): Integer; stdcall;
-function ReadVorbisSamples(
-    Decoder: TOggWorker;
-    Buffer: Pointer;
-    var ByteCount: Integer
-): Integer; stdcall;
+function OpenVorbisStream(Decoder: TOggWorker; var Format: TSoundWaveFormat; var Stream: TFileStreamEC): Integer; stdcall;
+function ReadVorbisSamples(Decoder: TOggWorker; Buffer: Pointer; var ByteCount: Integer): Integer; stdcall;
 
 implementation
 
@@ -97,11 +89,7 @@ begin
   end;
 end;
 
-function OpenVorbisStream(
-    Decoder: TOggWorker;
-    var Format: TSoundWaveFormat;
-    var Stream: TFileStreamEC
-): Integer; stdcall;
+function OpenVorbisStream(Decoder: TOggWorker; var Format: TSoundWaveFormat; var Stream: TFileStreamEC): Integer; stdcall;
 var
   Callbacks: ov_callbacks;
   Info: pvorbis_info;
@@ -137,11 +125,7 @@ begin
   end;
 end;
 
-function ReadVorbisSamples(
-    Decoder: TOggWorker;
-    Buffer: Pointer;
-    var ByteCount: Integer
-): Integer; stdcall;
+function ReadVorbisSamples(Decoder: TOggWorker; Buffer: Pointer; var ByteCount: Integer): Integer; stdcall;
 var
   Count: clong;
   Total, Remaining: Integer;
@@ -154,16 +138,7 @@ begin
     begin
       // Decode directly into the bounded destination. The original passed the
       // full remaining length for a fixed 4096-byte scratch buffer.
-      Count :=
-          ov_read(
-              Decoder.VorbisState,
-              PByte(Buffer) + Total,
-              Remaining,
-              False,
-              SizeOf(SmallInt),
-              True,
-              @Decoder.Bitstream
-          );
+      Count := ov_read(Decoder.VorbisState, PByte(Buffer) + Total, Remaining, False, SizeOf(SmallInt), True, @Decoder.Bitstream);
       if Decoder.ReadFailure <> '' then
         raise Exception.Create(Decoder.ReadFailure);
       if Count < 0 then

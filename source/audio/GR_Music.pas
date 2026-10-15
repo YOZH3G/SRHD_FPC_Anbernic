@@ -165,10 +165,7 @@ end;
 
 function TMusicUnit.IsIntroTrack: Boolean;
 begin
-  Result :=
-      (GetFileName = 'music\1c.dat')
-          or (GetFileName = 'music\logo.dat')
-          or (GetFileName = 'music\intro.dat');
+  Result := (GetFileName = 'music\1c.dat') or (GetFileName = 'music\logo.dat') or (GetFileName = 'music\intro.dat');
 end;
 
 procedure TMusicUnit.Execute;
@@ -442,8 +439,7 @@ begin
     Block := MainDataConfig.GetBlockByPath('Music.' + Category);
     Count := Block.GetParamCount;
     for Index := 0 to Count - 1 do
-      if (Block.GetParamValue(Index) <> '')
-          and (TrimWideString(LowerCaseWideString(Block.GetParamValue(Index))) = CurrentFile) then
+      if (Block.GetParamValue(Index) <> '') and (TrimWideString(LowerCaseWideString(Block.GetParamValue(Index))) = CurrentFile) then
       begin
         Result := '';
         Exit;

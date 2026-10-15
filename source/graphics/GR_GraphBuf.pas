@@ -127,40 +127,14 @@ type
     procedure SetPixel16(X: Integer; Y: Integer; Color: Cardinal);
     function GetBrightness16(X: Integer; Y: Integer): Cardinal;
     procedure BlendPixel16(X: Integer; Y: Integer; Color: Cardinal; Alpha: Byte);
-    procedure DrawAlphaLine16(
-        X1: Integer;
-        Y1: Integer;
-        X2: Integer;
-        Y2: Integer;
-        Color: Word;
-        Alpha: Byte;
-        Clip: TRect
-    );
+    procedure DrawAlphaLine16(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Word; Alpha: Byte; Clip: TRect);
     function GetPixel32(X: Integer; Y: Integer): Cardinal;
     procedure DrawHorizontalLine16(X: Integer; Y: Integer; Count: Integer; Color: Cardinal);
     procedure DrawVerticalLine16(X: Integer; Y: Integer; Count: Integer; Color: Cardinal);
-    procedure DrawHorizontalLine16Clipped(
-        X: Integer;
-        Y: Integer;
-        Count: Integer;
-        Color: Cardinal;
-        Clip: TRect
-    );
-    procedure DrawVerticalLine16Clipped(
-        X: Integer;
-        Y: Integer;
-        Count: Integer;
-        Color: Cardinal;
-        Clip: TRect
-    );
+    procedure DrawHorizontalLine16Clipped(X: Integer; Y: Integer; Count: Integer; Color: Cardinal; Clip: TRect);
+    procedure DrawVerticalLine16Clipped(X: Integer; Y: Integer; Count: Integer; Color: Cardinal; Clip: TRect);
     procedure DrawLine16(First: TPoint; Last: TPoint; Color: Cardinal);
-    procedure DrawAnimatedLine16(
-        First: TPoint;
-        Last: TPoint;
-        Color: Cardinal;
-        Phase: Integer;
-        Clip: TRect
-    );
+    procedure DrawAnimatedLine16(First: TPoint; Last: TPoint; Color: Cardinal; Phase: Integer; Clip: TRect);
     procedure DrawShadowLine16(
         First: TPoint;
         Last: TPoint;
@@ -194,20 +168,8 @@ type
     procedure ConvertRgbTo565;
     procedure Convert565ToRgb;
     procedure ShiftLight16(Shift: Integer; Rect: TRect);
-    procedure DrawCircle16(
-        Center: TPoint;
-        Radius: Integer;
-        OutlineColor: Cardinal;
-        FillColor: Cardinal;
-        Clip: TRect
-    );
-    procedure DrawCircle8(
-        Center: TPoint;
-        Radius: Integer;
-        OutlineColor: Cardinal;
-        FillColor: Cardinal;
-        Clip: TRect
-    );
+    procedure DrawCircle16(Center: TPoint; Radius: Integer; OutlineColor: Cardinal; FillColor: Cardinal; Clip: TRect);
+    procedure DrawCircle8(Center: TPoint; Radius: Integer; OutlineColor: Cardinal; FillColor: Cardinal; Clip: TRect);
     procedure ApplyOperations(const Operations: WideString);
     procedure RescaleRgb(Width: Integer; Height: Integer);
     procedure RescaleRgba(Width: Integer; Height: Integer; Filter: Integer);
@@ -239,13 +201,7 @@ type
         VerticalAlign: Integer;
         Filter: Integer
     );
-    procedure RescaleRgbaLinear(
-        Width: Cardinal;
-        Height: Cardinal;
-        CropToAspect: Boolean;
-        HorizontalAlign: Integer;
-        VerticalAlign: Integer
-    );
+    procedure RescaleRgbaLinear(Width: Cardinal; Height: Cardinal; CropToAspect: Boolean; HorizontalAlign: Integer; VerticalAlign: Integer);
     procedure Crop(Rect: TRect);
     procedure AdjustBrightness(Percent: Integer);
     procedure ConvertToGrayscale;
@@ -254,21 +210,8 @@ type
     procedure LockTexture(ReadOnly: Boolean);
     procedure UnlockTexture;
     procedure ConvertBgraToRgb24;
-    procedure DrawAntialiasedCircle16(
-        Center: TPoint;
-        Radius: Integer;
-        Color: Cardinal;
-        Clip: TRect
-    );
-    procedure DrawAntialiasedLine16(
-        X1: Integer;
-        Y1: Integer;
-        X2: Integer;
-        Y2: Integer;
-        Color: Cardinal;
-        Alpha: Integer;
-        Clip: TRect
-    );
+    procedure DrawAntialiasedCircle16(Center: TPoint; Radius: Integer; Color: Cardinal; Clip: TRect);
+    procedure DrawAntialiasedLine16(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Cardinal; Alpha: Integer; Clip: TRect);
   end;
 
 implementation
@@ -469,10 +412,7 @@ end;
 
 function TGraphBufGR.HasPixels: Boolean;
 begin
-  Result :=
-      (Width > 0)
-          and (Height > 0)
-          and ((Pixels <> nil) or (UsesTextureStorage and (Texture <> nil)));
+  Result := (Width > 0) and (Height > 0) and ((Pixels <> nil) or (UsesTextureStorage and (Texture <> nil)));
 end;
 
 function TGraphBufGR.GetPixels: Pointer;
@@ -649,10 +589,7 @@ begin
   Clear;
   Context := BeginImageRead(Buffer.Data, Buffer.DataSize, Width, Height);
   if Context = nil then
-    raise Exception.Create(
-        'TGraphBufGR.LoadFromBuf. Error load file 1 (buf size='
-            + IntToWideString(Buffer.DataSize)
-            + ')');
+    raise Exception.Create('TGraphBufGR.LoadFromBuf. Error load file 1 (buf size=' + IntToWideString(Buffer.DataSize) + ')');
   AllocateNative(Width, Height);
   Context :=
       Pointer(
@@ -668,10 +605,7 @@ begin
           )
       );
   if Context = nil then
-    raise Exception.Create(
-        'TGraphBufGR.LoadFromBuf. Error load file 2 (buf size='
-            + IntToWideString(Buffer.DataSize)
-            + ')');
+    raise Exception.Create('TGraphBufGR.LoadFromBuf. Error load file 2 (buf size=' + IntToWideString(Buffer.DataSize) + ')');
 end;
 
 procedure TGraphBufGR.LoadImageRgba(Buffer: TBufEC);
@@ -683,8 +617,7 @@ begin
   if Context = nil then
     raise Exception.Create('TGraphBufGR.LoadFromBufRGBA. Error load file');
   AllocateRgbaTight(Width, Height);
-  Context :=
-      Pointer(ReadImagePixels(Context, GetPixels, PitchBytes, $FF0000, $FF00, $FF, $FF000000, 4));
+  Context := Pointer(ReadImagePixels(Context, GetPixels, PitchBytes, $FF0000, $FF00, $FF, $FF000000, 4));
   if Context = nil then
     raise Exception.Create('TGraphBufGR.LoadFromBufRGBA. Error load file');
 end;
@@ -764,12 +697,7 @@ begin
   GR_Main.BlendPixel16(AddPointerOffset(Pixels, Y * PitchBytes + X * SizeOf(Word)), Color, Alpha);
 end;
 
-procedure TGraphBufGR.DrawAlphaLine16(
-    X1, Y1, X2, Y2: Integer;
-    Color: Word;
-    Alpha: Byte;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawAlphaLine16(X1, Y1, X2, Y2: Integer; Color: Word; Alpha: Byte; Clip: TRect);
 begin
   LockTexture(False);
   Ex_OKGR_Line_DrawClip_Alpha_16(Pixels, PitchBytes, X1, Y1, X2, Y2, Color, Alpha, Clip);
@@ -817,11 +745,7 @@ begin
   end;
 end;
 
-procedure TGraphBufGR.DrawHorizontalLine16Clipped(
-    X, Y, Count: Integer;
-    Color: Cardinal;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawHorizontalLine16Clipped(X, Y, Count: Integer; Color: Cardinal; Clip: TRect);
 begin
   if Count = 0 then
     Exit;
@@ -876,25 +800,10 @@ begin
   end;
 end;
 
-procedure TGraphBufGR.DrawAnimatedLine16(
-    First, Last: TPoint;
-    Color: Cardinal;
-    Phase: Integer;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawAnimatedLine16(First, Last: TPoint; Color: Cardinal; Phase: Integer; Clip: TRect);
 begin
   LockTexture(False);
-  Ex_OKGR_AnimLine_Draw_16(
-      Pixels,
-      PitchBytes,
-      First.X,
-      First.Y,
-      Last.X,
-      Last.Y,
-      Color,
-      Phase,
-      Clip
-  );
+  Ex_OKGR_AnimLine_Draw_16(Pixels, PitchBytes, First.X, First.Y, Last.X, Last.Y, Color, Phase, Clip);
 end;
 
 procedure TGraphBufGR.DrawShadowLine16(
@@ -907,27 +816,10 @@ procedure TGraphBufGR.DrawShadowLine16(
 );
 begin
   LockTexture(False);
-  Ex_OKGR_AnimShadowLine_Draw_16(
-      Pixels,
-      PitchBytes,
-      First.X,
-      First.Y,
-      Last.X,
-      Last.Y,
-      Color,
-      Phase,
-      Clip,
-      ShadowPixels,
-      ShadowPitch
-  );
+  Ex_OKGR_AnimShadowLine_Draw_16(Pixels, PitchBytes, First.X, First.Y, Last.X, Last.Y, Color, Phase, Clip, ShadowPixels, ShadowPitch);
 end;
 
-procedure TGraphBufGR.DrawAlphaTrapezium16(
-    X1, Y1, X2, Y2, X3, X4: Integer;
-    Color: Word;
-    Alpha: Byte;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawAlphaTrapezium16(X1, Y1, X2, Y2, X3, X4: Integer; Color: Word; Alpha: Byte; Clip: TRect);
 begin
   LockTexture(False);
   if Alpha = 64 then
@@ -960,16 +852,7 @@ begin
     InclusiveClip.Right := Clip.Right - 1;
     InclusiveClip.Bottom := Clip.Bottom - 1;
     LockTexture(False);
-    Ex_OKGR_Line_DrawClip_WORD(
-        Pixels,
-        PitchBytes,
-        First.X,
-        First.Y,
-        Last.X,
-        Last.Y,
-        Color,
-        InclusiveClip
-    );
+    Ex_OKGR_Line_DrawClip_WORD(Pixels, PitchBytes, First.X, First.Y, Last.X, Last.Y, Color, InclusiveClip);
   end;
 end;
 
@@ -990,25 +873,13 @@ var
     Source, Dest: PColorRGBA;
     Denominator: Cardinal;
 
-    function BlendLineChannel(
-        DestColor,
-        DestAlpha,
-        SourceColor,
-        SourceAlpha,
-        Denominator: Cardinal
-    ): Cardinal;
+    function BlendLineChannel(DestColor, DestAlpha, SourceColor, SourceAlpha, Denominator: Cardinal): Cardinal;
     begin
-      Result :=
-          ((255 - SourceAlpha) * DestColor * DestAlpha + SourceAlpha * SourceColor * 255)
-              div Denominator;
+      Result := ((255 - SourceAlpha) * DestColor * DestAlpha + SourceAlpha * SourceColor * 255) div Denominator;
     end;
 
   begin
-    if (Alpha = 0)
-        or (X < 0)
-        or (Y < 0)
-        or (Cardinal(Width) <= Cardinal(X))
-        or (Cardinal(Height) <= Cardinal(Y)) then
+    if (Alpha = 0) or (X < 0) or (Y < 0) or (Cardinal(Width) <= Cardinal(X)) or (Cardinal(Height) <= Cardinal(Y)) then
       Exit;
     Source := @Color;
     Source.A := Alpha;
@@ -1268,8 +1139,7 @@ begin
       // Copy packed RGB565 pixels without interpolating their individual bytes.
       for Y := 0 to Height - 1 do
       begin
-        SourceRow :=
-            PWord(PByte(Pixels) + (QWord(Y) * Cardinal(Self.Height) div Height) * PitchBytes);
+        SourceRow := PWord(PByte(Pixels) + (QWord(Y) * Cardinal(Self.Height) div Height) * PitchBytes);
         DestRow := PWord(PByte(Data) + Y * Width * SizeOf(Word));
         for X := 0 to Width - 1 do
           DestRow[X] := SourceRow[QWord(X) * Cardinal(Self.Width) div Width];
@@ -1366,12 +1236,7 @@ begin
   );
 end;
 
-procedure TGraphBufGR.DrawCircle16(
-    Center: TPoint;
-    Radius: Integer;
-    OutlineColor, FillColor: Cardinal;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawCircle16(Center: TPoint; Radius: Integer; OutlineColor, FillColor: Cardinal; Clip: TRect);
 var
   InclusiveClip: TRect;
 begin
@@ -1380,33 +1245,12 @@ begin
   InclusiveClip.Top := Clip.Top;
   InclusiveClip.Right := Clip.Right - 1;
   InclusiveClip.Bottom := Clip.Bottom - 1;
-  Ex_OKGR_Circle_DrawFillClip_WORD(
-      Pixels,
-      PitchBytes,
-      Center.X,
-      Center.Y,
-      Radius,
-      FillColor,
-      InclusiveClip
-  );
+  Ex_OKGR_Circle_DrawFillClip_WORD(Pixels, PitchBytes, Center.X, Center.Y, Radius, FillColor, InclusiveClip);
   if OutlineColor <> FillColor then
-    Ex_OKGR_Circle_DrawClip_WORD(
-        Pixels,
-        PitchBytes,
-        Center.X,
-        Center.Y,
-        Radius,
-        OutlineColor,
-        InclusiveClip
-    );
+    Ex_OKGR_Circle_DrawClip_WORD(Pixels, PitchBytes, Center.X, Center.Y, Radius, OutlineColor, InclusiveClip);
 end;
 
-procedure TGraphBufGR.DrawCircle8(
-    Center: TPoint;
-    Radius: Integer;
-    OutlineColor, FillColor: Cardinal;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawCircle8(Center: TPoint; Radius: Integer; OutlineColor, FillColor: Cardinal; Clip: TRect);
 var
   InclusiveClip: TRect;
 begin
@@ -1415,25 +1259,9 @@ begin
   InclusiveClip.Top := Clip.Top;
   InclusiveClip.Right := Clip.Right - 1;
   InclusiveClip.Bottom := Clip.Bottom - 1;
-  Ex_OKGR_Circle_DrawFillClip_BYTE(
-      Pixels,
-      PitchBytes,
-      Center.X,
-      Center.Y,
-      Radius,
-      FillColor,
-      InclusiveClip
-  );
+  Ex_OKGR_Circle_DrawFillClip_BYTE(Pixels, PitchBytes, Center.X, Center.Y, Radius, FillColor, InclusiveClip);
   if OutlineColor <> FillColor then
-    Ex_OKGR_Circle_DrawClip_BYTE(
-        Pixels,
-        PitchBytes,
-        Center.X,
-        Center.Y,
-        Radius,
-        OutlineColor,
-        InclusiveClip
-    );
+    Ex_OKGR_Circle_DrawClip_BYTE(Pixels, PitchBytes, Center.X, Center.Y, Radius, OutlineColor, InclusiveClip);
 end;
 
 procedure TGraphBufGR.ApplyOperations(const Operations: WideString);
@@ -1457,10 +1285,7 @@ begin
       begin
         Value := ExtractDelimitedPartW(Part, 1, '=');
         if CountDelimitedPartsW(Value, ',') > 1 then
-          Stretch16(
-              StrToInt(ExtractDelimitedPartW(Value, 0, ',')),
-              StrToInt(ExtractDelimitedPartW(Value, 1, ','))
-          );
+          Stretch16(StrToInt(ExtractDelimitedPartW(Value, 0, ',')), StrToInt(ExtractDelimitedPartW(Value, 1, ',')));
       end;
     end;
   end;
@@ -1475,18 +1300,7 @@ begin
   if (Self.Width = Width) and (Self.Height = Height) then
     Exit;
   Data := AllocEC(Width * 3 * Height);
-  Ex_OKGF_Rescale(
-      Data,
-      Width,
-      Height,
-      Width * 3,
-      Pixels,
-      Self.Width,
-      Self.Height,
-      PitchBytes,
-      3,
-      5
-  );
+  Ex_OKGF_Rescale(Data, Width, Height, Width * 3, Pixels, Self.Width, Self.Height, PitchBytes, 3, 5);
   if StorageKind = 0 then
     FreeEC(Pixels);
   StorageKind := 0;
@@ -1506,18 +1320,7 @@ begin
   if (Self.Width = Width) and (Self.Height = Height) then
     Exit;
   Data := AllocEC(Width * SizeOf(TColorRGBA) * Height);
-  Ex_OKGF_Rescale(
-      Data,
-      Width,
-      Height,
-      Width * SizeOf(TColorRGBA),
-      Pixels,
-      Self.Width,
-      Self.Height,
-      PitchBytes,
-      4,
-      Filter
-  );
+  Ex_OKGF_Rescale(Data, Width, Height, Width * SizeOf(TColorRGBA), Pixels, Self.Width, Self.Height, PitchBytes, 4, Filter);
   if StorageKind = 0 then
     FreeEC(Pixels);
   StorageKind := 0;
@@ -1531,8 +1334,7 @@ end;
 procedure TGraphBufGR.RescaleBilinearRgba(Width, Height: Integer);
 var
   X, Y, SourceX, YPosition, YStep, XStep, PixelX, FractionX: Integer;
-  BottomWeight, TopWeight, TopLeftWeight, TopRightWeight, BottomLeftWeight, BottomRightWeight:
-      Integer;
+  BottomWeight, TopWeight, TopLeftWeight, TopRightWeight, BottomLeftWeight, BottomRightWeight: Integer;
   TopRow, BottomRow: PColorRGBAArray;
   Dest: PColorRGBA;
   Data: Pointer;
@@ -1677,31 +1479,9 @@ begin
               + Points[RightStart].X;
     end;
     if (LeftX < RightX) = (NextLeftX < NextRightX) then
-      Ex_OKGR_FillTrapezium_DWORD(
-          Pixels,
-          PitchBytes,
-          RightX,
-          LeftX,
-          Y,
-          NextRightX,
-          NextLeftX,
-          NextY,
-          Color,
-          Clip
-      )
+      Ex_OKGR_FillTrapezium_DWORD(Pixels, PitchBytes, RightX, LeftX, Y, NextRightX, NextLeftX, NextY, Color, Clip)
     else
-      Ex_OKGR_FillTrapezium_DWORD(
-          Pixels,
-          PitchBytes,
-          LeftX,
-          RightX,
-          Y,
-          NextLeftX,
-          NextRightX,
-          NextY,
-          Color,
-          Clip
-      );
+      Ex_OKGR_FillTrapezium_DWORD(Pixels, PitchBytes, LeftX, RightX, Y, NextLeftX, NextRightX, NextY, Color, Clip);
     LeftX := NextLeftX;
     RightX := NextRightX;
     Y := NextY;
@@ -1734,12 +1514,7 @@ var
   Src, Dst: PByte;
   Columns, Rows, Column, Row, SrcSkip, DstSkip: Integer;
 begin
-  Src :=
-      PByte(
-          PAnsiChar(Source.GetPixels)
-              + Rect.Top * Source.PitchBytes
-              + Rect.Left * SizeOf(TColorRGBA)
-      );
+  Src := PByte(PAnsiChar(Source.GetPixels) + Rect.Top * Source.PitchBytes + Rect.Left * SizeOf(TColorRGBA));
   Columns := Rect.Right - Rect.Left;
   Rows := Rect.Bottom - Rect.Top;
   if (Columns = 0) or (Rows = 0) then
@@ -1769,12 +1544,7 @@ var
   Table: PByte;
   SrcSkip, DstSkip, Alpha: Integer;
 begin
-  Src :=
-      PByte(
-          PAnsiChar(Source.GetPixels)
-              + Rect.Top * Source.PitchBytes
-              + Rect.Left * SizeOf(TColorRGBA)
-      );
+  Src := PByte(PAnsiChar(Source.GetPixels) + Rect.Top * Source.PitchBytes + Rect.Left * SizeOf(TColorRGBA));
   Columns := Rect.Right - Rect.Left;
   Rows := Rect.Bottom - Rect.Top;
   SrcSkip := Source.PitchBytes - Columns * SizeOf(TColorRGBA);
@@ -1788,11 +1558,7 @@ begin
       for Channel := 0 to 2 do
       begin
         Alpha := PColorRGBA(Src).A;
-        Dst[Channel] :=
-            Byte(
-                Table[(Integer(Src[Channel]) shl 8) + Alpha]
-                    + Table[(Integer(Dst[Channel]) shl 8) + 255 - Alpha]
-            );
+        Dst[Channel] := Byte(Table[(Integer(Src[Channel]) shl 8) + Alpha] + Table[(Integer(Dst[Channel]) shl 8) + 255 - Alpha]);
       end;
       // Preserve the original saturated sum of both alpha bytes.
       Alpha := Integer(PColorRGBA(Src).A) + PColorRGBA(Dst).A;
@@ -1923,11 +1689,7 @@ begin
   end;
 end;
 
-procedure TGraphBufGR.DrawNinePatch(
-    X, Y, Width, Height: Integer;
-    Source: TGraphBufGR;
-    SourceRect, Borders: TRect
-);
+procedure TGraphBufGR.DrawNinePatch(X, Y, Width, Height: Integer; Source: TGraphBufGR; SourceRect, Borders: TRect);
 var
   TileRect: TRect;
 
@@ -1950,11 +1712,7 @@ var
       while TileX < Width do
       begin
         if TileX + TileWidth > Width then
-          CopyRect32(
-              Classes.Point(X + TileX, Y + TileY),
-              Source,
-              Classes.Rect(Rect.Left, Rect.Top, Width - TileX + Rect.Left, Rect.Bottom)
-          )
+          CopyRect32(Classes.Point(X + TileX, Y + TileY), Source, Classes.Rect(Rect.Left, Rect.Top, Width - TileX + Rect.Left, Rect.Bottom))
         else
           CopyRect32(Classes.Point(X + TileX, Y + TileY), Source, Rect);
         Inc(TileX, TileWidth);
@@ -1972,86 +1730,25 @@ begin
     SourceRect.Right := Source.Width;
   if SourceRect.Bottom <= SourceRect.Top then
     SourceRect.Bottom := Source.Height;
-  TileRect :=
-      Classes.Rect(
-          SourceRect.Left,
-          SourceRect.Top,
-          SourceRect.Left + Borders.Left,
-          SourceRect.Top + Borders.Top
-      );
+  TileRect := Classes.Rect(SourceRect.Left, SourceRect.Top, SourceRect.Left + Borders.Left, SourceRect.Top + Borders.Top);
   CopyRect32(Classes.Point(X, Y), Source, TileRect);
-  TileRect :=
-      Classes.Rect(
-          SourceRect.Right - Borders.Right,
-          SourceRect.Top,
-          SourceRect.Right,
-          SourceRect.Top + Borders.Top
-      );
+  TileRect := Classes.Rect(SourceRect.Right - Borders.Right, SourceRect.Top, SourceRect.Right, SourceRect.Top + Borders.Top);
   CopyRect32(Classes.Point(X + Width - Borders.Right, Y), Source, TileRect);
-  TileRect :=
-      Classes.Rect(
-          SourceRect.Left,
-          SourceRect.Bottom - Borders.Bottom,
-          SourceRect.Left + Borders.Left,
-          SourceRect.Bottom
-      );
+  TileRect := Classes.Rect(SourceRect.Left, SourceRect.Bottom - Borders.Bottom, SourceRect.Left + Borders.Left, SourceRect.Bottom);
   CopyRect32(Classes.Point(X, Y + Height - Borders.Bottom), Source, TileRect);
-  TileRect :=
-      Classes.Rect(
-          SourceRect.Right - Borders.Right,
-          SourceRect.Bottom - Borders.Bottom,
-          SourceRect.Right,
-          SourceRect.Bottom
-      );
-  CopyRect32(
-      Classes.Point(X + Width - Borders.Right, Y + Height - Borders.Bottom),
-      Source,
-      TileRect
-  );
-  TileRect :=
-      Classes.Rect(
-          SourceRect.Left + Borders.Left,
-          SourceRect.Top,
-          SourceRect.Right - Borders.Right,
-          SourceRect.Top + Borders.Top
-      );
+  TileRect := Classes.Rect(SourceRect.Right - Borders.Right, SourceRect.Bottom - Borders.Bottom, SourceRect.Right, SourceRect.Bottom);
+  CopyRect32(Classes.Point(X + Width - Borders.Right, Y + Height - Borders.Bottom), Source, TileRect);
+  TileRect := Classes.Rect(SourceRect.Left + Borders.Left, SourceRect.Top, SourceRect.Right - Borders.Right, SourceRect.Top + Borders.Top);
   TilePatch(X + Borders.Left, Y, Width - Borders.Left - Borders.Right, Borders.Top, TileRect);
   TileRect :=
-      Classes.Rect(
-          SourceRect.Left + Borders.Left,
-          SourceRect.Bottom - Borders.Bottom,
-          SourceRect.Right - Borders.Right,
-          SourceRect.Bottom
-      );
-  TilePatch(
-      X + Borders.Left,
-      Y + Height - Borders.Bottom,
-      Width - Borders.Left - Borders.Right,
-      Borders.Bottom,
-      TileRect
-  );
+      Classes.Rect(SourceRect.Left + Borders.Left, SourceRect.Bottom - Borders.Bottom, SourceRect.Right - Borders.Right, SourceRect.Bottom);
+  TilePatch(X + Borders.Left, Y + Height - Borders.Bottom, Width - Borders.Left - Borders.Right, Borders.Bottom, TileRect);
   TileRect :=
-      Classes.Rect(
-          SourceRect.Left,
-          SourceRect.Top + Borders.Top,
-          SourceRect.Left + Borders.Left,
-          SourceRect.Bottom - Borders.Bottom
-      );
+      Classes.Rect(SourceRect.Left, SourceRect.Top + Borders.Top, SourceRect.Left + Borders.Left, SourceRect.Bottom - Borders.Bottom);
   TilePatch(X, Y + Borders.Top, Borders.Left, Height - Borders.Top - Borders.Bottom, TileRect);
   TileRect :=
-      Classes.Rect(
-          SourceRect.Right - Borders.Right,
-          SourceRect.Top + Borders.Top,
-          SourceRect.Right,
-          SourceRect.Bottom - Borders.Bottom
-      );
-  TilePatch(
-      X + Width - Borders.Right,
-      Y + Borders.Top,
-      Borders.Right,
-      Height - Borders.Top - Borders.Bottom,
-      TileRect
-  );
+      Classes.Rect(SourceRect.Right - Borders.Right, SourceRect.Top + Borders.Top, SourceRect.Right, SourceRect.Bottom - Borders.Bottom);
+  TilePatch(X + Width - Borders.Right, Y + Borders.Top, Borders.Right, Height - Borders.Top - Borders.Bottom, TileRect);
   TileRect :=
       Classes.Rect(
           SourceRect.Left + Borders.Left,
@@ -2059,20 +1756,10 @@ begin
           SourceRect.Right - Borders.Right,
           SourceRect.Bottom - Borders.Bottom
       );
-  TilePatch(
-      X + Borders.Left,
-      Y + Borders.Top,
-      Width - Borders.Left - Borders.Right,
-      Height - Borders.Top - Borders.Bottom,
-      TileRect
-  );
+  TilePatch(X + Borders.Left, Y + Borders.Top, Width - Borders.Left - Borders.Right, Height - Borders.Top - Borders.Bottom, TileRect);
 end;
 
-procedure TGraphBufGR.RescaleWithAspect(
-    Width, Height: Cardinal;
-    CropToAspect: Boolean;
-    HorizontalAlign, VerticalAlign, Filter: Integer
-);
+procedure TGraphBufGR.RescaleWithAspect(Width, Height: Cardinal; CropToAspect: Boolean; HorizontalAlign, VerticalAlign, Filter: Integer);
 var
   Left, Top, CropWidth, CropHeight: Cardinal;
   Source, Dest: Pointer;
@@ -2176,11 +1863,7 @@ begin
   ScreenSnapshotSize := Classes.Point(0, 0);
 end;
 
-procedure TGraphBufGR.RescaleRgbaLinear(
-    Width, Height: Cardinal;
-    CropToAspect: Boolean;
-    HorizontalAlign, VerticalAlign: Integer
-);
+procedure TGraphBufGR.RescaleRgbaLinear(Width, Height: Cardinal; CropToAspect: Boolean; HorizontalAlign, VerticalAlign: Integer);
 type
   TLinearSample = record
     First, Last: Integer;
@@ -2280,11 +1963,7 @@ begin
                     + BottomRow[Columns[X].Last * 4 + Channel] * Columns[X].Weight;
             // Keep both interpolation axes until the final rounding, including alpha.
             // The 64-bit products are also required on 32-bit hosts.
-            DestPixel[Channel] :=
-                (QWord(TopValue) * (65536 - Row.Weight)
-                        + QWord(BottomValue) * Row.Weight
-                        + $80000000)
-                    shr 32;
+            DestPixel[Channel] := (QWord(TopValue) * (65536 - Row.Weight) + QWord(BottomValue) * Row.Weight + $80000000) shr 32;
           end;
           Inc(DestPixel, 4);
         end;
@@ -2353,11 +2032,7 @@ begin
   Y := 0;
   while Y < NewHeight do
   begin
-    System.Move(
-        AddPointerOffset(Source, Y * PitchBytes)^,
-        AddPointerOffset(Dest, Y * NewPitch)^,
-        NewWidth * BytesPerPixel
-    );
+    System.Move(AddPointerOffset(Source, Y * PitchBytes)^, AddPointerOffset(Dest, Y * NewPitch)^, NewWidth * BytesPerPixel);
     Inc(Y);
   end;
   UnlockTexture;
@@ -2483,12 +2158,7 @@ var
   Y: Cardinal;
   RowBytes: Integer;
 
-  procedure CopyRgbToOpaqueRgba(
-      Dest: Pointer;
-      DestPitch: Integer;
-      Source: Pointer;
-      SourcePitch, Width, Height: Integer
-  );
+  procedure CopyRgbToOpaqueRgba(Dest: Pointer; DestPitch: Integer; Source: Pointer; SourcePitch, Width, Height: Integer);
   var
     X, Y: Integer;
   begin
@@ -2498,11 +2168,7 @@ var
       X := 0;
       while X < Width do
       begin
-        System.Move(
-            AddPointerOffset(Source, X * SizeOf(TColorRGB))^,
-            AddPointerOffset(Dest, X * SizeOf(TColorRGBA))^,
-            SizeOf(TColorRGB)
-        );
+        System.Move(AddPointerOffset(Source, X * SizeOf(TColorRGB))^, AddPointerOffset(Dest, X * SizeOf(TColorRGBA))^, SizeOf(TColorRGB));
         PColorRGBA(AddPointerOffset(Dest, X * SizeOf(TColorRGBA))).A := 255;
         Inc(X);
       end;
@@ -2533,11 +2199,7 @@ begin
       Y := 0;
       while Y < Cardinal(Height) do
       begin
-        System.Move(
-            AddPointerOffset(Pixels, PitchBytes * Y)^,
-            AddPointerOffset(Locked.Bits, Locked.Pitch * Y)^,
-            RowBytes
-        );
+        System.Move(AddPointerOffset(Pixels, PitchBytes * Y)^, AddPointerOffset(Locked.Bits, Locked.Pitch * Y)^, RowBytes);
         Inc(Y);
       end;
       Texture.UnlockRect(0);
@@ -2612,15 +2274,7 @@ begin
               Exit;
             end;
           end;
-          ErrorCode :=
-              Direct3DDevice.CreateOffscreenPlainSurface(
-                  Desc.Width,
-                  Desc.Height,
-                  Desc.Format,
-                  D3DPOOL_SYSTEMMEM,
-                  Offscreen,
-                  nil
-              );
+          ErrorCode := Direct3DDevice.CreateOffscreenPlainSurface(Desc.Width, Desc.Height, Desc.Format, D3DPOOL_SYSTEMMEM, Offscreen, nil);
           if ErrorCode = 0 then
           begin
             ErrorCode := Direct3DDevice.GetRenderTargetData(RenderTarget, Offscreen);
@@ -2659,26 +2313,18 @@ begin
               UnlockTexture;
             end
             else
-              raise Exception.Create(
-                  'TGraphBufGR.LoadFromScreen()::GetRenderTargetData fail ('
-                      + IntToStr(ErrorCode)
-                      + ')');
+              raise Exception.Create('TGraphBufGR.LoadFromScreen()::GetRenderTargetData fail (' + IntToStr(ErrorCode) + ')');
             Offscreen := nil;
           end
           else
-            raise Exception.Create(
-                'TGraphBufGR.LoadFromScreen()::CreateOffscreenPlainSurface fail ('
-                    + IntToStr(ErrorCode)
-                    + ')');
+            raise Exception.Create('TGraphBufGR.LoadFromScreen()::CreateOffscreenPlainSurface fail (' + IntToStr(ErrorCode) + ')');
         end
         else
-          raise Exception.Create(
-              'TGraphBufGR.LoadFromScreen()::GetDesc fail (' + IntToStr(ErrorCode) + ')');
+          raise Exception.Create('TGraphBufGR.LoadFromScreen()::GetDesc fail (' + IntToStr(ErrorCode) + ')');
         RenderTarget := nil;
       end
       else
-        raise Exception.Create(
-            'TGraphBufGR.LoadFromScreen()::GetRenderTarget fail (' + IntToStr(ErrorCode) + ')');
+        raise Exception.Create('TGraphBufGR.LoadFromScreen()::GetRenderTarget fail (' + IntToStr(ErrorCode) + ')');
     end
     else
     begin
@@ -2765,12 +2411,9 @@ begin
     X := 0;
     while X < Cardinal(Width) do
     begin
-      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).R :=
-          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).R;
-      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).G :=
-          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).G;
-      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).B :=
-          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).B;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).R := PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).R;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).G := PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).G;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).B := PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).B;
       Inc(X);
     end;
     Dest := AddPointerOffset(Dest, NewPitch);
@@ -2794,12 +2437,7 @@ begin
   BytesPerPixel := 3;
 end;
 
-procedure TGraphBufGR.DrawAntialiasedCircle16(
-    Center: TPoint;
-    Radius: Integer;
-    Color: Cardinal;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawAntialiasedCircle16(Center: TPoint; Radius: Integer; Color: Cardinal; Clip: TRect);
 var
   X, Y, SignX, SignY, Quadrant: Integer;
   PreviousCoverage, Coverage: Single;
@@ -2855,12 +2493,7 @@ begin
   end;
 end;
 
-procedure TGraphBufGR.DrawAntialiasedLine16(
-    X1, Y1, X2, Y2: Integer;
-    Color: Cardinal;
-    Alpha: Integer;
-    Clip: TRect
-);
+procedure TGraphBufGR.DrawAntialiasedLine16(X1, Y1, X2, Y2: Integer; Color: Cardinal; Alpha: Integer; Clip: TRect);
 var
   Slope, DX, DY, Gap, EndX, EndY, InterY, Coverage1, Coverage2: Double;
   X, FirstX, LastX, FirstY, LastY: Integer;
@@ -2874,11 +2507,7 @@ var
 
   procedure PlotLinePixel16(X, Y, Alpha: Integer);
   begin
-    if (X >= Clip.Left)
-        and (X < Clip.Right)
-        and (Y >= Clip.Top)
-        and (Y < Clip.Bottom)
-        and (Alpha > 0) then
+    if (X >= Clip.Left) and (X < Clip.Right) and (Y >= Clip.Top) and (Y < Clip.Bottom) and (Alpha > 0) then
       BlendPixel16(X, Y, Color, Alpha);
   end;
 

@@ -30,36 +30,16 @@ type
     procedure ApplyAdd(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplySubtract(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyMultiply(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
-    procedure ApplyPercentChange(
-        var Left: TCPVariant;
-        var Right: TCPVariant;
-        var OutValue: TCPVariant
-    );
+    procedure ApplyPercentChange(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyDivide(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyIntDivide(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyModulo(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyRange(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
-    procedure ApplyMembership(
-        var Left: TCPVariant;
-        var Right: TCPVariant;
-        var OutValue: TCPVariant
-    );
+    procedure ApplyMembership(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyLessThan(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
-    procedure ApplyGreaterThan(
-        var Left: TCPVariant;
-        var Right: TCPVariant;
-        var OutValue: TCPVariant
-    );
-    procedure ApplyLessOrEqual(
-        var Left: TCPVariant;
-        var Right: TCPVariant;
-        var OutValue: TCPVariant
-    );
-    procedure ApplyGreaterOrEqual(
-        var Left: TCPVariant;
-        var Right: TCPVariant;
-        var OutValue: TCPVariant
-    );
+    procedure ApplyGreaterThan(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
+    procedure ApplyLessOrEqual(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
+    procedure ApplyGreaterOrEqual(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyEqual(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyNotEqual(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
     procedure ApplyAnd(var Left: TCPVariant; var Right: TCPVariant; var OutValue: TCPVariant);
@@ -80,11 +60,7 @@ type
     procedure Prepare(Text: WideString; DefaultParameterIndex: Integer);
     constructor Create;
     procedure Reset;
-    function HasBalancedParenthesesInSlice(
-        const Text: WideString;
-        FirstIndex: Integer;
-        LastIndex: Integer
-    ): Boolean;
+    function HasBalancedParenthesesInSlice(const Text: WideString; FirstIndex: Integer; LastIndex: Integer): Boolean;
     function SubstituteParameters(Parameters: TList): WideString;
     function HasBalancedParentheses(const Text: WideString): Boolean;
     function ClampNumericLiterals(Text: WideString): WideString;
@@ -107,11 +83,9 @@ begin
   OutValue.Reset;
   OutValue.ValueKind := cpvkFloat;
   if (Left.ValueKind = cpvkFloat) and (Right.ValueKind = cpvkFloat) then
-    OutValue.FloatValue :=
-        Math.Sign(Left.AsExtended) * Math.Power(Abs(Left.AsExtended), Right.AsExtended)
+    OutValue.FloatValue := Math.Sign(Left.AsExtended) * Math.Power(Abs(Left.AsExtended), Right.AsExtended)
   else if Left.ValueKind = cpvkFloat then
-    OutValue.FloatValue :=
-        Math.Sign(Left.AsExtended) * Math.IntPower(Abs(Left.AsExtended), Right.AsInteger)
+    OutValue.FloatValue := Math.Sign(Left.AsExtended) * Math.IntPower(Abs(Left.AsExtended), Right.AsInteger)
   else if Right.ValueKind = cpvkFloat then
   begin
     A := Left.AsInteger;
@@ -607,9 +581,7 @@ begin
         Index := FindTextOffsetW(Current, ' ', Index + 1)
       else
       begin
-        Current :=
-            CopyWideStringUnchecked(Current, 1, Index)
-                + CopyWideStringUnchecked(Current, Index + 2, Length(Current) - Index - 1);
+        Current := CopyWideStringUnchecked(Current, 1, Index) + CopyWideStringUnchecked(Current, Index + 2, Length(Current) - Index - 1);
         Index := FindTextOffsetW(Current, ' ', Index);
       end;
     end;
@@ -1066,9 +1038,7 @@ begin
     Count := Length(Text);
     if not Value.TryLoadFromText(Text) then
     begin
-      if (Text[1] = '(')
-          and (Text[Count] = ')')
-          and HasBalancedParenthesesInSlice(Text, 2, Count - 1) then
+      if (Text[1] = '(') and (Text[Count] = ')') and HasBalancedParenthesesInSlice(Text, 2, Count - 1) then
       begin
         Inner := '';
         for i := 2 to Count - 1 do
@@ -1208,10 +1178,7 @@ begin
   if not HasError then
   begin
     Count := Length(Text);
-    if (Count >= 2)
-        and (Text[1] = '(')
-        and (Text[Count] = ')')
-        and HasBalancedParenthesesInSlice(Text, 2, Count - 1) then
+    if (Count >= 2) and (Text[1] = '(') and (Text[Count] = ')') and HasBalancedParenthesesInSlice(Text, 2, Count - 1) then
     begin
       Readable := '';
       for i := 2 to Count - 1 do
@@ -1249,10 +1216,7 @@ begin
   HasError := False;
 end;
 
-function TCalcParse.HasBalancedParenthesesInSlice(
-    const Text: WideString;
-    FirstIndex, LastIndex: Integer
-): Boolean;
+function TCalcParse.HasBalancedParenthesesInSlice(const Text: WideString; FirstIndex, LastIndex: Integer): Boolean;
 var
   Depth, i: Integer;
   Balanced: Boolean;
@@ -1287,19 +1251,9 @@ begin
   begin
     Parameter := TParameter(Parameters[i - 1]);
     if Parameter.Value < 0 then
-      Text :=
-          ReplaceAllWideString(
-              Text,
-              '[p' + IntToWideString(i) + ']',
-              '(0' + IntToWideString(Parameter.Value) + ')'
-          )
+      Text := ReplaceAllWideString(Text, '[p' + IntToWideString(i) + ']', '(0' + IntToWideString(Parameter.Value) + ')')
     else
-      Text :=
-          ReplaceAllWideString(
-              Text,
-              '[p' + IntToWideString(i) + ']',
-              IntToWideString(Parameter.Value)
-          );
+      Text := ReplaceAllWideString(Text, '[p' + IntToWideString(i) + ']', IntToWideString(Parameter.Value));
   end;
   Result := Text;
 end;

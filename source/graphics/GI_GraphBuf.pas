@@ -197,11 +197,7 @@ begin
   Bitmap := AcquireOrCreateBitmap(Control);
   try
     GraphBuf.AllocateRgba(Bitmap.Bitmap.Width, Bitmap.Bitmap.Height, Bitmap.Bitmap.PitchBytes);
-    System.Move(
-        Pointer(Bitmap.Bitmap.GetPixels)^,
-        Pointer(GraphBuf.GetPixels)^,
-        GraphBuf.PitchBytes * GraphBuf.Height
-    );
+    System.Move(Pointer(Bitmap.Bitmap.GetPixels)^, Pointer(GraphBuf.GetPixels)^, GraphBuf.PitchBytes * GraphBuf.Height);
   finally
     Control.Release;
   end;
@@ -220,11 +216,7 @@ begin
   Bitmap := AcquireOrCreateBitmap(Control);
   try
     GraphBuf.AllocateRgb(Bitmap.Bitmap.Width, Bitmap.Bitmap.Height, Bitmap.Bitmap.PitchBytes);
-    System.Move(
-        Pointer(Bitmap.Bitmap.GetPixels)^,
-        Pointer(GraphBuf.GetPixels)^,
-        GraphBuf.PitchBytes * GraphBuf.Height
-    );
+    System.Move(Pointer(Bitmap.Bitmap.GetPixels)^, Pointer(GraphBuf.GetPixels)^, GraphBuf.PitchBytes * GraphBuf.Height);
   finally
     Control.Release;
   end;
@@ -321,12 +313,10 @@ begin
       Exit;
     X := (Point.X - Left) mod Width;
     Y := (Point.Y - Top) mod Height;
-    Result :=
-        PByte(AddPointerOffset(GraphBuf.GetPixels, Y * GraphBuf.PitchBytes + X * 4 + 3))^ <> 0;
+    Result := PByte(AddPointerOffset(GraphBuf.GetPixels, Y * GraphBuf.PitchBytes + X * 4 + 3))^ <> 0;
     Exit;
   end;
-  Pixels :=
-      AddPointerOffset(@Pixel, -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word)));
+  Pixels := AddPointerOffset(@Pixel, -(ScreenRenderBuffer.PitchBytes * Point.Y + Point.X * SizeOf(Word)));
   Buffer := TGraphBufGR.Create(False);
   Buffer.AttachPixels(1, 1, ScreenRenderBuffer.PitchBytes, Pixels);
   if SourceHasPerPixelAlpha then
@@ -351,16 +341,7 @@ begin
       X := Left;
       while X < Right do
       begin
-        CopyGraphBuffer16Clipped(
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            X,
-            Y,
-            GraphBuf,
-            Clip,
-            HalfAlpha,
-            False
-        );
+        CopyGraphBuffer16Clipped(Buffer.GetPixels, Buffer.PitchBytes, X, Y, GraphBuf, Clip, HalfAlpha, False);
         Inc(X, Width);
       end;
       Inc(Y, Height);
@@ -475,16 +456,7 @@ begin
       X := Left;
       while X < Right do
       begin
-        CopyGraphBuffer16Clipped(
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            X,
-            Y,
-            GraphBuf,
-            Clip,
-            HalfAlpha,
-            False
-        );
+        CopyGraphBuffer16Clipped(Buffer.GetPixels, Buffer.PitchBytes, X, Y, GraphBuf, Clip, HalfAlpha, False);
         Inc(X, Width);
       end;
       Inc(Y, Height);
@@ -535,15 +507,9 @@ procedure TGraphBufGI.LoadScaledBitmapPathAsRgba(const BitmapPath: WideString);
 begin
   LoadBitmapPathAsRgba(BitmapPath);
   if GraphBuf.Width * ClientSize.Y >= GraphBuf.Height * ClientSize.X then
-    GraphBuf.RescaleBilinearRgba(
-        ClientSize.X,
-        Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height))
-    )
+    GraphBuf.RescaleBilinearRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)))
   else
-    GraphBuf.RescaleBilinearRgba(
-        Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-        ClientSize.Y
-    );
+    GraphBuf.RescaleBilinearRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y);
 end;
 
 procedure TGraphBufGI.LoadScaledGiPath(const GiPath: WideString);
@@ -563,17 +529,9 @@ begin
   end;
   Control.Free;
   if GraphBuf.Width * ClientSize.Y >= GraphBuf.Height * ClientSize.X then
-    GraphBuf.RescaleRgba(
-        ClientSize.X,
-        Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-        5
-    )
+    GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
   else
-    GraphBuf.RescaleRgba(
-        Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-        ClientSize.Y,
-        5
-    );
+    GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
 end;
 
 procedure TGraphBufGI.Draw(ClipRect: TRect);
@@ -593,8 +551,7 @@ begin
   end;
   // CPU readback can omit native snapshot metadata. Both capture paths
   // already have framebuffer dimensions and must fill the logical canvas.
-  if HardwareRenderingEnabled and (MessageLoop <> nil)
-      and (MessageLoop.ContentPanel.DisplayScale < 1) and (GraphBuf = AuxRenderBuffer) then
+  if HardwareRenderingEnabled and (MessageLoop <> nil) and (MessageLoop.ContentPanel.DisplayScale < 1) and (GraphBuf = AuxRenderBuffer) then
   begin
     Width := MessageLoop.LayoutSize.X;
     Height := MessageLoop.LayoutSize.Y;
@@ -669,18 +626,7 @@ begin
       X := Left;
       while X < Right do
       begin
-        DrawTextureSized(
-            GraphBuf.GetTexture,
-            X,
-            Y,
-            Width,
-            Height,
-            255 - (Ord(HalfAlpha) shl 7),
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+        DrawTextureSized(GraphBuf.GetTexture, X, Y, Width, Height, 255 - (Ord(HalfAlpha) shl 7), RgbWhite, @ClipRect, False, False);
         Inc(X, Width);
       end;
       Inc(Y, Height);
@@ -694,14 +640,7 @@ begin
       X := Left;
       while X < Right do
       begin
-        DrawAlphaGraphBuffer16Clipped(
-            ScreenRenderBuffer.GetPixels,
-            ScreenRenderBuffer.PitchBytes,
-            X,
-            Y,
-            GraphBuf,
-            ClipRect
-        );
+        DrawAlphaGraphBuffer16Clipped(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, GraphBuf, ClipRect);
         Inc(X, Width);
       end;
       Inc(Y, Height);
@@ -715,16 +654,7 @@ begin
       X := Left;
       while X < Right do
       begin
-        CopyGraphBuffer16Clipped(
-            ScreenRenderBuffer.GetPixels,
-            ScreenRenderBuffer.PitchBytes,
-            X,
-            Y,
-            GraphBuf,
-            ClipRect,
-            HalfAlpha,
-            False
-        );
+        CopyGraphBuffer16Clipped(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, GraphBuf, ClipRect, HalfAlpha, False);
         Inc(X, Width);
       end;
       Inc(Y, Height);

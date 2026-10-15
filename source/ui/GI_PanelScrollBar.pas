@@ -213,68 +213,46 @@ begin
   begin
     if AutoHorizontalPlacement then
     begin
-      TObjectGI(HorizontalScrollBar)
-          .SetPosition(Classes.Point(0, ClientSize.Y - HorizontalScrollBar.ClientSize.Y));
-      HorizontalScrollBar.SetSize(
-          Classes.Point(
-              ClientSize.X - VerticalScrollBar.ClientSize.X,
-              HorizontalScrollBar.ClientSize.Y
-          )
-      );
+      TObjectGI(HorizontalScrollBar).SetPosition(Classes.Point(0, ClientSize.Y - HorizontalScrollBar.ClientSize.Y));
+      HorizontalScrollBar.SetSize(Classes.Point(ClientSize.X - VerticalScrollBar.ClientSize.X, HorizontalScrollBar.ClientSize.Y));
     end
     else
     begin
       TObjectGI(HorizontalScrollBar).SetPosition(HorizontalScrollBarRect.TopLeft);
-      HorizontalScrollBar.SetSize(
-          SubtractPoints(HorizontalScrollBarRect.BottomRight, HorizontalScrollBarRect.TopLeft)
-      );
+      HorizontalScrollBar.SetSize(SubtractPoints(HorizontalScrollBarRect.BottomRight, HorizontalScrollBarRect.TopLeft));
     end;
     if AutoVerticalPlacement then
     begin
-      TObjectGI(VerticalScrollBar)
-          .SetPosition(Classes.Point(ClientSize.X - VerticalScrollBar.ClientSize.X, 0));
-      VerticalScrollBar.SetSize(
-          Classes.Point(
-              VerticalScrollBar.ClientSize.X,
-              ClientSize.Y - HorizontalScrollBar.ClientSize.Y
-          )
-      );
+      TObjectGI(VerticalScrollBar).SetPosition(Classes.Point(ClientSize.X - VerticalScrollBar.ClientSize.X, 0));
+      VerticalScrollBar.SetSize(Classes.Point(VerticalScrollBar.ClientSize.X, ClientSize.Y - HorizontalScrollBar.ClientSize.Y));
     end
     else
     begin
       TObjectGI(VerticalScrollBar).SetPosition(VerticalScrollBarRect.TopLeft);
-      VerticalScrollBar.SetSize(
-          SubtractPoints(VerticalScrollBarRect.BottomRight, VerticalScrollBarRect.TopLeft)
-      );
+      VerticalScrollBar.SetSize(SubtractPoints(VerticalScrollBarRect.BottomRight, VerticalScrollBarRect.TopLeft));
     end;
   end
   else
   begin
     if AutoHorizontalPlacement then
     begin
-      TObjectGI(HorizontalScrollBar)
-          .SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ClientSize.Y));
+      TObjectGI(HorizontalScrollBar).SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ClientSize.Y));
       HorizontalScrollBar.SetSize(Classes.Point(ClientSize.X, HorizontalScrollBar.ClientSize.Y));
     end
     else
     begin
       TObjectGI(HorizontalScrollBar).SetPosition(HorizontalScrollBarRect.TopLeft);
-      HorizontalScrollBar.SetSize(
-          SubtractPoints(HorizontalScrollBarRect.BottomRight, HorizontalScrollBarRect.TopLeft)
-      );
+      HorizontalScrollBar.SetSize(SubtractPoints(HorizontalScrollBarRect.BottomRight, HorizontalScrollBarRect.TopLeft));
     end;
     if AutoVerticalPlacement then
     begin
-      TObjectGI(VerticalScrollBar)
-          .SetPosition(Classes.Point(LocalPosition.X + ClientSize.X, LocalPosition.Y));
+      TObjectGI(VerticalScrollBar).SetPosition(Classes.Point(LocalPosition.X + ClientSize.X, LocalPosition.Y));
       VerticalScrollBar.SetSize(Classes.Point(VerticalScrollBar.ClientSize.X, ClientSize.Y));
     end
     else
     begin
       TObjectGI(VerticalScrollBar).SetPosition(VerticalScrollBarRect.TopLeft);
-      VerticalScrollBar.SetSize(
-          SubtractPoints(VerticalScrollBarRect.BottomRight, VerticalScrollBarRect.TopLeft)
-      );
+      VerticalScrollBar.SetSize(SubtractPoints(VerticalScrollBarRect.BottomRight, VerticalScrollBarRect.TopLeft));
     end;
   end;
 end;
@@ -293,10 +271,7 @@ begin
   Child := FirstChild;
   while Child <> nil do
   begin
-    if (Child <> HorizontalScrollBar)
-        and (Child <> VerticalScrollBar)
-        and (Child.PositionModeW = True)
-        and (Child.Active = True) then
+    if (Child <> HorizontalScrollBar) and (Child <> VerticalScrollBar) and (Child.PositionModeW = True) and (Child.Active = True) then
     begin
       ChildBounds := Child.GetLocalBounds;
       if ChildBounds.Left < Bounds.Left then
@@ -339,21 +314,14 @@ end;
 
 function TPanelScrollBarGI.CanTouchScroll: Boolean;
 begin
-  Result :=
-      TouchScrollAxisEnabled(Self, HorizontalScrollBar)
-          or TouchScrollAxisEnabled(Self, VerticalScrollBar);
+  Result := TouchScrollAxisEnabled(Self, HorizontalScrollBar) or TouchScrollAxisEnabled(Self, VerticalScrollBar);
 end;
 
 procedure TPanelScrollBarGI.ScrollByTouch(DX, DY: Double; var RemainderX, RemainderY: Double);
 var
   Offset: TPoint;
 
-  procedure MoveAxis(
-      Bar: TScrollBarGI;
-      Delta: Double;
-      var Remainder: Double;
-      var Position: Integer
-  );
+  procedure MoveAxis(Bar: TScrollBarGI; Delta: Double; var Remainder: Double; var Position: Integer);
   var
     Pixels, Requested, LastPosition: Integer;
   begin
@@ -367,8 +335,7 @@ var
       LastPosition := LastPosition - Bar.PageSize + 1;
     // Discard even sub-pixel movement against an edge. Otherwise reversing a
     // slow finger first has to consume a hidden fraction left by the overscroll.
-    if ((Position <= Bar.Minimum) and (Delta < 0))
-        or ((Position >= LastPosition) and (Delta > 0)) then
+    if ((Position <= Bar.Minimum) and (Delta < 0)) or ((Position >= LastPosition) and (Delta > 0)) then
     begin
       Remainder := 0;
       Exit;

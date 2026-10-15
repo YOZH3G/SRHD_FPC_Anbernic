@@ -145,13 +145,7 @@ begin
   else if Header.PaletteBytes = 0 then
     Result := nil
   else
-    Result :=
-        AddPointerOffset(
-            BlobData,
-            SizeOf(THSAIHeaderEC)
-                + FrameIndex * Header.FrameStride
-                + Header.PitchBytes * Header.Height
-        );
+    Result := AddPointerOffset(BlobData, SizeOf(THSAIHeaderEC) + FrameIndex * Header.FrameStride + Header.PitchBytes * Header.Height);
 end;
 
 function TCHSAIEC.GetOrCreateFrameSurface(FrameIndex: Cardinal): IDirect3DTexture9;
@@ -170,15 +164,7 @@ begin
       Texture.LockRect(0, Locked, nil, 0);
       if Locked.Bits <> nil then
       begin
-        ExpandPaletteToBgra(
-            Locked.Bits,
-            Locked.Pitch,
-            Width,
-            Height,
-            GetFrameIndexPlane(FrameIndex),
-            Width,
-            GetFramePalette(FrameIndex)
-        );
+        ExpandPaletteToBgra(Locked.Bits, Locked.Pitch, Width, Height, GetFrameIndexPlane(FrameIndex), Width, GetFramePalette(FrameIndex));
         Texture.UnlockRect(0);
       end;
     end;

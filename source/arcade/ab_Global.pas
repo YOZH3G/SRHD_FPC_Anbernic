@@ -218,23 +218,11 @@ var
 
   CargoPickupDistance: Single = 80;
 
-function MakeSphericalBearingState(
-    LongitudeDegrees: Double;
-    PolarAngleDegrees: Double;
-    BearingDegrees: Double
-): TSphericalBearingState;
+function MakeSphericalBearingState(LongitudeDegrees: Double; PolarAngleDegrees: Double; BearingDegrees: Double): TSphericalBearingState;
 
-function SphericalToVector3D(
-    LongitudeRadians: Double;
-    PolarAngleRadians: Double;
-    Radius: Double
-): TVector3D;
+function SphericalToVector3D(LongitudeRadians: Double; PolarAngleRadians: Double; Radius: Double): TVector3D;
 
-procedure VectorToSphericalAngles(
-    Vector: TVector3D;
-    var LongitudeDegrees: Double;
-    var PolarAngleDegrees: Double
-);
+procedure VectorToSphericalAngles(Vector: TVector3D; var LongitudeDegrees: Double; var PolarAngleDegrees: Double);
 
 procedure AdvanceSphericalBearingState(
     var LongitudeDegrees: Double;
@@ -244,10 +232,7 @@ procedure AdvanceSphericalBearingState(
     ArcDistance: Double
 );
 
-function AdvanceSphericalStateOnCurrentSphere(
-    Source: TSphericalBearingState;
-    ArcDistance: Double
-): TSphericalBearingState;
+function AdvanceSphericalStateOnCurrentSphere(Source: TSphericalBearingState; ArcDistance: Double): TSphericalBearingState;
 
 function AdvanceSphericalStateAlongBearing(
     Source: TSphericalBearingState;
@@ -282,10 +267,7 @@ procedure ComputeSphericalDistance(
     SphereRadius: Double
 );
 
-function GetSphericalBearingAndDistance(
-    Source: TSphericalBearingState;
-    Target: TSphericalBearingState
-): TSphericalBearingDistance;
+function GetSphericalBearingAndDistance(Source: TSphericalBearingState; Target: TSphericalBearingState): TSphericalBearingDistance;
 
 procedure UpdateSphereProjectionMetrics;
 
@@ -303,18 +285,9 @@ procedure SetIdentityMatrix4D(var Matrix: TMatrix4D);
 
 function BuildZAxisRotationMatrix(AngleRadians: Double): TMatrix4D;
 
-function BuildPerspectiveProjectionMatrix(
-    NearPlane: Double;
-    FarPlane: Double;
-    FovRadians: Double;
-    ProjectionScale: Double
-): TMatrix4D;
+function BuildPerspectiveProjectionMatrix(NearPlane: Double; FarPlane: Double; FovRadians: Double; ProjectionScale: Double): TMatrix4D;
 
-function BuildLookAtMatrix(
-    const CameraPos: TVector3D;
-    const TargetPos: TVector3D;
-    const UpVector: TVector3D
-): TMatrix4D;
+function BuildLookAtMatrix(const CameraPos: TVector3D; const TargetPos: TVector3D; const UpVector: TVector3D): TMatrix4D;
 
 function InvertMatrix4D(const Matrix: TMatrix4D): TMatrix4D;
 
@@ -337,11 +310,7 @@ uses
   aMyFunction,
   GR_Main;
 
-function MakeSphericalBearingState(
-    LongitudeDegrees,
-    PolarAngleDegrees,
-    BearingDegrees: Double
-): TSphericalBearingState;
+function MakeSphericalBearingState(LongitudeDegrees, PolarAngleDegrees, BearingDegrees: Double): TSphericalBearingState;
 begin
   Result.LongitudeDegrees := LongitudeDegrees;
   Result.PolarAngleDegrees := PolarAngleDegrees;
@@ -360,10 +329,7 @@ begin
   Result.Z := -Cos(LongitudeRadians) * V.X;
 end;
 
-procedure VectorToSphericalAngles(
-    Vector: TVector3D;
-    var LongitudeDegrees, PolarAngleDegrees: Double
-);
+procedure VectorToSphericalAngles(Vector: TVector3D; var LongitudeDegrees, PolarAngleDegrees: Double);
 var
   Radius: Double;
 begin
@@ -372,10 +338,7 @@ begin
   LongitudeDegrees := RadiansToHeadingDegrees(Pi - ArcTan2(Vector.X, Vector.Z));
 end;
 
-procedure AdvanceSphericalBearingState(
-    var LongitudeDegrees, PolarAngleDegrees, BearingDegrees: Double;
-    SphereRadius, ArcDistance: Double
-);
+procedure AdvanceSphericalBearingState(var LongitudeDegrees, PolarAngleDegrees, BearingDegrees: Double; SphereRadius, ArcDistance: Double);
 var
   ArcAngle, NewPolar, OldPolar, LongitudeDelta, OldBearing, NewBearing, InvSin, Value: Double;
   Reverse: Boolean;
@@ -391,21 +354,18 @@ begin
   OldBearing := HeadingDegreesToRadians(BearingDegrees);
   ArcAngle := ArcDistance / (2 * Pi * SphereRadius) * Pi * 2;
   OldPolar := HeadingDegreesToRadians(PolarAngleDegrees);
-  NewPolar :=
-      ArcCos(Cos(OldPolar) * Cos(ArcAngle) + Sin(OldPolar) * Sin(ArcAngle) * Cos(OldBearing));
+  NewPolar := ArcCos(Cos(OldPolar) * Cos(ArcAngle) + Sin(OldPolar) * Sin(ArcAngle) * Cos(OldBearing));
   if NewPolar < 0.00001 then
     InvSin := 99999999
   else
     InvSin := 1 / Sin(NewPolar);
-  Value :=
-      (Sin(OldPolar) * Cos(ArcAngle) - Cos(OldPolar) * Sin(ArcAngle) * Cos(OldBearing)) * InvSin;
+  Value := (Sin(OldPolar) * Cos(ArcAngle) - Cos(OldPolar) * Sin(ArcAngle) * Cos(OldBearing)) * InvSin;
   if Value < -1 then
     Value := -1
   else if Value > 1 then
     Value := 1;
   LongitudeDelta := ArcCos(Value);
-  Value :=
-      (Sin(ArcAngle) * Cos(OldPolar) - Cos(ArcAngle) * Sin(OldPolar) * Cos(OldBearing)) * InvSin;
+  Value := (Sin(ArcAngle) * Cos(OldPolar) - Cos(ArcAngle) * Sin(OldPolar) * Cos(OldBearing)) * InvSin;
   if Value < -1 then
     Value := -1
   else if Value > 1 then
@@ -414,33 +374,22 @@ begin
   if BearingDegrees > 180 then
   begin
     BearingDegrees := WrapHeadingDegrees(RadiansToHeadingDegrees(Pi + NewBearing));
-    LongitudeDegrees :=
-        WrapHeadingDegrees(LongitudeDegrees - RadiansToHeadingDegrees(LongitudeDelta));
+    LongitudeDegrees := WrapHeadingDegrees(LongitudeDegrees - RadiansToHeadingDegrees(LongitudeDelta));
   end
   else
   begin
     BearingDegrees := WrapHeadingDegrees(RadiansToHeadingDegrees(Pi - NewBearing));
-    LongitudeDegrees :=
-        WrapHeadingDegrees(LongitudeDegrees + RadiansToHeadingDegrees(LongitudeDelta));
+    LongitudeDegrees := WrapHeadingDegrees(LongitudeDegrees + RadiansToHeadingDegrees(LongitudeDelta));
   end;
   PolarAngleDegrees := RadiansToHeadingDegrees(NewPolar);
   if Reverse then
     BearingDegrees := WrapHeadingDegrees(BearingDegrees + 180);
 end;
 
-function AdvanceSphericalStateOnCurrentSphere(
-    Source: TSphericalBearingState;
-    ArcDistance: Double
-): TSphericalBearingState;
+function AdvanceSphericalStateOnCurrentSphere(Source: TSphericalBearingState; ArcDistance: Double): TSphericalBearingState;
 begin
   Result := Source;
-  AdvanceSphericalBearingState(
-      Result.LongitudeDegrees,
-      Result.PolarAngleDegrees,
-      Result.BearingDegrees,
-      SphereRadius,
-      ArcDistance
-  );
+  AdvanceSphericalBearingState(Result.LongitudeDegrees, Result.PolarAngleDegrees, Result.BearingDegrees, SphereRadius, ArcDistance);
 end;
 
 function AdvanceSphericalStateAlongBearing(
@@ -452,13 +401,7 @@ var
 begin
   Result := Source;
   RelativeBearing := HeadingDifferenceDegrees(TravelBearingDegrees, Result.BearingDegrees);
-  AdvanceSphericalBearingState(
-      Result.LongitudeDegrees,
-      Result.PolarAngleDegrees,
-      TravelBearingDegrees,
-      SphereRadius,
-      ArcDistance
-  );
+  AdvanceSphericalBearingState(Result.LongitudeDegrees, Result.PolarAngleDegrees, TravelBearingDegrees, SphereRadius, ArcDistance);
   Result.BearingDegrees := WrapHeadingDegrees(TravelBearingDegrees + RelativeBearing);
 end;
 
@@ -472,35 +415,22 @@ var
 begin
   Result := Source;
   RelativeBearing := HeadingDifferenceDegrees(TravelBearingDegrees, Result.BearingDegrees);
-  AdvanceSphericalBearingState(
-      Result.LongitudeDegrees,
-      Result.PolarAngleDegrees,
-      TravelBearingDegrees,
-      SphereRadius,
-      ArcDistance
-  );
+  AdvanceSphericalBearingState(Result.LongitudeDegrees, Result.PolarAngleDegrees, TravelBearingDegrees, SphereRadius, ArcDistance);
   Result.BearingDegrees := WrapHeadingDegrees(TravelBearingDegrees + RelativeBearing);
 end;
 
 procedure ComputeSphericalBearingAndDistance(
     var BearingDeltaDegrees, Distance: Double;
-    SourceLongitudeDegrees,
-    SourcePolarAngleDegrees,
-    SourceBearingDegrees,
-    TargetLongitudeDegrees,
-    TargetPolarAngleDegrees,
-    SphereRadius: Double
+    SourceLongitudeDegrees, SourcePolarAngleDegrees, SourceBearingDegrees, TargetLongitudeDegrees, TargetPolarAngleDegrees, SphereRadius:
+        Double
 );
 var
   ArcAngle, TargetPolar, SourcePolar, LongitudeDelta, Bearing, Value: Double;
 begin
   TargetPolar := HeadingDegreesToRadians(TargetPolarAngleDegrees);
   SourcePolar := HeadingDegreesToRadians(SourcePolarAngleDegrees);
-  LongitudeDelta :=
-      HeadingDegreesToRadians(WrapHeadingDegrees(TargetLongitudeDegrees - SourceLongitudeDegrees));
-  Value :=
-      Cos(TargetPolar) * Cos(SourcePolar)
-          + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
+  LongitudeDelta := HeadingDegreesToRadians(WrapHeadingDegrees(TargetLongitudeDegrees - SourceLongitudeDegrees));
+  Value := Cos(TargetPolar) * Cos(SourcePolar) + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
   if Value < -1 then
     Value := -1
   else if Value > 1 then
@@ -512,10 +442,7 @@ begin
     BearingDeltaDegrees := 0;
     Exit;
   end;
-  Value :=
-      (Sin(SourcePolar) * Cos(TargetPolar)
-              - Cos(SourcePolar) * Sin(TargetPolar) * Cos(LongitudeDelta))
-          / Sin(ArcAngle);
+  Value := (Sin(SourcePolar) * Cos(TargetPolar) - Cos(SourcePolar) * Sin(TargetPolar) * Cos(LongitudeDelta)) / Sin(ArcAngle);
   if Value < -1 then
     Value := -1
   else if Value > 1 then
@@ -523,8 +450,7 @@ begin
   Bearing := ArcCos(Value);
   if HeadingDifferenceDegrees(SourceLongitudeDegrees, TargetLongitudeDegrees) < 0 then
     Bearing := -Bearing;
-  BearingDeltaDegrees :=
-      HeadingDifferenceDegrees(SourceBearingDegrees, RadiansToHeadingDegrees(Bearing));
+  BearingDeltaDegrees := HeadingDifferenceDegrees(SourceBearingDegrees, RadiansToHeadingDegrees(Bearing));
 end;
 
 procedure ComputeSphericalDistance(
@@ -541,11 +467,8 @@ var
 begin
   TargetPolar := HeadingDegreesToRadians(TargetPolarAngleDegrees);
   SourcePolar := HeadingDegreesToRadians(SourcePolarAngleDegrees);
-  LongitudeDelta :=
-      HeadingDegreesToRadians(WrapHeadingDegrees(TargetLongitudeDegrees - SourceLongitudeDegrees));
-  Value :=
-      Cos(TargetPolar) * Cos(SourcePolar)
-          + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
+  LongitudeDelta := HeadingDegreesToRadians(WrapHeadingDegrees(TargetLongitudeDegrees - SourceLongitudeDegrees));
+  Value := Cos(TargetPolar) * Cos(SourcePolar) + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
   if Value < -1 then
     Value := -1
   else if Value > 1 then
@@ -554,10 +477,7 @@ begin
   Distance := ArcAngle / (2 * Pi) * 2 * Pi * SphereRadius;
 end;
 
-function GetSphericalBearingAndDistance(
-    Source,
-    Target: TSphericalBearingState
-): TSphericalBearingDistance;
+function GetSphericalBearingAndDistance(Source, Target: TSphericalBearingState): TSphericalBearingDistance;
 begin
   ComputeSphericalBearingAndDistance(
       Result.BearingDeltaDegrees,
@@ -673,12 +593,7 @@ begin
   Result[1, 0] := S;
 end;
 
-function BuildPerspectiveProjectionMatrix(
-    NearPlane,
-    FarPlane,
-    FovRadians,
-    ProjectionScale: Double
-): TMatrix4D;
+function BuildPerspectiveProjectionMatrix(NearPlane, FarPlane, FovRadians, ProjectionScale: Double): TMatrix4D;
 var
   C, S, Q: Double;
 begin
@@ -698,8 +613,7 @@ var
   Forward, Right, Up: TVector3D;
 begin
   SetIdentityMatrix4D(Result);
-  Forward :=
-      MakeVector3D(TargetPos.X - CameraPos.X, TargetPos.Y - CameraPos.Y, TargetPos.Z - CameraPos.Z);
+  Forward := MakeVector3D(TargetPos.X - CameraPos.X, TargetPos.Y - CameraPos.Y, TargetPos.Z - CameraPos.Z);
   Forward := NormalizeVector3D(Forward);
   Right := CrossProduct3D(UpVector, Forward);
   Up := CrossProduct3D(Forward, Right);
@@ -860,28 +774,14 @@ var
 begin
   // Preserve the x87 addition order and its single division followed by multiplies.
   InverseW :=
-      1
-          / (Extended(Matrix[0, 3]) * Source.X
-              + Extended(Matrix[1, 3]) * Source.Y
-              + Extended(Matrix[2, 3]) * Source.Z
-              + Matrix[3, 3]);
+      1 / (Extended(Matrix[0, 3]) * Source.X + Extended(Matrix[1, 3]) * Source.Y + Extended(Matrix[2, 3]) * Source.Z + Matrix[3, 3]);
   Result.X :=
-      (Extended(Matrix[0, 0]) * Source.X
-              + Extended(Matrix[1, 0]) * Source.Y
-              + Extended(Matrix[2, 0]) * Source.Z
-              + Matrix[3, 0])
-          * InverseW;
+      (Extended(Matrix[0, 0]) * Source.X + Extended(Matrix[1, 0]) * Source.Y + Extended(Matrix[2, 0]) * Source.Z + Matrix[3, 0]) * InverseW;
   Result.Y :=
-      (Extended(Matrix[0, 1]) * Source.X
-              + Extended(Matrix[1, 1]) * Source.Y
-              + Extended(Matrix[2, 1]) * Source.Z
-              + Matrix[3, 1])
-          * InverseW;
+      (Extended(Matrix[0, 1]) * Source.X + Extended(Matrix[1, 1]) * Source.Y + Extended(Matrix[2, 1]) * Source.Z + Matrix[3, 1]) * InverseW;
   // Z unwinds the remaining x87 stack in a different order from X and Y.
   Result.Z :=
-      (Extended(Matrix[1, 2]) * Source.Y
-              + (Extended(Matrix[0, 2]) * Source.X
-                  + (Extended(Matrix[2, 2]) * Source.Z + Matrix[3, 2])))
+      (Extended(Matrix[1, 2]) * Source.Y + (Extended(Matrix[0, 2]) * Source.X + (Extended(Matrix[2, 2]) * Source.Z + Matrix[3, 2])))
           * InverseW;
 end;
 
@@ -904,10 +804,8 @@ begin
   CenterDelta.X := SphereCenter.X - RayOrigin.X;
   CenterDelta.Y := SphereCenter.Y - RayOrigin.Y;
   CenterDelta.Z := SphereCenter.Z - RayOrigin.Z;
-  DistanceSquared :=
-      CenterDelta.X * CenterDelta.X + CenterDelta.Y * CenterDelta.Y + CenterDelta.Z * CenterDelta.Z;
-  Projection :=
-      CenterDelta.X * Direction.X + CenterDelta.Y * Direction.Y + CenterDelta.Z * Direction.Z;
+  DistanceSquared := CenterDelta.X * CenterDelta.X + CenterDelta.Y * CenterDelta.Y + CenterDelta.Z * CenterDelta.Z;
+  Projection := CenterDelta.X * Direction.X + CenterDelta.Y * Direction.Y + CenterDelta.Z * Direction.Z;
   Discriminant := Sqr(SphereRadius) - DistanceSquared + Projection * Projection;
   if Discriminant <= 0 then
   begin

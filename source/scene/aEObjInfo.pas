@@ -225,11 +225,7 @@ begin
         Ships[Index].FullName := WrapTextInColor(Ship.GetFullName(' '), InfoNameColorTag);
         if (Ship <> nil) and (GetPlayer = Ship.PartnerShip) then
           Ships[Index].FullName :=
-              Ships[Index].FullName
-                  + #13#10
-                  + WrapTextInColor(
-                      LookupLocalizedTextByKey('FormInfo.Partner'),
-                      TextHighlightColorTag);
+              Ships[Index].FullName + #13#10 + WrapTextInColor(LookupLocalizedTextByKey('FormInfo.Partner'), TextHighlightColorTag);
         if (Ship is TKling)
             and ((Ship as TKling).ActiveProgramAppliedTurn > 0)
             and ((Ship as TKling).ActiveProgramId in [prgShipwreck..prgDisconnection]) then
@@ -237,11 +233,7 @@ begin
               Ships[Index].FullName
                   + #13#10
                   + WrapTextInColor(
-                      LocalizedText(
-                          'Programms.'
-                              + ProgramNames[(Ship as TKling).ActiveProgramId]
-                              + '.AddToShipInfo'
-                      ),
+                      LocalizedText('Programms.' + ProgramNames[(Ship as TKling).ActiveProgramId] + '.AddToShipInfo'),
                       RedColorTag);
       end
       else
@@ -275,8 +267,7 @@ begin
           or (Ship.TypeId = stTranclucator) then
       begin
         Stage := 25;
-        Ships[Index].DefenseText :=
-            Ships[Index].DefenseText + ' + ' + WrapTextInColor(IntToStr(Ship.GetArmor), '');
+        Ships[Index].DefenseText := Ships[Index].DefenseText + ' + ' + WrapTextInColor(IntToStr(Ship.GetArmor), '');
         if GetPlayer.HasScannerArtefact(Ship) then
         begin
           if Ship.GetRepairRobot <> nil then
@@ -297,10 +288,7 @@ begin
           if Ship.RangerRelations <> nil then
             if Ship.RangerRelations.Count > 0 then
             begin
-              Relation :=
-                  RelationValueToLevel(
-                      Byte(Ship.RangerRelations[Galaxy.Rangers.IndexOf(GetPlayer)])
-                  );
+              Relation := RelationValueToLevel(Byte(Ship.RangerRelations[Galaxy.Rangers.IndexOf(GetPlayer)]));
               if Relation <> rlHostile then
                 Ships[Index].Relation := Relation;
             end;
@@ -346,10 +334,8 @@ begin
       begin
         Stage := 31;
         Items[Index].ImagePath := 'GI,' + GetItemTypeBitmapPath(Item.ItemType);
-        Items[Index].Name :=
-            WrapTextInColor(GoodsMarket[Ord(Item.ItemType)].DisplayName, InfoNameColorTag);
-        Items[Index].InfoText :=
-            LocalizedText('Items.Goods.Text.' + IntToStr(Ord(Item.ItemType) + 1));
+        Items[Index].Name := WrapTextInColor(GoodsMarket[Ord(Item.ItemType)].DisplayName, InfoNameColorTag);
+        Items[Index].InfoText := LocalizedText('Items.Goods.Text.' + IntToStr(Ord(Item.ItemType) + 1));
         Items[Index].OwnerId := oiUninhabited;
       end
       else
@@ -399,8 +385,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      raise Exception.Create(
-          'Error in procedure TEObjInfo.LoadFromStar, label = ' + IntToStr(Stage));
+      raise Exception.Create('Error in procedure TEObjInfo.LoadFromStar, label = ' + IntToStr(Stage));
     end;
   end;
 end;

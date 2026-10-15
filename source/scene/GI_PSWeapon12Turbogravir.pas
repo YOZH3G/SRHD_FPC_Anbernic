@@ -229,11 +229,7 @@ var
   Target: TPoint;
   Intersection: TRect;
 begin
-  MessageLoop.UpdateRects.AddScreenClippedRect(
-      HitTestBounds,
-      Parent.ToAbsolutePoint(LocalPosition),
-      Parent.ToAbsolutePoint(TargetPoint)
-  );
+  MessageLoop.UpdateRects.AddScreenClippedRect(HitTestBounds, Parent.ToAbsolutePoint(LocalPosition), Parent.ToAbsolutePoint(TargetPoint));
   Target := Parent.ToAbsolutePoint(TargetPoint);
   Rect.Left := Target.X - 24;
   Rect.Right := Target.X + 24;
@@ -252,8 +248,7 @@ begin
   if (FirstParticle = nil) and (RemainingTicks > 24) then
   begin
     I := 0;
-    Distance :=
-        Trunc(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
+    Distance := Trunc(Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)));
     OriginalLength := Distance;
     if OriginalLength = 0 then
       OriginalLength := 1;
@@ -268,8 +263,7 @@ begin
           Particle := AddParticle;
           Particle.Position.X := X;
           Particle.Position.Y := I;
-          Particle.Color :=
-              SampleGradientColor(TurbogravirPrimaryPalettes[PaletteIndex], I / Distance * 5.0);
+          Particle.Color := SampleGradientColor(TurbogravirPrimaryPalettes[PaletteIndex], I / Distance * 5.0);
           if I < 64 then
             Particle.Alpha := (I * AlphaTable[I and PhaseMask]) shr 6;
           Particle.Velocity.X := 0;
@@ -279,8 +273,7 @@ begin
           Particle := AddParticle;
           Particle.Position.X := X;
           Particle.Position.Y := I + 1;
-          Particle.Color :=
-              SampleGradientColor(TurbogravirPrimaryPalettes[PaletteIndex], I / Distance * 5.0);
+          Particle.Color := SampleGradientColor(TurbogravirPrimaryPalettes[PaletteIndex], I / Distance * 5.0);
           if I < 64 then
             Particle.Alpha := (I * AlphaTable[I and PhaseMask]) shr 6;
           Particle.Velocity.X := 0;
@@ -294,8 +287,7 @@ begin
           Particle := AddParticle;
           Particle.Position.X := X;
           Particle.Position.Y := I;
-          Particle.Color :=
-              SampleGradientColor(TurbogravirSecondaryPalettes[PaletteIndex], I / Distance * 5.0);
+          Particle.Color := SampleGradientColor(TurbogravirSecondaryPalettes[PaletteIndex], I / Distance * 5.0);
           Particle.Alpha := AlphaTable[(I + HalfWavelength) and PhaseMask];
           if I < 64 then
             Particle.Alpha := (I * AlphaTable[(I + HalfWavelength) and PhaseMask]) shr 6;
@@ -306,8 +298,7 @@ begin
           Particle := AddParticle;
           Particle.Position.X := X;
           Particle.Position.Y := I + 1;
-          Particle.Color :=
-              SampleGradientColor(TurbogravirSecondaryPalettes[PaletteIndex], I / Distance * 5.0);
+          Particle.Color := SampleGradientColor(TurbogravirSecondaryPalettes[PaletteIndex], I / Distance * 5.0);
           Particle.Alpha := AlphaTable[(I + HalfWavelength) and PhaseMask];
           if I < 64 then
             Particle.Alpha := (I * AlphaTable[(I + HalfWavelength) and PhaseMask]) shr 6;
@@ -323,9 +314,7 @@ begin
   else
   begin
     Distance := Round(OriginalLength);
-    LengthScale :=
-        Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y))
-            / OriginalLength;
+    LengthScale := Sqrt(Sqr(TargetPoint.X - LocalPosition.X) + Sqr(TargetPoint.Y - LocalPosition.Y)) / OriginalLength;
     UpdateHitTestBounds;
     Particle := FirstParticle;
     while Particle <> nil do
@@ -343,8 +332,7 @@ begin
           end;
           Current.Position.X := OffsetTable[Current.Position.Y and PhaseMask];
           if Current.Position.Y < 64 then
-            Current.Alpha :=
-                (Current.Position.Y * AlphaTable[Current.Position.Y and PhaseMask]) shr 6
+            Current.Alpha := (Current.Position.Y * AlphaTable[Current.Position.Y and PhaseMask]) shr 6
           else
             Current.Alpha := AlphaTable[Current.Position.Y and PhaseMask];
         end;
@@ -358,10 +346,7 @@ begin
           end;
           Current.Position.X := OffsetTable[(Current.Position.Y + HalfWavelength) and PhaseMask];
           if Current.Position.Y < 64 then
-            Current.Alpha :=
-                (Current.Position.Y
-                        * AlphaTable[(Current.Position.Y + HalfWavelength) and PhaseMask])
-                    shr 6
+            Current.Alpha := (Current.Position.Y * AlphaTable[(Current.Position.Y + HalfWavelength) and PhaseMask]) shr 6
           else
             Current.Alpha := AlphaTable[(Current.Position.Y + HalfWavelength) and PhaseMask];
         end;
@@ -465,16 +450,10 @@ begin
         PY := -Particle.Position.Y * LengthScale;
         X := Round(PX * Cosine - PY * Sine + AbsolutePosition.X);
         Y := Round(PX * Sine + PY * Cosine + AbsolutePosition.Y);
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
         Dec(X);
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := Particle.Next;

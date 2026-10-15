@@ -82,13 +82,7 @@ begin
   begin
     Heading := WrapHeadingDegrees(State.BearingDegrees + 90);
     HeadingDelta := HeadingDifferenceDegrees(Heading, State.BearingDegrees);
-    AdvanceSphericalBearingState(
-        State.LongitudeDegrees,
-        State.PolarAngleDegrees,
-        Heading,
-        SphereRadius,
-        Offset
-    );
+    AdvanceSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, Heading, SphereRadius, Offset);
     State.BearingDegrees := WrapHeadingDegrees(Heading + HeadingDelta);
   end;
   TrailDistance := 0;
@@ -162,8 +156,7 @@ begin
     end;
     if Entry = nil then
     begin
-      Entry :=
-          ab_WorldImage_Create(GetWorldPosition, 'GAI,Bm.AB.w07a_f', 'GAI,Bm.AB.w07a_s', False);
+      Entry := ab_WorldImage_Create(GetWorldPosition, 'GAI,Bm.AB.w07a_f', 'GAI,Bm.AB.w07a_s', False);
       ab_WorldImage_SetDepth(Entry, HitFrontDepth, HitBackDepth);
       ab_WorldImage_SetLooping(Entry, False);
       TrailImages.Add(Entry);

@@ -31,20 +31,9 @@ type
 
 function AcquireOrCreateLightPalette(Control: TCacheControlEC): TCLightPalEC;
 
-procedure GetLightPaletteMaskInfo(
-    Mask: Cardinal;
-    Shift: PCardinal;
-    BitCount: PCardinal;
-    LevelCount: PCardinal
-);
+procedure GetLightPaletteMaskInfo(Mask: Cardinal; Shift: PCardinal; BitCount: PCardinal; LevelCount: PCardinal);
 
-function BuildLightPalette(
-    Palette: PCardinal;
-    ColorCount: Integer;
-    RedMask: Cardinal;
-    GreenMask: Cardinal;
-    BlueMask: Cardinal
-): PWord;
+function BuildLightPalette(Palette: PCardinal; ColorCount: Integer; RedMask: Cardinal; GreenMask: Cardinal; BlueMask: Cardinal): PWord;
 
 procedure FreeLightPalette(Palette: PWord);
 
@@ -111,27 +100,12 @@ begin
   end;
 end;
 
-function BuildLightPalette(
-    Palette: PCardinal;
-    ColorCount: Integer;
-    RedMask, GreenMask, BlueMask: Cardinal
-): PWord;
+function BuildLightPalette(Palette: PCardinal; ColorCount: Integer; RedMask, GreenMask, BlueMask: Cardinal): PWord;
 const
   BrightnessBits = 6;
   BrightnessLevels = 1 shl BrightnessBits;
 var
-  RShift,
-  RBits,
-  RLevels,
-  RDiscard,
-  GShift,
-  GBits,
-  GLevels,
-  GDiscard,
-  BShift,
-  BBits,
-  BLevels,
-  BDiscard: Cardinal;
+  RShift, RBits, RLevels, RDiscard, GShift, GBits, GLevels, GDiscard, BShift, BBits, BLevels, BDiscard: Cardinal;
   First, Dest: PWord;
   Red, Green, Blue: Double;
   ColorIndex, Brightness: Integer;
@@ -157,10 +131,7 @@ begin
       R := Trunc(Red * Factor);
       G := Trunc(Green * Factor);
       B := Trunc(Blue * Factor);
-      Dest^ :=
-          (Word(R shr RDiscard) shl RShift)
-              or (Word(G shr GDiscard) shl GShift)
-              or (Word(B shr BDiscard) shl BShift);
+      Dest^ := (Word(R shr RDiscard) shl RShift) or (Word(G shr GDiscard) shl GShift) or (Word(B shr BDiscard) shl BShift);
       Dest := PWord(PAnsiChar(Dest) + SizeOf(Word));
       Inc(Brightness);
     until Brightness = BrightnessLevels;

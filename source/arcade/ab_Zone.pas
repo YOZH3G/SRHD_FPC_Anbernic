@@ -116,11 +116,7 @@ function ab_Zone_RandomKind(Kind: Integer): PabZone;
 
 function ab_Zone_RandomPosition(Zone: PabZone): TSphericalBearingState;
 
-function ab_Zone_FindContainingOrNearest(
-    Longitude: Double;
-    PolarAngle: Double;
-    var Nearest: PabZone
-): Boolean;
+function ab_Zone_FindContainingOrNearest(Longitude: Double; PolarAngle: Double; var Nearest: PabZone): Boolean;
 
 function ab_Zone_FindNearestOutside(Longitude: Double; PolarAngle: Double): PabZone;
 
@@ -244,12 +240,7 @@ end;
 procedure ab_Zone_UpdatePosition(Zone: PabZone);
 begin
   Zone.Radius := Pi * SphereRadius * Zone.RadiusDegrees / 180;
-  Zone.Position :=
-      SphericalToVector3D(
-          HeadingDegreesToRadians(Zone.Longitude),
-          HeadingDegreesToRadians(Zone.PolarAngle),
-          SphereRadius
-      );
+  Zone.Position := SphericalToVector3D(HeadingDegreesToRadians(Zone.Longitude), HeadingDegreesToRadians(Zone.PolarAngle), SphereRadius);
 end;
 
 procedure ab_Zone_UpdateImages(Zone: PabZone);
@@ -284,15 +275,10 @@ begin
   end;
   for Index := 0 to High(Zone.WorldLines) do
     if Zone.WorldLines[Index] = nil then
-      Zone.WorldLines[Index] :=
-          ab_WorldLine_Create(MakeVector3D(0, 0, 0), MakeVector3D(0, 0, 0), 1, Color, 0, False);
+      Zone.WorldLines[Index] := ab_WorldLine_Create(MakeVector3D(0, 0, 0), MakeVector3D(0, 0, 0), 1, Color, 0, False);
   Step := 360 / ((High(Zone.WorldLines) + 1) - 1);
   Bearing := -Step;
-  FirstState :=
-      AdvanceSphericalStateOnCurrentSphere(
-          MakeSphericalBearingState(Zone.Longitude, Zone.PolarAngle, Bearing),
-          Zone.Radius
-      );
+  FirstState := AdvanceSphericalStateOnCurrentSphere(MakeSphericalBearingState(Zone.Longitude, Zone.PolarAngle, Bearing), Zone.Radius);
   First :=
       SphericalToVector3D(
           HeadingDegreesToRadians(FirstState.LongitudeDegrees),
@@ -302,11 +288,7 @@ begin
   for Index := 0 to High(Zone.WorldLines) do
   begin
     Bearing := Bearing + Step;
-    LastState :=
-        AdvanceSphericalStateOnCurrentSphere(
-            MakeSphericalBearingState(Zone.Longitude, Zone.PolarAngle, Bearing),
-            Zone.Radius
-        );
+    LastState := AdvanceSphericalStateOnCurrentSphere(MakeSphericalBearingState(Zone.Longitude, Zone.PolarAngle, Bearing), Zone.Radius);
     Last :=
         SphericalToVector3D(
             HeadingDegreesToRadians(LastState.LongitudeDegrees),
@@ -564,10 +546,7 @@ begin
       );
 end;
 
-function ab_Zone_FindContainingOrNearest(
-    Longitude, PolarAngle: Double;
-    var Nearest: PabZone
-): Boolean;
+function ab_Zone_FindContainingOrNearest(Longitude, PolarAngle: Double; var Nearest: PabZone): Boolean;
 var
   Zone: PabZone;
   Distance, BestDistance: Double;
@@ -582,15 +561,7 @@ begin
     begin
       if Zone.Kind < 5 then
       begin
-        ComputeSphericalDistance(
-            Distance,
-            Zone.Longitude,
-            Zone.PolarAngle,
-            0,
-            Longitude,
-            PolarAngle,
-            SphereRadius
-        );
+        ComputeSphericalDistance(Distance, Zone.Longitude, Zone.PolarAngle, 0, Longitude, PolarAngle, SphereRadius);
         if Distance < Zone.Radius then
         begin
           Result := True;
@@ -620,15 +591,7 @@ begin
   begin
     if Zone.Kind <= 1 then
     begin
-      ComputeSphericalDistance(
-          Distance,
-          Zone.Longitude,
-          Zone.PolarAngle,
-          0,
-          Longitude,
-          PolarAngle,
-          SphereRadius
-      );
+      ComputeSphericalDistance(Distance, Zone.Longitude, Zone.PolarAngle, 0, Longitude, PolarAngle, SphereRadius);
       if (Distance > Zone.Radius) and (Distance < BestDistance) then
       begin
         BestDistance := Distance;
@@ -653,16 +616,7 @@ begin
     begin
       if Zone.GravityStrength <> 0 then
       begin
-        ComputeSphericalBearingAndDistance(
-            Bearing,
-            Distance,
-            Zone.Longitude,
-            Zone.PolarAngle,
-            0,
-            Longitude,
-            PolarAngle,
-            SphereRadius
-        );
+        ComputeSphericalBearingAndDistance(Bearing, Distance, Zone.Longitude, Zone.PolarAngle, 0, Longitude, PolarAngle, SphereRadius);
         if Distance < Zone.Radius then
         begin
           Result := Zone;
@@ -689,15 +643,7 @@ begin
   begin
     if Zone.Kind = 10 then
     begin
-      ComputeSphericalDistance(
-          Distance,
-          Zone.Longitude,
-          Zone.PolarAngle,
-          0,
-          Longitude,
-          PolarAngle,
-          SphereRadius
-      );
+      ComputeSphericalDistance(Distance, Zone.Longitude, Zone.PolarAngle, 0, Longitude, PolarAngle, SphereRadius);
       if Distance < Zone.Radius then
       begin
         Result := True;
@@ -820,11 +766,7 @@ begin
     Result := Source.Routes[Target.RouteIndex];
 end;
 
-function ab_Zone_IsHeadingInside(
-    Source: TSphericalBearingState;
-    Zone: PabZone;
-    var BearingDelta, AngularRadius: Double
-): Boolean;
+function ab_Zone_IsHeadingInside(Source: TSphericalBearingState; Zone: PabZone; var BearingDelta, AngularRadius: Double): Boolean;
 var
   Bearing, Distance: Double;
 begin
@@ -868,21 +810,8 @@ begin
   begin
     if (Zone <> Source) and (Zone.Kind < 5) then
     begin
-      ComputeSphericalDistance(
-          Distance,
-          Source.Longitude,
-          Source.PolarAngle,
-          0,
-          Zone.Longitude,
-          Zone.PolarAngle,
-          SphereRadius
-      );
-      if (Distance < BestDistance)
-          and not ab_StopLine_IsBlocked(
-              Source.Longitude,
-              Source.PolarAngle,
-              Zone.Longitude,
-              Zone.PolarAngle) then
+      ComputeSphericalDistance(Distance, Source.Longitude, Source.PolarAngle, 0, Zone.Longitude, Zone.PolarAngle, SphereRadius);
+      if (Distance < BestDistance) and not ab_StopLine_IsBlocked(Source.Longitude, Source.PolarAngle, Zone.Longitude, Zone.PolarAngle) then
       begin
         Result := Zone;
         BestDistance := Distance;

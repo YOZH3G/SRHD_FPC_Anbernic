@@ -58,12 +58,7 @@ function ab_WorldImage_Create(
     StopAnimation: Boolean
 ): PabWorldImage;
 
-procedure ab_WorldImage_Set(
-    Entry: PabWorldImage;
-    Position: TVector3D;
-    const FrontPath: WideString;
-    const BackPath: WideString
-);
+procedure ab_WorldImage_Set(Entry: PabWorldImage; Position: TVector3D; const FrontPath: WideString; const BackPath: WideString);
 
 procedure ab_WorldImage_SetPosition(Entry: PabWorldImage; Position: TVector3D);
 
@@ -140,11 +135,7 @@ begin
     FreeFromHeapEC(WorldImageHeap, Entry);
 end;
 
-function ab_WorldImage_Create(
-    Position: TVector3D;
-    const FrontPath, BackPath: WideString;
-    StopAnimation: Boolean
-): PabWorldImage;
+function ab_WorldImage_Create(Position: TVector3D; const FrontPath, BackPath: WideString; StopAnimation: Boolean): PabWorldImage;
 var
   Entry: PabWorldImage;
 begin
@@ -162,11 +153,7 @@ begin
   Result := Entry;
 end;
 
-procedure ab_WorldImage_Set(
-    Entry: PabWorldImage;
-    Position: TVector3D;
-    const FrontPath, BackPath: WideString
-);
+procedure ab_WorldImage_Set(Entry: PabWorldImage; Position: TVector3D; const FrontPath, BackPath: WideString);
 begin
   Entry.Position := Position;
   Entry.FrontImagePath := FrontPath;
@@ -241,16 +228,13 @@ begin
           begin
             Entry.Image.GaiImageControl.UserValue := PtrInt(Entry);
             if not Entry.LoopAnimation then
-              Entry.Image.GaiImageControl.CycleCompleteCallback :=
-                  ArcadeBattleScreen.WorldImageCycleComplete
+              Entry.Image.GaiImageControl.CycleCompleteCallback := ArcadeBattleScreen.WorldImageCycleComplete
             else
               Entry.Image.GaiImageControl.CycleCompleteCallback := nil;
             if (Entry.FrameMode = afmRestart) and Entry.Dirty then
               Entry.Image.GaiImageControl.SetSequenceFrame(0)
             else if (Entry.FrameMode = afmRandomStart) and Entry.Dirty then
-              Entry.Image.GaiImageControl.SetSequenceFrame(
-                  RandomIntRange(0, Entry.Image.GaiImageControl.SequenceFrameCount - 1)
-              )
+              Entry.Image.GaiImageControl.SetSequenceFrame(RandomIntRange(0, Entry.Image.GaiImageControl.SequenceFrameCount - 1))
             else
               Entry.Image.GaiImageControl.SetSequenceFrame(Frame);
             Entry.Image.RestartPlayback;
@@ -275,16 +259,13 @@ begin
           begin
             Entry.Image.GaiImageControl.UserValue := PtrInt(Entry);
             if not Entry.LoopAnimation then
-              Entry.Image.GaiImageControl.CycleCompleteCallback :=
-                  ArcadeBattleScreen.WorldImageCycleComplete
+              Entry.Image.GaiImageControl.CycleCompleteCallback := ArcadeBattleScreen.WorldImageCycleComplete
             else
               Entry.Image.GaiImageControl.CycleCompleteCallback := nil;
             if (Entry.FrameMode = afmRestart) and Entry.Dirty then
               Entry.Image.GaiImageControl.SetSequenceFrame(0)
             else if (Entry.FrameMode = afmRandomStart) and Entry.Dirty then
-              Entry.Image.GaiImageControl.SetSequenceFrame(
-                  RandomIntRange(0, Entry.Image.GaiImageControl.SequenceFrameCount - 1)
-              )
+              Entry.Image.GaiImageControl.SetSequenceFrame(RandomIntRange(0, Entry.Image.GaiImageControl.SequenceFrameCount - 1))
             else
               Entry.Image.GaiImageControl.SetSequenceFrame(Frame);
             Entry.Image.RestartPlayback;

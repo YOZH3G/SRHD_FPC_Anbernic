@@ -93,17 +93,9 @@ begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('Ok').Parent do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
-  FitMobileControl(
-      GetByName('Ok').Parent,
-      Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
-  );
+  FitMobileControl(GetByName('Ok').Parent, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12));
 end;
 
 procedure TfCount1.OnOpen;

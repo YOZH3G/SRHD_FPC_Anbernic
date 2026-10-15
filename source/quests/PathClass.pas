@@ -152,8 +152,7 @@ var
   i: Integer;
 begin
   for i := GetParameterChangeCount downto 1 do
-    if (GetParameterChange(i).ParameterIndex < 1)
-        or (GetParameterChange(i).ParameterIndex > Parameters.Count) then
+    if (GetParameterChange(i).ParameterIndex < 1) or (GetParameterChange(i).ParameterIndex > Parameters.Count) then
       ParameterChanges.Delete(i - 1)
     else if GetParameterChange(i).HasNoChange(Parameters) then
       if GetParameterChange(i).HasNoValueConstraint(Parameters) then

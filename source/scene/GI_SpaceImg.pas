@@ -185,13 +185,11 @@ procedure TSpaceImgGI.UpdateImageOrbitAndFrame(Image: PSpaceImageGI);
 var
   Data: TCGaiEC;
 begin
-  Image.OrbitRadius :=
-      Sqrt(Sqr(Image.X - Image.OrbitCenter.X) + Sqr(Image.Y - Image.OrbitCenter.Y));
+  Image.OrbitRadius := Sqrt(Sqr(Image.X - Image.OrbitCenter.X) + Sqr(Image.Y - Image.OrbitCenter.Y));
   if Image.OrbitRadius = 0 then
     Image.OrbitAngleRadians := 0
   else
-    Image.OrbitAngleRadians :=
-        ArcTan2(Image.X - Image.OrbitCenter.X, -(Image.Y - Image.OrbitCenter.Y));
+    Image.OrbitAngleRadians := ArcTan2(Image.X - Image.OrbitCenter.X, -(Image.Y - Image.OrbitCenter.Y));
   Data := AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[Image.TemplateIndex].CacheControl));
   try
     Image.ImageSize := Data.GetCanvasSize;
@@ -213,10 +211,8 @@ begin
   Image := Images;
   for I := 0 to ImageCount - 1 do
   begin
-    Image.PixelPosition.X :=
-        AbsolutePosition.X + Integer(Round((Image.X - ViewPosition.X) * Image.InverseDepth));
-    Image.PixelPosition.Y :=
-        AbsolutePosition.Y + Integer(Round((Image.Y - ViewPosition.Y) * Image.InverseDepth));
+    Image.PixelPosition.X := AbsolutePosition.X + Integer(Round((Image.X - ViewPosition.X) * Image.InverseDepth));
+    Image.PixelPosition.Y := AbsolutePosition.Y + Integer(Round((Image.Y - ViewPosition.Y) * Image.InverseDepth));
     Image := AddPointerOffset(Image, SizeOf(TSpaceImageGI));
   end;
   ViewDirty := False;
@@ -239,8 +235,7 @@ begin
     Dec(Image.FrameTicks);
     if Image.FrameTicks <= 0 then
     begin
-      Data :=
-          AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[Image.TemplateIndex].CacheControl));
+      Data := AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[Image.TemplateIndex].CacheControl));
       try
         Inc(Image.FrameIndex);
         if Data.GetSequenceFrameCount(0) <= Image.FrameIndex then
@@ -351,8 +346,7 @@ begin
     SpaceImageTemplates[I].CachedData := nil;
   try
     for I := 0 to High(SpaceImageTemplates) do
-      SpaceImageTemplates[I].CachedData :=
-          AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[I].CacheControl));
+      SpaceImageTemplates[I].CachedData := AcquireCachedGai(TCGaiControlEC(SpaceImageTemplates[I].CacheControl));
     Image := Images;
     for I := 0 to ImageCount - 1 do
     begin
@@ -369,16 +363,7 @@ begin
           // Cached textures already contain decoded pixels; only cache misses need GI decoding.
           Texture := Data.GetOrCreateFrameSurface(SourceFrameIndex);
           Origin := Data.GetFrameOrigin(SourceFrameIndex);
-          DrawTexture(
-              Texture,
-              Bounds.Left + Origin.X,
-              Bounds.Top + Origin.Y,
-              255,
-              RgbWhite,
-              @ClipRect,
-              False,
-              False
-          );
+          DrawTexture(Texture, Bounds.Left + Origin.X, Bounds.Top + Origin.Y, 255, RgbWhite, @ClipRect, False, False);
         end
         else
         begin

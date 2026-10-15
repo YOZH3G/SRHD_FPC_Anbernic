@@ -34,8 +34,7 @@ type
 
   TRobotPlaySound = procedure(Name: PWideChar); stdcall;
 
-  TRobotCreateSound =
-      function(Name: PWideChar; Group: Integer; Looping: Integer): TSoundBufferControl; stdcall;
+  TRobotCreateSound = function(Name: PWideChar; Group: Integer; Looping: Integer): TSoundBufferControl; stdcall;
 
   TRobotSoundAction = procedure(Sound: TSoundBufferControl); stdcall;
 
@@ -205,11 +204,7 @@ procedure FinalizeRobotRuntime;
 
 procedure RobotPlaySound(Name: PWideChar); stdcall;
 
-function RobotCreateSound(
-    Name: PWideChar;
-    Group: Integer;
-    Looping: Integer
-): TSoundBufferControl; stdcall;
+function RobotCreateSound(Name: PWideChar; Group: Integer; Looping: Integer): TSoundBufferControl; stdcall;
 
 procedure RobotFreeSound(Sound: TSoundBufferControl); stdcall;
 
@@ -342,9 +337,7 @@ begin
           RobotInterface := GetInterface();
           RobotInterface.Initialize(@RobotCallbacks);
           AppendLogLineThreadSafe('Load MatrixGame.dll .... ok');
-          AppendLogLineThreadSafe(
-              AnsiString('Robot.Support()=' + IntToWideString(RobotInterface.Support()))
-          );
+          AppendLogLineThreadSafe(AnsiString('Robot.Support()=' + IntToWideString(RobotInterface.Support())));
         end;
       end;
     end;
@@ -491,8 +484,7 @@ var
           WrappedLines.First;
           if First then
           begin
-            MergedBounds :=
-                Font.MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, Y, @TopAdjustment);
+            MergedBounds := Font.MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, Y, @TopAdjustment);
             First := False;
             Inc(Y, Font.GetLineHeight);
             WrappedLines.Next;
@@ -508,9 +500,7 @@ var
         Lines.Next;
       end;
     end;
-    Result :=
-        Classes
-            .Point(MergedBounds.Right - MergedBounds.Left, MergedBounds.Bottom - MergedBounds.Top);
+    Result := Classes.Point(MergedBounds.Right - MergedBounds.Left, MergedBounds.Bottom - MergedBounds.Top);
   end;
 
 begin
@@ -578,23 +568,13 @@ begin
     if Wrap = 0 then
     begin
       if AlignY = 1 then
-        CurrentY :=
-            Height div 2
-                - (Font.GetLineHeight * (Lines.GetCount - 1) + Font.GetCenteringHeight) div 2
-                + Font.GetCenteringHeight
+        CurrentY := Height div 2 - (Font.GetLineHeight * (Lines.GetCount - 1) + Font.GetCenteringHeight) div 2 + Font.GetCenteringHeight
       else
         CurrentY := Font.AboveBaseline + DrawY - 2;
       Lines.First;
       while not Lines.IsAtEnd do
       begin
-        Font.DrawTaggedText32(
-            Buffer.GetPixels,
-            Buffer.PitchBytes,
-            DrawX + OffsetX,
-            CurrentY + OffsetY,
-            Lines.GetCurrentText,
-            DrawClip
-        );
+        Font.DrawTaggedText32(Buffer.GetPixels, Buffer.PitchBytes, DrawX + OffsetX, CurrentY + OffsetY, Lines.GetCurrentText, DrawClip);
         Inc(CurrentY, Font.GetLineHeight);
         Lines.Next;
       end;

@@ -97,17 +97,8 @@ type
     procedure ResetExtendedSettingsClicked(Sender: TObjectGI);
     procedure ExtendedGroupClicked(Sender: TObjectGI);
     procedure RefreshExtendedGroup;
-    function AddExtendedOptionLabel(
-        OptionName: WideString;
-        Caption: WideString;
-        UnusedFlag: Boolean
-    ): TLabelGI;
-    procedure AddExtendedOptionChoice(
-        Value: Integer;
-        Caption: WideString;
-        Selected: Boolean;
-        Disabled: Boolean
-    );
+    function AddExtendedOptionLabel(OptionName: WideString; Caption: WideString; UnusedFlag: Boolean): TLabelGI;
+    procedure AddExtendedOptionChoice(Value: Integer; Caption: WideString; Selected: Boolean; Disabled: Boolean);
     procedure ExtendedChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure AddExtendedOptionSlider(
         ValueLabel: TLabelGI;
@@ -173,8 +164,7 @@ var
   Race: TOwnerId;
 begin
   inherited InitializeLayout;
-  Compact := GameCompactLayoutEnabled and HardwareRenderingEnabled
-      and (GameScreenWidth < 1024);
+  Compact := GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024);
   LayoutWidth := GameScreenWidth;
   LayoutHeight := GameScreenHeight;
   if Compact then
@@ -194,10 +184,7 @@ begin
       Text := IntToStr(I);
       if I < 10 then
         Text := '0' + Text;
-    until GameDataConfig
-            .GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName)
-            .CountParams(Text)
-        <= 0;
+    until GameDataConfig.GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName).CountParams(Text) <= 0;
     LastPortraitByRace[Race] := I - 1;
   end;
   ViewportRect := Classes.Rect(0, 0, GameScreenWidth, GameScreenHeight);
@@ -207,38 +194,16 @@ begin
     with FindByNameRecursive('ImageBG') do
       SetSize(Classes.Point(LayoutWidth, LayoutHeight));
     with FindByNameRecursive('PanelChar') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + LayoutExtraWidth div 2,
-              LocalPosition.Y + LayoutExtraHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth div 2, LocalPosition.Y + LayoutExtraHeight div 2));
     with FindByNameRecursive('PanelLevels') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + LayoutExtraWidth div 2,
-              LocalPosition.Y + LayoutExtraHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth div 2, LocalPosition.Y + LayoutExtraHeight div 2));
     with FindByNameRecursive('PanelSkills') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + LayoutExtraWidth div 2,
-              LocalPosition.Y + LayoutExtraHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth div 2, LocalPosition.Y + LayoutExtraHeight div 2));
     with FindByNameRecursive('PanelExtended') do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + LayoutExtraWidth div 2,
-              LocalPosition.Y + LayoutExtraHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth div 2, LocalPosition.Y + LayoutExtraHeight div 2));
     with FindByNameRecursive('Ok') do
     begin
-      SetPosition(
-          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight));
     end;
     with FindByNameRecursive('Cancel') do
     begin
@@ -246,9 +211,7 @@ begin
     end;
     with FindByNameRecursive('ImageHelp') do
     begin
-      SetPosition(
-          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight));
     end;
     with FindByNameRecursive('ImageFooter') do
     begin
@@ -257,9 +220,7 @@ begin
     end;
     with FindByNameRecursive('LabelHelp') do
     begin
-      SetPosition(
-          Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + LayoutExtraWidth, LocalPosition.Y + LayoutExtraHeight));
     end;
   end;
   AppendLogLineThreadSafe('ok');
@@ -367,19 +328,10 @@ begin
   for I := Low(ItemTypeByChoice) to High(ItemTypeByChoice) do
     if ItemTypeByChoice[I] in [Ord(t_IndustrialLaser)..Ord(t_Lirecron)] then
       (GetByName('ItemI' + IntToStr(I + 1)) as TImageGI)
-          .SetImagePath(
-              'GI,Bm.Items.'
-                  + GiResourceSuffix
-                  + ItemTypeNames[TItemType(ItemTypeByChoice[I])]
-                  + 's')
+          .SetImagePath('GI,Bm.Items.' + GiResourceSuffix + ItemTypeNames[TItemType(ItemTypeByChoice[I])] + 's')
     else
       (GetByName('ItemI' + IntToStr(I + 1)) as TImageGI)
-          .SetImagePath(
-              'GI,Bm.Items.'
-                  + GiResourceSuffix
-                  + ItemTypeNames[TItemType(ItemTypeByChoice[I])]
-                  + IntToStr(1)
-                  + 's');
+          .SetImagePath('GI,Bm.Items.' + GiResourceSuffix + ItemTypeNames[TItemType(ItemTypeByChoice[I])] + IntToStr(1) + 's');
   for I := 1 to 4 do
     for J := Low(DifficultyLevels) to High(DifficultyLevels) do
       with GetByName('Level' + IntToStr(I) + '_' + IntToStr(J)) as TGraphButtonGI do
@@ -481,15 +433,13 @@ var
 
 begin
   PlayerNameEdited := False;
-  if GameCompactLayoutEnabled and HardwareRenderingEnabled
-      and (GameScreenWidth < 1024) then
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024) then
     Direct3DDevice.Clear(0, nil, D3DCLEAR_TARGET, 0, 1, 0);
   PlayerNameValid := True;
   IronWillLabel := nil;
   IronWill := False;
   LevelPanelTop := CollapsedLevelPanelTop;
-  GetByName('PanelLevel')
-      .SetPosition(Classes.Point(GetByName('PanelLevel').LocalPosition.X, LevelPanelTop));
+  GetByName('PanelLevel').SetPosition(Classes.Point(GetByName('PanelLevel').LocalPosition.X, LevelPanelTop));
   (GetByName('LevelOpen') as TGraphButtonGI).SetActive(True);
   (GetByName('LevelClose') as TGraphButtonGI).SetActive(False);
   if NewGameSettingsConfig.CountParamsByPath('Race') > 0 then
@@ -526,8 +476,7 @@ begin
     PlayerRace := oiHuman;
     RaceClicked(GetByName('RacePeople'));
   end;
-  if (NewGameSettingsConfig.CountParamsByPath('Name') > 0)
-      and (NewGameSettingsConfig.GetParamByPathOrMarker('Name') <> '') then
+  if (NewGameSettingsConfig.CountParamsByPath('Name') > 0) and (NewGameSettingsConfig.GetParamByPathOrMarker('Name') <> '') then
   begin
     Text := NewGameSettingsConfig.GetParamByPathOrMarker('Name');
     (GetByName('PlayerName') as TEditGI).SetText(Text);
@@ -540,10 +489,8 @@ begin
   else
     CharacterPreset := 3;
   CharacterPresetClicked(GetByName('Char' + IntToStr(CharacterPreset)));
-  if (NewGameSettingsConfig.CountParamsByPath('Face') > 0)
-      and IsIntegerTextW(NewGameSettingsConfig.GetParamByPathOrMarker('Face')) then
-    CaptainPortraitIndex :=
-        ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Face'))
+  if (NewGameSettingsConfig.CountParamsByPath('Face') > 0) and IsIntegerTextW(NewGameSettingsConfig.GetParamByPathOrMarker('Face')) then
+    CaptainPortraitIndex := ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Face'))
   else
     CaptainPortraitIndex := 0;
   RefreshPortrait;
@@ -557,10 +504,8 @@ begin
       and (ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill1'))
           <> ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2'))) then
   begin
-    StartingSkills[0] :=
-        TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill1')));
-    StartingSkills[1] :=
-        TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2')));
+    StartingSkills[0] := TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill1')));
+    StartingSkills[1] := TPilotSkill(ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Skill2')));
   end
   else
   begin
@@ -578,10 +523,8 @@ begin
       and (ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item1'))
           <> ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item2'))) then
   begin
-    StartingItemChoices[0] :=
-        ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item1'));
-    StartingItemChoices[1] :=
-        ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item2'));
+    StartingItemChoices[0] := ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item1'));
+    StartingItemChoices[1] := ExtractDigitsToIntW(NewGameSettingsConfig.GetParamByPathOrMarker('Item2'));
   end
   else
   begin
@@ -646,661 +589,293 @@ begin
     Position := 0
   else
     Position := StrToInt(Text) + 1;
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'KlingStrength',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.KlingStrength'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('KlingStrength', LocalizedText('FormGameSet2.Extended.ParameterNames.KlingStrength'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 73, Position, 1, FormatExtendedAutoPercent);
   Text := GetNewGameCustomRule('KlingAggro');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text) + 1;
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'KlingAggro',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.KlingAggro'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('KlingAggro', LocalizedText('FormGameSet2.Extended.ParameterNames.KlingAggro'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 73, Position, 1, FormatExtendedAutoPercent);
   Text := GetNewGameCustomRule('KlingSpawn');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text) + 1;
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'KlingSpawn',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.KlingSpawn'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('KlingSpawn', LocalizedText('FormGameSet2.Extended.ParameterNames.KlingSpawn'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 73, Position, 1, FormatExtendedAutoPercent);
   Text := GetNewGameCustomRule('PirateAggro');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text) + 1;
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'PirateAggro',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.PirateAggro'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('PirateAggro', LocalizedText('FormGameSet2.Extended.ParameterNames.PirateAggro'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 73, Position, 1, FormatExtendedAutoPercent);
   Text := GetNewGameCustomRule('CoalAggro');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'CoalAggro',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.CoalAggro'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('CoalAggro', LocalizedText('FormGameSet2.Extended.ParameterNames.CoalAggro'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('ExtraInventions');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'ExtraInventions',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.ExtraInventions'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('ExtraInventions', LocalizedText('FormGameSet2.Extended.ParameterNames.ExtraInventions'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 255, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('ExtraRangers');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'ExtraRangers',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.ExtraRangers'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('ExtraRangers', LocalizedText('FormGameSet2.Extended.ParameterNames.ExtraRangers'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 50, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('ZeroStartExp');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'ZeroStartExp',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExp'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExpNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExpYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('ZeroStartExp', LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExp'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExpNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.ZeroStartExpYes'), Enabled, False);
   Text := GetNewGameCustomRule('KlingRacialWeapons');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'KlingRacialWeapons',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeapons'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeaponsNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeaponsYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('KlingRacialWeapons', LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeapons'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeaponsNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.KlingRacialWeaponsYes'), Enabled, False);
   Text := GetNewGameCustomRule('MaxRangeMissiles');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'MaxRangeMissiles',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissiles'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissilesNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissilesYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('MaxRangeMissiles', LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissiles'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissilesNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.MaxRangeMissilesYes'), Enabled, False);
   Text := GetNewGameCustomRule('HullGrowth');
   if Text = '' then
     Position := 0
   else
     Position := StrToInt(Text);
-  AddExtendedOptionLabel(
-      'HullGrowth',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowth'),
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthNormal'),
-      not (Position in [1, 2]),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthSlow'),
-      Position = 1,
-      False
-  );
-  AddExtendedOptionChoice(
-      2,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthTechOnly'),
-      Position = 2,
-      False
-  );
+  AddExtendedOptionLabel('HullGrowth', LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowth'), False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthNormal'), not (Position in [1, 2]), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthSlow'), Position = 1, False);
+  AddExtendedOptionChoice(2, LocalizedText('FormGameSet2.Extended.ParameterNames.HullGrowthTechOnly'), Position = 2, False);
   BuildExtendedGroup := 1;
   Text := GetNewGameCustomRule('AsteroidMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'AsteroidMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.AsteroidMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('AsteroidMod', LocalizedText('FormGameSet2.Extended.ParameterNames.AsteroidMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('SunDamageMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'SunDamageMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.SunDamageMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('SunDamageMod', LocalizedText('FormGameSet2.Extended.ParameterNames.SunDamageMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('AgPlanets');
   if Text = '' then
     Position := 5
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'AgPlanets',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsAg'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('AgPlanets', LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsAg'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 10, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('MiPlanets');
   if Text = '' then
     Position := 5
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'MiPlanets',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsMi'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('MiPlanets', LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsMi'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 10, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('InPlanets');
   if Text = '' then
     Position := 5
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'InPlanets',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsIn'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('InPlanets', LocalizedText('FormGameSet2.Extended.ParameterNames.PlanetsIn'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 10, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('StartCenter');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'StartCenter',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenter'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenterNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenterYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('StartCenter', LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenter'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenterNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.StartCenterYes'), Enabled, False);
   BuildExtendedGroup := 2;
   Text := GetNewGameCustomRule('RndChaotic');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'RndType',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.Rnd'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RndDetermined'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RndChaotic'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('RndType', LocalizedText('FormGameSet2.Extended.ParameterNames.Rnd'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.RndDetermined'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.RndChaotic'), Enabled, False);
   Text := GetNewGameCustomRule('RuinsNearStars');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'RuinsPosition',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPosition'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPositionNormal'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPositionNear'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('RuinsPosition', LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPosition'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPositionNormal'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsPositionNear'), Enabled, False);
   Text := GetNewGameCustomRule('RuinsTargettingFull');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'RuinsTargetting',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargetting'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargettingLimited'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargettingFull'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('RuinsTargetting', LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargetting'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargettingLimited'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsTargettingFull'), Enabled, False);
   Text := GetNewGameCustomRule('RuinsUseShop');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'RuinsUseShop',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShop'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShopNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShopYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('RuinsUseShop', LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShop'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShopNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.RuinsUseShopYes'), Enabled, False);
   Text := GetNewGameCustomRule('SpecialShipsInGame');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'SpecialShipsInGame',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShips'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShipsNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShipsYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('SpecialShipsInGame', LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShips'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShipsNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.SpecialShipsYes'), Enabled, False);
   Text := GetNewGameCustomRule('AkrinMod');
   if Text = '' then
     Position := 30
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'AkrinMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.AkrinMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('AkrinMod', LocalizedText('FormGameSet2.Extended.ParameterNames.AkrinMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 100, Position, 1, FormatExtendedPercent);
   Text := GetNewGameCustomRule('NodeDropMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'NodeDropMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.NodeDropMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('NodeDropMod', LocalizedText('FormGameSet2.Extended.ParameterNames.NodeDropMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('EqKnowledgeUnRestricted');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'EqKnowledgeType',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledge'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledgeRestricted'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledgeUnRestricted'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('EqKnowledgeType', LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledge'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledgeRestricted'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.EqKnowledgeUnRestricted'), Enabled, False);
   Text := GetNewGameCustomRule('DropValueMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'DropValueMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.DropValueMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('DropValueMod', LocalizedText('FormGameSet2.Extended.ParameterNames.DropValueMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('ABDropValueMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'ABDropValueMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.ABDropValueMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('ABDropValueMod', LocalizedText('FormGameSet2.Extended.ParameterNames.ABDropValueMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('ABHitpointsMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'ABHitpointsMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.ABHitpointsMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('ABHitpointsMod', LocalizedText('FormGameSet2.Extended.ParameterNames.ABHitpointsMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('ABDamageMod');
   if Text = '' then
     Position := 8
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'ABDamageMod',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.ABDamageMod'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('ABDamageMod', LocalizedText('FormGameSet2.Extended.ParameterNames.ABDamageMod'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 24, Position, 1, FormatExtendedDifficultyPercent);
   Text := GetNewGameCustomRule('ABattleRoyale');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'ABattleRoyale',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyale'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyaleNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyaleYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('ABattleRoyale', LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyale'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyaleNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.ABattleRoyaleYes'), Enabled, False);
   Text := GetNewGameCustomRule('ABChangeEq');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'ABChangeEq',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEq'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEqNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEqYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('ABChangeEq', LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEq'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEqNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.ABChangeEqYes'), Enabled, False);
   Text := GetNewGameCustomRule('AITolerateJunk');
   if Text = '' then
     Position := 7
   else
     Position := StrToInt(Text);
-  ValueLabel :=
-      AddExtendedOptionLabel(
-          'AITolerateJunk',
-          LocalizedText('FormGameSet2.Extended.ParameterNames.AITolerateJunk'),
-          False
-      );
+  ValueLabel := AddExtendedOptionLabel('AITolerateJunk', LocalizedText('FormGameSet2.Extended.ParameterNames.AITolerateJunk'), False);
   AddExtendedOptionSlider(ValueLabel, 0, 50, Position, 1, FormatExtendedInteger);
   Text := GetNewGameCustomRule('OldHyper');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'OldHyper',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyper'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyperNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyperYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('OldHyper', LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyper'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyperNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.OldHyperYes'), Enabled, False);
   Text := GetNewGameCustomRule('PirateNodes');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'PirateNodes',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodes'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodesNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodesYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('PirateNodes', LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodes'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodesNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.PirateNodesYes'), Enabled, False);
   Text := GetNewGameCustomRule('AIUseShops');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'AIUseShops',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShops'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShopsNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShopsYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('AIUseShops', LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShops'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShopsNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.AIUseShopsYes'), Enabled, False);
   Text := GetNewGameCustomRule('DuplicateArts');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'DuplicateArts',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArts'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArtsNo'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArtsYes'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('DuplicateArts', LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArts'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArtsNo'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.DuplicateArtsYes'), Enabled, False);
   Text := GetNewGameCustomRule('OldSpeedCalc');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'SpeedCalc',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalc'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalcNonLinear'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalcLinear'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('SpeedCalc', LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalc'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalcNonLinear'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.SpeedCalcLinear'), Enabled, False);
   Text := GetNewGameCustomRule('OldMissileBonuses');
   if Text = '' then
     Enabled := False
   else
     Enabled := ParseEnabledNameGI(Text);
-  AddExtendedOptionLabel(
-      'MissileBonuses',
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonuses'),
-      False
-  );
-  AddExtendedOptionChoice(
-      1,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonusesSplit'),
-      not Enabled,
-      False
-  );
-  AddExtendedOptionChoice(
-      0,
-      LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonusesNotSplit'),
-      Enabled,
-      False
-  );
+  AddExtendedOptionLabel('MissileBonuses', LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonuses'), False);
+  AddExtendedOptionChoice(1, LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonusesSplit'), not Enabled, False);
+  AddExtendedOptionChoice(0, LocalizedText('FormGameSet2.Extended.ParameterNames.MissileBonusesNotSplit'), Enabled, False);
   for I := 0 to 3 do
     with ExtendedGroupPanels[I] do
       SetSize(Classes.Point(ClientSize.X, ExtendedGroupNextY[I]));
-  Owner.VerticalScrollBar.SetSmallChange(
-      (GetByName('ButReset') as TGraphButtonGI).CaptionLabel.GetLineHeight * 2
-  );
+  Owner.VerticalScrollBar.SetSmallChange((GetByName('ButReset') as TGraphButtonGI).CaptionLabel.GetLineHeight * 2);
   Owner.VerticalScrollBar.SetLargeChange(Owner.ClientSize.Y);
   Owner.VerticalScrollBar.SetPageSize(Owner.ClientSize.Y);
   ActiveExtendedGroup := 0;
@@ -1322,11 +897,7 @@ begin
     FreeOwnedChildren;
 end;
 
-procedure TfGameSettings2.AddIronWillChoice(
-    Value, X, Y: Integer;
-    Caption, Help: WideString;
-    Selected, Disabled: Boolean
-);
+procedure TfGameSettings2.AddIronWillChoice(Value, X, Y: Integer; Caption, Help: WideString; Selected, Disabled: Boolean);
 var
   Width: Integer;
   Owner: TObjectGI;
@@ -1424,25 +995,10 @@ var
 begin
   BlockName := OwnerToSys(RaceToOwner(PlayerRace));
   repeat
-    Index :=
-        RandomIntRange(
-            0,
-            LanguageDataConfig
-                    .GetBlock('ShipName')
-                    .GetBlock('Ranger')
-                    .GetBlock(BlockName)
-                    .GetParamCount
-                - 1
-        );
-    Name :=
-        LanguageDataConfig
-            .GetBlock('ShipName')
-            .GetBlock('Ranger')
-            .GetBlock(BlockName)
-            .GetParamValue(Index);
+    Index := RandomIntRange(0, LanguageDataConfig.GetBlock('ShipName').GetBlock('Ranger').GetBlock(BlockName).GetParamCount - 1);
+    Name := LanguageDataConfig.GetBlock('ShipName').GetBlock('Ranger').GetBlock(BlockName).GetParamValue(Index);
     (GetByName('PlayerName') as TEditGI).SetText(Name);
-    (GetByName('Ok') as TGraphButtonGI)
-        .SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
+    (GetByName('Ok') as TGraphButtonGI).SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
   until Length(Name) <= 13;
 end;
 
@@ -1492,8 +1048,7 @@ begin
       end;
     end;
   end;
-  GetByName('PanelLevel')
-      .SetPosition(Classes.Point(GetByName('PanelLevel').LocalPosition.X, LevelPanelTop));
+  GetByName('PanelLevel').SetPosition(Classes.Point(GetByName('PanelLevel').LocalPosition.X, LevelPanelTop));
   with GetByName('LevelUser') as TGraphButtonGI do
     if not Down then
     begin
@@ -1552,11 +1107,7 @@ begin
     if LastPortraitByRace[PlayerRace] >= 0 then
     begin
       SetImagePath(
-          'GI,Bm.Captain.'
-              + GiResourceSuffix
-              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
-              + IntToStr(CaptainPortraitIndex)
-              + 'i'
+          'GI,Bm.Captain.' + GiResourceSuffix + OwnerInfo[RaceToOwner(PlayerRace)].InternalName + IntToStr(CaptainPortraitIndex) + 'i'
       );
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
@@ -1571,11 +1122,7 @@ begin
     if LastPortraitByRace[PlayerRace] >= 0 then
     begin
       SetImagePath(
-          'Bm.Captain.'
-              + GiResourceSuffix
-              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
-              + IntToStr(CaptainPortraitIndex)
-              + 'a'
+          'Bm.Captain.' + GiResourceSuffix + OwnerInfo[RaceToOwner(PlayerRace)].InternalName + IntToStr(CaptainPortraitIndex) + 'a'
       );
       SequenceIndex := 0;
       UpdateAutoGeometry;
@@ -1723,8 +1270,7 @@ begin
   else if Average <= 200 then
     Color := OrangeColorTag
   else
-    Color :=
-        '<color=255,' + IntToWideString(Round(RemapClamped(Average, 200, 500, 166, 0))) + ',0>';
+    Color := '<color=255,' + IntToWideString(Round(RemapClamped(Average, 200, 500, 166, 0))) + ',0>';
   (GetByName('LevelProc') as TLabelGI).SetText(WrapTextInColor(IntToStr(Average) + '%', Color));
 end;
 
@@ -1791,47 +1337,34 @@ begin
   begin
     for J := 0 to 3 do
     begin
-      CaptionLabel :=
-          FindControlByPath('NameGroup' + IntToWideString(I) + 'Level' + IntToWideString(J))
-              as TLabelGI;
+      CaptionLabel := FindControlByPath('NameGroup' + IntToWideString(I) + 'Level' + IntToWideString(J)) as TLabelGI;
       if CaptionLabel <> nil then
       begin
         case First + J of
           0:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Easy')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Easy'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 255, 0));
           end;
           1:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Normal')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Normal'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(254, 255, 255));
           end;
           2:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Hard')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Hard'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 240, 100));
           end;
           3:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Expert')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Expert'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 166, 0));
           end;
         else
           begin
             CaptionLabel.SetText(IntToWideString((First + J + 1) * 50) + '%');
-            CaptionLabel.SetTextColor(
-                CurrentPixelFormat
-                    .PackRgbBytes(255, Round(RemapClamped(First + J, 3, 9, 166, 0)), 0)
-            );
+            CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, Round(RemapClamped(First + J, 3, 9, 166, 0)), 0));
           end;
         end;
         with GetByName('Level' + IntToStr(J + 1) + '_' + IntToStr(I - 1)) as TGraphButtonGI do
@@ -1839,26 +1372,12 @@ begin
           UserValue := I - 1;
           UserIndex := First + J;
           case First + J of
-            0:
-              HelpText :=
-                  LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Easy');
-            1:
-              HelpText :=
-                  LocalizedColorText(
-                      'FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Normal'
-                  );
-            2:
-              HelpText :=
-                  LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Hard');
-            3:
-              HelpText :=
-                  LocalizedColorText(
-                      'FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert'
-                  );
+            0: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Easy');
+            1: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Normal');
+            2: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Hard');
+            3: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert');
           else
-            HelpText :=
-                LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert')
-                    + '+';
+            HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert') + '+';
           end;
         end;
       end;
@@ -1873,11 +1392,7 @@ begin
   ToggleLevelPanel(Sender);
 end;
 
-procedure TfGameSettings2.CustomDifficultyMouseUp(
-    Sender: TObjectGI;
-    KeyState: Cardinal;
-    Point: TPoint
-);
+procedure TfGameSettings2.CustomDifficultyMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 begin
   RefreshDifficulty;
   ToggleLevelPanel(Sender);
@@ -1913,8 +1428,7 @@ var
 begin
   if not (GetByName('Ok') as TGraphButtonGI).Disabled then
   begin
-    if (GetByName('ButExtended') as TGraphButtonGI).Down
-        and not GetByName('PanelExtended').Active then
+    if (GetByName('ButExtended') as TGraphButtonGI).Down and not GetByName('PanelExtended').Active then
     begin
       with GetByName('PanelChar') do
         SetActive(False);
@@ -1930,8 +1444,7 @@ begin
       if PlayerNameEdited then
         NewGameSettingsConfig.SetOrAddParam('Name', (GetByName('PlayerName') as TEditGI).Text)
       else if (NewGameSettingsConfig.CountParamsByPath('Name') <= 0)
-          or (NewGameSettingsConfig.GetParamByPathOrMarker('Name')
-              <> (GetByName('PlayerName') as TEditGI).Text) then
+          or (NewGameSettingsConfig.GetParamByPathOrMarker('Name') <> (GetByName('PlayerName') as TEditGI).Text) then
         NewGameSettingsConfig.SetOrAddParam('Name', '');
       if IronWill then
         NewGameSettingsConfig.SetOrAddParam('IronWill', 'True')
@@ -1949,10 +1462,7 @@ begin
       FileName := GetGameUserDirectory + 'newgame.txt';
       if NewGameSettingsConfig.CountBlocks('CustomRules') = 0 then
         NewGameSettingsConfig.AddBlockByPath('CustomRules');
-      NewGameSettingsConfig.SetOrAddParam(
-          'UseCustomRules',
-          BoolToWideString((GetByName('ButExtended') as TGraphButtonGI).Down)
-      );
+      NewGameSettingsConfig.SetOrAddParam('UseCustomRules', BoolToWideString((GetByName('ButExtended') as TGraphButtonGI).Down));
       with NewGameSettingsConfig.GetBlockByPath('CustomRules') do
       begin
         ActiveExtendedGroup := 0;
@@ -1964,14 +1474,8 @@ begin
         SetOrAddParam('ExtraInventions', IntToStr(GetExtendedOptionValue('ExtraInventions')));
         SetOrAddParam('ExtraRangers', IntToStr(GetExtendedOptionValue('ExtraRangers')));
         SetOrAddParam('ZeroStartExp', BoolToWideString(GetExtendedOptionValue('ZeroStartExp') = 0));
-        SetOrAddParam(
-            'KlingRacialWeapons',
-            BoolToWideString(GetExtendedOptionValue('KlingRacialWeapons') = 0)
-        );
-        SetOrAddParam(
-            'MaxRangeMissiles',
-            BoolToWideString(GetExtendedOptionValue('MaxRangeMissiles') = 0)
-        );
+        SetOrAddParam('KlingRacialWeapons', BoolToWideString(GetExtendedOptionValue('KlingRacialWeapons') = 0));
+        SetOrAddParam('MaxRangeMissiles', BoolToWideString(GetExtendedOptionValue('MaxRangeMissiles') = 0));
         SetOrAddParam('HullGrowth', IntToStr(GetExtendedOptionValue('HullGrowth')));
         ActiveExtendedGroup := 1;
         SetOrAddParam('AsteroidMod', IntToStr(GetExtendedOptionValue('AsteroidMod')));
@@ -1982,47 +1486,26 @@ begin
         SetOrAddParam('StartCenter', BoolToWideString(GetExtendedOptionValue('StartCenter') = 0));
         ActiveExtendedGroup := 2;
         SetOrAddParam('RndChaotic', BoolToWideString(GetExtendedOptionValue('RndType') = 0));
-        SetOrAddParam(
-            'EqKnowledgeUnRestricted',
-            BoolToWideString(GetExtendedOptionValue('EqKnowledgeType') = 0)
-        );
-        SetOrAddParam(
-            'RuinsNearStars',
-            BoolToWideString(GetExtendedOptionValue('RuinsPosition') = 0)
-        );
-        SetOrAddParam(
-            'RuinsTargettingFull',
-            BoolToWideString(GetExtendedOptionValue('RuinsTargetting') = 0)
-        );
+        SetOrAddParam('EqKnowledgeUnRestricted', BoolToWideString(GetExtendedOptionValue('EqKnowledgeType') = 0));
+        SetOrAddParam('RuinsNearStars', BoolToWideString(GetExtendedOptionValue('RuinsPosition') = 0));
+        SetOrAddParam('RuinsTargettingFull', BoolToWideString(GetExtendedOptionValue('RuinsTargetting') = 0));
         SetOrAddParam('RuinsUseShop', BoolToWideString(GetExtendedOptionValue('RuinsUseShop') = 0));
-        SetOrAddParam(
-            'SpecialShipsInGame',
-            BoolToWideString(GetExtendedOptionValue('SpecialShipsInGame') = 0)
-        );
+        SetOrAddParam('SpecialShipsInGame', BoolToWideString(GetExtendedOptionValue('SpecialShipsInGame') = 0));
         SetOrAddParam('AkrinMod', IntToStr(GetExtendedOptionValue('AkrinMod')));
         SetOrAddParam('NodeDropMod', IntToStr(GetExtendedOptionValue('NodeDropMod')));
         SetOrAddParam('DropValueMod', IntToStr(GetExtendedOptionValue('DropValueMod')));
         SetOrAddParam('ABDropValueMod', IntToStr(GetExtendedOptionValue('ABDropValueMod')));
         SetOrAddParam('ABHitpointsMod', IntToStr(GetExtendedOptionValue('ABHitpointsMod')));
         SetOrAddParam('ABDamageMod', IntToStr(GetExtendedOptionValue('ABDamageMod')));
-        SetOrAddParam(
-            'ABattleRoyale',
-            BoolToWideString(GetExtendedOptionValue('ABattleRoyale') = 0)
-        );
+        SetOrAddParam('ABattleRoyale', BoolToWideString(GetExtendedOptionValue('ABattleRoyale') = 0));
         SetOrAddParam('ABChangeEq', BoolToWideString(GetExtendedOptionValue('ABChangeEq') = 0));
         SetOrAddParam('AITolerateJunk', IntToStr(GetExtendedOptionValue('AITolerateJunk')));
         SetOrAddParam('OldHyper', BoolToWideString(GetExtendedOptionValue('OldHyper') = 0));
         SetOrAddParam('PirateNodes', BoolToWideString(GetExtendedOptionValue('PirateNodes') = 0));
         SetOrAddParam('AIUseShops', BoolToWideString(GetExtendedOptionValue('AIUseShops') = 0));
-        SetOrAddParam(
-            'DuplicateArts',
-            BoolToWideString(GetExtendedOptionValue('DuplicateArts') = 0)
-        );
+        SetOrAddParam('DuplicateArts', BoolToWideString(GetExtendedOptionValue('DuplicateArts') = 0));
         SetOrAddParam('OldSpeedCalc', BoolToWideString(GetExtendedOptionValue('SpeedCalc') = 0));
-        SetOrAddParam(
-            'OldMissileBonuses',
-            BoolToWideString(GetExtendedOptionValue('MissileBonuses') = 0)
-        );
+        SetOrAddParam('OldMissileBonuses', BoolToWideString(GetExtendedOptionValue('MissileBonuses') = 0));
       end;
       ToggleExtendedSettings(nil);
       with GetByName('PanelSet') as TPanelScrollBarGI do
@@ -2035,8 +1518,7 @@ begin
         NewGameGenerationThread := nil;
       end;
       NewGameGenerationThread := TThreadCreateNewGame.Create;
-      NewGameGenerationThread.PlayerName :=
-          TrimWideString((GetByName('PlayerName') as TEditGI).Text);
+      NewGameGenerationThread.PlayerName := TrimWideString((GetByName('PlayerName') as TEditGI).Text);
       PrepareNewGameGeneration;
       RequestedScreenId := screenIntroduction;
       RequestClose(1);
@@ -2061,9 +1543,7 @@ begin
     IncreaseAllDifficulties;
   if IsVirtualKeyDown(VK_CONTROL) and IsVirtualKeyDown(VK_SHIFT) and IsVirtualKeyDown(VK_LEFT) then
     DecreaseAllDifficulties;
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
   begin
     if Key = VK_RETURN then
     begin
@@ -2084,21 +1564,9 @@ var
 begin
   if Sender <> nil then
     PlayerNameEdited := True;
-  (GetByName('Ok') as TGraphButtonGI)
-      .SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
-  Text :=
-      LocalizedColorText(
-          'FormGameSet2.'
-              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
-              + '.Char'
-              + IntToStr(CharacterPreset)
-      );
-  ReplaceTextToken(
-      Text,
-      '<Name>',
-      TrimWideString((GetByName('PlayerName') as TEditGI).Text),
-      TextHighlightColorTag
-  );
+  (GetByName('Ok') as TGraphButtonGI).SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
+  Text := LocalizedColorText('FormGameSet2.' + OwnerInfo[RaceToOwner(PlayerRace)].InternalName + '.Char' + IntToStr(CharacterPreset));
+  ReplaceTextToken(Text, '<Name>', TrimWideString((GetByName('PlayerName') as TEditGI).Text), TextHighlightColorTag);
   (GetByName('Info') as TLabelGI).SetText(Text);
 end;
 
@@ -2158,9 +1626,7 @@ begin
       if (Sender.HelpText = '') or Sender.IsOccludedAtPoint(GetCursorPoint) then
         Show := False;
       HelpLabel.SetActive(Show);
-      if HelpLabel.Active
-          and (Sender = GetByName('Ok'))
-          and not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text) then
+      if HelpLabel.Active and (Sender = GetByName('Ok')) and not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text) then
         HelpLabel.SetText(LookupLocalizedTextByKey('FormGameSet2.Common.ErrorName'))
       else
         HelpLabel.SetText(Sender.HelpText);
@@ -2285,10 +1751,7 @@ begin
   end;
 end;
 
-function TfGameSettings2.AddExtendedOptionLabel(
-    OptionName, Caption: WideString;
-    UnusedFlag: Boolean
-): TLabelGI;
+function TfGameSettings2.AddExtendedOptionLabel(OptionName, Caption: WideString; UnusedFlag: Boolean): TLabelGI;
 begin
   CurrentExtendedOption := OptionName;
   if ExtendedGroupNextY[BuildExtendedGroup] <> 0 then
@@ -2296,12 +1759,9 @@ begin
     begin
       SetImagePath('GI,Bm.FormOptions2.2Line');
       SetPosition(Classes.Point(0, ExtendedGroupNextY[BuildExtendedGroup]));
-      SetSize(
-          Classes.Point(ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X, GetContentSize.Y + 2)
-      );
+      SetSize(Classes.Point(ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X, GetContentSize.Y + 2));
       SetImageKindX(ikxLeftFill);
-      ExtendedGroupNextY[BuildExtendedGroup] :=
-          ExtendedGroupNextY[BuildExtendedGroup] + ClientSize.Y;
+      ExtendedGroupNextY[BuildExtendedGroup] := ExtendedGroupNextY[BuildExtendedGroup] + ClientSize.Y;
     end;
   Result := TLabelGI.Create(ExtendedGroupPanels[BuildExtendedGroup]);
   Result.SetFontName(NormalFontName);
@@ -2318,11 +1778,7 @@ begin
   Inc(ExtendedGroupNextY[BuildExtendedGroup], 2);
 end;
 
-procedure TfGameSettings2.AddExtendedOptionChoice(
-    Value: Integer;
-    Caption: WideString;
-    Selected, Disabled: Boolean
-);
+procedure TfGameSettings2.AddExtendedOptionChoice(Value: Integer; Caption: WideString; Selected, Disabled: Boolean);
 var
   ChoiceImage: TImageGI;
   CaptionLabel: TLabelGI;
@@ -2333,8 +1789,7 @@ begin
   CaptionLabel.SetFontName(NormalFontName);
   CaptionLabel.SetPositionModeW(False);
   CaptionLabel.SetPosition(Classes.Point(0, ExtendedGroupNextY[BuildExtendedGroup]));
-  CaptionLabel
-      .SetSize(Classes.Point(ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X - Indent, 1));
+  CaptionLabel.SetSize(Classes.Point(ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X - Indent, 1));
   CaptionLabel.SetTextAlignX(taxRight);
   CaptionLabel.SetTextAlignY(tayAuto);
   if Selected then
@@ -2358,9 +1813,7 @@ begin
     ChoiceImage.SetImagePath('GI,Bm.FormOptions2.2SwitchD');
   ChoiceImage.SetPosition(
       Classes.Point(
-          ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X
-              - ChoiceImage.GetContentSize.X
-              - Indent,
+          ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X - ChoiceImage.GetContentSize.X - Indent,
           ExtendedGroupNextY[BuildExtendedGroup]
       )
   );
@@ -2376,30 +1829,19 @@ begin
     ChoiceImage.SetName(CurrentExtendedOption);
   ChoiceImage.UserValue := Value;
   CaptionLabel.SetSize(
-      Classes.Point(
-          CaptionLabel.ClientSize.X - ChoiceImage.ClientSize.X - 10,
-          Max(CaptionLabel.ClientSize.Y, ChoiceImage.ClientSize.Y)
-      )
+      Classes.Point(CaptionLabel.ClientSize.X - ChoiceImage.ClientSize.X - 10, Max(CaptionLabel.ClientSize.Y, ChoiceImage.ClientSize.Y))
   );
   ChoiceImage.SetPosition(
       Classes.Point(
           ChoiceImage.LocalPosition.X,
-          ChoiceImage.LocalPosition.Y
-              + (Max(CaptionLabel.ClientSize.Y, ChoiceImage.ClientSize.Y)
-                      - CaptionLabel.ClientSize.Y)
-                  div 2
+          ChoiceImage.LocalPosition.Y + (Max(CaptionLabel.ClientSize.Y, ChoiceImage.ClientSize.Y) - CaptionLabel.ClientSize.Y) div 2
       )
   );
-  ExtendedGroupNextY[BuildExtendedGroup] :=
-      ExtendedGroupNextY[BuildExtendedGroup] + CaptionLabel.ClientSize.Y + GiScalePixels(5);
+  ExtendedGroupNextY[BuildExtendedGroup] := ExtendedGroupNextY[BuildExtendedGroup] + CaptionLabel.ClientSize.Y + GiScalePixels(5);
   CaptionLabel.UserValue := PtrInt(ChoiceImage);
 end;
 
-procedure TfGameSettings2.ExtendedChoiceMouseDown(
-    Sender: TObjectGI;
-    KeyState: Cardinal;
-    Point: TPoint
-);
+procedure TfGameSettings2.ExtendedChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
 var
   Control: TObjectGI;
 begin
@@ -2435,10 +1877,8 @@ begin
   Slider.SetSize(Classes.Point(199, 20));
   TObjectGI(Slider)
       .SetPosition(
-          Classes.Point(
-              ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X - Slider.ClientSize.X,
-              ExtendedGroupNextY[BuildExtendedGroup]
-          ));
+          Classes
+              .Point(ExtendedGroupPanels[BuildExtendedGroup].ClientSize.X - Slider.ClientSize.X, ExtendedGroupNextY[BuildExtendedGroup]));
   Slider.DecreaseButton.SetKind(gbkDisable);
   Slider.DecreaseButton.SetImageNormalPath('GI,Bm.FormOptions2.2TrackLeftN');
   Slider.DecreaseButton.SetImageNormalActivePath('GI,Bm.FormOptions2.2TrackLeftA');
@@ -2469,8 +1909,7 @@ begin
   Slider.SetPositionInternal(Position);
   Slider.SetName(CurrentExtendedOption);
   Slider.UserIndex := PtrInt(ValueLabel);
-  ExtendedGroupNextY[BuildExtendedGroup] :=
-      ExtendedGroupNextY[BuildExtendedGroup] + Slider.ClientSize.Y + GiScalePixels(6);
+  ExtendedGroupNextY[BuildExtendedGroup] := ExtendedGroupNextY[BuildExtendedGroup] + Slider.ClientSize.Y + GiScalePixels(6);
   Callback(Slider);
 end;
 
@@ -2510,9 +1949,7 @@ begin
   begin
     if Control.ControlName = OptionName then
     begin
-      if (Control is TImageGI)
-          and (Control.UserValue = Value)
-          and Assigned(Control.LeftButtonDownCallback) then
+      if (Control is TImageGI) and (Control.UserValue = Value) and Assigned(Control.LeftButtonDownCallback) then
       begin
         ExtendedChoiceMouseDown(Control, 0, Classes.Point(-1000, -1000));
         Exit;
@@ -2543,31 +1980,11 @@ begin
     begin
       Value := Sender.Position;
       if Value = 0 then
-        SetText(
-            HelpText
-                + TextHighlightColorTag
-                + ' '
-                + LocalizedText('FormGameSet2.Extended.HelpAuto')
-                + EndColorTag
-        )
+        SetText(HelpText + TextHighlightColorTag + ' ' + LocalizedText('FormGameSet2.Extended.HelpAuto') + EndColorTag)
       else if Value <= 25 then
-        SetText(
-            HelpText
-                + TextHighlightColorTag
-                + ' '
-                + IntToStr(50 + Round((Value - 1) * 6.25))
-                + '%'
-                + EndColorTag
-        )
+        SetText(HelpText + TextHighlightColorTag + ' ' + IntToStr(50 + Round((Value - 1) * 6.25)) + '%' + EndColorTag)
       else
-        SetText(
-            HelpText
-                + OrangeColorTag
-                + ' '
-                + IntToStr(50 + Round((Value - 1) * 6.25))
-                + '%'
-                + EndColorTag
-        );
+        SetText(HelpText + OrangeColorTag + ' ' + IntToStr(50 + Round((Value - 1) * 6.25)) + '%' + EndColorTag);
     end;
 end;
 
@@ -2579,14 +1996,7 @@ begin
     with TLabelGI(Sender.UserIndex) do
     begin
       Value := Sender.Position;
-      SetText(
-          HelpText
-              + TextHighlightColorTag
-              + ' '
-              + IntToStr(50 + Round(Value * 6.25))
-              + '%'
-              + EndColorTag
-      );
+      SetText(HelpText + TextHighlightColorTag + ' ' + IntToStr(50 + Round(Value * 6.25)) + '%' + EndColorTag);
     end;
 end;
 
@@ -2654,47 +2064,34 @@ begin
     First := Max(DifficultyLevels[I - 1] - 3, 0);
     for J := 0 to 3 do
     begin
-      CaptionLabel :=
-          FindControlByPath('NameGroup' + IntToWideString(I) + 'Level' + IntToWideString(J))
-              as TLabelGI;
+      CaptionLabel := FindControlByPath('NameGroup' + IntToWideString(I) + 'Level' + IntToWideString(J)) as TLabelGI;
       if CaptionLabel <> nil then
       begin
         case First + J of
           0:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Easy')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Easy'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 255, 0));
           end;
           1:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Normal')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Normal'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(254, 255, 255));
           end;
           2:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Hard')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Hard'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 240, 100));
           end;
           3:
           begin
-            CaptionLabel.SetText(
-                LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Expert')
-            );
+            CaptionLabel.SetText(LocalizedColorText('FormGameSet2.Common.NameGroup' + IntToWideString(I) + 'Expert'));
             CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, 166, 0));
           end;
         else
           begin
             CaptionLabel.SetText(IntToWideString((First + J + 1) * 50) + '%');
-            CaptionLabel.SetTextColor(
-                CurrentPixelFormat
-                    .PackRgbBytes(255, Round(RemapClamped(First + J, 3, 9, 166, 0)), 0)
-            );
+            CaptionLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(255, Round(RemapClamped(First + J, 3, 9, 166, 0)), 0));
           end;
         end;
         with GetByName('Level' + IntToStr(J + 1) + '_' + IntToStr(I - 1)) as TGraphButtonGI do
@@ -2702,26 +2099,12 @@ begin
           UserValue := I - 1;
           UserIndex := First + J;
           case First + J of
-            0:
-              HelpText :=
-                  LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Easy');
-            1:
-              HelpText :=
-                  LocalizedColorText(
-                      'FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Normal'
-                  );
-            2:
-              HelpText :=
-                  LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Hard');
-            3:
-              HelpText :=
-                  LocalizedColorText(
-                      'FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert'
-                  );
+            0: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Easy');
+            1: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Normal');
+            2: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Hard');
+            3: HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert');
           else
-            HelpText :=
-                LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert')
-                    + '+';
+            HelpText := LocalizedColorText('FormGameSet2.Common.HelpGroup' + IntToWideString(I) + 'Expert') + '+';
           end;
         end;
       end;

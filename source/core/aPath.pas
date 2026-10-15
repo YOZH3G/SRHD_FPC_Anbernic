@@ -45,11 +45,7 @@ type
     function FindNearestFollowingNode(Node: PSPathNode; Position: TPointF): PSPathNode;
     function GetLength: Single;
     function CountNodeRangeInclusive(FirstNode: PSPathNode; LastNode: PSPathNode): Integer;
-    procedure ResampleBezierRange(
-        FirstNode: PSPathNode;
-        LastNode: PSPathNode;
-        SampleCount: Integer
-    );
+    procedure ResampleBezierRange(FirstNode: PSPathNode; LastNode: PSPathNode; SampleCount: Integer);
   end;
 
 var
@@ -472,8 +468,7 @@ begin
   Coefficients[Count - 1] := BezierWide(1);
   for Index := 1 to (Count - 1) div 2 do
   begin
-    Coefficients[Index] :=
-        BezierDiv(BezierMul(BezierWide(Count - Index), Coefficients[Index - 1]), BezierWide(Index));
+    Coefficients[Index] := BezierDiv(BezierMul(BezierWide(Count - Index), Coefficients[Index - 1]), BezierWide(Index));
     Coefficients[Count - 1 - Index] := Coefficients[Index];
   end;
   Heading := FirstNode.Heading;

@@ -79,17 +79,10 @@ begin
   Zone := Value;
   if Value.Name <> '' then
   begin
-    WorldImage :=
-        ab_WorldImage_Create(
-            MakeVector3D(0, 0, 0),
-            'GAI,Bm.ABWall.' + GiResourceSuffix + '.' + Value.Name,
-            '',
-            True
-        );
+    WorldImage := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.ABWall.' + GiResourceSuffix + '.' + Value.Name, '', True);
     ab_WorldImage_SetDepth(WorldImage, WorldImageFrontDepth, WorldImageBackDepth);
     DirectionFrameCount := CountDelimitedPartsW(Value.Name, '_');
-    DirectionFrameCount :=
-        ExtractDigitsToIntW(ExtractDelimitedPartW(Value.Name, DirectionFrameCount - 1, '_'));
+    DirectionFrameCount := ExtractDigitsToIntW(ExtractDelimitedPartW(Value.Name, DirectionFrameCount - 1, '_'));
   end;
   DirectionFrameCount := 32; // Native overwrites the parsed count above.
   EffectOriginSpread := GiScalePixels(20);
@@ -186,13 +179,7 @@ begin
     if Frame >= DirectionFrameCount then
       Frame := 0;
     Value := Sqrt(Sqr(Position.X) + Sqr(Position.Y)) / SphereProjectedRadius;
-    Inc(
-        Frame,
-        Round(
-                (WorldImage.Image.GaiImageControl.SequenceFrameCount / DirectionFrameCount - 1)
-                    * Value)
-            * DirectionFrameCount
-    );
+    Inc(Frame, Round((WorldImage.Image.GaiImageControl.SequenceFrameCount / DirectionFrameCount - 1) * Value) * DirectionFrameCount);
     WorldImage.Image.GaiImageControl.SetSequenceFrame(Frame);
   end;
 end;
@@ -241,9 +228,7 @@ begin
   Line := FirstStopLine;
   while Line <> nil do
   begin
-    if Line.Collidable
-        and (FindStopPoint(Line.First) <> nil)
-        and (FindStopPoint(Line.Last) <> nil) then
+    if Line.Collidable and (FindStopPoint(Line.First) <> nil) and (FindStopPoint(Line.Last) <> nil) then
     begin
       ImageLine := ab_StopLine_Add;
       ImageLine.UserValue := PtrInt(Line);

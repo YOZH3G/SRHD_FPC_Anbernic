@@ -17,8 +17,7 @@ type
   TfRating2 = class;
 
   {$Z4}
-  TRangerRatingSortColumn =
-      (rrscName = 1, rrscExperience = 2, rrscRace = 3, rrscRank = 4, rrscCharacter = 5);
+  TRangerRatingSortColumn = (rrscName = 1, rrscExperience = 2, rrscRace = 3, rrscRank = 4, rrscCharacter = 5);
 
   TRangerRatingRow = packed record
     Ranger: TRanger;
@@ -134,12 +133,7 @@ begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('ButClose').Parent do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + MainPanel.VerticalContentOffset
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + MainPanel.VerticalContentOffset));
   end;
   RewardWindow := GetByName('RewardWnd') as TWindowGI;
   (GetByName('ButClose') as TGraphButtonGI).UpCallback := CloseClicked;
@@ -215,9 +209,7 @@ end;
 
 procedure TfRating2.KeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
   begin
     if Key = Ord('R') then
       CloseClicked(nil)
@@ -236,13 +228,9 @@ begin
     else if Key = VK_END then
       SelectRow(High(Rows))
     else if Key = VK_PRIOR then
-      TablePanel.VerticalScrollBar.SetPosition(
-          TablePanel.VerticalScrollBar.Position - TablePanel.VerticalScrollBar.LargeChange
-      )
+      TablePanel.VerticalScrollBar.SetPosition(TablePanel.VerticalScrollBar.Position - TablePanel.VerticalScrollBar.LargeChange)
     else if Key = VK_NEXT then
-      TablePanel.VerticalScrollBar.SetPosition(
-          TablePanel.VerticalScrollBar.Position + TablePanel.VerticalScrollBar.LargeChange
-      )
+      TablePanel.VerticalScrollBar.SetPosition(TablePanel.VerticalScrollBar.Position + TablePanel.VerticalScrollBar.LargeChange)
     else if Key = VK_ESCAPE then
       RequestClose(1)
     else if Key = VK_F11 then
@@ -256,8 +244,7 @@ begin
   if ClickAutoCloseForm then
   begin
     BackgroundClickStarted := False;
-    if not (GetByName('ImagePanel') as TImageGI).ContainsPoint(Point)
-        and not GetByName('PM_PanelMsg').ContainsPoint(Point) then
+    if not (GetByName('ImagePanel') as TImageGI).ContainsPoint(Point) and not GetByName('PM_PanelMsg').ContainsPoint(Point) then
       BackgroundClickStarted := True;
   end;
 end;
@@ -274,13 +261,9 @@ end;
 procedure TfRating2.ProcessMouseWheel(KeyState: Cardinal; Point: TPoint; Delta: Integer);
 begin
   if Delta = WHEEL_DELTA then
-    TablePanel.VerticalScrollBar.SetPosition(
-        TablePanel.VerticalScrollBar.Position - TablePanel.VerticalScrollBar.SmallChange
-    )
+    TablePanel.VerticalScrollBar.SetPosition(TablePanel.VerticalScrollBar.Position - TablePanel.VerticalScrollBar.SmallChange)
   else if Delta = -WHEEL_DELTA then
-    TablePanel.VerticalScrollBar.SetPosition(
-        TablePanel.VerticalScrollBar.Position + TablePanel.VerticalScrollBar.SmallChange
-    );
+    TablePanel.VerticalScrollBar.SetPosition(TablePanel.VerticalScrollBar.Position + TablePanel.VerticalScrollBar.SmallChange);
 end;
 
 procedure TfRating2.AwardsMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
@@ -394,8 +377,7 @@ var
                 );
         end;
       end;
-      Result :=
-          FormatText1(LocalizedColorText('FormRating.PartnerBossManyText'), '', '<Names>', Names);
+      Result := FormatText1(LocalizedColorText('FormRating.PartnerBossManyText'), '', '<Names>', Names);
     end;
   end;
 begin
@@ -403,14 +385,7 @@ begin
   if GetPlayer = Rows[Sender.UserValue].Ranger then
   begin
     with GetByName('RewardName') as TLabelGI do
-      SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.PlayerName'),
-              TextHighlightColorTag,
-              '<Name>',
-              GetPlayer.GetName
-          )
-      );
+      SetText(FormatText1(LocalizedColorText('FormRating.PlayerName'), TextHighlightColorTag, '<Name>', GetPlayer.GetName));
     if GetPlayer.CountWingmen > 0 then
     begin
       Names := '';
@@ -467,8 +442,7 @@ begin
                   Galaxy.FormatTurnDate(Galaxy.CurrentTurn + Pirate.PartnershipDaysRemaining)
               );
       end;
-      PartnerInfo :=
-          FormatText1(LocalizedColorText('FormRating.PlayerPartnerOk'), '', '<Names>', Names);
+      PartnerInfo := FormatText1(LocalizedColorText('FormRating.PlayerPartnerOk'), '', '<Names>', Names);
     end
     else
       PartnerInfo := LocalizedColorText('FormRating.PlayerPartnerNo');
@@ -483,12 +457,7 @@ begin
   begin
     with GetByName('RewardName') as TLabelGI do
       SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.InPrisonName'),
-              TextHighlightColorTag,
-              '<Name>',
-              Rows[Sender.UserValue].Ranger.GetName
-          )
+          FormatText1(LocalizedColorText('FormRating.InPrisonName'), TextHighlightColorTag, '<Name>', Rows[Sender.UserValue].Ranger.GetName)
       );
     if Rows[Sender.UserValue].Ranger.CurrentPlanet <> nil then
       Text :=
@@ -509,26 +478,14 @@ begin
   begin
     with GetByName('RewardName') as TLabelGI do
       SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.PartnerName'),
-              TextHighlightColorTag,
-              '<Name>',
-              Rows[Sender.UserValue].Ranger.GetName
-          )
+          FormatText1(LocalizedColorText('FormRating.PartnerName'), TextHighlightColorTag, '<Name>', Rows[Sender.UserValue].Ranger.GetName)
       );
     Text := LocalizedColorText('FormRating.PartnerText');
-    ReplaceTextToken(
-        Text,
-        '<Name>',
-        Rows[Sender.UserValue].Ranger.PartnerShip.GetName,
-        TextHighlightColorTag
-    );
+    ReplaceTextToken(Text, '<Name>', Rows[Sender.UserValue].Ranger.PartnerShip.GetName, TextHighlightColorTag);
     ReplaceTextToken(
         Text,
         '<Date>',
-        Galaxy.FormatTurnDate(
-            Galaxy.CurrentTurn + Rows[Sender.UserValue].Ranger.PartnershipDaysRemaining
-        ),
+        Galaxy.FormatTurnDate(Galaxy.CurrentTurn + Rows[Sender.UserValue].Ranger.PartnershipDaysRemaining),
         TextHighlightColorTag
     );
     if Rows[Sender.UserValue].Ranger.PartnershipDaysRemaining = 0 then
@@ -544,12 +501,7 @@ begin
   begin
     with GetByName('RewardName') as TLabelGI do
       SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.PartnerName'),
-              TextHighlightColorTag,
-              '<Name>',
-              Rows[Sender.UserValue].Ranger.GetName
-          )
+          FormatText1(LocalizedColorText('FormRating.PartnerName'), TextHighlightColorTag, '<Name>', Rows[Sender.UserValue].Ranger.GetName)
       );
     Text := FormatRangerWingmenHint(Rows[Sender.UserValue].Ranger);
     with GetByName('RewardText') as TLabelGI do
@@ -563,25 +515,11 @@ begin
     SetImageKindX(ikxCenter);
     SetImageKindY(ikyCenter);
   end;
-  ShipScreen.LayoutItemInfo(
-      RewardWindow,
-      GetByName('RewardName') as TLabelGI,
-      GetByName('RewardText') as TLabelGI,
-      True,
-      True,
-      0
-  );
+  ShipScreen.LayoutItemInfo(RewardWindow, GetByName('RewardName') as TLabelGI, GetByName('RewardText') as TLabelGI, True, True, 0);
   with GetByName('RewardName') as TLabelGI do
-    SetSize(
-        Classes.Point(
-            Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right,
-            ClientSize.Y
-        )
-    );
+    SetSize(Classes.Point(Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right, ClientSize.Y));
   Cursor := GetCursorPoint;
-  RewardWindow.SetPosition(
-      Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20))
-  );
+  RewardWindow.SetPosition(Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20)));
 end;
 
 procedure TfRating2.ShowCareerHint(Sender: TObjectGI);
@@ -591,9 +529,7 @@ var
   Text: WideString;
   Ranger: TRanger;
 
-  function FormatCareerHintColumn(
-      Column: Integer
-  ): WideString; { Nested in TfRating2.ShowCareerHint; caller supplies its parent frame. }
+  function FormatCareerHintColumn(Column: Integer): WideString; { Nested in TfRating2.ShowCareerHint; caller supplies its parent frame. }
   begin
     Result := IntToStr(CareerHintColumns[Column] + 40);
   end;
@@ -603,38 +539,18 @@ begin
   if GetPlayer = Ranger then
   begin
     with GetByName('RewardName') as TLabelGI do
-      SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.PlayerName'),
-              TextHighlightColorTag,
-              '<Name>',
-              Ranger.GetName
-          )
-      );
+      SetText(FormatText1(LocalizedColorText('FormRating.PlayerName'), TextHighlightColorTag, '<Name>', Ranger.GetName));
     with GetByName('RewardImage') as TGraphBufGI do
       LoadGiByPathIntoGraphBuf('Bm.FormRating2.' + GiResourceSuffix + 'PlayerB', GraphBuf);
   end
   else
   begin
     with GetByName('RewardName') as TLabelGI do
-      SetText(
-          FormatText1(
-              LocalizedColorText('FormRating.PartnerName'),
-              TextHighlightColorTag,
-              '<Name>',
-              Ranger.GetName
-          )
-      );
+      SetText(FormatText1(LocalizedColorText('FormRating.PartnerName'), TextHighlightColorTag, '<Name>', Ranger.GetName));
     with GetByName('RewardImage') as TGraphBufGI do
       LoadGiByPathIntoGraphBuf('Bm.FormRating2.' + GiResourceSuffix + 'DutyB', GraphBuf);
   end;
-  Text :=
-      '<td='
-          + FormatCareerHintColumn(1)
-          + '><align=left>'
-          + LocalizedColorText('FormRating.Rating.Title')
-          + '</align>'
-          + #13#10;
+  Text := '<td=' + FormatCareerHintColumn(1) + '><align=left>' + LocalizedColorText('FormRating.Rating.Title') + '</align>' + #13#10;
   for Career := Low(TRangerCareer) to High(TRangerCareer) do
     Text :=
         Text
@@ -658,27 +574,13 @@ begin
     SetImageKindX(ikxCenter);
     SetImageKindY(ikyCenter);
   end;
-  ShipScreen.LayoutItemInfo(
-      RewardWindow,
-      GetByName('RewardName') as TLabelGI,
-      GetByName('RewardText') as TLabelGI,
-      True,
-      True,
-      0
-  );
+  ShipScreen.LayoutItemInfo(RewardWindow, GetByName('RewardName') as TLabelGI, GetByName('RewardText') as TLabelGI, True, True, 0);
   with GetByName('RewardText') as TLabelGI do
     SetTextAlignX(taxLeft);
   with GetByName('RewardName') as TLabelGI do
-    SetSize(
-        Classes.Point(
-            Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right,
-            ClientSize.Y
-        )
-    );
+    SetSize(Classes.Point(Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right, ClientSize.Y));
   Cursor := GetCursorPoint;
-  RewardWindow.SetPosition(
-      Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20))
-  );
+  RewardWindow.SetPosition(Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20)));
 end;
 
 procedure TfRating2.ShowAwardHint(Ranger: TRanger; AwardId: Integer);
@@ -691,9 +593,7 @@ begin
     HoveredAwardId := AwardId;
     RewardWindow.SetActive(True);
     Cursor := GetCursorPoint;
-    RewardWindow.SetPosition(
-        Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20))
-    );
+    RewardWindow.SetPosition(Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20)));
     if AwardId < 10 then
       Path := 'Bm.FormRewards.' + GiResourceSuffix + '_0' + IntToStr(AwardId)
     else
@@ -703,17 +603,9 @@ begin
       SourceHasPerPixelAlpha := True;
       LoadGiByPathIntoGraphBuf(Path, GraphBuf);
       if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-        GraphBuf.RescaleRgba(
-            ClientSize.X,
-            Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-            5
-        )
+        GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
       else
-        GraphBuf.RescaleRgba(
-            Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-            ClientSize.Y,
-            5
-        );
+        GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
     end;
@@ -721,23 +613,9 @@ begin
       SetText(Ranger.GetAwardInfo(AwardId).Name);
     with GetByName('RewardText') as TLabelGI do
       SetText(Ranger.GetAwardInfo(AwardId).Text);
-    ShipScreen.LayoutItemInfo(
-        RewardWindow,
-        GetByName('RewardName') as TLabelGI,
-        GetByName('RewardText') as TLabelGI,
-        True,
-        True,
-        0
-    );
+    ShipScreen.LayoutItemInfo(RewardWindow, GetByName('RewardName') as TLabelGI, GetByName('RewardText') as TLabelGI, True, True, 0);
     with GetByName('RewardName') as TLabelGI do
-      SetSize(
-          Classes.Point(
-              Self.RewardWindow.ClientSize.X
-                  - LocalPosition.X
-                  - Self.RewardWindow.WorkSubRect.Right,
-              ClientSize.Y
-          )
-      );
+      SetSize(Classes.Point(Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right, ClientSize.Y));
   end;
 end;
 
@@ -845,39 +723,23 @@ begin
   begin
     if Self.SortColumn = rrscName then
       SetPosition(
-          Classes.Point(
-              Self.GetByName('SortName').LocalPosition.X
-                  + Self.GetByName('SortName').ClientSize.X
-                  - ClientSize.X,
-              LocalPosition.Y
-          )
+          Classes
+              .Point(Self.GetByName('SortName').LocalPosition.X + Self.GetByName('SortName').ClientSize.X - ClientSize.X, LocalPosition.Y)
       )
     else if Self.SortColumn = rrscExperience then
       SetPosition(
-          Classes.Point(
-              Self.GetByName('SortScore').LocalPosition.X
-                  + Self.GetByName('SortScore').ClientSize.X
-                  - ClientSize.X,
-              LocalPosition.Y
-          )
+          Classes
+              .Point(Self.GetByName('SortScore').LocalPosition.X + Self.GetByName('SortScore').ClientSize.X - ClientSize.X, LocalPosition.Y)
       )
     else if Self.SortColumn = rrscRace then
       SetPosition(
-          Classes.Point(
-              Self.GetByName('SortRace').LocalPosition.X
-                  + Self.GetByName('SortRace').ClientSize.X
-                  - ClientSize.X,
-              LocalPosition.Y
-          )
+          Classes
+              .Point(Self.GetByName('SortRace').LocalPosition.X + Self.GetByName('SortRace').ClientSize.X - ClientSize.X, LocalPosition.Y)
       )
     else if Self.SortColumn = rrscRank then
       SetPosition(
-          Classes.Point(
-              Self.GetByName('SortRank').LocalPosition.X
-                  + Self.GetByName('SortRank').ClientSize.X
-                  - ClientSize.X,
-              LocalPosition.Y
-          )
+          Classes
+              .Point(Self.GetByName('SortRank').LocalPosition.X + Self.GetByName('SortRank').ClientSize.X - ClientSize.X, LocalPosition.Y)
       );
     if Self.SortAscending then
       SetImagePath('GI,Bm.FormRating2.' + GiResourceSuffix + 'SortDown')
@@ -940,16 +802,10 @@ begin
       begin
         if SortAscending then
         begin
-          if AnsiStrComp(
-                  PChar(AnsiString(B.GetCharacterName)),
-                  PChar(AnsiString(A.GetCharacterName)))
-              < 0 then
+          if AnsiStrComp(PChar(AnsiString(B.GetCharacterName)), PChar(AnsiString(A.GetCharacterName))) < 0 then
             List.Exchange(I, J);
         end
-        else if AnsiStrComp(
-                PChar(AnsiString(B.GetCharacterName)),
-                PChar(AnsiString(A.GetCharacterName)))
-            > 0 then
+        else if AnsiStrComp(PChar(AnsiString(B.GetCharacterName)), PChar(AnsiString(A.GetCharacterName))) > 0 then
           List.Exchange(I, J);
       end;
     end;
@@ -1023,9 +879,7 @@ var
   ExtraKills: Integer;
   Animation: TgaiGI;
 
-  function GetRatingRankImagePath(
-      Rank: TShipRank
-  ): WideString; { Nested in TfRating2.CreateRow; caller supplies its parent frame. }
+  function GetRatingRankImagePath(Rank: TShipRank): WideString; { Nested in TfRating2.CreateRow; caller supplies its parent frame. }
   begin
     if Rank = 0 then
       Result := 'GI,Bm.FormRating2.' + GiResourceSuffix + 'Rank1'
@@ -1097,11 +951,7 @@ var
           Icon.RescaleRgba(Round(Size / Cardinal(Icon.Height) * Cardinal(Icon.Width)), Size, 5);
         if Icon.Height <= Size then
           if Icon.Width + J * Step <= Buffer.GraphBuf.Width then
-            Buffer.GraphBuf.BlendRect32(
-                Classes.Point(J * Step, 0),
-                Icon,
-                Classes.Rect(0, 0, Icon.Width, Icon.Height)
-            );
+            Buffer.GraphBuf.BlendRect32(Classes.Point(J * Step, 0), Icon, Classes.Rect(0, 0, Icon.Width, Icon.Height));
         Inc(I);
         Inc(J);
       end;
@@ -1119,12 +969,7 @@ begin
   begin
     Image := TImageGI.Create(Panel);
     Image.UserState := Index;
-    Image.SetImagePath(
-        'GI,Bm.FormRating2.'
-            + GiResourceSuffix
-            + 'Open'
-            + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName
-    );
+    Image.SetImagePath('GI,Bm.FormRating2.' + GiResourceSuffix + 'Open' + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName);
     Image.SetSize(Image.GetContentSize);
     Image.SetPosition(Classes.Point(0, 0));
     Image.SetDepth(11);
@@ -1213,14 +1058,11 @@ begin
     Caption.SetTextAlignX(taxCenter);
     Caption.SetTextAlignY(tayCenterEx);
     Caption.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
-    Caption.SetText(
-        IntToStr(Ranger.TotalShipKillCount - Ranger.PirateKillCount - Ranger.DominatorKillCount)
-    );
+    Caption.SetText(IntToStr(Ranger.TotalShipKillCount - Ranger.PirateKillCount - Ranger.DominatorKillCount));
     ExtraKills := 0;
     if GetPlayer = Ranger then
     begin
-      ExtraKills :=
-          (Ranger as TPlayer).HyperspaceKillCount + (Ranger as TPlayer).BlackHoleKillCount;
+      ExtraKills := (Ranger as TPlayer).HyperspaceKillCount + (Ranger as TPlayer).BlackHoleKillCount;
       Caption.SetText(Caption.GetText + '/' + IntToStr(ExtraKills));
     end;
     Caption := TLabelGI.Create(Panel);
@@ -1239,9 +1081,7 @@ begin
     Caption.SetWordWrapEnabled(False);
     Caption.SetTextAlignX(taxCenter);
     Caption.SetTextAlignY(tayCenterEx);
-    Caption.SetText(
-        LocalizedText('FormRating.LiberationSystem') + ': ' + IntToStr(Ranger.LiberatedSystemCount)
-    );
+    Caption.SetText(LocalizedText('FormRating.LiberationSystem') + ': ' + IntToStr(Ranger.LiberatedSystemCount));
     Caption.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
     Caption := TLabelGI.Create(Panel);
     Caption.SetPosition(Classes.Point(GiScalePixels(208), GiScalePixels(61)));
@@ -1344,12 +1184,7 @@ begin
   begin
     Image := TImageGI.Create(Panel);
     Image.UserState := Index;
-    Image.SetImagePath(
-        'GI,Bm.FormRating2.'
-            + GiResourceSuffix
-            + 'Normal'
-            + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName
-    );
+    Image.SetImagePath('GI,Bm.FormRating2.' + GiResourceSuffix + 'Normal' + OwnerInfo[RaceToOwner(Ranger.PilotRace)].InternalName);
     Image.SetSize(Image.GetContentSize);
     Image.SetPosition(Classes.Point(0, 0));
     Image.SetDepth(11);
@@ -1358,10 +1193,7 @@ begin
     Image.LeftButtonDownCallback := RowMouseDown;
     Panel.SetSize(Image.ClientSize);
   end;
-  if (GetPlayer = Ranger)
-      or Ranger.IsInPrison
-      or (Ranger.PartnerShip <> nil)
-      or (Ranger.CountWingmen > 0) then
+  if (GetPlayer = Ranger) or Ranger.IsInPrison or (Ranger.PartnerShip <> nil) or (Ranger.CountWingmen > 0) then
   begin
     Image := TImageGI.Create(Panel);
     if GetPlayer = Ranger then
@@ -1436,9 +1268,7 @@ begin
   Caption.SetText(IntToStr(Ranger.TotalExperience));
   Caption.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
   Rows[Index].Height := Panel.ClientSize.Y;
-  TablePanel.VerticalScrollBar.SetSmallChange(
-      Min(Rows[Index].Height, TablePanel.VerticalScrollBar.SmallChange)
-  );
+  TablePanel.VerticalScrollBar.SetSmallChange(Min(Rows[Index].Height, TablePanel.VerticalScrollBar.SmallChange));
   if SelectedIndex = Index then
     SelectedRowRect := Classes.Rect(0, Rows[Index].Top, 1, Rows[Index].Top + Rows[Index].Height);
 end;
@@ -1617,30 +1447,21 @@ begin
     else if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
     begin
       if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-        MusicManager.PlayCategory(
-            'Nation.'
-                + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                + 'Pirate'
-        )
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
       else
         MusicManager.PlayCategory('Nation.PiratePlanetMain');
     end
     else
-      MusicManager
-          .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
   end
   else if GetPlayer.IsDockedToShip then
   begin
     if not MusicInPlanetEnabled then
       MusicManager.RequestFadeOut
     else if GetPlayer.DockedTo.TypeId in [rstPirateBase, rstDominion] then
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate'
-      )
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName + 'Pirate')
     else
-      MusicManager.PlayCategory(
-          'Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName
-      );
+      MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.DockedTo.PilotRace)].InternalName);
   end
   else if GetPlayer.InNormalSpace then
   begin
@@ -1714,40 +1535,20 @@ begin
     if GetPlayer = Ranger then
     begin
       with GetByName('RewardName') as TLabelGI do
-        SetText(
-            FormatText1(
-                LocalizedColorText('FormRating.PlayerName'),
-                TextHighlightColorTag,
-                '<Name>',
-                Ranger.GetName
-            )
-        );
+        SetText(FormatText1(LocalizedColorText('FormRating.PlayerName'), TextHighlightColorTag, '<Name>', Ranger.GetName));
       with GetByName('RewardImage') as TGraphBufGI do
         LoadGiByPathIntoGraphBuf('Bm.FormRating2.' + GiResourceSuffix + 'PlayerB', GraphBuf);
     end
     else
     begin
       with GetByName('RewardName') as TLabelGI do
-        SetText(
-            FormatText1(
-                LocalizedColorText('FormRating.PartnerName'),
-                TextHighlightColorTag,
-                '<Name>',
-                Ranger.GetName
-            )
-        );
+        SetText(FormatText1(LocalizedColorText('FormRating.PartnerName'), TextHighlightColorTag, '<Name>', Ranger.GetName));
       with GetByName('RewardImage') as TGraphBufGI do
         LoadGiByPathIntoGraphBuf('Bm.FormRating2.' + GiResourceSuffix + 'DutyB', GraphBuf);
     end;
     if GetPlayer = Ranger then
     begin
-      Text :=
-          '<td='
-              + FormatDominatorKillsHintColumn(1)
-              + '><align=left>'
-              + LocalizedText('FormRating.Dominator')
-              + '</align>'
-              + #13#10;
+      Text := '<td=' + FormatDominatorKillsHintColumn(1) + '><align=left>' + LocalizedText('FormRating.Dominator') + '</align>' + #13#10;
       for DisplayIndex := Low(DominatorDisplayOrder) to High(DominatorDisplayOrder) do
         if DominatorDisplayOrder[DisplayIndex] <> ktBoss then
           Text :=
@@ -1755,17 +1556,13 @@ begin
                   + '<td='
                   + FormatDominatorKillsHintColumn(1)
                   + '><align=left>'
-                  + LocalizedColorText(
-                      AnsiString('ShipType.Dominator.Blazer.')
-                          + IntToStr(Ord(DominatorDisplayOrder[DisplayIndex])))
+                  + LocalizedColorText(AnsiString('ShipType.Dominator.Blazer.') + IntToStr(Ord(DominatorDisplayOrder[DisplayIndex])))
                   + '<td='
                   + FormatDominatorKillsHintColumn(2)
                   + '>:</align><td='
                   + FormatDominatorKillsHintColumn(3)
                   + '><align=left>'
-                  + WrapTextInColor(
-                      IntToStr(GetPlayer.DominatorKillsByType[DominatorDisplayOrder[DisplayIndex]]),
-                      TextHighlightColorTag)
+                  + WrapTextInColor(IntToStr(GetPlayer.DominatorKillsByType[DominatorDisplayOrder[DisplayIndex]]), TextHighlightColorTag)
                   + '</align>'
                   + #13#10;
       with GetByName('RewardText') as TLabelGI do
@@ -1777,29 +1574,13 @@ begin
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
     end;
-    ShipScreen.LayoutItemInfo(
-        RewardWindow,
-        GetByName('RewardName') as TLabelGI,
-        GetByName('RewardText') as TLabelGI,
-        True,
-        True,
-        0
-    );
+    ShipScreen.LayoutItemInfo(RewardWindow, GetByName('RewardName') as TLabelGI, GetByName('RewardText') as TLabelGI, True, True, 0);
     with GetByName('RewardText') as TLabelGI do
       SetTextAlignX(taxLeft);
     with GetByName('RewardName') as TLabelGI do
-      SetSize(
-          Classes.Point(
-              Self.RewardWindow.ClientSize.X
-                  - LocalPosition.X
-                  - Self.RewardWindow.WorkSubRect.Right,
-              ClientSize.Y
-          )
-      );
+      SetSize(Classes.Point(Self.RewardWindow.ClientSize.X - LocalPosition.X - Self.RewardWindow.WorkSubRect.Right, ClientSize.Y));
     Cursor := GetCursorPoint;
-    RewardWindow.SetPosition(
-        Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20))
-    );
+    RewardWindow.SetPosition(Classes.Point(Cursor.X + 100, Max(0, Cursor.Y - RewardWindow.ClientSize.Y - 20)));
   end;
 end;
 

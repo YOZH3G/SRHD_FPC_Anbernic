@@ -144,12 +144,7 @@ begin
             MessageLoop.CancelCallbackTimer(AnimationTimer);
             AnimationTimer := nil;
           end;
-          AnimationTimer :=
-              MessageLoop.ScheduleCallbackTimer(
-                  FrameDelays[FrameIndex],
-                  FrameDelays[FrameIndex],
-                  AdvanceAnimation
-              );
+          AnimationTimer := MessageLoop.ScheduleCallbackTimer(FrameDelays[FrameIndex], FrameDelays[FrameIndex], AdvanceAnimation);
         end;
       end;
     end
@@ -233,10 +228,8 @@ begin
       for Index := 0 to High(CursorHandles) do
       begin
         Gai.LoadFrameGi(Index).DecodeToGraphBuf(Buffer, False);
-        Hotspot.X :=
-            OriginPoint.X - (Gai.LoadFrameGi(Index).GetBoundsRect.Left - Gai.GetBoundsRect.Left);
-        Hotspot.Y :=
-            OriginPoint.Y - (Gai.LoadFrameGi(Index).GetBoundsRect.Top - Gai.GetBoundsRect.Top);
+        Hotspot.X := OriginPoint.X - (Gai.LoadFrameGi(Index).GetBoundsRect.Left - Gai.GetBoundsRect.Left);
+        Hotspot.Y := OriginPoint.Y - (Gai.LoadFrameGi(Index).GetBoundsRect.Top - Gai.GetBoundsRect.Top);
         CursorHandles[Index] := CreateNativeCursor(Buffer, Hotspot);
       end;
     finally
@@ -282,12 +275,7 @@ begin
         MessageLoop.CancelCallbackTimer(AnimationTimer);
         AnimationTimer := nil;
       end;
-      AnimationTimer :=
-          MessageLoop.ScheduleCallbackTimer(
-              FrameDelays[FrameIndex],
-              FrameDelays[FrameIndex],
-              AdvanceAnimation
-          );
+      AnimationTimer := MessageLoop.ScheduleCallbackTimer(FrameDelays[FrameIndex], FrameDelays[FrameIndex], AdvanceAnimation);
     end;
   end;
 end;
@@ -304,17 +292,11 @@ begin
     // outside their bitmap. SDL requires it inside the surface. Transparent
     // padding preserves the image's position relative to the pointer; clamping
     // the hotspot would visibly move it.
-    if (Hotspot.X < 0)
-        or (Hotspot.Y < 0)
-        or (Hotspot.X >= Buffer.Width)
-        or (Hotspot.Y >= Buffer.Height) then
+    if (Hotspot.X < 0) or (Hotspot.Y < 0) or (Hotspot.X >= Buffer.Width) or (Hotspot.Y >= Buffer.Height) then
     begin
       Offset := Classes.Point(Max(0, -Hotspot.X), Max(0, -Hotspot.Y));
       Padded := TGraphBufGR.Create(False);
-      Padded.AllocateRgbaTight(
-          Max(Buffer.Width, Hotspot.X + 1) + Offset.X,
-          Max(Buffer.Height, Hotspot.Y + 1) + Offset.Y
-      );
+      Padded.AllocateRgbaTight(Max(Buffer.Width, Hotspot.X + 1) + Offset.X, Max(Buffer.Height, Hotspot.Y + 1) + Offset.Y);
       Padded.FillRect32(Classes.Rect(0, 0, Padded.Width, Padded.Height), 0);
       Padded.CopyRect32(Offset, Buffer, Classes.Rect(0, 0, Buffer.Width, Buffer.Height));
       Inc(Hotspot.X, Offset.X);
@@ -324,17 +306,7 @@ begin
     // The game's cursor images use the same BGRA bytes as the original DIB.
     // SDL copies the surface into the cursor, so the decoded frame can be reused.
     Surface :=
-        SDL_CreateRGBSurfaceFrom(
-            Buffer.GetPixels,
-            Buffer.Width,
-            Buffer.Height,
-            32,
-            Buffer.PitchBytes,
-            $FF0000,
-            $FF00,
-            $FF,
-            $FF000000
-        );
+        SDL_CreateRGBSurfaceFrom(Buffer.GetPixels, Buffer.Width, Buffer.Height, 32, Buffer.PitchBytes, $FF0000, $FF00, $FF, $FF000000);
     if Surface = nil then
       RaiseWideMessage('Cursor surface: ' + string(SDL_GetError));
     try
@@ -360,12 +332,7 @@ begin
     MessageLoop.CancelCallbackTimer(AnimationTimer);
     AnimationTimer := nil;
   end;
-  AnimationTimer :=
-      MessageLoop.ScheduleCallbackTimer(
-          FrameDelays[FrameIndex],
-          FrameDelays[FrameIndex],
-          AdvanceAnimation
-      );
+  AnimationTimer := MessageLoop.ScheduleCallbackTimer(FrameDelays[FrameIndex], FrameDelays[FrameIndex], AdvanceAnimation);
 end;
 
 end.

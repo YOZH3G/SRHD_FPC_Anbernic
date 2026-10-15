@@ -87,27 +87,16 @@ begin
     // Reuse the original lower rim above and below the compact body. The
     // mirrored upper rim closes the frame without retaining its desktop tabs.
     for Y := 0 to FrameTopHeight - 1 do
-      Image.GraphBufControl.GraphBuf.CopyRect32(
-          Point(0, Y),
-          Source,
-          Rect(0, Source.Height - 1 - Y, Source.Width, Source.Height - Y)
-      );
+      Image.GraphBufControl.GraphBuf.CopyRect32(Point(0, Y), Source, Rect(0, Source.Height - 1 - Y, Source.Width, Source.Height - Y));
     for Y := FrameTopHeight to Height - FrameBottomHeight - 1 do
-      Image
-          .GraphBufControl
-          .GraphBuf
-          .CopyRect32(Point(0, Y), Source, Rect(0, 200, Source.Width, 201));
+      Image.GraphBufControl.GraphBuf.CopyRect32(Point(0, Y), Source, Rect(0, 200, Source.Width, 201));
     // The original side strip also contains a fixed-position inner bracket.
     // Its old text inset no longer matches the wider mobile content area.
-    Image.GraphBufControl.GraphBuf.FillRect32(
-        Rect(32, FrameTopHeight, Source.Width - 32, Height - FrameBottomHeight),
-        $FF000000
-    );
-    Image.GraphBufControl.GraphBuf.CopyRect32(
-        Point(0, Height - FrameBottomHeight),
-        Source,
-        Rect(0, Source.Height - FrameBottomHeight, Source.Width, Source.Height)
-    );
+    Image.GraphBufControl.GraphBuf.FillRect32(Rect(32, FrameTopHeight, Source.Width - 32, Height - FrameBottomHeight), $FF000000);
+    Image
+        .GraphBufControl
+        .GraphBuf
+        .CopyRect32(Point(0, Height - FrameBottomHeight), Source, Rect(0, Source.Height - FrameBottomHeight, Source.Width, Source.Height));
   finally
     Source.Free;
   end;
@@ -153,14 +142,7 @@ begin
   // Three categories, two preset rows and one confirmation row share the same
   // height budget. Group gaps count twice; even the compact form keeps 2px gaps.
   MinimumFrameHeight :=
-      FrameChromeHeight
-          + FrameTopHeight
-          + 6
-          + FrameBottomHeight
-          + 3 * CategoryArtworkHeight
-          + 2 * PresetHeight
-          + ConfirmHeight
-          + 7 * 2;
+      FrameChromeHeight + FrameTopHeight + 6 + FrameBottomHeight + 3 * CategoryArtworkHeight + 2 * PresetHeight + ConfirmHeight + 7 * 2;
   // Width is the original skin's width. Height is the available physical
   // space, so small windows show fewer rows instead of shrinking all rows.
   Scale := Min(GetGameMobileUiScale(0.8), (GameScreenWidth - 16) / Header.ClientSize.X);
@@ -191,23 +173,14 @@ begin
   ResizeFrame(MainPanel.FindByNameRecursive('ModeLeft') as TImageGI, BodyHeight);
   ResizeFrame(MainPanel.FindByNameRecursive('ModeRight') as TImageGI, BodyHeight);
   Panel.SetPosition(Point(205, FrameTopHeight + 6));
-  Panel.SetSize(
-      Point(Body.ClientSize.X - 247, BodyHeight - Panel.LocalPosition.Y - FrameBottomHeight)
-  );
+  Panel.SetSize(Point(Body.ClientSize.X - 247, BodyHeight - Panel.LocalPosition.Y - FrameBottomHeight));
   Panel.SetDragScrollingEnabled(True);
   Panel.AutoVerticalPlacement := True;
   Panel.VerticalScrollBar.SetIndicatorThickness(2);
   Panel.UpdateScrollbarPlacement;
   // Spend spare height on padding, never by letting top- and bottom-anchored
   // action groups overlap. Compact windows retain all original button artwork.
-  ButtonHeight :=
-      Max(
-          CategoryArtworkHeight,
-          Min(
-              Ceil(30 / Result),
-              (Panel.ClientSize.Y - 2 * PresetHeight - ConfirmHeight - 7 * 2) div 3
-          )
-      );
+  ButtonHeight := Max(CategoryArtworkHeight, Min(Ceil(30 / Result), (Panel.ClientSize.Y - 2 * PresetHeight - ConfirmHeight - 7 * 2) div 3));
   Gap := Min(6, (Panel.ClientSize.Y - 3 * ButtonHeight - 2 * PresetHeight - ConfirmHeight) div 7);
   for I := 0 to 3 do
   begin
@@ -241,11 +214,7 @@ begin
     Control.SetSize(Point(Control.ClientSize.X, ConfirmHeight));
   end;
   Footer.SetActive(False);
-  PlaceControlAtScreen(
-      Wrapper,
-      Point((GameScreenWidth - Round(Wrapper.ClientSize.X * Scale)) div 2, 4),
-      Scale
-  );
+  PlaceControlAtScreen(Wrapper, Point((GameScreenWidth - Round(Wrapper.ClientSize.X * Scale)) div 2, 4), Scale);
 end;
 
 end.

@@ -152,13 +152,7 @@ function PushPointOutsideCircleBand(Point: TPointF; Radius: Single; Margin: Sing
 
 function RotatePointQuarterTurn(Center: TPointF; Point: TPointF): TPointF;
 
-function IntersectLines(
-    A1: TPointF;
-    A2: TPointF;
-    B1: TPointF;
-    B2: TPointF;
-    out Intersection: TPointF
-): Boolean;
+function IntersectLines(A1: TPointF; A2: TPointF; B1: TPointF; B2: TPointF; out Intersection: TPointF): Boolean;
 
 function SegmentIntersectsRectEdges(
     StartPoint: TPointF;
@@ -168,46 +162,17 @@ function SegmentIntersectsRectEdges(
     out Intersection: TPointF
 ): Boolean;
 
-function SegmentIntersectsCircle(
-    StartPoint: TPointF;
-    EndPoint: TPointF;
-    Center: TPointF;
-    Radius: Single
-): Boolean;
+function SegmentIntersectsCircle(StartPoint: TPointF; EndPoint: TPointF; Center: TPointF; Radius: Single): Boolean;
 
-function SegmentCrossesOriginCircle(
-    StartPoint: TPointF;
-    EndPoint: TPointF;
-    Radius: Single
-): Boolean;
+function SegmentCrossesOriginCircle(StartPoint: TPointF; EndPoint: TPointF; Radius: Single): Boolean;
 
-function RayIntersectsOriginCircle(
-    StartPoint: TPointF;
-    ThroughPoint: TPointF;
-    out Intersection: TPointF;
-    Radius: Single
-): Boolean;
+function RayIntersectsOriginCircle(StartPoint: TPointF; ThroughPoint: TPointF; out Intersection: TPointF; Radius: Single): Boolean;
 
-function CalculateTangentArcOffset(
-    StartPoint: TPointF;
-    EndPoint: TPointF;
-    Heading: Double;
-    Angle: Double
-): Double;
+function CalculateTangentArcOffset(StartPoint: TPointF; EndPoint: TPointF; Heading: Double; Angle: Double): Double;
 
-procedure CircleTangentPoints(
-    Point: TPointF;
-    Radius: Single;
-    out LeftPoint: TPointF;
-    out RightPoint: TPointF
-);
+procedure CircleTangentPoints(Point: TPointF; Radius: Single; out LeftPoint: TPointF; out RightPoint: TPointF);
 
-function PointBehindHeading(
-    Origin: TPointF;
-    Heading: Double;
-    Distance: Double;
-    Seed: Cardinal
-): TPointF;
+function PointBehindHeading(Origin: TPointF; Heading: Double; Distance: Double; Seed: Cardinal): TPointF;
 
 function PointDistanceSquared(PointA: TPointF; PointB: TPointF): Single;
 
@@ -215,36 +180,15 @@ function PointDistance(PointA: TPointF; PointB: TPointF): Double;
 
 function IntegerPointDistancePlusOne(PointA: TPoint; PointB: TPoint): Integer;
 
-function RemapClamped(
-    Value: Double;
-    InMin: Double;
-    InMax: Double;
-    OutMin: Double;
-    OutMax: Double
-): Double;
+function RemapClamped(Value: Double; InMin: Double; InMax: Double; OutMin: Double; OutMax: Double): Double;
 
 function MakeFloatPoint(X: Integer; Y: Integer): TPointF;
 
-procedure ReplaceTextToken(
-    var Text: WideString;
-    Token: WideString;
-    Replacement: WideString;
-    ColorTag: WideString
-);
+procedure ReplaceTextToken(var Text: WideString; Token: WideString; Replacement: WideString; ColorTag: WideString);
 
-function ReplaceColoredToken(
-    Text: WideString;
-    Token: WideString;
-    Replacement: WideString;
-    ColorTag: WideString
-): WideString;
+function ReplaceColoredToken(Text: WideString; Token: WideString; Replacement: WideString; ColorTag: WideString): WideString;
 
-function FormatText1(
-    Text: WideString;
-    ColorTag: WideString;
-    Token: WideString;
-    Replacement: WideString
-): WideString;
+function FormatText1(Text: WideString; ColorTag: WideString; Token: WideString; Replacement: WideString): WideString;
 
 function FormatText2(
     Text: WideString;
@@ -337,20 +281,13 @@ end;
 
 function RandomFloatRange(BoundA, BoundB: Double): Double;
 begin
-  Result :=
-      RandomIntRange(
-              Trunc(BoundA * RandomFloatResolution + 1),
-              Trunc(BoundB * RandomFloatResolution + 1))
-          / RandomFloatResolution;
+  Result := RandomIntRange(Trunc(BoundA * RandomFloatResolution + 1), Trunc(BoundB * RandomFloatResolution + 1)) / RandomFloatResolution;
 end;
 
 function SeededRandomFloatRange(Seed: Cardinal; BoundA, BoundB: Double): Double;
 begin
   Result :=
-      SeededRandomIntRange(
-              Trunc(BoundA * RandomFloatResolution + 1),
-              Trunc(BoundB * RandomFloatResolution + 1),
-              Seed)
+      SeededRandomIntRange(Trunc(BoundA * RandomFloatResolution + 1), Trunc(BoundB * RandomFloatResolution + 1), Seed)
           / RandomFloatResolution;
 end;
 
@@ -402,10 +339,7 @@ begin
     if Seed = OldSeed then
       Seed := Seed * 6281 + 317 + Seed div 7311;
     Result :=
-        SeededRandomIntRange(
-                Trunc(BoundA * RandomFloatResolution + 1),
-                Trunc(BoundB * RandomFloatResolution + 1),
-                Seed)
+        SeededRandomIntRange(Trunc(BoundA * RandomFloatResolution + 1), Trunc(BoundB * RandomFloatResolution + 1), Seed)
             / RandomFloatResolution;
   end;
 end;
@@ -611,10 +545,7 @@ begin
   Result := True;
 end;
 
-function SegmentIntersectsRectEdges(
-    StartPoint, EndPoint, TopLeft, BottomRight: TPointF;
-    out Intersection: TPointF
-): Boolean;
+function SegmentIntersectsRectEdges(StartPoint, EndPoint, TopLeft, BottomRight: TPointF; out Intersection: TPointF): Boolean;
 var
   A, B: TPointF;
 begin
@@ -742,11 +673,7 @@ begin
     Result := StartDistanceSquared - Projection * Projection < Radius * Radius;
 end;
 
-function RayIntersectsOriginCircle(
-    StartPoint, ThroughPoint: TPointF;
-    out Intersection: TPointF;
-    Radius: Single
-): Boolean;
+function RayIntersectsOriginCircle(StartPoint, ThroughPoint: TPointF; out Intersection: TPointF; Radius: Single): Boolean;
 var
   DX, DY, T1, T2, CX, CY, Projection, Discriminant, CenterDistanceSquared: Single;
 begin
@@ -794,12 +721,7 @@ begin
   Normal := RotatePointQuarterTurn(StartPoint, Normal);
   Midpoint.X := (StartPoint.X + EndPoint.X) / 2;
   Midpoint.Y := (StartPoint.Y + EndPoint.Y) / 2;
-  if not IntersectLines(
-      StartPoint,
-      Normal,
-      Midpoint,
-      RotatePointQuarterTurn(Midpoint, StartPoint),
-      Center) then
+  if not IntersectLines(StartPoint, Normal, Midpoint, RotatePointQuarterTurn(Midpoint, StartPoint), Center) then
   begin
     Result := 0;
     Exit;
@@ -824,8 +746,7 @@ end;
 
 function PointBehindHeading(Origin: TPointF; Heading, Distance: Double; Seed: Cardinal): TPointF;
 begin
-  Heading :=
-      HeadingDegreesToRadians(WrapHeadingDegrees(Heading + 180 + (Integer(Seed mod 180) - 90)));
+  Heading := HeadingDegreesToRadians(WrapHeadingDegrees(Heading + 180 + (Integer(Seed mod 180) - 90)));
   Result.X := Sin(Heading) * Distance + Origin.X;
   Result.Y := Origin.Y - Cos(Heading) * Distance;
 end;
@@ -857,13 +778,7 @@ begin
   Result := Trunc(Sqrt(X * X + Y * Y) + 1);
 end;
 
-function RemapClamped(
-    Value: Double;
-    InMin: Double;
-    InMax: Double;
-    OutMin: Double;
-    OutMax: Double
-): Double;
+function RemapClamped(Value: Double; InMin: Double; InMax: Double; OutMin: Double; OutMax: Double): Double;
 begin
   if not ((Value > InMin)) then
   begin
@@ -909,34 +824,17 @@ begin
   Result := ReplaceAllWideString(Text, Token, Replacement);
 end;
 
-function FormatText2(
-    Text,
-    ColorTag,
-    Token1,
-    Replacement1,
-    Token2,
-    Replacement2: WideString
-): WideString;
+function FormatText2(Text, ColorTag, Token1, Replacement1, Token2, Replacement2: WideString): WideString;
 begin
   if ColorTag <> '' then
   begin
     Replacement1 := ColorTag + Replacement1 + EndColorTag;
     Replacement2 := ColorTag + Replacement2 + EndColorTag;
   end;
-  Result :=
-      ReplaceAllWideString(ReplaceAllWideString(Text, Token1, Replacement1), Token2, Replacement2);
+  Result := ReplaceAllWideString(ReplaceAllWideString(Text, Token1, Replacement1), Token2, Replacement2);
 end;
 
-function FormatText3(
-    Text,
-    ColorTag,
-    Token1,
-    Replacement1,
-    Token2,
-    Replacement2,
-    Token3,
-    Replacement3: WideString
-): WideString;
+function FormatText3(Text, ColorTag, Token1, Replacement1, Token2, Replacement2, Token3, Replacement3: WideString): WideString;
 begin
   if ColorTag <> '' then
   begin
@@ -946,11 +844,7 @@ begin
   end;
   Result :=
       ReplaceAllWideString(
-          ReplaceAllWideString(
-              ReplaceAllWideString(Text, Token1, Replacement1),
-              Token2,
-              Replacement2
-          ),
+          ReplaceAllWideString(ReplaceAllWideString(Text, Token1, Replacement1), Token2, Replacement2),
           Token3,
           Replacement3
       );

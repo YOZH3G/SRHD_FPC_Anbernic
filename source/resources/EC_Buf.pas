@@ -198,11 +198,7 @@ end;
 procedure TBufEC.EnsureWriteCapacityAtOffset(Offset, AddedBytes: Integer);
 begin
   if (AddedBytes < 1) or (Offset < 0) or (Offset > DataSize) then
-    raise Exception.Create(
-        'TBufEC.TestAddLenBuf. sme='
-            + SysUtils.IntToStr(Offset)
-            + ' addlen='
-            + SysUtils.IntToStr(AddedBytes));
+    raise Exception.Create('TBufEC.TestAddLenBuf. sme=' + SysUtils.IntToStr(Offset) + ' addlen=' + SysUtils.IntToStr(AddedBytes));
   if Offset + AddedBytes > DataSize then
   begin
     DataSize := Offset + AddedBytes;
@@ -223,8 +219,7 @@ end;
 procedure TBufEC.EnsureReadableAtOffset(Offset, Bytes: Integer);
 begin
   if (Bytes < 1) or (Offset + Bytes > DataSize) then
-    raise Exception.Create(
-        'TBufEC.TestGet. sme=' + SysUtils.IntToStr(Offset) + ' len=' + SysUtils.IntToStr(Bytes));
+    raise Exception.Create('TBufEC.TestGet. sme=' + SysUtils.IntToStr(Offset) + ' len=' + SysUtils.IntToStr(Bytes));
 end;
 
 procedure TBufEC.SetByteAt(Offset: Integer; Value: Byte);
@@ -410,11 +405,7 @@ begin
   if Count > 0 then
   begin
     EnsureReadable(Count * SizeOf(WideChar) + SizeOf(WideChar));
-    System.Move(
-        Pointer(PAnsiChar(Data) + Position)^,
-        Dest^,
-        Count * SizeOf(WideChar) + SizeOf(WideChar)
-    );
+    System.Move(Pointer(PAnsiChar(Data) + Position)^, Dest^, Count * SizeOf(WideChar) + SizeOf(WideChar));
     Position := Position + Count * SizeOf(WideChar) + SizeOf(WideChar);
   end
   else
@@ -758,12 +749,9 @@ var
   State, i: Integer;
   Cursor: PByte;
 
-  function StepDatXorSeedState:
-      Integer; { Nested helper of TBufEC.ApplyDatXorCipher; requires its parent stack frame. }
+  function StepDatXorSeedState: Integer; { Nested helper of TBufEC.ApplyDatXorCipher; requires its parent stack frame. }
   begin
-    State :=
-        SeedRngMultiplier * (State mod SeedRngQuotient)
-            - SeedRngRemainder * (State div SeedRngQuotient);
+    State := SeedRngMultiplier * (State mod SeedRngQuotient) - SeedRngRemainder * (State div SeedRngQuotient);
     if State <= 0 then
       State := State + SeedRngModulus;
     Result := State - 1;
@@ -799,20 +787,10 @@ begin
   if CrcOffset + SizeOf(TEmbeddedCrc32EC) > EndOffset then
     raise Exception.Create('CRC update error');
   WholeCrc := ExtendCrc32(0, PAnsiChar(Data) + StartOffset, EndOffset - StartOffset);
-  PreviousPrefixCrc :=
-      ExtendCrc32(
-          0,
-          PAnsiChar(Data) + StartOffset,
-          CrcOffset - StartOffset + SizeOf(TEmbeddedCrc32EC)
-      );
+  PreviousPrefixCrc := ExtendCrc32(0, PAnsiChar(Data) + StartOffset, CrcOffset - StartOffset + SizeOf(TEmbeddedCrc32EC));
   Embedded := PEmbeddedCrc32EC(PAnsiChar(Data) + CrcOffset);
   Embedded.RangeCrc := WholeCrc;
-  NewPrefixCrc :=
-      ExtendCrc32(
-          0,
-          PAnsiChar(Data) + StartOffset,
-          CrcOffset - StartOffset + SizeOf(Embedded.RangeCrc)
-      );
+  NewPrefixCrc := ExtendCrc32(0, PAnsiChar(Data) + StartOffset, CrcOffset - StartOffset + SizeOf(Embedded.RangeCrc));
   WriteCrc32Correction(NewPrefixCrc, PreviousPrefixCrc, @Embedded.Correction);
 end;
 

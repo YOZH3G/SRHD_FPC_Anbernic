@@ -82,9 +82,7 @@ begin
   begin
     PackageFileLock.Enter;
     try
-      Handle :=
-          PackageCollection
-              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenReadWrite, False);
+      Handle := PackageCollection.OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenReadWrite, False);
     finally
       PackageFileLock.Leave;
     end;
@@ -100,9 +98,7 @@ begin
   begin
     PackageFileLock.Enter;
     try
-      Handle :=
-          PackageCollection
-              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
+      Handle := PackageCollection.OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
     finally
       PackageFileLock.Leave;
     end;
@@ -118,9 +114,7 @@ begin
   begin
     PackageFileLock.Enter;
     try
-      Handle :=
-          PackageCollection
-              .OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
+      Handle := PackageCollection.OpenEntryByPathAcrossPackages(AnsiString(FileName), fmOpenRead, FirstPackageOnly);
     finally
       PackageFileLock.Leave;
     end;
@@ -262,8 +256,7 @@ begin
       PackageFileLock.Leave;
     end;
     if not Success then
-      raise Exception.Create(
-          'TFileEC.Write. FileName=' + FileName + ' kolbyte=' + SysUtils.IntToStr(ByteCount));
+      raise Exception.Create('TFileEC.Write. FileName=' + FileName + ' kolbyte=' + SysUtils.IntToStr(ByteCount));
   end;
 end;
 

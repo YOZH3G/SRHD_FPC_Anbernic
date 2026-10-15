@@ -30,9 +30,7 @@ var
   Changed: Boolean;
   Status: TMemoryStatusEx;
 
-  procedure ShowLowMemoryWarning(
-      TextKey: WideString
-  ); { Nested in CheckMemoryUsage; unused caller-popped static link. }
+  procedure ShowLowMemoryWarning(TextKey: WideString); { Nested in CheckMemoryUsage; unused caller-popped static link. }
   begin
     if (not LowMemoryWarningShown) and (Galaxy <> nil) then
     begin
@@ -56,9 +54,7 @@ begin
         if Usage > PreviousVirtualUsageMB then
           AppendLogLineThreadSafe('Virtual memory usage is increasing (' + IntToStr(Usage) + ' MB)')
         else
-          AppendLogLineThreadSafe(
-              'Virtual memory usage is decreasing (' + IntToStr(Usage) + ' MB)'
-          );
+          AppendLogLineThreadSafe('Virtual memory usage is decreasing (' + IntToStr(Usage) + ' MB)');
       end;
       PreviousVirtualUsageMB := Usage;
     end;
@@ -71,13 +67,9 @@ begin
       begin
         Changed := True;
         if Usage > PreviousPhysicalUsageMB then
-          AppendLogLineThreadSafe(
-              'Physical memory usage is increasing (' + IntToStr(Usage) + ' MB)'
-          )
+          AppendLogLineThreadSafe('Physical memory usage is increasing (' + IntToStr(Usage) + ' MB)')
         else
-          AppendLogLineThreadSafe(
-              'Physical memory usage is decreasing (' + IntToStr(Usage) + ' MB)'
-          );
+          AppendLogLineThreadSafe('Physical memory usage is decreasing (' + IntToStr(Usage) + ' MB)');
       end;
       PreviousPhysicalUsageMB := Usage;
     end;

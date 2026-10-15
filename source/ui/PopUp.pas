@@ -92,9 +92,7 @@ begin
   Icon.SetActive(True);
   LabelControl := TLabelGI.Create(Panel);
   LabelControl.SetPosition(Classes.Point(Icon.LocalPosition.X + Icon.ClientSize.X + 15, 54));
-  LabelControl.SetSize(
-      Classes.Point(Panel.ClientSize.X - Icon.ClientSize.X - Icon.LocalPosition.X - 30, 72)
-  );
+  LabelControl.SetSize(Classes.Point(Panel.ClientSize.X - Icon.ClientSize.X - Icon.LocalPosition.X - 30, 72));
   LabelControl.SetFontName(NormalBoldFontName);
   LabelControl.SetTextAlignX(taxCenter);
   LabelControl.SetTextAlignY(tayCenterEx);
@@ -132,18 +130,11 @@ begin
       Popup := CreatePopup(Text, ImagePath);
       if Previous = nil then
       begin
-        Popup.SetPosition(
-            Classes.Point(GameScreenWidth - Popup.ClientSize.X - 10, GameScreenHeight + 10)
-        );
+        Popup.SetPosition(Classes.Point(GameScreenWidth - Popup.ClientSize.X - 10, GameScreenHeight + 10));
         MotionRemainder := 0;
       end
       else
-        Popup.SetPosition(
-            Classes.Point(
-                GameScreenWidth - Popup.ClientSize.X - 10,
-                Previous.LocalPosition.Y + Previous.ClientSize.Y + 10
-            )
-        );
+        Popup.SetPosition(Classes.Point(GameScreenWidth - Popup.ClientSize.X - 10, Previous.LocalPosition.Y + Previous.ClientSize.Y + 10));
       MovingUp := True;
       PauseRemaining := 0;
     end;
@@ -177,9 +168,7 @@ begin
           Popup := FirstChild;
           while Popup <> nil do
           begin
-            Popup.SetPosition(
-                Classes.Point(Popup.LocalPosition.X, Popup.LocalPosition.Y - Movement)
-            );
+            Popup.SetPosition(Classes.Point(Popup.LocalPosition.X, Popup.LocalPosition.Y - Movement));
             Popup := Popup.NextSibling;
           end;
         end
@@ -188,9 +177,7 @@ begin
           Popup := FirstChild;
           while Popup <> nil do
           begin
-            Popup.SetPosition(
-                Classes.Point(Popup.LocalPosition.X, Popup.LocalPosition.Y + Movement)
-            );
+            Popup.SetPosition(Classes.Point(Popup.LocalPosition.X, Popup.LocalPosition.Y + Movement));
             Popup := Popup.NextSibling;
           end;
         end;

@@ -172,11 +172,7 @@ function IntersectRects(out Intersection: TRect; const First, Second: TRect): Bo
 begin
   // Preserve the assembly's four overlap tests, even for inverted rectangles.
   // In particular, failure must leave Intersection untouched when it aliases an input.
-  Result :=
-      (Second.Left < First.Right)
-          and (Second.Right > First.Left)
-          and (Second.Top < First.Bottom)
-          and (Second.Bottom > First.Top);
+  Result := (Second.Left < First.Right) and (Second.Right > First.Left) and (Second.Top < First.Bottom) and (Second.Bottom > First.Top);
   if not Result then
     Exit;
   if First.Left > Second.Left then

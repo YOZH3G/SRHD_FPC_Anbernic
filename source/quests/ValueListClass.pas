@@ -38,10 +38,7 @@ var
 begin
   Normalized := '';
   for i := 1 to Length(Text) do
-    if ((Text[i] >= '0') and (Text[i] <= '9'))
-        or (Text[i] = ';')
-        or (Text[i] = ',')
-        or (Text[i] = '-') then
+    if ((Text[i] >= '0') and (Text[i] <= '9')) or (Text[i] = ';') or (Text[i] = ',') or (Text[i] = '-') then
       Normalized := Normalized + Text[i];
   Result := Normalized;
   // The native routine discards the character-filtered string here.

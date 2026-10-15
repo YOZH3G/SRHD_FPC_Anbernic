@@ -141,11 +141,7 @@ end;
 function TabObject.GetWorldPosition: TVector3D;
 begin
   Result :=
-      SphericalToVector3D(
-          HeadingDegreesToRadians(State.LongitudeDegrees),
-          HeadingDegreesToRadians(State.PolarAngleDegrees),
-          SphereRadius
-      );
+      SphericalToVector3D(HeadingDegreesToRadians(State.LongitudeDegrees), HeadingDegreesToRadians(State.PolarAngleDegrees), SphereRadius);
 end;
 
 function TabObject.GetProjectedPosition: TVector3D;
@@ -160,13 +156,8 @@ var
 begin
   TargetPolar := HeadingDegreesToRadians(Other.State.PolarAngleDegrees);
   SourcePolar := HeadingDegreesToRadians(State.PolarAngleDegrees);
-  LongitudeDelta :=
-      HeadingDegreesToRadians(
-          WrapHeadingDegrees(Other.State.LongitudeDegrees - State.LongitudeDegrees)
-      );
-  Value :=
-      Cos(TargetPolar) * Cos(SourcePolar)
-          + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
+  LongitudeDelta := HeadingDegreesToRadians(WrapHeadingDegrees(Other.State.LongitudeDegrees - State.LongitudeDegrees));
+  Value := Cos(TargetPolar) * Cos(SourcePolar) + Sin(TargetPolar) * Sin(SourcePolar) * Cos(LongitudeDelta);
   if Value < -1 then
     Value := -1
   else if Value > 1 then
@@ -199,11 +190,7 @@ begin
     Result := 0;
     Exit;
   end;
-  Result :=
-      PointBearingDegrees(
-          MakePointF(Position.X, Position.Y),
-          MakePointF(ForwardPosition.X, ForwardPosition.Y)
-      );
+  Result := PointBearingDegrees(MakePointF(Position.X, Position.Y), MakePointF(ForwardPosition.X, ForwardPosition.Y));
 end;
 
 procedure TabObject.ChangeSpeed(Delta: Double);
@@ -280,10 +267,8 @@ begin
   Force := MakePointF(0, 0);
   if Thrust <> 0 then
   begin
-    Force.X :=
-        Force.X + Sin(HeadingDegreesToRadians(State.BearingDegrees)) * Thrust * MovementScale;
-    Force.Y :=
-        Force.Y - Cos(HeadingDegreesToRadians(State.BearingDegrees)) * Thrust * MovementScale;
+    Force.X := Force.X + Sin(HeadingDegreesToRadians(State.BearingDegrees)) * Thrust * MovementScale;
+    Force.Y := Force.Y - Cos(HeadingDegreesToRadians(State.BearingDegrees)) * Thrust * MovementScale;
   end;
   if GravityEnabled then
   begin
@@ -334,8 +319,7 @@ begin
         begin
           if Zone.DamagePerTick < 0 then
           begin
-            (Self as TabHit).Health :=
-                Min((Self as TabHit).MaxHealth, (Self as TabHit).Health + -Zone.DamagePerTick);
+            (Self as TabHit).Health := Min((Self as TabHit).MaxHealth, (Self as TabHit).Health + -Zone.DamagePerTick);
           end
           else
           begin
@@ -354,17 +338,11 @@ begin
   ArcDistance := Sqrt(Sqr(Velocity.X) + Sqr(Velocity.Y));
   if MaxSpeed * SpeedScale < ArcDistance then
     ArcDistance := MaxSpeed * SpeedScale;
-  ArcDistance :=
-      Max(
-          0,
-          ArcDistance
-              - RemapClamped(ArcDistance, 0, MaxSpeed, SphereLowSpeedDrag, SphereHighSpeedDrag)
-      );
+  ArcDistance := Max(0, ArcDistance - RemapClamped(ArcDistance, 0, MaxSpeed, SphereLowSpeedDrag, SphereHighSpeedDrag));
   TravelBearing := PointBearingDegrees(MakePointF(0, 0), Velocity);
   if PlayerArcadeShip = Self then
   begin
-    PlayerArcadeShip.TurnSpeed :=
-        RemapClamped(ArcDistance, 0, MaxSpeed, PlayerSlowTurnSpeed, PlayerFastTurnSpeed);
+    PlayerArcadeShip.TurnSpeed := RemapClamped(ArcDistance, 0, MaxSpeed, PlayerSlowTurnSpeed, PlayerFastTurnSpeed);
     Limit := PlayerDriftTurnStep;
     Factor := HeadingDifferenceDegrees(TravelBearing, State.BearingDegrees);
     if Abs(Factor) < 90 then
@@ -376,8 +354,7 @@ begin
     end
     else
     begin
-      Factor :=
-          HeadingDifferenceDegrees(TravelBearing, WrapHeadingDegrees(State.BearingDegrees + 180));
+      Factor := HeadingDifferenceDegrees(TravelBearing, WrapHeadingDegrees(State.BearingDegrees + 180));
       if -Limit > Factor then
         TravelBearing := WrapHeadingDegrees(TravelBearing - Limit)
       else if Factor > Limit then
@@ -430,9 +407,7 @@ end;
 
 function TabObject.RandomRange(BoundA, BoundB: Integer): Integer;
 begin
-  RandomState :=
-      SeedRngMultiplier * (RandomState mod SeedRngQuotient)
-          - SeedRngRemainder * (RandomState div SeedRngQuotient);
+  RandomState := SeedRngMultiplier * (RandomState mod SeedRngQuotient) - SeedRngRemainder * (RandomState div SeedRngQuotient);
   Result := Integer(RandomState) - 1;
   if Result < 0 then
     Result := -Result;

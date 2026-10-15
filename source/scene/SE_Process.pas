@@ -47,11 +47,7 @@ type
     function SelectBackgroundAnimation: WideString;
   end;
 
-function CreateSpaceObjectByName(
-    const ClassName: WideString;
-    const GraphKey: WideString;
-    UnusedPosition: TPoint
-): TObjectSE;
+function CreateSpaceObjectByName(const ClassName: WideString; const GraphKey: WideString; UnusedPosition: TPoint): TObjectSE;
 
 function ClassSEtoName(Obj: TObjectSE): WideString;
 
@@ -230,15 +226,9 @@ begin
   if Comet > 0 then
   begin
     if BackgroundImage < 10 then
-      Text :=
-          GameDataConfig
-              .GetBlockByPath('StyleComet')
-              .GetParam(WideString('0' + IntToStr(BackgroundImage)))
+      Text := GameDataConfig.GetBlockByPath('StyleComet').GetParam(WideString('0' + IntToStr(BackgroundImage)))
     else
-      Text :=
-          GameDataConfig
-              .GetBlockByPath('StyleComet')
-              .GetParam(WideString(IntToStr(BackgroundImage)));
+      Text := GameDataConfig.GetBlockByPath('StyleComet').GetParam(WideString(IntToStr(BackgroundImage)));
     Index := NextRandomIntRange(0, CountDelimitedPartsW(Text, ',') div 2 - 1, Seed) * 2;
     VariantCount := ExtractDigitsToIntW(ExtractDelimitedPartW(Text, Index + 1, ','));
     Text := ExtractDelimitedPartW(Text, Index, ',');
@@ -273,17 +263,14 @@ begin
     AngelObj := TAngelSE.Create('Anim.BGO_HS.Angel', Classes.Point(0, 0));
     AddObject(AngelObj);
   end;
-  CountRange :=
-      GetPointGI(GameDataConfig.GetParamByPathOrMarker('SE.Anim.BGO_HS.Objects.MeteoriteCount'));
+  CountRange := GetPointGI(GameDataConfig.GetParamByPathOrMarker('SE.Anim.BGO_HS.Objects.MeteoriteCount'));
   Count := RandomIntRange(CountRange.X, CountRange.Y);
   Block := GameDataConfig.GetBlockByPath('SE.Meteorite');
   BlockCount := Block.GetBlockCount;
   for Index := 0 to Count - 1 do
   begin
     BlockIndex := RandomIntRange(0, BlockCount - 1);
-    MeteoriteObj :=
-        TMeteoriteSE
-            .Create('Meteorite.' + Block.GetBlockNameByIndex(BlockIndex), Classes.Point(0, 0));
+    MeteoriteObj := TMeteoriteSE.Create('Meteorite.' + Block.GetBlockNameByIndex(BlockIndex), Classes.Point(0, 0));
     AddObject(MeteoriteObj);
   end;
 end;
@@ -401,10 +388,7 @@ begin
   end;
 end;
 
-function CreateSpaceObjectByName(
-    const ClassName, GraphKey: WideString;
-    UnusedPosition: TPoint
-): TObjectSE;
+function CreateSpaceObjectByName(const ClassName, GraphKey: WideString; UnusedPosition: TPoint): TObjectSE;
 begin
   if ClassName = 'Star' then
     Result := TStarSE.Create(GraphKey, UnusedPosition)

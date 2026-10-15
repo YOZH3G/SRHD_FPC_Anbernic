@@ -45,12 +45,7 @@ begin
   if PopupController <> nil then
   begin
     Text := LocalizedColorText('Achievements.AchievementReceived');
-    ReplaceTextToken(
-        Text,
-        '<Achievement>',
-        LocalizedColorText('Achievements.' + Block.GetParam('Id') + '.Name'),
-        BrightBlueColorTag
-    );
+    ReplaceTextToken(Text, '<Achievement>', LocalizedColorText('Achievements.' + Block.GetParam('Id') + '.Name'), BrightBlueColorTag);
     ImagePath := 'GI,Bm.FormAchievements.Img.' + Block.GetParam('Id');
     PopupController.QueueNotification(Text, ImagePath);
   end;
@@ -78,19 +73,13 @@ begin
       Version := Buffer.GetInt32At(0);
       if Version <> 0 then
         raise EAbort.Create('Error unpacking achievements.dat');
-      Seed :=
-          Buffer.GetByteAt(6)
-              or (Buffer.GetByteAt(7) shl 8)
-              or (Buffer.GetByteAt(4) shl 16)
-              or (Buffer.GetByteAt(5) shl 24);
+      Seed := Buffer.GetByteAt(6) or (Buffer.GetByteAt(7) shl 8) or (Buffer.GetByteAt(4) shl 16) or (Buffer.GetByteAt(5) shl 24);
       Cursor := @PEncodedTableHeaderEC(Buffer.Data).Checksum;
       Size := Buffer.DataSize;
       for Index := 8 to Size - 1 do
       begin
         Cursor^ := Cursor^ xor Byte(Seed - 1);
-        Seed :=
-            SeedRngMultiplier * (Seed mod SeedRngQuotient)
-                - SeedRngRemainder * (Seed div SeedRngQuotient);
+        Seed := SeedRngMultiplier * (Seed mod SeedRngQuotient) - SeedRngRemainder * (Seed div SeedRngQuotient);
         if Seed <= 0 then
           Inc(Seed, SeedRngModulus);
         Inc(Cursor);
@@ -165,9 +154,7 @@ begin
   for Index := 8 to Size - 1 do
   begin
     Cursor^ := Cursor^ xor Byte(Seed - 1);
-    Seed :=
-        SeedRngMultiplier * (Seed mod SeedRngQuotient)
-            - SeedRngRemainder * (Seed div SeedRngQuotient);
+    Seed := SeedRngMultiplier * (Seed mod SeedRngQuotient) - SeedRngRemainder * (Seed div SeedRngQuotient);
     if Seed <= 0 then
       Inc(Seed, SeedRngModulus);
     Inc(Cursor);

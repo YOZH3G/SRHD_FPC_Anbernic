@@ -112,12 +112,7 @@ begin
     SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     FindByNameRecursive('BGBuf').SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
     with FindByNameRecursive('Ok').Parent do
-      SetPosition(
-          Classes.Point(
-              LocalPosition.X + ExtraScreenWidth div 2,
-              LocalPosition.Y + ExtraScreenHeight div 2
-          )
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight div 2));
   end;
   FitMobileControl(
       GetByName('Ok').Parent,
@@ -148,17 +143,9 @@ begin
       SourceHasPerPixelAlpha := True;
       LoadGiByPathIntoGraphBuf(PreviewImagePath, GraphBuf);
       if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
-        GraphBuf.RescaleRgba(
-            ClientSize.X,
-            Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)),
-            5
-        )
+        GraphBuf.RescaleRgba(ClientSize.X, Round(ClientSize.X / Cardinal(GraphBuf.Width) * Cardinal(GraphBuf.Height)), 5)
       else
-        GraphBuf.RescaleRgba(
-            Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)),
-            ClientSize.Y,
-            5
-        );
+        GraphBuf.RescaleRgba(Round(ClientSize.Y / Cardinal(GraphBuf.Height) * Cardinal(GraphBuf.Width)), ClientSize.Y, 5);
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
       SetActive(True);

@@ -157,12 +157,7 @@ begin
   BottomLeftImage.SetSize(BottomLeftImage.GetContentSize);
   BottomLeftImage.SetPosition(Classes.Point(0, ClientSize.Y - BottomLeftImage.ClientSize.Y));
   BottomRightImage.SetSize(BottomRightImage.GetContentSize);
-  BottomRightImage.SetPosition(
-      Classes.Point(
-          ClientSize.X - BottomRightImage.ClientSize.X,
-          ClientSize.Y - BottomRightImage.ClientSize.Y
-      )
-  );
+  BottomRightImage.SetPosition(Classes.Point(ClientSize.X - BottomRightImage.ClientSize.X, ClientSize.Y - BottomRightImage.ClientSize.Y));
   First := TopLeftImage.ClientSize.X;
   Last := ClientSize.X - TopRightImage.ClientSize.X;
   if Last - First <= 0 then
@@ -209,9 +204,7 @@ begin
   end;
   Width := ClientSize.X - LeftImage.ClientSize.X - RightImage.ClientSize.X;
   Height := ClientSize.Y - TopImage.ClientSize.Y - BottomImage.ClientSize.Y;
-  if (Width <= 0)
-      or (Height <= 0)
-      or ((LeftImage.ClientSize.Y <= 0) and (TopImage.ClientSize.X <= 0)) then
+  if (Width <= 0) or (Height <= 0) or ((LeftImage.ClientSize.Y <= 0) and (TopImage.ClientSize.X <= 0)) then
     TextureImage.SetActive(False)
   else
   begin

@@ -183,33 +183,25 @@ begin
     SourceRect := DestRect;
     if Delta.X > 0 then
     begin
-      InvalidateRect(
-          Classes.Rect(DestRect.Left, DestRect.Top, DestRect.Left + Delta.X, DestRect.Bottom)
-      );
+      InvalidateRect(Classes.Rect(DestRect.Left, DestRect.Top, DestRect.Left + Delta.X, DestRect.Bottom));
       Inc(DestRect.Left, Delta.X);
       Dec(SourceRect.Right, Delta.X);
     end
     else if Delta.X < 0 then
     begin
-      InvalidateRect(
-          Classes.Rect(DestRect.Right + Delta.X, DestRect.Top, DestRect.Right, DestRect.Bottom)
-      );
+      InvalidateRect(Classes.Rect(DestRect.Right + Delta.X, DestRect.Top, DestRect.Right, DestRect.Bottom));
       Inc(DestRect.Right, Delta.X);
       Dec(SourceRect.Left, Delta.X);
     end;
     if Delta.Y > 0 then
     begin
-      InvalidateRect(
-          Classes.Rect(DestRect.Left, DestRect.Top, DestRect.Right, DestRect.Top + Delta.Y)
-      );
+      InvalidateRect(Classes.Rect(DestRect.Left, DestRect.Top, DestRect.Right, DestRect.Top + Delta.Y));
       Inc(DestRect.Top, Delta.Y);
       Dec(SourceRect.Bottom, Delta.Y);
     end
     else if Delta.Y < 0 then
     begin
-      InvalidateRect(
-          Classes.Rect(DestRect.Left, DestRect.Bottom + Delta.Y, DestRect.Right, DestRect.Bottom)
-      );
+      InvalidateRect(Classes.Rect(DestRect.Left, DestRect.Bottom + Delta.Y, DestRect.Right, DestRect.Bottom));
       Inc(DestRect.Bottom, Delta.Y);
       Dec(SourceRect.Top, Delta.Y);
     end;
@@ -329,8 +321,7 @@ begin
   begin
     Dragging := True;
     Point := ScreenToLogicalPoint(Point);
-    LastDragPoint :=
-        Classes.Point(Round(Point.X / ChildWorldScale), Round(Point.Y / ChildWorldScale));
+    LastDragPoint := Classes.Point(Round(Point.X / ChildWorldScale), Round(Point.Y / ChildWorldScale));
     if MessageLoop.IsCursorImageSelected('Main') then
       MessageLoop.SetCursorByName('Scroll');
   end;

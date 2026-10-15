@@ -86,10 +86,7 @@ begin
     Result :=
         Sqr(Diameter / 2)
             >= PointDistanceSquared(
-                MakePointF(
-                    (HitTestBounds.Left + HitTestBounds.Right) div 2,
-                    (HitTestBounds.Top + HitTestBounds.Bottom) div 2
-                ),
+                MakePointF((HitTestBounds.Left + HitTestBounds.Right) div 2, (HitTestBounds.Top + HitTestBounds.Bottom) div 2),
                 PointToPointF(Point));
   end;
 end;

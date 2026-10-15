@@ -105,31 +105,12 @@ type
     function GetLineHeight: Integer;
     procedure ResetTextMeasureState;
     function GetEmbeddedObject(Index: Integer): PFontObjectEC;
-    function MeasureTaggedTextBounds(
-        const Text: WideString;
-        X: Integer;
-        Y: Integer;
-        TopAdjustment: PInteger
-    ): TRect;
+    function MeasureTaggedTextBounds(const Text: WideString; X: Integer; Y: Integer; TopAdjustment: PInteger): TRect;
     function GetGlyphAdvance(CharCode: WideChar): Integer; cdecl;
     function HasGlyph(CharCode: WideChar): Boolean;
     procedure WrapTaggedTextIntoLines(Lines: TStringsEC; const Text: WideString; MaxWidth: Integer);
-    procedure DrawTaggedText16(
-        Destination: Pointer;
-        PitchBytes: Integer;
-        X: Integer;
-        Y: Integer;
-        const Text: WideString;
-        ClipRect: TRect
-    );
-    procedure DrawTaggedText32(
-        Destination: Pointer;
-        PitchBytes: Integer;
-        X: Integer;
-        Y: Integer;
-        const Text: WideString;
-        ClipRect: TRect
-    );
+    procedure DrawTaggedText16(Destination: Pointer; PitchBytes: Integer; X: Integer; Y: Integer; const Text: WideString; ClipRect: TRect);
+    procedure DrawTaggedText32(Destination: Pointer; PitchBytes: Integer; X: Integer; Y: Integer; const Text: WideString; ClipRect: TRect);
     procedure DrawJustifiedTaggedText16(
         Destination: Pointer;
         PitchBytes: Integer;
@@ -154,19 +135,10 @@ type
     function MatchAlignEndTag(Text: PWideChar; CharCount: Integer): Integer;
     function MatchFixTag(Text: PWideChar; CharCount: Integer): Integer;
     function MatchFixEndTag(Text: PWideChar; CharCount: Integer): Integer;
-    function ParseFormatTag(
-        Text: PWideChar;
-        CharCount: Integer;
-        out FieldWidth: Integer;
-        out Alignment: Integer
-    ): Integer;
+    function ParseFormatTag(Text: PWideChar; CharCount: Integer; out FieldWidth: Integer; out Alignment: Integer): Integer;
     function MatchFormatEndTag(Text: PWideChar; CharCount: Integer): Integer;
     function CountVisibleTaggedCharsUntilFormatEnd(Text: PWideChar; CharCount: Integer): Integer;
-    function ParseObjectTagCached(
-        Text: PWideChar;
-        CharCount: Integer;
-        out ObjectIndex: Integer
-    ): Integer;
+    function ParseObjectTagCached(Text: PWideChar; CharCount: Integer; out ObjectIndex: Integer): Integer;
     function ParseObjectTag(Text: PWideChar; CharCount: Integer; out Item: TFontObjectEC): Integer;
     function ParseColorTag(Text: PWideChar; CharCount: Integer; out Color: Cardinal): Integer;
     function MatchColorEndTag(Text: PWideChar; CharCount: Integer): Integer;
@@ -319,11 +291,7 @@ begin
   Result := @Objects[Index];
 end;
 
-function TCFontEC.MeasureTaggedTextBounds(
-    const Text: WideString;
-    X, Y: Integer;
-    TopAdjustment: PInteger
-): TRect;
+function TCFontEC.MeasureTaggedTextBounds(const Text: WideString; X, Y: Integer; TopAdjustment: PInteger): TRect;
 var
   Index, GlyphIndex, CharCount, PosX, TokenLength, MiddleY: Integer;
   Ch: WideChar;
@@ -345,27 +313,20 @@ begin
     TokenLength := GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);
     if TokenLength > 0 then
     begin
-      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex)
-          > 0 then
+      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex) > 0 then
         Inc(PosX, Objects[ObjectIndex].Width)
       else if MatchFixTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         Inc(FixedWidthDepth)
       else if MatchFixEndTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-      else if ParseFormatTag(
-              PWideChar(Text) + Index - 1,
-              CharCount - Index + 1,
-              FieldWidth,
-              Alignment)
-          > 0 then
+      else if ParseFormatTag(PWideChar(Text) + Index - 1, CharCount - Index + 1, FieldWidth, Alignment) > 0 then
       begin
         Index := Index + TokenLength - 1;
         while Index < CharCount do
         begin
           Ch := Text[Index + 1];
           Inc(Index);
-          TokenLength :=
-              GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);
+          TokenLength := GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);
           if TokenLength > 0 then
           begin
             if MatchFixTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
@@ -431,8 +392,7 @@ begin
         if (TopAdjustment <> nil) and (MiddleY - Objects[Index].Height div 2 < Result.Top) then
           TopAdjustment^ := TopAdjustment^+Result.Top - (MiddleY - Objects[Index].Height div 2);
         Result.Top := Min(Result.Top, MiddleY - Objects[Index].Height div 2);
-        Result.Bottom :=
-            Max(Result.Bottom, MiddleY - Objects[Index].Height div 2 + Objects[Index].Height);
+        Result.Bottom := Max(Result.Bottom, MiddleY - Objects[Index].Height div 2 + Objects[Index].Height);
       end;
   end;
   ObjectCount := SavedObjectCount;
@@ -456,22 +416,9 @@ begin
   Result := ReadWordEC(AddPointerOffset(GlyphLookup, Ord(CharCode) * 2)) > 0;
 end;
 
-procedure TCFontEC.WrapTaggedTextIntoLines(
-    Lines: TStringsEC;
-    const Text: WideString;
-    MaxWidth: Integer
-);
+procedure TCFontEC.WrapTaggedTextIntoLines(Lines: TStringsEC; const Text: WideString; MaxWidth: Integer);
 var
-  TokenLength,
-  WordStart,
-  Index,
-  CharCount,
-  WordLength,
-  FitEnd,
-  WordWidth,
-  LineWidth,
-  LineStart,
-  LineLength: Integer;
+  TokenLength, WordStart, Index, CharCount, WordLength, FitEnd, WordWidth, LineWidth, LineStart, LineLength: Integer;
   FirstLine, SeenCharacter: Boolean;
   ObjectIndex, SavedObjectCount, FieldWidth, Alignment: Integer;
   Ch: WideChar;
@@ -507,43 +454,27 @@ begin
     begin
       Ch := Text[Index + 1];
       Inc(Index);
-      TokenLength :=
-          GetTaggedTextTokenLength(
-              PWideChar(Text) + Index - 1,
-              WordLength - (Index - 1 - WordStart)
-          );
+      TokenLength := GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart));
       if TokenLength > 0 then
       begin
-        if ParseObjectTagCached(
-                PWideChar(Text) + Index - 1,
-                WordLength - (Index - 1 - WordStart),
-                ObjectIndex)
-            > 0 then
+        if ParseObjectTagCached(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart), ObjectIndex) > 0 then
         begin
           Inc(WordWidth, Objects[ObjectIndex].Width);
           if WordWidth <= MaxWidth then
             FitEnd := Index - 1 + TokenLength - 1;
         end
-        else if MatchFixTag(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart))
-            > 0 then
+        else if MatchFixTag(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart)) > 0 then
           Inc(FixedWidthDepth)
-        else if MatchFixEndTag(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart))
-            > 0 then
+        else if MatchFixEndTag(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart)) > 0 then
           FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-        else if ParseFormatTag(
-                PWideChar(Text) + Index - 1,
-                WordLength - (Index - 1 - WordStart),
-                FieldWidth,
-                Alignment)
-            > 0 then
+        else if ParseFormatTag(PWideChar(Text) + Index - 1, WordLength - (Index - 1 - WordStart), FieldWidth, Alignment) > 0 then
         begin
           Index := Index + TokenLength - 1;
           while Index < CharCount do
           begin
             Ch := Text[Index + 1];
             Inc(Index);
-            TokenLength :=
-                GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);
+            TokenLength := GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);
             if TokenLength > 0 then
             begin
               if MatchFixTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
@@ -646,12 +577,7 @@ begin
   ObjectCount := SavedObjectCount;
 end;
 
-procedure TCFontEC.DrawTaggedText16(
-    Destination: Pointer;
-    PitchBytes, X, Y: Integer;
-    const Text: WideString;
-    ClipRect: TRect
-);
+procedure TCFontEC.DrawTaggedText16(Destination: Pointer; PitchBytes, X, Y: Integer; const Text: WideString; ClipRect: TRect);
 var
   Index, GlyphIndex, CharCount, TokenLength, PosX: Integer;
   Ch: WideChar;
@@ -682,8 +608,7 @@ begin
       ApplyColorTag(PWideChar(Text) + Index - 1, CharCount - Index + 1);
       ParseTabTagAndAdjustX(PWideChar(Text) + Index - 1, CharCount - Index + 1, PosX);
       ParseAlignTagAndAdjustX(PWideChar(Text) + Index - 1, CharCount - Index + 1, PosX);
-      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex)
-          > 0 then
+      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex) > 0 then
       begin
         Objects[ObjectIndex].X := X + PosX;
         Inc(PosX, Objects[ObjectIndex].Width);
@@ -692,19 +617,10 @@ begin
         Inc(FixedWidthDepth)
       else if MatchFixEndTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-      else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index - 1,
-                  CharCount - Index + 1,
-                  FieldWidth,
-                  Alignment)
-              > 0) then
+      else if (FieldWidth < 0) and (ParseFormatTag(PWideChar(Text) + Index - 1, CharCount - Index + 1, FieldWidth, Alignment) > 0) then
       begin
         Index := Index + TokenLength - 1;
-        Dec(
-            FieldWidth,
-            CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index)
-        );
+        Dec(FieldWidth, CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index));
         if FieldWidth > 0 then
         begin
           if Alignment = 0 then
@@ -792,12 +708,7 @@ begin
   end;
 end;
 
-procedure TCFontEC.DrawTaggedText32(
-    Destination: Pointer;
-    PitchBytes, X, Y: Integer;
-    const Text: WideString;
-    ClipRect: TRect
-);
+procedure TCFontEC.DrawTaggedText32(Destination: Pointer; PitchBytes, X, Y: Integer; const Text: WideString; ClipRect: TRect);
 var
   Index, GlyphIndex, CharCount, TokenLength, PosX: Integer;
   Ch: WideChar;
@@ -828,8 +739,7 @@ begin
       ApplyColorTag(PWideChar(Text) + Index - 1, CharCount - Index + 1);
       ParseTabTagAndAdjustX(PWideChar(Text) + Index - 1, CharCount - Index + 1, PosX);
       ParseAlignTagAndAdjustX(PWideChar(Text) + Index - 1, CharCount - Index + 1, PosX);
-      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex)
-          > 0 then
+      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex) > 0 then
       begin
         Objects[ObjectIndex].X := X + PosX;
         Inc(PosX, Objects[ObjectIndex].Width);
@@ -838,19 +748,10 @@ begin
         Inc(FixedWidthDepth)
       else if MatchFixEndTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-      else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index - 1,
-                  CharCount - Index + 1,
-                  FieldWidth,
-                  Alignment)
-              > 0) then
+      else if (FieldWidth < 0) and (ParseFormatTag(PWideChar(Text) + Index - 1, CharCount - Index + 1, FieldWidth, Alignment) > 0) then
       begin
         Index := Index + TokenLength - 1;
-        Dec(
-            FieldWidth,
-            CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index)
-        );
+        Dec(FieldWidth, CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index));
         if FieldWidth > 0 then
         begin
           if Alignment = 0 then
@@ -953,16 +854,7 @@ var
   ContentWidth, CharCount, Index, SpaceCount: Integer;
   SpaceWidth, PosX: Double;
   Leading: Boolean;
-  TokenLength,
-  ObjectIndex,
-  SavedObjectCount,
-  Top,
-  Bottom,
-  MiddleY,
-  FieldWidth,
-  Alignment,
-  ParsedWidth,
-  ParsedAlignment: Integer;
+  TokenLength, ObjectIndex, SavedObjectCount, Top, Bottom, MiddleY, FieldWidth, Alignment, ParsedWidth, ParsedAlignment: Integer;
   Clip: TRect;
 begin
   Top := 999999999;
@@ -995,13 +887,7 @@ begin
         Inc(FixedWidthDepth)
       else if MatchFixEndTag(PWideChar(Text) + Index, CharCount - Index) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-      else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index,
-                  CharCount - Index,
-                  ParsedWidth,
-                  ParsedAlignment)
-              > 0) then
+      else if (FieldWidth < 0) and (ParseFormatTag(PWideChar(Text) + Index, CharCount - Index, ParsedWidth, ParsedAlignment) > 0) then
       begin
       end
       else if MatchFormatEndTag(PWideChar(Text) + Index, CharCount - Index) > 0 then
@@ -1050,8 +936,7 @@ begin
     if TokenLength > 0 then
     begin
       ApplyColorTag(PWideChar(Text) + Index - 1, CharCount - Index + 1);
-      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex)
-          > 0 then
+      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex) > 0 then
       begin
         Objects[ObjectIndex].X := Trunc(PosX);
         PosX := PosX + Objects[ObjectIndex].Width;
@@ -1062,20 +947,12 @@ begin
       else if MatchFixEndTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
       else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index - 1,
-                  CharCount - Index + 1,
-                  ParsedWidth,
-                  ParsedAlignment)
-              > 0) then
+          and (ParseFormatTag(PWideChar(Text) + Index - 1, CharCount - Index + 1, ParsedWidth, ParsedAlignment) > 0) then
       begin
         FieldWidth := ParsedWidth;
         Alignment := ParsedAlignment;
         Index := Index + TokenLength - 1;
-        Dec(
-            FieldWidth,
-            CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index)
-        );
+        Dec(FieldWidth, CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index));
         if FieldWidth > 0 then
         begin
           if Alignment = 0 then
@@ -1187,16 +1064,7 @@ var
   ContentWidth, CharCount, Index, SpaceCount: Integer;
   SpaceWidth, PosX: Double;
   Leading: Boolean;
-  TokenLength,
-  ObjectIndex,
-  SavedObjectCount,
-  Top,
-  Bottom,
-  MiddleY,
-  FieldWidth,
-  Alignment,
-  ParsedWidth,
-  ParsedAlignment: Integer;
+  TokenLength, ObjectIndex, SavedObjectCount, Top, Bottom, MiddleY, FieldWidth, Alignment, ParsedWidth, ParsedAlignment: Integer;
   Clip: TRect;
 begin
   Top := 999999999;
@@ -1229,13 +1097,7 @@ begin
         Inc(FixedWidthDepth)
       else if MatchFixEndTag(PWideChar(Text) + Index, CharCount - Index) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
-      else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index,
-                  CharCount - Index,
-                  ParsedWidth,
-                  ParsedAlignment)
-              > 0) then
+      else if (FieldWidth < 0) and (ParseFormatTag(PWideChar(Text) + Index, CharCount - Index, ParsedWidth, ParsedAlignment) > 0) then
       begin
       end
       else if MatchFormatEndTag(PWideChar(Text) + Index, CharCount - Index) > 0 then
@@ -1284,8 +1146,7 @@ begin
     if TokenLength > 0 then
     begin
       ApplyColorTag(PWideChar(Text) + Index - 1, CharCount - Index + 1);
-      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex)
-          > 0 then
+      if ParseObjectTagCached(PWideChar(Text) + Index - 1, CharCount - Index + 1, ObjectIndex) > 0 then
       begin
         Objects[ObjectIndex].X := Trunc(PosX);
         PosX := PosX + Objects[ObjectIndex].Width;
@@ -1296,20 +1157,12 @@ begin
       else if MatchFixEndTag(PWideChar(Text) + Index - 1, CharCount - Index + 1) > 0 then
         FixedWidthDepth := Max(FixedWidthDepth - 1, 0)
       else if (FieldWidth < 0)
-          and (ParseFormatTag(
-                  PWideChar(Text) + Index - 1,
-                  CharCount - Index + 1,
-                  ParsedWidth,
-                  ParsedAlignment)
-              > 0) then
+          and (ParseFormatTag(PWideChar(Text) + Index - 1, CharCount - Index + 1, ParsedWidth, ParsedAlignment) > 0) then
       begin
         FieldWidth := ParsedWidth;
         Alignment := ParsedAlignment;
         Index := Index + TokenLength - 1;
-        Dec(
-            FieldWidth,
-            CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index)
-        );
+        Dec(FieldWidth, CountVisibleTaggedCharsUntilFormatEnd(PWideChar(Text) + Index, CharCount - Index));
         if FieldWidth > 0 then
         begin
           if Alignment = 0 then
@@ -1434,11 +1287,7 @@ begin
     Result := Index + 1;
 end;
 
-function TCFontEC.ParseTabTagAndAdjustX(
-    Text: PWideChar;
-    CharCount: Integer;
-    var X: Integer
-): Integer;
+function TCFontEC.ParseTabTagAndAdjustX(Text: PWideChar; CharCount: Integer; var X: Integer): Integer;
 var
   Value, Index: Integer;
 begin
@@ -1470,11 +1319,7 @@ begin
   end;
 end;
 
-function TCFontEC.ParseAlignTagAndAdjustX(
-    Text: PWideChar;
-    CharCount: Integer;
-    var X: Integer
-): Integer;
+function TCFontEC.ParseAlignTagAndAdjustX(Text: PWideChar; CharCount: Integer; var X: Integer): Integer;
 var
   Ch: WideChar;
   AlignRight: Boolean;
@@ -1627,11 +1472,7 @@ begin
     Result := 6;
 end;
 
-function TCFontEC.ParseFormatTag(
-    Text: PWideChar;
-    CharCount: Integer;
-    out FieldWidth, Alignment: Integer
-): Integer;
+function TCFontEC.ParseFormatTag(Text: PWideChar; CharCount: Integer; out FieldWidth, Alignment: Integer): Integer;
 var
   Index: Integer;
 begin
@@ -1730,10 +1571,7 @@ begin
     Result := 9;
 end;
 
-function TCFontEC.CountVisibleTaggedCharsUntilFormatEnd(
-    Text: PWideChar;
-    CharCount: Integer
-): Integer;
+function TCFontEC.CountVisibleTaggedCharsUntilFormatEnd(Text: PWideChar; CharCount: Integer): Integer;
 var
   Index, GlyphIndex, TokenLength: Integer;
   Ch: WideChar;
@@ -1760,11 +1598,7 @@ begin
   end;
 end;
 
-function TCFontEC.ParseObjectTagCached(
-    Text: PWideChar;
-    CharCount: Integer;
-    out ObjectIndex: Integer
-): Integer;
+function TCFontEC.ParseObjectTagCached(Text: PWideChar; CharCount: Integer; out ObjectIndex: Integer): Integer;
 begin
   if ObjectCount <= ObjectCapacity then
   begin
@@ -1780,11 +1614,7 @@ begin
   end;
 end;
 
-function TCFontEC.ParseObjectTag(
-    Text: PWideChar;
-    CharCount: Integer;
-    out Item: TFontObjectEC
-): Integer;
+function TCFontEC.ParseObjectTag(Text: PWideChar; CharCount: Integer; out Item: TFontObjectEC): Integer;
 var
   Index: Integer;
 begin
@@ -2137,8 +1967,7 @@ var
           WrappedLines.First;
           if First then
           begin
-            MergedBounds :=
-                MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, CurrentY, @TopAdjustment);
+            MergedBounds := MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, CurrentY, @TopAdjustment);
             First := False;
             Inc(CurrentY, GetLineHeight);
             WrappedLines.Next;
@@ -2155,11 +1984,7 @@ var
       end;
       ExtraHeight := 2;
     end;
-    Result :=
-        Classes.Point(
-            MergedBounds.Right - MergedBounds.Left,
-            ExtraHeight + MergedBounds.Bottom - MergedBounds.Top
-        );
+    Result := Classes.Point(MergedBounds.Right - MergedBounds.Left, ExtraHeight + MergedBounds.Bottom - MergedBounds.Top);
   end;
 
 begin
@@ -2217,10 +2042,7 @@ begin
     if not WordWrap then
     begin
       if AlignY = 2 then
-        CurrentY :=
-            Height div 2
-                - (GetLineHeight * (Lines.GetCount - 1) + GetCenteringHeight) div 2
-                + GetCenteringHeight
+        CurrentY := Height div 2 - (GetLineHeight * (Lines.GetCount - 1) + GetCenteringHeight) div 2 + GetCenteringHeight
       else
         CurrentY := AboveBaseline + DrawY - 2;
       Lines.First;
@@ -2242,25 +2064,11 @@ begin
         while not WrappedLines.IsAtEnd do
         begin
           if (AlignX = 0) or CenteredTabs then
-            DrawTaggedText32(
-                Locked.Bits,
-                Locked.Pitch,
-                DrawX,
-                CurrentY,
-                WrappedLines.GetCurrentText,
-                Clip
-            )
+            DrawTaggedText32(Locked.Bits, Locked.Pitch, DrawX, CurrentY, WrappedLines.GetCurrentText, Clip)
           else if AlignX = 2 then
           begin
             Bounds := MeasureTaggedTextBounds(WrappedLines.GetCurrentText, 0, 0, nil);
-            DrawTaggedText32(
-                Locked.Bits,
-                Locked.Pitch,
-                Width - (Bounds.Right - Bounds.Left),
-                CurrentY,
-                WrappedLines.GetCurrentText,
-                Clip
-            );
+            DrawTaggedText32(Locked.Bits, Locked.Pitch, Width - (Bounds.Right - Bounds.Left), CurrentY, WrappedLines.GetCurrentText, Clip);
           end
           else if AlignX = 1 then
           begin
@@ -2275,24 +2083,9 @@ begin
             );
           end
           else if (AlignX = 3) and not WrappedLines.IsAtLast then
-            DrawJustifiedTaggedText32(
-                Locked.Bits,
-                Locked.Pitch,
-                DrawX,
-                CurrentY,
-                WrappedLines.GetCurrentText,
-                Width - 4,
-                Clip
-            )
+            DrawJustifiedTaggedText32(Locked.Bits, Locked.Pitch, DrawX, CurrentY, WrappedLines.GetCurrentText, Width - 4, Clip)
           else
-            DrawTaggedText32(
-                Locked.Bits,
-                Locked.Pitch,
-                DrawX,
-                CurrentY,
-                WrappedLines.GetCurrentText,
-                Clip
-            );
+            DrawTaggedText32(Locked.Bits, Locked.Pitch, DrawX, CurrentY, WrappedLines.GetCurrentText, Clip);
           Inc(CurrentY, GetLineHeight);
           WrappedLines.Next;
         end;

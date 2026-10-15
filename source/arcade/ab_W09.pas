@@ -77,8 +77,7 @@ begin
   Thrust := 2.5;
   Phase := 2;
   ExpireTick := ArcadeTickCount + 20;
-  Image :=
-      ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w09b_f', 'GAI,Bm.AB.w09b_s', False);
+  Image := ab_WorldImage_Create(MakeVector3D(0, 0, 0), 'GAI,Bm.AB.w09b_f', 'GAI,Bm.AB.w09b_s', False);
   ab_WorldImage_SetDepth(Image, HitFrontDepth, HitBackDepth);
 end;
 

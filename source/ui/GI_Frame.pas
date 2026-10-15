@@ -162,10 +162,7 @@ begin
     begin
       if FillAlpha = 255 then
         Ex_OKGR_Fill_WORD(
-            AddPointerOffset(
-                ScreenRenderBuffer.GetPixels,
-                ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2
-            ),
+            AddPointerOffset(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes * ClipRect.Top + ClipRect.Left * 2),
             ScreenRenderBuffer.PitchBytes,
             ClipRect.Right - ClipRect.Left,
             ClipRect.Bottom - ClipRect.Top,
@@ -189,42 +186,10 @@ begin
   begin
     if HardwareRenderingEnabled then
     begin
-      DrawAlphaLine(
-          HitTestBounds.Left,
-          HitTestBounds.Top,
-          HitTestBounds.Right - 1,
-          HitTestBounds.Top,
-          Color,
-          255,
-          @ClipRect
-      );
-      DrawAlphaLine(
-          HitTestBounds.Left,
-          HitTestBounds.Bottom - 1,
-          HitTestBounds.Right - 1,
-          HitTestBounds.Bottom - 1,
-          Color,
-          255,
-          @ClipRect
-      );
-      DrawAlphaLine(
-          HitTestBounds.Left,
-          HitTestBounds.Top,
-          HitTestBounds.Left,
-          HitTestBounds.Bottom - 1,
-          Color,
-          255,
-          @ClipRect
-      );
-      DrawAlphaLine(
-          HitTestBounds.Right - 1,
-          HitTestBounds.Top,
-          HitTestBounds.Right - 1,
-          HitTestBounds.Bottom - 1,
-          Color,
-          255,
-          @ClipRect
-      );
+      DrawAlphaLine(HitTestBounds.Left, HitTestBounds.Top, HitTestBounds.Right - 1, HitTestBounds.Top, Color, 255, @ClipRect);
+      DrawAlphaLine(HitTestBounds.Left, HitTestBounds.Bottom - 1, HitTestBounds.Right - 1, HitTestBounds.Bottom - 1, Color, 255, @ClipRect);
+      DrawAlphaLine(HitTestBounds.Left, HitTestBounds.Top, HitTestBounds.Left, HitTestBounds.Bottom - 1, Color, 255, @ClipRect);
+      DrawAlphaLine(HitTestBounds.Right - 1, HitTestBounds.Top, HitTestBounds.Right - 1, HitTestBounds.Bottom - 1, Color, 255, @ClipRect);
     end
     else
     begin

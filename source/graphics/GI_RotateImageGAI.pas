@@ -221,14 +221,8 @@ end;
 
 procedure TRotateImageGaiGI.LoadImageProperties(Block: TBlockParEC);
 begin
-  if (Block.CountParams('Image') > 0)
-      and (Block.CountParams('Size') > 0)
-      and (Block.CountParams('Sme') > 0) then
-    SetImage(
-        Block.GetParam('Image'),
-        GetPointGI(Block.GetParam('Size')),
-        GetPointGI(Block.GetParam('Sme'))
-    );
+  if (Block.CountParams('Image') > 0) and (Block.CountParams('Size') > 0) and (Block.CountParams('Sme') > 0) then
+    SetImage(Block.GetParam('Image'), GetPointGI(Block.GetParam('Size')), GetPointGI(Block.GetParam('Sme')));
   if Block.CountParams('Angle') > 0 then
     SetAngle(StrToInt(Block.GetParam('Angle')));
   if Block.CountParams('Trans') > 0 then
@@ -249,10 +243,8 @@ begin
         if (AnimationIndex < 0) or (Data.GetSequenceCount <= AnimationIndex) then
           raise Exception.Create('TgaiGI.AfterLoad. Anim not found.');
         FrameCount := Data.GetSequenceFrameCount(AnimationIndex);
-        FrameIndexTable :=
-            ReAllocFromHeapREC(GaiFrameHeap, FrameIndexTable, FrameCount * SizeOf(Integer));
-        FrameDelayTable :=
-            ReAllocFromHeapREC(GaiFrameHeap, FrameDelayTable, FrameCount * SizeOf(Integer));
+        FrameIndexTable := ReAllocFromHeapREC(GaiFrameHeap, FrameIndexTable, FrameCount * SizeOf(Integer));
+        FrameDelayTable := ReAllocFromHeapREC(GaiFrameHeap, FrameDelayTable, FrameCount * SizeOf(Integer));
         Data.FillSequenceFrameIndexTable(AnimationIndex, FrameIndexTable, SizeOf(Integer));
         Data.FillSequenceFrameDelayTable(AnimationIndex, FrameDelayTable, SizeOf(Integer));
       finally
@@ -278,10 +270,7 @@ begin
     Exit;
   if HardwareRenderingEnabled then
   begin
-    if (RenderedAngle <> Angle)
-        or (ImageDirty = True)
-        or (FrameIndex <> RenderedFrameIndex)
-        or (FrameTexture = nil) then
+    if (RenderedAngle <> Angle) or (ImageDirty = True) or (FrameIndex <> RenderedFrameIndex) or (FrameTexture = nil) then
     begin
       ImageDirty := False;
       RenderedAngle := Angle;
@@ -355,15 +344,11 @@ begin
         FrameGi := Data.LoadFrameGi(GetFrameSourceIndex(RenderedFrameIndex));
         if FrameGi.GetFormat <> 4 then
           RaiseWideMessage('rotate GAI 1');
-        if (FrameGi.GetContentSize.X <> Data.GetCanvasSize.X)
-            or (FrameGi.GetContentSize.Y <> Data.GetCanvasSize.Y) then
+        if (FrameGi.GetContentSize.X <> Data.GetCanvasSize.X) or (FrameGi.GetContentSize.Y <> Data.GetCanvasSize.Y) then
           RaiseWideMessage('rotate GAI 2');
         IndexPlane := FrameGi.GetPlane(0);
         PalettePlane := FrameGi.GetPlane(1);
-        RotatedImage.SetPalette(
-            PColorRGBA(PAnsiChar(FrameGi.Data) + PalettePlane.DataOffset),
-            Cardinal(PalettePlane.DataSize) shr 2
-        );
+        RotatedImage.SetPalette(PColorRGBA(PAnsiChar(FrameGi.Data) + PalettePlane.DataOffset), Cardinal(PalettePlane.DataSize) shr 2);
         Ex_OKGR_RotateBuf_Draw_BYTE(
             RotatedImage.Pixels,
             RotatedImage.PitchBytes,

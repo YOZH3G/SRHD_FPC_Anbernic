@@ -119,23 +119,14 @@ begin
   TextLabel.SetFontName(NormalFontName);
   TextLabel.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
   TextLabel.SetText(
-      ReplaceAllWideString(
-          ReplaceAllWideString(MessageText, TextHighlightColorTag, DialogHighlightColorTag),
-          GreenColorTag,
-          YellowColorTag
-      )
+      ReplaceAllWideString(ReplaceAllWideString(MessageText, TextHighlightColorTag, DialogHighlightColorTag), GreenColorTag, YellowColorTag)
   );
   Attempts := 100;
   while Attempts > 0 do
   begin
     TextLabel.SetTextAlignX(taxCenter);
     TextLabel.SetTextAlignY(tayCenter);
-    TextLabel.SetSize(
-        Classes.Point(
-            CandidateSize.X - Borders.Left - Borders.Right - Icon.ClientSize.X - GiScalePixels(10),
-            1
-        )
-    );
+    TextLabel.SetSize(Classes.Point(CandidateSize.X - Borders.Left - Borders.Right - Icon.ClientSize.X - GiScalePixels(10), 1));
     TextLabel.SetWordWrapEnabled(True);
     TextLabel.SetTextAlignX(taxLeft);
     TextLabel.SetTextAlignY(tayAuto);
@@ -172,10 +163,7 @@ begin
     AcceptButton.SetSize(AcceptButton.GetMaxStateImageSize);
     if Options and mbgCancel <> mbgCancel then
       AcceptButton.SetPosition(
-          Classes.Point(
-              WindowSize.X div 2 - AcceptButton.ClientSize.X div 2,
-              WindowSize.Y - Borders.Bottom - AcceptButton.ClientSize.Y
-          )
+          Classes.Point(WindowSize.X div 2 - AcceptButton.ClientSize.X div 2, WindowSize.Y - Borders.Bottom - AcceptButton.ClientSize.Y)
       )
     else
       AcceptButton.SetPosition(
@@ -203,18 +191,11 @@ begin
     CancelButton.SetSize(CancelButton.GetMaxStateImageSize);
     if Options and mbgOK <> mbgOK then
       CancelButton.SetPosition(
-          Classes.Point(
-              WindowSize.X div 2 - CancelButton.ClientSize.X div 2,
-              WindowSize.Y - Borders.Bottom - CancelButton.ClientSize.Y
-          )
+          Classes.Point(WindowSize.X div 2 - CancelButton.ClientSize.X div 2, WindowSize.Y - Borders.Bottom - CancelButton.ClientSize.Y)
       )
     else
-      CancelButton.SetPosition(
-          Classes.Point(
-              WindowSize.X div 2 + GiScalePixels(5),
-              WindowSize.Y - Borders.Bottom - CancelButton.ClientSize.Y
-          )
-      );
+      CancelButton
+          .SetPosition(Classes.Point(WindowSize.X div 2 + GiScalePixels(5), WindowSize.Y - Borders.Bottom - CancelButton.ClientSize.Y));
     CancelButton.HitKind := gbhRect;
     CancelButton.UpdateStateImagePlacement;
     CancelButton.UpdateStateVisuals;
@@ -236,59 +217,39 @@ begin
   TextLabel.SetPosition(
       Classes.Point(
           Icon.ClientSize.X + Borders.Left + GiScalePixels(10),
-          Integer(
-                  Round(
-                      (WindowSize.Y
-                              - Borders.Top
-                              - Borders.Bottom
-                              - BottomMargin
-                              - TextLabel.ClientSize.Y)
-                          * VerticalFactor
-                  ))
+          Integer(Round((WindowSize.Y - Borders.Top - Borders.Bottom - BottomMargin - TextLabel.ClientSize.Y) * VerticalFactor))
               + Borders.Top
       )
   );
   Icon.SetPosition(Classes.Point(Icon.LocalPosition.X, TextLabel.LocalPosition.Y));
-  if Icon.LocalPosition.Y + Icon.ClientSize.Y
-      > TextLabel.LocalPosition.Y + TextLabel.ClientSize.Y then
+  if Icon.LocalPosition.Y + Icon.ClientSize.Y > TextLabel.LocalPosition.Y + TextLabel.ClientSize.Y then
   begin
-    if TextLabel.LocalPosition.Y - (Icon.ClientSize.Y div 2 - TextLabel.ClientSize.Y div 2)
-        < Borders.Top then
+    if TextLabel.LocalPosition.Y - (Icon.ClientSize.Y div 2 - TextLabel.ClientSize.Y div 2) < Borders.Top then
       IconTop := Borders.Top
     else
-      IconTop :=
-          TextLabel.LocalPosition.Y - (Icon.ClientSize.Y div 2 - TextLabel.ClientSize.Y div 2);
+      IconTop := TextLabel.LocalPosition.Y - (Icon.ClientSize.Y div 2 - TextLabel.ClientSize.Y div 2);
     Icon.SetPosition(Classes.Point(Icon.LocalPosition.X, IconTop));
   end;
   Light.SetPosition(Classes.Point(WindowSize.X div 2 - Light.ClientSize.X div 2, 0));
   TextSize := TextLabel.MeasureContentSize(nil);
-  if HardwareRenderingEnabled
-      and (GameMobileUiEnabled or (GameCompactLayoutEnabled and (GameScreenWidth < 1024))) then
+  if HardwareRenderingEnabled and (GameMobileUiEnabled or (GameCompactLayoutEnabled and (GameScreenWidth < 1024))) then
   begin
     if GameMobileUiEnabled then
-      FitMobileControl(
-          ContentPanel,
-          Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12)
-      )
+      FitMobileControl(ContentPanel, Classes.Rect(12, 12, GameScreenWidth - 12, GameScreenHeight - 12))
     else
     begin
-      Scale := Min(1, Min((GameScreenWidth - 24) / WindowSize.X,
-          (GameScreenHeight - 24) / WindowSize.Y));
-      PlaceControlAtScreen(ContentPanel,
-          Classes.Point((GameScreenWidth - Round(WindowSize.X * Scale)) div 2,
-              (GameScreenHeight - Round(WindowSize.Y * Scale)) div 2), Scale);
+      Scale := Min(1, Min((GameScreenWidth - 24) / WindowSize.X, (GameScreenHeight - 24) / WindowSize.Y));
+      PlaceControlAtScreen(
+          ContentPanel,
+          Classes.Point((GameScreenWidth - Round(WindowSize.X * Scale)) div 2, (GameScreenHeight - Round(WindowSize.Y * Scale)) div 2),
+          Scale
+      );
     end;
     // Redraw and background restoration use screen coordinates, while the
     // fitted dialog and its children retain their original logical bounds.
     Scale := ContentPanel.GetDisplayScale;
     with ContentPanel.HitTestBounds do
-      ViewportRect :=
-          Classes.Rect(
-              Floor(Left * Scale),
-              Floor(Top * Scale),
-              Ceil(Right * Scale),
-              Ceil(Bottom * Scale)
-          );
+      ViewportRect := Classes.Rect(Floor(Left * Scale), Floor(Top * Scale), Ceil(Right * Scale), Ceil(Bottom * Scale));
   end;
 end;
 
@@ -311,9 +272,7 @@ end;
 procedure TMessageBoxGI.DialogKeyDown(Sender: TObjectGI; VirtualKey: Cardinal);
 begin
   if (Options and mbgCancel = mbgCancel)
-      and ((VirtualKey = VK_ESCAPE)
-          or (VirtualKey = Ord('N'))
-          or ((VirtualKey = VK_RETURN) and (Options and mbgOK <> mbgOK))) then
+      and ((VirtualKey = VK_ESCAPE) or (VirtualKey = Ord('N')) or ((VirtualKey = VK_RETURN) and (Options and mbgOK <> mbgOK))) then
     CancelClick(Sender)
   else if (Options and mbgOK = mbgOK) and ((VirtualKey = VK_RETURN) or (VirtualKey = Ord('Y'))) then
     AcceptClick(Sender);

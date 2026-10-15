@@ -70,9 +70,7 @@ begin
   begin
     Animation := TgaiGI.Create(Space.MapPanel);
     Animation.SetImagePath(AnimationPath);
-    Animation.LoadFrameSequenceFromText(
-        '[65,0-' + IntToWideString(Animation.GetMainImageFrameCount - 1) + ']'
-    );
+    Animation.LoadFrameSequenceFromText('[65,0-' + IntToWideString(Animation.GetMainImageFrameCount - 1) + ']');
     Animation.SetPositionModeW(True);
     Animation.SetDepthByName(DepthExpression);
     Animation.SetPosition(TruncatePointF(Position));
@@ -84,9 +82,7 @@ begin
   MapImage := TgiGI.Create(SpaceObjectUiLoop.ContentPanel);
   MapImage.SetPositionModeW(True);
   MapImage.SetDepthByName(DepthExpression);
-  MapImage.SetPosition(
-      TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-  );
+  MapImage.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
   MapImage.SetOrigin(MapImageOrigin);
   MapImage.SetImagePath(MapImagePath);
   MapImage.SetSize(MapImage.GetContentSize);
@@ -124,11 +120,7 @@ begin
       StaticImage.SetPosition(TruncatePointF(APosition));
     if Animation <> nil then
       Animation.SetPosition(TruncatePointF(APosition));
-    MapImage.SetPosition(
-        TruncatePointF(
-            MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-        )
-    );
+    MapImage.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
   end;
 end;
 

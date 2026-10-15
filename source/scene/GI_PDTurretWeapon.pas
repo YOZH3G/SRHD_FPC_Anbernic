@@ -131,8 +131,7 @@ var
 begin
   if RemainingTicks = 25 then
   begin
-    OriginalLength :=
-        Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
+    OriginalLength := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y));
     Speed := (OriginalLength + 288.0) / 25.0;
     for I := 0 to 7 do
       for J := 0 to 1 do
@@ -193,9 +192,7 @@ var
   Particle: PPDWeaponParticle;
   Count: Integer;
 begin
-  Scale :=
-      Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y))
-          / OriginalLength;
+  Scale := Sqrt(Sqr(LocalPosition.X - TargetPoint.X) + Sqr(LocalPosition.Y - TargetPoint.Y)) / OriginalLength;
   PY := -(TargetPoint.Y - LocalPosition.Y);
   if PY = 0 then
     PY := 1;
@@ -231,10 +228,7 @@ begin
         PY := Particle.Position.Y * Scale;
         X := Trunc(PX * Cosine + PY * Sine) + AbsolutePosition.X;
         Y := Trunc(PX * Sine - PY * Cosine) + AbsolutePosition.Y;
-        if (X >= ClipRect.Left)
-            and (X < ClipRect.Right)
-            and (Y >= ClipRect.Top)
-            and (Y < ClipRect.Bottom) then
+        if (X >= ClipRect.Left) and (X < ClipRect.Right) and (Y >= ClipRect.Top) and (Y < ClipRect.Bottom) then
           ScreenRenderBuffer.BlendPixel16(X, Y, Particle.Color, Particle.Alpha);
       end;
       Particle := AddPointerOffset(Particle, SizeOf(TPDWeaponParticle));

@@ -12,12 +12,7 @@ uses
 
 // Preserve the original tooltip, scrolling a plain description body when needed.
 // Bounds and Anchor use game-screen coordinates, including for nested controls.
-procedure FitMobileTooltip(
-    Control: TObjectGI;
-    const Bounds: TRect;
-    const Anchor: TPoint;
-    TargetBounds: PRect = nil
-);
+procedure FitMobileTooltip(Control: TObjectGI; const Bounds: TRect; const Anchor: TPoint; TargetBounds: PRect = nil);
 
 // Unwrap before the ordinary tooltip builder runs. This restores reparented
 // controls and shifted decorations, not text wrapping or the window's size;
@@ -99,8 +94,7 @@ begin
           and Window.Active
           and (Window.MessageLoop <> nil)
           and (FindTooltipScroll(Window) <> nil)
-          and (Window.ContainsPoint(Window.MessageLoop.GetCursorPoint)
-              or InspectionOwnsTouch(Window));
+          and (Window.ContainsPoint(Window.MessageLoop.GetCursorPoint) or InspectionOwnsTouch(Window));
 end;
 
 procedure TTooltipBodyScrollGI.StopLeaveTimer;
@@ -153,10 +147,7 @@ var
   Control: TObjectGI;
 begin
   Result := False;
-  if (Window = nil)
-      or not Window.Active
-      or (Window.MessageLoop = nil)
-      or (Window.MessageLoop.TouchDragKind <> tdScroll) then
+  if (Window = nil) or not Window.Active or (Window.MessageLoop = nil) or (Window.MessageLoop.TouchDragKind <> tdScroll) then
     Exit;
   Control := Window.MessageLoop.TouchScrollControl;
   while Control <> nil do
@@ -261,12 +252,7 @@ begin
   end;
 end;
 
-procedure FitMobileTooltip(
-    Control: TObjectGI;
-    const Bounds: TRect;
-    const Anchor: TPoint;
-    TargetBounds: PRect
-);
+procedure FitMobileTooltip(Control: TObjectGI; const Bounds: TRect; const Anchor: TPoint; TargetBounds: PRect);
 var
   Area, Target, ControlBounds: TRect;
   Scale: Single;
@@ -313,8 +299,7 @@ begin
       Body := FindTooltipBody(Window);
       if (Body <> nil)
           and ((Height * GetGameMobileUiScale > (Area.Bottom - Area.Top) * 0.8)
-              or (Width * GetGameMobileUiScale
-                  > Min(SideWidth, (Area.Right - Area.Left) * 0.6))) then
+              or (Width * GetGameMobileUiScale > Min(SideWidth, (Area.Right - Area.Left) * 0.6))) then
       begin
         OriginalSize := Window.ClientSize;
         TooltipScroll := TTooltipBodyScrollGI.Create(Window);
@@ -351,16 +336,10 @@ begin
             end
             else if (Child is TLabelGI)
                 and (Position.Y < Window.WorkSubRect.Top)
-                and (Position.X + Child.ClientSize.X
-                    > Window.ClientSize.X - Window.WorkSubRect.Right) then
+                and (Position.X + Child.ClientSize.X > Window.ClientSize.X - Window.WorkSubRect.Right) then
             begin
               TooltipScroll.RememberGeometry(Child);
-              Child.SetSize(
-                  Classes.Point(
-                      Max(1, Window.ClientSize.X - Window.WorkSubRect.Right - Position.X),
-                      Child.ClientSize.Y
-                  )
-              );
+              Child.SetSize(Classes.Point(Max(1, Window.ClientSize.X - Window.WorkSubRect.Right - Position.X), Child.ClientSize.Y));
             end;
           end;
           Child := Child.NextSibling;
@@ -376,13 +355,7 @@ begin
   // Short and structured tips retain the complete original composition.
   if TooltipScroll = nil then
     Scale :=
-        Min(
-            GetGameMobileUiScale,
-            Min(
-                Min(SideWidth, (Area.Right - Area.Left) * 0.6) / Width,
-                (Area.Bottom - Area.Top) * 0.8 / Height
-            )
-        );
+        Min(GetGameMobileUiScale, Min(Min(SideWidth, (Area.Right - Area.Left) * 0.6) / Width, (Area.Bottom - Area.Top) * 0.8 / Height));
   if TooltipScroll = nil then
   begin
     Width := Ceil(Width * Scale);
@@ -397,14 +370,7 @@ begin
     Y := Target.Bottom + Gap;
   X := EnsureRange(X, Area.Left, Area.Right - Width);
   Y := EnsureRange(Y, Area.Top, Area.Bottom - Height);
-  PlaceControlAtScreen(
-      Control,
-      Classes.Point(
-          X + Round(Control.OriginPoint.X * Scale),
-          Y + Round(Control.OriginPoint.Y * Scale)
-      ),
-      Scale
-  );
+  PlaceControlAtScreen(Control, Classes.Point(X + Round(Control.OriginPoint.X * Scale), Y + Round(Control.OriginPoint.Y * Scale)), Scale);
 end;
 
 procedure FitInspectionWindow(
@@ -430,8 +396,7 @@ var
         SetSize(Classes.Point(Max(1, AvailableWidth), 1));
       end;
     BodyHeight := Body.ClientSize.Y;
-    Height :=
-        Min(Max(Window.MinimumSize.Y, BodyHeight + Borders.Top + Borders.Bottom), MaximumHeight);
+    Height := Min(Max(Window.MinimumSize.Y, BodyHeight + Borders.Top + Borders.Bottom), MaximumHeight);
   end;
 begin
   Area := Bounds;
@@ -454,11 +419,7 @@ begin
   if Area.Right - Area.Left < Max(Window.MinimumSize.X, 240) * MinimumScale then
     Area := Available;
   Scale := Min(Scale, (Area.Right - Area.Left) / Max(1, Window.MinimumSize.X));
-  Scale :=
-      Min(
-          Scale,
-          (Area.Bottom - Area.Top) / Max(Window.MinimumSize.Y, Borders.Top + Borders.Bottom + 48)
-      );
+  Scale := Min(Scale, (Area.Bottom - Area.Top) / Max(Window.MinimumSize.Y, Borders.Top + Borders.Bottom + 48));
   if Scale <= 0 then
     Exit;
   MaximumWidth := Floor((Area.Right - Area.Left) / Scale);
@@ -493,10 +454,7 @@ begin
   Scroll.SetHorizontalScrollbarEnabled(HorizontalScroll);
   PlaceControlAtScreen(
       Window,
-      Classes.Point(
-          Round((Area.Left + Area.Right - Width * Scale) / 2),
-          Round((Area.Top + Area.Bottom - Height * Scale) / 2)
-      ),
+      Classes.Point(Round((Area.Left + Area.Right - Width * Scale) / 2), Round((Area.Top + Area.Bottom - Height * Scale) / 2)),
       Scale
   );
   Window.MessageLoop.InvalidateViewport;

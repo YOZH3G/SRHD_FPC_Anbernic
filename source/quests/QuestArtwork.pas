@@ -44,11 +44,7 @@ uses
 
 function SameBounds(const First, Second: TRect): Boolean;
 begin
-  Result :=
-      (First.Left = Second.Left)
-          and (First.Top = Second.Top)
-          and (First.Right = Second.Right)
-          and (First.Bottom = Second.Bottom);
+  Result := (First.Left = Second.Left) and (First.Top = Second.Top) and (First.Right = Second.Right) and (First.Bottom = Second.Bottom);
 end;
 
 constructor TQuestArtworkGI.Create(Owner: TObjectGI);
@@ -80,10 +76,7 @@ begin
     begin
       Coverage := EnsureRange(X + 1 - Edge, 0.0, 1.0);
       ControlBacking.ScaleAlpha(Rect(X, Y, X + 1, Y + 1), Round(255 * Coverage));
-      ControlBacking.ScaleAlpha(
-          Rect(ControlBacking.Width - X - 1, Y, ControlBacking.Width - X, Y + 1),
-          Round(255 * Coverage)
-      );
+      ControlBacking.ScaleAlpha(Rect(ControlBacking.Width - X - 1, Y, ControlBacking.Width - X, Y + 1), Round(255 * Coverage));
     end;
   end;
   for X := 527 to 649 do
@@ -145,15 +138,7 @@ end;
 procedure TQuestArtworkGI.BuildControlPlate(Buffer: TGraphBufGR; Width, Height: Integer);
 begin
   Buffer.AllocateRgbaTight(Width, Height);
-  Buffer.DrawNinePatch(
-      0,
-      0,
-      Width,
-      Height,
-      ControlBacking,
-      Rect(0, 0, ControlBacking.Width, ControlBacking.Height),
-      Rect(10, 12, 10, 10)
-  );
+  Buffer.DrawNinePatch(0, 0, Width, Height, ControlBacking, Rect(0, 0, ControlBacking.Width, ControlBacking.Height), Rect(10, 12, 10, 10));
 end;
 
 procedure TQuestArtworkGI.Draw(ClipRect: TRect);
@@ -181,10 +166,7 @@ begin
     );
 end;
 
-procedure TQuestArtworkGI.SetLayout(
-    const TextFrame, ChoicesFrame, PictureFrame: TRect;
-    StyleIndex: Integer
-);
+procedure TQuestArtworkGI.SetLayout(const TextFrame, ChoicesFrame, PictureFrame: TRect; StyleIndex: Integer);
 var
   X: Integer;
 begin
@@ -202,26 +184,15 @@ begin
     // These fills include the old scrollbar track and arrow recesses. Mirror
     // the plain left edge to retain the skin's rounded shading without them.
     for X := 0 to 27 do
-      StyleSource.CopyRect32(
-          Point(StyleSource.Width - 28 + X, 0),
-          StyleSource,
-          Rect(27 - X, 0, 28 - X, StyleSource.Height)
-      );
+      StyleSource.CopyRect32(Point(StyleSource.Width - 28 + X, 0), StyleSource, Rect(27 - X, 0, 28 - X, StyleSource.Height));
     CurrentStyle := StyleIndex;
   end;
   TextBounds := TextFrame;
   ChoiceBounds := ChoicesFrame;
   PictureBounds := PictureFrame;
   PictureInnerBounds := Rect(0, 0, 0, 0);
-  if (PictureBounds.Right - PictureBounds.Left > 20)
-      and (PictureBounds.Bottom - PictureBounds.Top > 20) then
-    PictureInnerBounds :=
-        Rect(
-            PictureBounds.Left + 9,
-            PictureBounds.Top + 9,
-            PictureBounds.Right - 11,
-            PictureBounds.Bottom - 11
-        );
+  if (PictureBounds.Right - PictureBounds.Left > 20) and (PictureBounds.Bottom - PictureBounds.Top > 20) then
+    PictureInnerBounds := Rect(PictureBounds.Left + 9, PictureBounds.Top + 9, PictureBounds.Right - 11, PictureBounds.Bottom - 11);
   SetSize(Point(GameScreenWidth, GameScreenHeight));
   LayoutDirty := True;
   Invalidate;
@@ -233,13 +204,7 @@ var
   Bounds, SourceBounds: TRect;
   Delta: Integer;
 
-  procedure Patch(
-      const Dest: TRect;
-      Source: TGraphBufGR;
-      const SourceRect: TRect;
-      Borders: TRect;
-      Blend: Boolean = True
-  );
+  procedure Patch(const Dest: TRect; Source: TGraphBufGR; const SourceRect: TRect; Borders: TRect; Blend: Boolean = True);
   var
     Width, Height: Integer;
   begin
@@ -247,10 +212,7 @@ var
     Height := Dest.Bottom - Dest.Top;
     if (Width <= 0) or (Height <= 0) then
       Exit;
-    if (Dest.Left < 0)
-        or (Dest.Top < 0)
-        or (Dest.Right > GameScreenWidth)
-        or (Dest.Bottom > GameScreenHeight) then
+    if (Dest.Left < 0) or (Dest.Top < 0) or (Dest.Right > GameScreenWidth) or (Dest.Bottom > GameScreenHeight) then
       raise Exception.Create('Quest artwork bounds exceed the screen');
     // Very short choice lists still need bounded corner copies.
     if Borders.Left + Borders.Right > Width then
@@ -278,21 +240,9 @@ begin
     // Preserve the original right-aligned artwork at its native size. Extra
     // space repeats the background texture instead of stretching the machinery.
     SourceBounds :=
-        Rect(
-            Max(0, BackgroundSource.Width - GameScreenWidth),
-            0,
-            BackgroundSource.Width,
-            Min(GameScreenHeight, BackgroundSource.Height)
-        );
-    GraphBuf.DrawNinePatch(
-        0,
-        0,
-        GameScreenWidth,
-        GameScreenHeight,
-        BackgroundSource,
-        SourceBounds,
-        Rect(0, 0, Min(512, GameScreenWidth), 0)
-    );
+        Rect(Max(0, BackgroundSource.Width - GameScreenWidth), 0, BackgroundSource.Width, Min(GameScreenHeight, BackgroundSource.Height));
+    GraphBuf
+        .DrawNinePatch(0, 0, GameScreenWidth, GameScreenHeight, BackgroundSource, SourceBounds, Rect(0, 0, Min(512, GameScreenWidth), 0));
 
     Bounds := TextBounds;
     InflateRect(Bounds, -6, -7);
@@ -302,16 +252,10 @@ begin
     Patch(TextBounds, PanelSource, Rect(68, 0, 665, 445), Rect(185, 30, 190, 35));
     Bounds := ChoiceBounds;
     InflateRect(Bounds, -6, -7);
-    Patch(
-        Bounds,
-        StyleSource,
-        Rect(0, 453, StyleSource.Width, StyleSource.Height),
-        Rect(32, 32, 32, 16)
-    );
+    Patch(Bounds, StyleSource, Rect(0, 453, StyleSource.Width, StyleSource.Height), Rect(32, 32, 32, 16));
     Patch(ChoiceBounds, ChoiceSource, Rect(0, 0, 597, 291), Rect(34, 34, 35, 35));
 
-    if (PictureInnerBounds.Right > PictureInnerBounds.Left)
-        and (PictureInnerBounds.Bottom > PictureInnerBounds.Top) then
+    if (PictureInnerBounds.Right > PictureInnerBounds.Left) and (PictureInnerBounds.Bottom > PictureInnerBounds.Top) then
     begin
       // Copy the transparent center too: PQI is drawn behind this layer, so
       // the original gold chamfers mask the rectangular illustration correctly.

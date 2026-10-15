@@ -133,13 +133,7 @@ end;
 
 function PackGamePan(X, Y: Double): Cardinal;
 begin
-  Result :=
-      Cardinal(
-          PackGamePoint(
-              Round(EnsureRange(X * 64, -32768.0, 32767.0)),
-              Round(EnsureRange(Y * 64, -32768.0, 32767.0))
-          )
-      );
+  Result := Cardinal(PackGamePoint(Round(EnsureRange(X * 64, -32768.0, 32767.0)), Round(EnsureRange(Y * 64, -32768.0, 32767.0))));
 end;
 
 end.

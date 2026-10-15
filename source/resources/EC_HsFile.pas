@@ -106,11 +106,7 @@ type
     function OpenEntryByPath(EntryPath: AnsiString; DesiredAccess: Cardinal): Integer;
     function CreateLooseFile(FilePath: WideString): Integer;
     function CloseEntrySlot(SlotIndex: Cardinal): Boolean;
-    function TryGetChainedBlockStoredSizeAtIndex(
-        FirstBlockOffset: Cardinal;
-        BlockIndex: Cardinal;
-        out StoredSize: Cardinal
-    ): Boolean;
+    function TryGetChainedBlockStoredSizeAtIndex(FirstBlockOffset: Cardinal; BlockIndex: Cardinal; out StoredSize: Cardinal): Boolean;
     function ReadEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
     function WriteEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
     function SeekEntrySlot(SlotIndex: Cardinal; Offset: Cardinal; Origin: Integer): Boolean;
@@ -155,11 +151,7 @@ type
     function OpenAllPackages: Boolean;
     function CloseAllPackages: Boolean;
     function GetPackByIndex(PackIndex: Integer): TPackFileEC;
-    function OpenEntryByPathAcrossPackages(
-        EntryPath: AnsiString;
-        DesiredAccess: Cardinal;
-        FirstPackageOnly: Boolean
-    ): Integer;
+    function OpenEntryByPathAcrossPackages(EntryPath: AnsiString; DesiredAccess: Cardinal; FirstPackageOnly: Boolean): Integer;
     function CreateLooseFile(FilePath: WideString): Integer;
     function CloseEntryHandle(Handle: Integer): Boolean;
     function ReadEntryHandle(Handle: Integer; var Buffer; ByteCount: Cardinal): Boolean;
@@ -183,17 +175,9 @@ function AnsiBeforeFirstDelimiter(Text: AnsiString; Delimiters: AnsiString): Ans
 
 function AnsiAfterFirstDelimiter(Text: AnsiString; Delimiters: AnsiString): AnsiString;
 
-function MatchLookupKeySuffix(
-    var Key: AnsiString;
-    SuffixBytes: PAnsiChar;
-    SuffixLength: Integer
-): Boolean;
+function MatchLookupKeySuffix(var Key: AnsiString; SuffixBytes: PAnsiChar; SuffixLength: Integer): Boolean;
 
-procedure CopyLookupKeySuffix(
-    DestSuffixBytes: PAnsiChar;
-    SuffixLength: Integer;
-    var Key: AnsiString
-);
+procedure CopyLookupKeySuffix(DestSuffixBytes: PAnsiChar; SuffixLength: Integer; var Key: AnsiString);
 
 implementation
 
@@ -228,12 +212,7 @@ const
 function NativeClose(Handle: LongInt): LongInt; cdecl; external name 'close';
 {$ENDIF}
 
-function ReadPackageFile(
-    Handle: THandle;
-    var Buffer;
-    ByteCount: Cardinal;
-    out BytesRead: Cardinal
-): Boolean;
+function ReadPackageFile(Handle: THandle; var Buffer; ByteCount: Cardinal; out BytesRead: Cardinal): Boolean;
 var
   Count: LongInt;
 begin
@@ -245,12 +224,7 @@ begin
     BytesRead := 0;
 end;
 
-function WritePackageFile(
-    Handle: THandle;
-    const Buffer;
-    ByteCount: Cardinal;
-    out BytesWritten: Cardinal
-): Boolean;
+function WritePackageFile(Handle: THandle; const Buffer; ByteCount: Cardinal; out BytesWritten: Cardinal): Boolean;
 var
   Count: LongInt;
 begin
@@ -385,11 +359,7 @@ begin
     Exit;
   end;
 
-  if not ReadPackageFile(
-      PackageHandle,
-      RootSubtreeOffset,
-      SizeOf(RootSubtreeOffset),
-      BytesRead) then
+  if not ReadPackageFile(PackageHandle, RootSubtreeOffset, SizeOf(RootSubtreeOffset), BytesRead) then
   begin
     ClosePackageFile(PackageHandle);
     raise Exception.Create('Error reading package file:' + PackagePath);
@@ -532,15 +502,9 @@ begin
     OpenSlots[Slot].CompressedBlockBuffer := nil;
     OpenSlots[Slot].DecompressedBlockBuffer := nil;
   end;
-  Position :=
-      FileSeek(
-          OpenSlots[Slot].FileHandle,
-          Int64(OpenSlots[Slot].CurrentDataOffset),
-          fsFromBeginning
-      );
+  Position := FileSeek(OpenSlots[Slot].FileHandle, Int64(OpenSlots[Slot].CurrentDataOffset), fsFromBeginning);
   if Position = $FFFFFFFF then
-    raise Exception.Create(
-        'Сбой в пакетном файле :' + PackagePath + ':' + EntryPath);
+    raise Exception.Create('Сбой в пакетном файле :' + PackagePath + ':' + EntryPath);
   Result := Slot;
 end;
 
@@ -572,11 +536,7 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   Result := True;
@@ -594,8 +554,7 @@ begin
   else
   begin
     if not Boolean(ClosePackageFile(OpenSlots[SlotIndex].FileHandle)) then
-      raise Exception.Create(
-          'Ошибка закрытия файла : ' + SysUtils.IntToStr(SlotIndex));
+      raise Exception.Create('Ошибка закрытия файла : ' + SysUtils.IntToStr(SlotIndex));
     if OpenSlots[SlotIndex].UsesChainedBlocks then
     begin
       FreeMem(OpenSlots[SlotIndex].CompressedBlockBuffer);
@@ -607,10 +566,7 @@ begin
   end;
 end;
 
-function TPackFileEC.TryGetChainedBlockStoredSizeAtIndex(
-    FirstBlockOffset, BlockIndex: Cardinal;
-    out StoredSize: Cardinal
-): Boolean;
+function TPackFileEC.TryGetChainedBlockStoredSizeAtIndex(FirstBlockOffset, BlockIndex: Cardinal; out StoredSize: Cardinal): Boolean;
 var
   BytesRead, Offset: Cardinal;
 begin
@@ -620,8 +576,7 @@ begin
   begin
     if FileSeek(PackageHandle, Int64(Offset), fsFromBeginning) <> Int64(Offset) then
       Exit;
-    if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead)
-        or (BytesRead <> SizeOf(StoredSize)) then
+    if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead) or (BytesRead <> SizeOf(StoredSize)) then
       Exit;
     if BlockIndex = 0 then
       Break;
@@ -631,11 +586,7 @@ begin
   Result := True;
 end;
 
-function TPackFileEC.ReadEntrySlot(
-    SlotIndex: Cardinal;
-    Buffer: Pointer;
-    ByteCount: Cardinal
-): Boolean;
+function TPackFileEC.ReadEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
 var
   BytesRead, BlockIndex, BlockOffset, ChunkSize, StoredSize, RelativeOffset: Cardinal;
   Decoded, Dest: Pointer;
@@ -644,11 +595,7 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   if OpenSlots[SlotIndex].UsesChainedBlocks then
@@ -657,8 +604,7 @@ begin
     Dest := Buffer;
     while ByteCount <> 0 do
     begin
-      RelativeOffset :=
-          OpenSlots[SlotIndex].CurrentDataOffset - OpenSlots[SlotIndex].DataStartOffset;
+      RelativeOffset := OpenSlots[SlotIndex].CurrentDataOffset - OpenSlots[SlotIndex].DataStartOffset;
       BlockIndex := RelativeOffset shr PackCompressionBlockShift;
       BlockOffset := RelativeOffset - BlockIndex * PackCompressionBlockSize;
       ChunkSize := ByteCount;
@@ -671,37 +617,23 @@ begin
         // other open entries share the package handle and may have moved it.
         if BlockIndex = OpenSlots[SlotIndex].NextChainedBlockIndex then
         begin
-          if FileSeek(
-                  PackageHandle,
-                  Int64(OpenSlots[SlotIndex].NextChainedBlockOffset),
-                  fsFromBeginning)
+          if FileSeek(PackageHandle, Int64(OpenSlots[SlotIndex].NextChainedBlockOffset), fsFromBeginning)
               <> Int64(OpenSlots[SlotIndex].NextChainedBlockOffset) then
             Exit;
-          if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead)
-              or (BytesRead <> SizeOf(StoredSize)) then
+          if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead) or (BytesRead <> SizeOf(StoredSize)) then
             Exit;
           Inc(OpenSlots[SlotIndex].NextChainedBlockOffset, StoredSize + SizeOf(StoredSize));
         end
         else
         begin
-          if not TryGetChainedBlockStoredSizeAtIndex(
-              OpenSlots[SlotIndex].DataStartOffset,
-              BlockIndex,
-              StoredSize) then
+          if not TryGetChainedBlockStoredSizeAtIndex(OpenSlots[SlotIndex].DataStartOffset, BlockIndex, StoredSize) then
             Exit;
-          OpenSlots[SlotIndex].NextChainedBlockOffset :=
-              FileSeek(PackageHandle, Int64(0), fsFromCurrent) + StoredSize;
+          OpenSlots[SlotIndex].NextChainedBlockOffset := FileSeek(PackageHandle, Int64(0), fsFromCurrent) + StoredSize;
         end;
         OpenSlots[SlotIndex].NextChainedBlockIndex := BlockIndex + 1;
         if StoredSize > PackCompressedBufferSize then
           Exit;
-        Result :=
-            ReadPackageFile(
-                PackageHandle,
-                OpenSlots[SlotIndex].CompressedBlockBuffer^,
-                StoredSize,
-                BytesRead
-            );
+        Result := ReadPackageFile(PackageHandle, OpenSlots[SlotIndex].CompressedBlockBuffer^, StoredSize, BytesRead);
         if not Result or (BytesRead <> StoredSize) then
         begin
           Result := False;
@@ -724,22 +656,14 @@ begin
   end
   else
   begin
-    FileSeek(
-        OpenSlots[SlotIndex].FileHandle,
-        Int64(OpenSlots[SlotIndex].CurrentDataOffset),
-        fsFromBeginning
-    );
+    FileSeek(OpenSlots[SlotIndex].FileHandle, Int64(OpenSlots[SlotIndex].CurrentDataOffset), fsFromBeginning);
     Result := ReadPackageFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesRead);
     Result := Result and (ByteCount = BytesRead);
     Inc(OpenSlots[SlotIndex].CurrentDataOffset, BytesRead);
   end;
 end;
 
-function TPackFileEC.WriteEntrySlot(
-    SlotIndex: Cardinal;
-    Buffer: Pointer;
-    ByteCount: Cardinal
-): Boolean;
+function TPackFileEC.WriteEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
 var
   BytesWritten, Size: Cardinal;
 begin
@@ -747,21 +671,12 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   if OpenSlots[SlotIndex].UsesChainedBlocks then
-    raise Exception.Create(
-        'Ошибочная операция записи в сжатый файл');
-  FileSeek(
-      OpenSlots[SlotIndex].FileHandle,
-      Int64(OpenSlots[SlotIndex].CurrentDataOffset),
-      fsFromBeginning
-  );
+    raise Exception.Create('Ошибочная операция записи в сжатый файл');
+  FileSeek(OpenSlots[SlotIndex].FileHandle, Int64(OpenSlots[SlotIndex].CurrentDataOffset), fsFromBeginning);
   Result := WritePackageFile(OpenSlots[SlotIndex].FileHandle, Buffer^, ByteCount, BytesWritten);
   Result := Result and (ByteCount = BytesWritten);
   Inc(OpenSlots[SlotIndex].CurrentDataOffset, BytesWritten);
@@ -778,11 +693,7 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   if Origin = fsFromCurrent then
@@ -800,16 +711,9 @@ begin
   end
   else
   begin
-    Position :=
-        FileSeek(
-            OpenSlots[SlotIndex].FileHandle,
-            Int64(OpenSlots[SlotIndex].DataStartOffset + Offset),
-            fsFromBeginning
-        );
+    Position := FileSeek(OpenSlots[SlotIndex].FileHandle, Int64(OpenSlots[SlotIndex].DataStartOffset + Offset), fsFromBeginning);
     if Position = $FFFFFFFF then
-      raise Exception.Create(
-          'Ошибка установки указателя в пакетном файле :'
-              + PackagePath);
+      raise Exception.Create('Ошибка установки указателя в пакетном файле :' + PackagePath);
     OpenSlots[SlotIndex].CurrentDataOffset := Position;
   end;
   Result := True;
@@ -821,11 +725,7 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   Result := OpenSlots[SlotIndex].CurrentDataOffset - OpenSlots[SlotIndex].DataStartOffset;
@@ -837,11 +737,7 @@ begin
   if SlotIndex = $FFFFFFFF then
     Exit;
   if SlotIndex > High(OpenSlots) then
-    raise Exception.Create(
-        PackSlotRangeError
-            + SysUtils.IntToStr(High(OpenSlots))
-            + ': '
-            + SysUtils.IntToStr(SlotIndex));
+    raise Exception.Create(PackSlotRangeError + SysUtils.IntToStr(High(OpenSlots)) + ': ' + SysUtils.IntToStr(SlotIndex));
   if OpenSlots[SlotIndex].IsAvailable then
     Exit;
   Result := OpenSlots[SlotIndex].DataSize;
@@ -1037,12 +933,9 @@ begin
   begin
     Entry := Parent.FindEntry(OriginalName);
     if Entry = nil then
-      raise Exception.Create(
-          'Сбой в файловой системе пакетного файла - Folder: '
-              + UpperName);
+      raise Exception.Create('Сбой в файловой системе пакетного файла - Folder: ' + UpperName);
     if Entry.Kind <> 3 then
-      raise Exception.Create(
-          'Конфликт имен файл/директория: ' + UpperName);
+      raise Exception.Create('Конфликт имен файл/директория: ' + UpperName);
     Entry.StoredSize := HeaderSize;
     Entry.TargetOffset := 0;
     Parent.ChangedFlag := True;
@@ -1343,11 +1236,7 @@ begin
     Result := Pack.CloseEntrySlot(Handle - Index * PackOpenSlotCount);
 end;
 
-function TPackCollectionEC.ReadEntryHandle(
-    Handle: Integer;
-    var Buffer;
-    ByteCount: Cardinal
-): Boolean;
+function TPackCollectionEC.ReadEntryHandle(Handle: Integer; var Buffer; ByteCount: Cardinal): Boolean;
 var
   Pack: TPackFileEC;
   Index: Integer;
@@ -1359,11 +1248,7 @@ begin
     Result := Pack.ReadEntrySlot(Handle - Index * PackOpenSlotCount, @Buffer, ByteCount);
 end;
 
-function TPackCollectionEC.WriteEntryHandle(
-    Handle: Integer;
-    var Buffer;
-    ByteCount: Cardinal
-): Boolean;
+function TPackCollectionEC.WriteEntryHandle(Handle: Integer; var Buffer; ByteCount: Cardinal): Boolean;
 var
   Pack: TPackFileEC;
   Index: Integer;
@@ -1375,11 +1260,7 @@ begin
     Result := Pack.WriteEntrySlot(Handle - Index * PackOpenSlotCount, @Buffer, ByteCount);
 end;
 
-function TPackCollectionEC.SeekEntryHandle(
-    Handle: Integer;
-    Offset: Cardinal;
-    Origin: Integer
-): Boolean;
+function TPackCollectionEC.SeekEntryHandle(Handle: Integer; Offset: Cardinal; Origin: Integer): Boolean;
 var
   Pack: TPackFileEC;
   Index: Integer;
@@ -1415,11 +1296,7 @@ begin
     Result := Pack.GetEntrySlotSize(Handle - Index * PackOpenSlotCount);
 end;
 
-function MatchLookupKeySuffix(
-    var Key: AnsiString;
-    SuffixBytes: PAnsiChar;
-    SuffixLength: Integer
-): Boolean;
+function MatchLookupKeySuffix(var Key: AnsiString; SuffixBytes: PAnsiChar; SuffixLength: Integer): Boolean;
 var
   i, j, First, KeyLength: Integer;
 begin
@@ -1441,11 +1318,7 @@ begin
   end;
 end;
 
-procedure CopyLookupKeySuffix(
-    DestSuffixBytes: PAnsiChar;
-    SuffixLength: Integer;
-    var Key: AnsiString
-);
+procedure CopyLookupKeySuffix(DestSuffixBytes: PAnsiChar; SuffixLength: Integer; var Key: AnsiString);
 var
   i, j, First, KeyLength: Integer;
 begin
@@ -1472,10 +1345,7 @@ begin
   ReleaseTable;
 end;
 
-function THashEC.ComputeLookupBucketAndFullHash(
-    var Key: AnsiString;
-    out FullHash: Cardinal
-): Integer;
+function THashEC.ComputeLookupBucketAndFullHash(var Key: AnsiString; out FullHash: Cardinal): Integer;
 var
   Hash: Cardinal;
   i, First, KeyLength: Integer;

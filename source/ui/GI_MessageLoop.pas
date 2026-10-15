@@ -190,11 +190,7 @@ type
     function FindByNameRecursive(const Name: WideString): TObjectGI;
     procedure DispatchNamedEvent(EventKind: TNamedControlEventGI; Param1: Integer; Param2: Integer);
     procedure InvalidateChildren(IncludePanels: Boolean);
-    function InvalidateScrollOverlap(
-        Rect: TRect;
-        Delta: TPoint;
-        StartControl: TObjectGI
-    ): TObjectGI;
+    function InvalidateScrollOverlap(Rect: TRect; Delta: TPoint; StartControl: TObjectGI): TObjectGI;
     procedure ReloadFromBlock;
   end;
 
@@ -309,12 +305,7 @@ type
     procedure AdvanceTimerTick; virtual;
     procedure DrawFrame; virtual;
     procedure Present; virtual;
-    procedure ProcessNamedControlEvent(
-        ControlName: WideString;
-        EventKind: TNamedControlEventGI;
-        Param1: Integer;
-        Param2: Integer
-    ); virtual;
+    procedure ProcessNamedControlEvent(ControlName: WideString; EventKind: TNamedControlEventGI; Param1: Integer; Param2: Integer); virtual;
     procedure OnOpen; virtual;
     procedure OnClose; virtual;
     procedure ProcessCallbackTimers; virtual;
@@ -380,11 +371,7 @@ type
     function GetScrollMousePoint(out Point: TPoint): Boolean;
     procedure SetSystemCursorPosition(Point: TPoint);
     function ConsumeTimerTickChange: Boolean;
-    function QueryPointOcclusionState(
-        Point: TPoint;
-        IgnoreControl: TObjectGI;
-        StartControl: TObjectGI
-    ): Integer;
+    function QueryPointOcclusionState(Point: TPoint; IgnoreControl: TObjectGI; StartControl: TObjectGI): Integer;
     procedure FreeSavedPixels16;
     procedure RestoreSavedPixels16;
     procedure FreeSecondaryPixelBuffer;
@@ -396,11 +383,7 @@ type
     procedure ClearTransientControl;
     procedure InvalidateTransientControl;
     procedure InitializeDefaults;
-    procedure InitializeFromConfig(
-        ConfigRoot: TBlockParEC;
-        const ScreenName: WideString;
-        UnusedFlag: Boolean
-    );
+    procedure InitializeFromConfig(ConfigRoot: TBlockParEC; const ScreenName: WideString; UnusedFlag: Boolean);
     procedure QueueUiCode(Block: TBlockParEC; RefreshMouse: Boolean);
     procedure RefreshMouseDispatch;
   end;
@@ -468,8 +451,9 @@ begin
   CancelGamePointerInput;
   MessageLoopStack.Delete(MessageLoopStack.Count - 1);
   if MessageLoopStack.Count > 0 then
-    AppendLogLineThreadSafe('Rangers: resume '
-        + UTF8Encode(TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName));
+    AppendLogLineThreadSafe(
+        'Rangers: resume ' + UTF8Encode(TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName)
+    );
 end;
 
 constructor TObjectGI.Create(Owner: TObjectGI);
@@ -1377,11 +1361,7 @@ begin
   end;
 end;
 
-function TObjectGI.InvalidateScrollOverlap(
-    Rect: TRect;
-    Delta: TPoint;
-    StartControl: TObjectGI
-): TObjectGI;
+function TObjectGI.InvalidateScrollOverlap(Rect: TRect; Delta: TPoint; StartControl: TObjectGI): TObjectGI;
 var
   Child: TObjectGI;
 begin
@@ -1487,10 +1467,7 @@ begin
         while RectNode <> nil do
         begin
           Stage := 5;
-          if IntersectRects(
-              DrawRect,
-              ScaleClipRect(RectNode.Bounds, 1 / GetDisplayScale),
-              Intersection) then
+          if IntersectRects(DrawRect, ScaleClipRect(RectNode.Bounds, 1 / GetDisplayScale), Intersection) then
             DrawControl(Self, DrawRect, False);
           RectNode := RectNode.Next;
         end;
@@ -1697,11 +1674,9 @@ begin
   if Block.CountParams('PosAutoCorrection') > 0 then
     AutoOffsetEnabled := ParseEnabledNameGI(TrimWideString(Block.GetParam('PosAutoCorrection')));
   if Block.CountParams('PosAutoCorrectionXCoef') > 0 then
-    AutoOffsetScale.X :=
-        ExtractDecimalToSingleW(TrimWideString(Block.GetParam('PosAutoCorrectionXCoef')));
+    AutoOffsetScale.X := ExtractDecimalToSingleW(TrimWideString(Block.GetParam('PosAutoCorrectionXCoef')));
   if Block.CountParams('PosAutoCorrectionYCoef') > 0 then
-    AutoOffsetScale.Y :=
-        ExtractDecimalToSingleW(TrimWideString(Block.GetParam('PosAutoCorrectionYCoef')));
+    AutoOffsetScale.Y := ExtractDecimalToSingleW(TrimWideString(Block.GetParam('PosAutoCorrectionYCoef')));
   if Block.CountBlocks('OnKey') > 0 then
     OnKeyDownCode := Block.GetBlock('OnKey');
   if Block.CountBlocks('OnMouseEnterCode') > 0 then
@@ -1934,7 +1909,8 @@ begin
   if OnScreenKeyboard <> nil then
   begin
     OnScreenKeyboard.Draw(GameScreenRect);
-    if CursorControl.Active then CursorControl.Draw(GameScreenRect);
+    if CursorControl.Active then
+      CursorControl.Draw(GameScreenRect);
   end;
 end;
 
@@ -1950,7 +1926,8 @@ begin
     if OnScreenKeyboard <> nil then
     begin
       OnScreenKeyboard.Draw(GameScreenRect);
-      if CursorControl.Active then CursorControl.Draw(GameScreenRect);
+      if CursorControl.Active then
+        CursorControl.Draw(GameScreenRect);
     end;
   end;
 end;
@@ -2007,7 +1984,8 @@ begin
       OnOpen;
       Stage := 5;
       if (ContentPanel.DisplayScale < 1)
-          and (ViewportRect.Left = 0) and (ViewportRect.Top = 0)
+          and (ViewportRect.Left = 0)
+          and (ViewportRect.Top = 0)
           and (ViewportRect.Right = GameScreenWidth)
           and (ViewportRect.Bottom = GameScreenHeight) then
         // OnOpen has already captured a modal background if it needs one.
@@ -2020,8 +1998,7 @@ begin
       CaretBlinkOn := False;
       Stage := 6;
       RootUiObject.OnActivate;
-      if (ViewportRect.Right - ViewportRect.Left < GameScreenWidth)
-          or (ViewportRect.Bottom - ViewportRect.Top < GameScreenHeight) then
+      if (ViewportRect.Right - ViewportRect.Left < GameScreenWidth) or (ViewportRect.Bottom - ViewportRect.Top < GameScreenHeight) then
       begin
         Stage := 7;
         if SavedBackgroundControl = nil then
@@ -2116,8 +2093,7 @@ begin
             PopupController.AdvancePopups(TimerTick);
           Stage := 22;
           for Index := 0 to SoundGroupList.Count - 1 do
-            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
-                or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
+            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0) or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
               TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
         end;
       end;
@@ -2156,13 +2132,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message :=
-          'Error in procedure TMessageLoopGI.Run, '
-              + RegisteredLoopName
-              + ', label = '
-              + IntToStr(Stage)
-              + ': '
-              + E.Message;
+      E.Message := 'Error in procedure TMessageLoopGI.Run, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
       raise;
     end;
   end;
@@ -2249,8 +2219,7 @@ begin
           // can wait a whole scheduler tick. Uncapped presentation also needs
           // no extra pacing; fast capped frames retain the cooperative yield.
           if not (VSyncEnabled or GameWindowUsesCanvas or PresentWithoutLimit) then
-            if (PresentationFrameRate = 0)
-                or (GameTickCount - FrameTime < 1000 div PresentationFrameRate) then
+            if (PresentationFrameRate = 0) or (GameTickCount - FrameTime < 1000 div PresentationFrameRate) then
               SysUtils.Sleep(1);
           FrameTime := GameTickCount - FrameTime;
           if FrameTime > 200 then
@@ -2268,8 +2237,7 @@ begin
             Stage := 22;
             // Drawing/update iterations may be discarded by the presentation
             // limiter. Count submitted frames over real elapsed time instead.
-            FramesPerSecond :=
-                (GamePresentedFrames - LastPresentedFrames) * 1000 div (FpsTick - LastFpsTick);
+            FramesPerSecond := (GamePresentedFrames - LastPresentedFrames) * 1000 div (FpsTick - LastFpsTick);
             LastFpsTick := FpsTick;
             LastPresentedFrames := GamePresentedFrames;
             if ShowFrameRate then
@@ -2284,8 +2252,7 @@ begin
           end;
           Stage := 24;
           for Index := 0 to SoundGroupList.Count - 1 do
-            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0)
-                or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
+            if (TFormSoundGroup(SoundGroupList[Index]).Section = 0) or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
               TFormSoundGroup(SoundGroupList[Index]).PlayIfDue;
           if MusicEnabled and not MusicManager.HasSelectedMusic then
           begin
@@ -2337,13 +2304,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message :=
-          'Error in procedure TMessageLoopGI.Run2, '
-              + RegisteredLoopName
-              + ', label = '
-              + IntToStr(Stage)
-              + ': '
-              + E.Message;
+      E.Message := 'Error in procedure TMessageLoopGI.Run2, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
       raise;
     end;
   end;
@@ -2379,13 +2340,7 @@ begin
     on E: Exception do
     begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
-      E.Message :=
-          'Error in procedure TMessageLoopGI.Takt2, '
-              + RegisteredLoopName
-              + ', label = '
-              + IntToStr(Stage)
-              + ': '
-              + E.Message;
+      E.Message := 'Error in procedure TMessageLoopGI.Takt2, ' + RegisteredLoopName + ', label = ' + IntToStr(Stage) + ': ' + E.Message;
       raise;
     end;
   end;
@@ -2531,12 +2486,14 @@ begin
         LastMousePosition := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
         CursorControl.SetPosition(Point);
       end;
-      if (Message in [WM_KEYDOWN, WM_SYSKEYDOWN]) and (WParam in [VK_SHIFT, VK_CAPITAL])
-          and ((Cardinal(LParam) and (Cardinal(1) shl 30)) <> 0) then Exit;
-      if TOnScreenKeyboardGI(OnScreenKeyboard).HandleMessage(Message, WParam, Point) then Exit;
+      if (Message in [WM_KEYDOWN, WM_SYSKEYDOWN])
+          and (WParam in [VK_SHIFT, VK_CAPITAL])
+          and ((Cardinal(LParam) and (Cardinal(1) shl 30)) <> 0) then
+        Exit;
+      if TOnScreenKeyboardGI(OnScreenKeyboard).HandleMessage(Message, WParam, Point) then
+        Exit;
     end;
-    if OnScreenKeyboardEnabled and (Message = WM_KEYDOWN) and (WParam = VK_F6)
-        and (FocusedControl is TEditGI) then
+    if OnScreenKeyboardEnabled and (Message = WM_KEYDOWN) and (WParam = VK_F6) and (FocusedControl is TEditGI) then
     begin
       OpenOnScreenKeyboard(FocusedControl);
       Exit;
@@ -2544,9 +2501,7 @@ begin
     // WM_GAME_CANCEL_INPUT is broadcast to every loop by MainWindowProc.
     if GamePointerInputIsTouch
         and TouchPressConsumed
-        and ((Message = WM_LBUTTONDOWN)
-            or (Message = WM_LBUTTONUP)
-            or (Message = WM_LBUTTONDBLCLK)) then
+        and ((Message = WM_LBUTTONDOWN) or (Message = WM_LBUTTONUP) or (Message = WM_LBUTTONDBLCLK)) then
       Exit;
     if Message = WM_GAME_TOUCH_BEGIN then
     begin
@@ -2577,8 +2532,7 @@ begin
       begin
         Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
         ConvertMousePointToViewport;
-        if not TouchPressControl.TouchPressContains(Point)
-            or (FindTouchPressControl(RootUiObject, Point) <> TouchPressControl) then
+        if not TouchPressControl.TouchPressContains(Point) or (FindTouchPressControl(RootUiObject, Point) <> TouchPressControl) then
         begin
           TouchPressConsumed := True;
           CancelTouchPress;
@@ -2695,8 +2649,7 @@ begin
       Point := Classes.Point(SmallInt(LParam), SmallInt(LParam shr 16));
       ConvertMousePointToViewport;
       // Hover mode has no touch-down notification or button capture.
-      TouchPinchAllowed :=
-          (GamePointerInputIsTouchHover or CanPanGesture(TouchAnchor)) and CanPanGesture(Point);
+      TouchPinchAllowed := (GamePointerInputIsTouchHover or CanPanGesture(TouchAnchor)) and CanPanGesture(Point);
     end
     else if Message = WM_GAME_PAN then
     begin
@@ -2838,9 +2791,7 @@ begin
       if StatusLabel.Active then
       begin
         Stage := 19;
-        if (DebugControl = nil)
-            or (DebugControl.Parent = ContentPanel)
-            or not DebugControl.ContainsPoint(Point) then
+        if (DebugControl = nil) or (DebugControl.Parent = ContentPanel) or not DebugControl.ContainsPoint(Point) then
           DebugControl := ContentPanel.FindDeepestChildAtPoint(Point)
         else
           DebugControl := DebugControl.Parent;
@@ -2918,8 +2869,7 @@ begin
         FocusedControl.ProcessCharacter(WideChar(WParam));
       end;
     end
-    else if (Message = WM_KEYDOWN)
-        or ((Message = WM_SYSKEYDOWN) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN, VK_F5])) then
+    else if (Message = WM_KEYDOWN) or ((Message = WM_SYSKEYDOWN) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN, VK_F5])) then
     begin
       Stage := 31;
       RootUiObject.BroadcastKeyDown(WParam);
@@ -2929,19 +2879,13 @@ begin
         FocusedControl.ProcessKeyDown(WParam);
       end;
       Stage := 33;
-      if IsVirtualKeyDown(VK_CONTROL)
-          and IsVirtualKeyDown(VK_SHIFT)
-          and not IsVirtualKeyDown(VK_MENU)
-          and Assigned(DebugKeyCallback) then
+      if IsVirtualKeyDown(VK_CONTROL) and IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) and Assigned(DebugKeyCallback) then
         DebugKeyCallback(Word(WParam));
       Stage := 34;
       if WParam = VK_F9 then
         CaptureScreenshot;
       Stage := 35;
-      if (WParam = Ord('M'))
-          and IsVirtualKeyDown(VK_CONTROL)
-          and IsVirtualKeyDown(VK_SHIFT)
-          and IsVirtualKeyDown(VK_MENU) then
+      if (WParam = Ord('M')) and IsVirtualKeyDown(VK_CONTROL) and IsVirtualKeyDown(VK_SHIFT) and IsVirtualKeyDown(VK_MENU) then
         StatusLabel.SetActive(not StatusLabel.Active);
       Stage := 36;
       if StatusLabel.Active and (DebugControl <> nil) then
@@ -2953,21 +2897,13 @@ begin
           MoveStep := 1;
         Stage := 38;
         if WParam = VK_UP then
-          DebugControl.SetPosition(
-              Classes.Point(DebugControl.LocalPosition.X, DebugControl.LocalPosition.Y - MoveStep)
-          )
+          DebugControl.SetPosition(Classes.Point(DebugControl.LocalPosition.X, DebugControl.LocalPosition.Y - MoveStep))
         else if WParam = VK_DOWN then
-          DebugControl.SetPosition(
-              Classes.Point(DebugControl.LocalPosition.X, DebugControl.LocalPosition.Y + MoveStep)
-          )
+          DebugControl.SetPosition(Classes.Point(DebugControl.LocalPosition.X, DebugControl.LocalPosition.Y + MoveStep))
         else if WParam = VK_LEFT then
-          DebugControl.SetPosition(
-              Classes.Point(DebugControl.LocalPosition.X - MoveStep, DebugControl.LocalPosition.Y)
-          )
+          DebugControl.SetPosition(Classes.Point(DebugControl.LocalPosition.X - MoveStep, DebugControl.LocalPosition.Y))
         else if WParam = VK_RIGHT then
-          DebugControl.SetPosition(
-              Classes.Point(DebugControl.LocalPosition.X + MoveStep, DebugControl.LocalPosition.Y)
-          );
+          DebugControl.SetPosition(Classes.Point(DebugControl.LocalPosition.X + MoveStep, DebugControl.LocalPosition.Y));
         Stage := 39;
         (StatusLabel as TLabelGI)
             .SetText(
@@ -2985,8 +2921,7 @@ begin
         (StatusLabel as TLabelGI).SetText('Not object');
       end;
     end
-    else if (Message = WM_KEYUP)
-        or ((Message = WM_SYSKEYUP) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN])) then
+    else if (Message = WM_KEYUP) or ((Message = WM_SYSKEYUP) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN])) then
     begin
       Stage := 41;
       RootUiObject.BroadcastKeyUp(WParam);
@@ -3015,11 +2950,7 @@ begin
       AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
       if Stage in [31, 32] then
         AppendLogLineThreadSafe('key=' + IntToWideString(WParam));
-      E.Message :=
-          'Error in procedure TMessageLoopGI.SysMessage, label = '
-              + IntToStr(Stage)
-              + ': '
-              + E.Message;
+      E.Message := 'Error in procedure TMessageLoopGI.SysMessage, label = ' + IntToStr(Stage) + ': ' + E.Message;
       raise;
     end;
   end;
@@ -3032,8 +2963,7 @@ var
   Extension, BaseName, FileName: AnsiString;
   Buffer: TGraphBufGR;
 
-  function FindFreeScreenshotName:
-      Boolean; { Nested CaptureScreenshot helper; updates the captured filename strings. }
+  function FindFreeScreenshotName: Boolean; { Nested CaptureScreenshot helper; updates the captured filename strings. }
   var
     Index: Integer;
   begin
@@ -3141,7 +3071,8 @@ end;
 
 procedure TMessageLoopGI.OpenOnScreenKeyboard(Control: TObjectGI);
 begin
-  if (OnScreenKeyboard <> nil) or not (Control is TEditGI) or not Control.Active then Exit;
+  if (OnScreenKeyboard <> nil) or not (Control is TEditGI) or not Control.Active then
+    Exit;
   OnScreenKeyboard := TOnScreenKeyboardGI.CreateForEdit(Self, TEditGI(Control));
   InvalidateViewport;
 end;
@@ -3150,11 +3081,13 @@ procedure TMessageLoopGI.CloseOnScreenKeyboard(Confirm: Boolean);
 var
   Keyboard: TOnScreenKeyboardGI;
 begin
-  if OnScreenKeyboard = nil then Exit;
+  if OnScreenKeyboard = nil then
+    Exit;
   Keyboard := TOnScreenKeyboardGI(OnScreenKeyboard);
   OnScreenKeyboard := nil;
   try
-    if Confirm then Keyboard.Apply;
+    if Confirm then
+      Keyboard.Apply;
   finally
     Keyboard.Free;
     SetFocusedControl(nil);
@@ -3187,11 +3120,7 @@ begin
     HoveredControl.OnHoverGained;
 end;
 
-procedure TMessageLoopGI.ProcessNamedControlEvent(
-    ControlName: WideString;
-    EventKind: TNamedControlEventGI;
-    Param1, Param2: Integer
-);
+procedure TMessageLoopGI.ProcessNamedControlEvent(ControlName: WideString; EventKind: TNamedControlEventGI; Param1, Param2: Integer);
 begin
 end;
 
@@ -3419,11 +3348,7 @@ end;
 
 function TMessageLoopGI.GetScrollMousePoint(out Point: TPoint): Boolean;
 begin
-  Result :=
-      GameMouseInWindow
-          and GamePointerAllowsEdgeScroll
-          and (GameScreenWidth > 0)
-          and (GameScreenHeight > 0);
+  Result := GameMouseInWindow and GamePointerAllowsEdgeScroll and (GameScreenWidth > 0) and (GameScreenHeight > 0);
   if not Result then
     Exit;
   // Cursor positions already include the alternate viewport's scale or offset.
@@ -3450,17 +3375,13 @@ begin
   Result := True;
 end;
 
-function TMessageLoopGI.QueryPointOcclusionState(
-    Point: TPoint;
-    IgnoreControl, StartControl: TObjectGI
-): Integer;
+function TMessageLoopGI.QueryPointOcclusionState(Point: TPoint; IgnoreControl, StartControl: TObjectGI): Integer;
 var
   Child: TObjectGI;
 begin
   if StartControl = nil then
     StartControl := RootUiObject;
-  if ((StartControl.Parent <> nil) and StartControl.ContainsPoint(Point))
-      or (StartControl.Parent = nil) then
+  if ((StartControl.Parent <> nil) and StartControl.ContainsPoint(Point)) or (StartControl.Parent = nil) then
   begin
     Child := StartControl.LastChild;
     while Child <> nil do
@@ -3592,9 +3513,7 @@ function TMessageLoopGI.AccumulatePanGesture(DX, DY: Double; Position: TPoint): 
 begin
   // Preserve fractional motion until a new gesture or another camera control
   // changes the position. Touch supplies explicit gesture boundaries.
-  if not GesturePanValid
-      or (Position.X <> GesturePanPosition.X)
-      or (Position.Y <> GesturePanPosition.Y) then
+  if not GesturePanValid or (Position.X <> GesturePanPosition.X) or (Position.Y <> GesturePanPosition.Y) then
   begin
     GesturePanX := Position.X;
     GesturePanY := Position.Y;
@@ -3719,11 +3638,7 @@ begin
   CursorControl.SetDepth(-1E30);
 end;
 
-procedure TMessageLoopGI.InitializeFromConfig(
-    ConfigRoot: TBlockParEC;
-    const ScreenName: WideString;
-    UnusedFlag: Boolean
-);
+procedure TMessageLoopGI.InitializeFromConfig(ConfigRoot: TBlockParEC; const ScreenName: WideString; UnusedFlag: Boolean);
 var
   ScreenBlock, SoundBlock: TBlockParEC;
   Text: WideString;
@@ -3770,8 +3685,7 @@ var
   Width, Height, ExtraWidth, ExtraHeight: Integer;
   Scale: Single;
 begin
-  if not GameCompactLayoutEnabled or not HardwareRenderingEnabled
-      or (GameScreenWidth >= 1024) then
+  if not GameCompactLayoutEnabled or not HardwareRenderingEnabled or (GameScreenWidth >= 1024) then
   begin
     InitializeLayout;
     Exit;

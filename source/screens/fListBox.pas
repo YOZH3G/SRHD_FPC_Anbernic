@@ -119,12 +119,7 @@ begin
   CancelButton.SetImageNormalActivePath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelA');
   CancelButton.SetImageDownPath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelD');
   CancelButton.SetSize(CancelButton.GetMaxStateImageSize);
-  CancelButton.SetPosition(
-      Classes.Point(
-          Size.X div 2 + GiScalePixels(5),
-          Size.Y - Insets.Bottom - CancelButton.ClientSize.Y
-      )
-  );
+  CancelButton.SetPosition(Classes.Point(Size.X div 2 + GiScalePixels(5), Size.Y - Insets.Bottom - CancelButton.ClientSize.Y));
   CancelButton.HitKind := gbhRect;
   CancelButton.UpdateStateImagePlacement;
   CancelButton.UpdateStateVisuals;
@@ -148,18 +143,11 @@ begin
     SetHorizontalScrollbarEnabled(False);
     SetVerticalScrollbarEnabled(True);
     SetPosition(
-        Classes.Point(
-            Insets.Left + GiScalePixels(10),
-            CaptionLabel.LocalPosition.Y + CaptionLabel.ClientSize.Y + GiScalePixels(10)
-        )
+        Classes.Point(Insets.Left + GiScalePixels(10), CaptionLabel.LocalPosition.Y + CaptionLabel.ClientSize.Y + GiScalePixels(10))
     );
     SetSize(
         Classes.Point(
-            Size.X
-                - Insets.Right
-                - LocalPosition.X
-                - VerticalScrollBar.ClientSize.X
-                - GiScalePixels(10),
+            Size.X - Insets.Right - LocalPosition.X - VerticalScrollBar.ClientSize.X - GiScalePixels(10),
             AcceptButton.LocalPosition.Y - LocalPosition.Y - GiScalePixels(15)
         )
     );

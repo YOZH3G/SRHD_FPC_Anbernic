@@ -35,12 +35,7 @@ procedure CloseGameEvent(Handle: TGameEventHandle);
 procedure SetGameEvent(Handle: TGameEventHandle);
 procedure ResetGameEvent(Handle: TGameEventHandle);
 function WaitGameEvent(Handle: TGameEventHandle; Timeout: Cardinal): Cardinal;
-function WaitGameEvents(
-    Count: Cardinal;
-    Handles: Pointer;
-    WaitAll: Boolean;
-    Timeout: Cardinal
-): Cardinal;
+function WaitGameEvents(Count: Cardinal; Handles: Pointer; WaitAll: Boolean; Timeout: Cardinal): Cardinal;
 
 implementation
 
@@ -118,12 +113,7 @@ begin
   end;
 end;
 
-function WaitGameEvents(
-    Count: Cardinal;
-    Handles: Pointer;
-    WaitAll: Boolean;
-    Timeout: Cardinal
-): Cardinal;
+function WaitGameEvents(Count: Cardinal; Handles: Pointer; WaitAll: Boolean; Timeout: Cardinal): Cardinal;
 var
   Events: array of TGameEvent;
   Index, Selected, Held: Integer;

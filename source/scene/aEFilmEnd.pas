@@ -145,9 +145,7 @@ begin
         Command := FirstTrailing;
         while Command <> nil do
         begin
-          if (Command.Kind = efcReleaseObject)
-              and (Command.Obj <> nil)
-              and (Command.Obj.SceneObject = Weapon.TargetObject) then
+          if (Command.Kind = efcReleaseObject) and (Command.Obj <> nil) and (Command.Obj.SceneObject = Weapon.TargetObject) then
           begin
             RetainSpaceObject(Entry.RelatedObject1, Command.Obj.SceneObject);
             ReleaseSpaceObject(Command.Obj.SceneObject);
@@ -163,9 +161,7 @@ begin
       Command := FirstTrailing;
       while Command <> nil do
       begin
-        if (Command.Kind = efcReleaseObject)
-            and (Command.Obj <> nil)
-            and (Command.Obj.SceneObject = Obj.SceneObject) then
+        if (Command.Kind = efcReleaseObject) and (Command.Obj <> nil) and (Command.Obj.SceneObject = Obj.SceneObject) then
         begin
           Entry := AppendEntry;
           RetainSpaceObject(Entry.SceneObject, Obj.SceneObject);
@@ -196,17 +192,11 @@ begin
         AppendLogLineThreadSafe(E.ClassName + ' ' + E.Message);
         AppendLogLineThreadSafe('Error in Event.Step');
         if Entry.SceneObject <> nil then
-          AppendLogLineThreadSafe(
-              'event ' + Entry.SceneObject.ClassName + ' ' + Entry.SceneObject.GraphKey
-          );
+          AppendLogLineThreadSafe('event ' + Entry.SceneObject.ClassName + ' ' + Entry.SceneObject.GraphKey);
         if Entry.RelatedObject1 <> nil then
-          AppendLogLineThreadSafe(
-              'obj ' + Entry.RelatedObject1.ClassName + ' ' + Entry.RelatedObject1.GraphKey
-          );
+          AppendLogLineThreadSafe('obj ' + Entry.RelatedObject1.ClassName + ' ' + Entry.RelatedObject1.GraphKey);
         if Entry.RelatedObject2 <> nil then
-          AppendLogLineThreadSafe(
-              'obj2 ' + Entry.RelatedObject2.ClassName + ' ' + Entry.RelatedObject2.GraphKey
-          );
+          AppendLogLineThreadSafe('obj2 ' + Entry.RelatedObject2.ClassName + ' ' + Entry.RelatedObject2.GraphKey);
         raise Exception.Create('Error in TEFilmEnd.Run');
       end;
     end;

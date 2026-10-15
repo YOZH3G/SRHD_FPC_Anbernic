@@ -88,24 +88,11 @@ function MakeVectorF(X: Single; Y: Single): TPointF;
 
 function VectorBetweenPoints(First: TPointF; Last: TPointF): TPointF;
 
-procedure GetLineEquation(
-    First: TPointF;
-    Last: TPointF;
-    var A: Single;
-    var B: Single;
-    var C: Single
-);
+procedure GetLineEquation(First: TPointF; Last: TPointF; var A: Single; var B: Single; var C: Single);
 
 function IntersectLinesF(First1: TPointF; Last1: TPointF; First2: TPointF; Last2: TPointF): TPointF;
 
-function IntersectSegmentWithLine(
-    First: TPointF;
-    Last: TPointF;
-    A: Single;
-    B: Single;
-    C: Single;
-    var Intersection: TPointF
-): Boolean;
+function IntersectSegmentWithLine(First: TPointF; Last: TPointF; A: Single; B: Single; C: Single; var Intersection: TPointF): Boolean;
 
 function IntersectSegmentWithDirectedLine(
     First: TPointF;
@@ -115,13 +102,7 @@ function IntersectSegmentWithDirectedLine(
     var Intersection: TPointF
 ): Boolean;
 
-function IntersectSegmentsF(
-    First1: TPointF;
-    Last1: TPointF;
-    First2: TPointF;
-    Last2: TPointF;
-    var Intersection: TPointF
-): Boolean;
+function IntersectSegmentsF(First1: TPointF; Last1: TPointF; First2: TPointF; Last2: TPointF; var Intersection: TPointF): Boolean;
 
 function MakeRectF(Left: Single; Top: Single; Right: Single; Bottom: Single): TRectF;
 
@@ -129,12 +110,7 @@ function RectFromPointsF(First: TPointF; Last: TPointF): TRectF;
 
 function PointsNearlyEqualF(First: TPointF; Last: TPointF): Boolean;
 
-function SegmentsNearlyEqualF(
-    First1: TPointF;
-    Last1: TPointF;
-    First2: TPointF;
-    Last2: TPointF
-): Boolean;
+function SegmentsNearlyEqualF(First1: TPointF; Last1: TPointF; First2: TPointF; Last2: TPointF): Boolean;
 
 function ScalarsNearlyEqualF(First: Single; Last: Single): Boolean;
 
@@ -247,19 +223,14 @@ begin
     Result.Y := (A2 * C1 - A1 * C2) / (A1 * B2 - A2 * B1);
 end;
 
-function IntersectSegmentWithLine(
-    First, Last: TPointF;
-    A, B, C: Single;
-    var Intersection: TPointF
-): Boolean;
+function IntersectSegmentWithLine(First, Last: TPointF; A, B, C: Single; var Intersection: TPointF): Boolean;
 var
   LineA, LineB, LineC: Single;
   Point: TPointF;
 begin
   GetLineEquation(First, Last, LineA, LineB, LineC);
   Result := False;
-  if (Abs(LineA - A) < LineCoefficientTolerance)
-      and (Abs(LineB - B) < LineCoefficientTolerance) then
+  if (Abs(LineA - A) < LineCoefficientTolerance) and (Abs(LineB - B) < LineCoefficientTolerance) then
     Exit;
   Point.X := (B * LineC - LineB * C) / (A * LineB - LineA * B);
   Point.Y := (A * LineC - LineA * C) / (LineA * B - A * LineB);
@@ -272,16 +243,12 @@ begin
   end;
 end;
 
-function IntersectSegmentWithDirectedLine(
-    First, Last, LineFirst, LineLast: TPointF;
-    var Intersection: TPointF
-): Boolean;
+function IntersectSegmentWithDirectedLine(First, Last, LineFirst, LineLast: TPointF; var Intersection: TPointF): Boolean;
 var
   Direction: TPointF;
 begin
   Direction := VectorBetweenPoints(LineFirst, LineLast);
-  if IsLeftOfDirectedLine(First, LineFirst, Direction)
-      <> IsLeftOfDirectedLine(Last, LineFirst, Direction) then
+  if IsLeftOfDirectedLine(First, LineFirst, Direction) <> IsLeftOfDirectedLine(Last, LineFirst, Direction) then
   begin
     Intersection := IntersectLinesF(First, Last, LineFirst, LineLast);
     Result := True;
@@ -290,10 +257,7 @@ begin
     Result := False;
 end;
 
-function IntersectSegmentsF(
-    First1, Last1, First2, Last2: TPointF;
-    var Intersection: TPointF
-): Boolean;
+function IntersectSegmentsF(First1, Last1, First2, Last2: TPointF; var Intersection: TPointF): Boolean;
 begin
   Result := True;
   if not IntersectSegmentWithDirectedLine(First1, Last1, First2, Last2, Intersection)
@@ -319,8 +283,7 @@ end;
 
 function PointsNearlyEqualF(First, Last: TPointF): Boolean;
 begin
-  if (Abs(First.X - Last.X) < PointEqualityTolerance)
-      and (Abs(First.Y - Last.Y) < PointEqualityTolerance) then
+  if (Abs(First.X - Last.X) < PointEqualityTolerance) and (Abs(First.Y - Last.Y) < PointEqualityTolerance) then
     Result := True
   else
     Result := False;
@@ -354,12 +317,7 @@ var
   FirstDistance, LastDistance: Single;
 begin
   Normal := PerpendicularVector(VectorBetweenPoints(First, Last));
-  if IntersectSegmentWithDirectedLine(
-      First,
-      Last,
-      Point,
-      MakePointF(Point.X + Normal.X, Point.Y + Normal.Y),
-      Intersection) then
+  if IntersectSegmentWithDirectedLine(First, Last, Point, MakePointF(Point.X + Normal.X, Point.Y + Normal.Y), Intersection) then
     Result := PointDistanceF(Point, Intersection)
   else
   begin
@@ -386,8 +344,7 @@ begin
     Result := PointRelationRight
   else if (Direction.X * Offset.X < 0) or (Direction.Y * Offset.Y < 0) then
     Result := PointRelationBeforeFirst
-  else if Sqrt(Direction.X * Direction.X + Direction.Y * Direction.Y)
-      < Sqrt(Offset.X * Offset.X + Offset.Y * Offset.Y) then
+  else if Sqrt(Direction.X * Direction.X + Direction.Y * Direction.Y) < Sqrt(Offset.X * Offset.X + Offset.Y * Offset.Y) then
     Result := PointRelationAfterLast
   else if (First.X = Point.X) and (First.Y = Point.Y) then
     Result := PointRelationFirstEndpoint
@@ -586,8 +543,7 @@ begin
         Last := Current.Points[0]
       else
         Last := Current.Points[Index + 1];
-      if IntersectSegmentWithLine(Point^, Last^, A, B, C, Intersection)
-          and not PointsNearlyEqualF(Last^, Intersection) then
+      if IntersectSegmentWithLine(Point^, Last^, A, B, C, Intersection) and not PointsNearlyEqualF(Last^, Intersection) then
       begin
         if FirstIndex = -1 then
         begin
@@ -601,8 +557,7 @@ begin
         end
         else
           // Native $4DA8FC is this ANSI literal, not the former IDA nullsub_13.
-          raise Exception.Create(
-              'Глюк! Линия пересекает полигон в трех точках');
+          raise Exception.Create('Глюк! Линия пересекает полигон в трех точках');
       end;
     end;
     if (FirstIndex > -1) and (LastIndex > -1) then
@@ -711,10 +666,7 @@ var
   First, Last: PPointF;
 begin
   Result := False;
-  if (Point.X >= Bounds.Left)
-      and (Point.X <= Bounds.Right)
-      and (Point.Y >= Bounds.Top)
-      and (Point.Y <= Bounds.Bottom) then
+  if (Point.X >= Bounds.Left) and (Point.X <= Bounds.Right) and (Point.Y >= Bounds.Top) and (Point.Y <= Bounds.Bottom) then
   begin
     for Index := 0 to Points.Count - 1 do
     begin

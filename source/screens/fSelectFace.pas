@@ -81,10 +81,7 @@ begin
       Face := IntToStr(I);
       if I < 10 then
         Face := '0' + Face;
-    until GameDataConfig
-            .GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName)
-            .CountParams(Face)
-        <= 0;
+    until GameDataConfig.GetBlockByPath('StyleFace' + OwnerInfo[RaceToOwner(Race)].InternalName).CountParams(Face) <= 0;
     LastPortraitByRace[Race] := I - 1;
   end;
   AppendLogTextThreadSafe('fSelectFace... ');
@@ -156,11 +153,7 @@ begin
     if LastPortraitByRace[PlayerRace] >= 0 then
     begin
       SetImagePath(
-          'GI,Bm.Captain.'
-              + GiResourceSuffix
-              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
-              + IntToStr(CaptainPortraitIndex)
-              + 'i'
+          'GI,Bm.Captain.' + GiResourceSuffix + OwnerInfo[RaceToOwner(PlayerRace)].InternalName + IntToStr(CaptainPortraitIndex) + 'i'
       );
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
@@ -174,11 +167,7 @@ begin
     if LastPortraitByRace[PlayerRace] >= 0 then
     begin
       SetImagePath(
-          'Bm.Captain.'
-              + GiResourceSuffix
-              + OwnerInfo[RaceToOwner(PlayerRace)].InternalName
-              + IntToStr(CaptainPortraitIndex)
-              + 'a'
+          'Bm.Captain.' + GiResourceSuffix + OwnerInfo[RaceToOwner(PlayerRace)].InternalName + IntToStr(CaptainPortraitIndex) + 'a'
       );
       SequenceIndex := 0;
       UpdateAutoGeometry;
@@ -284,8 +273,7 @@ procedure TfSelectFace.PlayerNameChanged(Sender: TObjectGI);
 begin
   if Sender <> nil then
     PlayerNameEdited := True;
-  (GetByName('Ok') as TGraphButtonGI)
-      .SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
+  (GetByName('Ok') as TGraphButtonGI).SetDisabled(not ValidatePlayerName((GetByName('PlayerName') as TEditGI).Text));
   PlayerName := (GetByName('PlayerName') as TEditGI).Text;
   RefreshPact;
 end;
@@ -318,9 +306,7 @@ end;
 
 procedure TfSelectFace.MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
 begin
-  if not IsVirtualKeyDown(VK_CONTROL)
-      and not IsVirtualKeyDown(VK_SHIFT)
-      and not IsVirtualKeyDown(VK_MENU) then
+  if not IsVirtualKeyDown(VK_CONTROL) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_MENU) then
     if Key = VK_RETURN then
     begin
       if not (GetByName('Ok') as TGraphButtonGI).Disabled then

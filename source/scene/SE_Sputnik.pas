@@ -81,14 +81,8 @@ begin
   PlanetControl.SetSurfaceMapOffset(SurfaceMapOffset);
   RebuildOrbitTransform;
   UpdateOrbitDisplay;
-  OrbitTimer :=
-      Space.Screen.ScheduleCallbackTimer(OrbitTimerInterval, OrbitTimerInterval, AdvanceOrbitTimer);
-  RotationTimer :=
-      Space.Screen.ScheduleCallbackTimer(
-          RotationTimerInterval,
-          RotationTimerInterval,
-          AdvanceRotationTimer
-      );
+  OrbitTimer := Space.Screen.ScheduleCallbackTimer(OrbitTimerInterval, OrbitTimerInterval, AdvanceOrbitTimer);
+  RotationTimer := Space.Screen.ScheduleCallbackTimer(RotationTimerInterval, RotationTimerInterval, AdvanceRotationTimer);
 end;
 
 procedure TSputnikSE.DetachFromSpace;
@@ -185,13 +179,7 @@ begin
   Y := InclinationCos * RotationSin * OrbitX + OrbitY * RotationCos + OrbitCenter.Y;
   Z := -InclinationSin * OrbitX;
   Position := MakePointF(X, Y);
-  DisplayRadius :=
-      Round(
-          (Z - MinOrbitDepth)
-                  / (MaxOrbitDepth - MinOrbitDepth)
-                  * (MaxDisplayRadius - MinDisplayRadius)
-              + MinDisplayRadius
-      );
+  DisplayRadius := Round((Z - MinOrbitDepth) / (MaxOrbitDepth - MinOrbitDepth) * (MaxDisplayRadius - MinDisplayRadius) + MinDisplayRadius);
   if DisplayRadius < MinDisplayRadius then
     DisplayRadius := MinDisplayRadius
   else if DisplayRadius > MaxDisplayRadius then

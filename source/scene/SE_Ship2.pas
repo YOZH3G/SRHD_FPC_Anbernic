@@ -343,9 +343,7 @@ begin
     Stage := 6;
     MinimapImage.SetPositionModeW(True);
     MinimapImage.SetDepthByName(DepthExpression);
-    MinimapImage.SetPosition(
-        TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
     MinimapImage.SetImagePath(MinimapImagePath);
     MinimapImage.SetSize(MinimapImage.GetContentSize);
     MinimapImage.SetOrigin(HalfPoint(MinimapImage.GetContentSize));
@@ -479,11 +477,7 @@ begin
   begin
     PixelPosition := Classes.Point(Trunc(APosition.X), Trunc(APosition.Y));
     Image.SetPosition(PixelPosition);
-    MinimapImage.SetPosition(
-        TruncatePointF(
-            MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-        )
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
     for Index := Low(Tails) to High(Tails) do
       if Tails[Index] <> nil then
         Tails[Index].EmitterPosition := ImagePointToWorld(TailOrigins[Index]);
@@ -738,8 +732,7 @@ procedure TShip2SE.StartStateTimer;
 begin
   StopStateTimer;
   SelectNextAnimation(nil, 0);
-  StateTimer :=
-      Space.Screen.ScheduleCallbackTimer(StateIntervalMs, StateIntervalMs, SelectNextAnimation);
+  StateTimer := Space.Screen.ScheduleCallbackTimer(StateIntervalMs, StateIntervalMs, SelectNextAnimation);
 end;
 
 procedure TShip2SE.StopStateTimer;
@@ -872,8 +865,7 @@ begin
   begin
     TailOrigins[Index] := MakePointF(0, 0);
     if Block.CountParams('Tail' + IntToWideString(Index)) > 0 then
-      TailOrigins[Index] :=
-          PointToPointF(GetPointGI(Block.GetParam('Tail' + IntToWideString(Index))));
+      TailOrigins[Index] := PointToPointF(GetPointGI(Block.GetParam('Tail' + IntToWideString(Index))));
   end;
   if Block.CountParams('TailPrefix') > 0 then
     TailPrefix := Block.GetParam('TailPrefix')
@@ -884,8 +876,7 @@ begin
   begin
     if Block.CountParams('WeaponPort' + IntToWideString(Index)) <= 0 then
       Break;
-    WeaponPorts[Index] :=
-        PointToPointF(GetPointGI(Block.GetParam('WeaponPort' + IntToWideString(Index))));
+    WeaponPorts[Index] := PointToPointF(GetPointGI(Block.GetParam('WeaponPort' + IntToWideString(Index))));
     Inc(WeaponPortCount);
   end;
   StateIntervalMs := StrToInt(Block.GetParam('StateTime'));

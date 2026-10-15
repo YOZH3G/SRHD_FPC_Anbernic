@@ -140,11 +140,7 @@ begin
     repeat
       Bound := Round(Radius);
       EndPoint := MakePointF(RandomIntRange(-Bound, Bound), RandomIntRange(-Bound, Bound));
-      StartPoint :=
-          MakePointF(
-              EndPoint.X + Sin(Pi + Angle) * (Radius * 4),
-              EndPoint.Y - Cos(Pi + Angle) * (Radius * 4)
-          );
+      StartPoint := MakePointF(EndPoint.X + Sin(Pi + Angle) * (Radius * 4), EndPoint.Y - Cos(Pi + Angle) * (Radius * 4));
     until SegmentIntersectsRectEdges(
             StartPoint,
             EndPoint,
@@ -162,11 +158,7 @@ var
 begin
   SetPosition(MakePointF(Position.X + Sin(Angle) * Speed, Position.Y - Cos(Angle) * Speed));
   Limit := TProcessSE(Space.Process).SystemRadius * 1.3;
-  if ((-Limit > Position.X)
-          or (Position.X > Limit)
-          or (-Limit > Position.Y)
-          or (Position.Y > Limit))
-      and not IsNearView(Position) then
+  if ((-Limit > Position.X) or (Position.X > Limit) or (-Limit > Position.Y) or (Position.Y > Limit)) and not IsNearView(Position) then
     RestartOutsideView;
 end;
 

@@ -1,6 +1,13 @@
 program UiTileSeams;
 {$MODE DELPHI}
-uses SysUtils, Math, Types, GameGraphics, GameWindow, Direct3D9, SDL2;
+uses
+  SysUtils,
+  Math,
+  Types,
+  GameGraphics,
+  GameWindow,
+  Direct3D9,
+  SDL2;
 type
   TVertex = packed record
     X, Y, Z, RHW: Single;
@@ -33,21 +40,25 @@ begin
   begin
     for X := 760 to 1009 do
     begin
-      Quad[0].X := X - 0.5; Quad[0].Y := Y - 0.5;
-      Quad[1].X := X + 0.5; Quad[1].Y := Y - 0.5;
-      Quad[2].X := X + 0.5; Quad[2].Y := Y + 7.5;
-      Quad[3].X := X - 0.5; Quad[3].Y := Y + 7.5;
+      Quad[0].X := X - 0.5;
+      Quad[0].Y := Y - 0.5;
+      Quad[1].X := X + 0.5;
+      Quad[1].Y := Y - 0.5;
+      Quad[2].X := X + 0.5;
+      Quad[2].Y := Y + 7.5;
+      Quad[3].X := X - 0.5;
+      Quad[3].Y := Y + 7.5;
       Device.DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, @Quad, SizeOf(TVertex));
     end;
     Inc(Y, 8);
   end;
   Device.SetTexture(0, nil);
-  Rect.X := Round(760 * Scale); Rect.Y := Round(20 * Scale);
+  Rect.X := Round(760 * Scale);
+  Rect.Y := Round(20 * Scale);
   Rect.W := Round(1010 * Scale) - Rect.X;
   Rect.H := Round(164 * Scale) - Rect.Y;
   SetLength(Pixels, Rect.W * Rect.H);
-  if SDL_RenderReadPixels(GameSDLRenderer, @Rect, SDL_PIXELFORMAT_ARGB8888,
-      @Pixels[0], Rect.W * 4) <> 0 then
+  if SDL_RenderReadPixels(GameSDLRenderer, @Rect, SDL_PIXELFORMAT_ARGB8888, @Pixels[0], Rect.W * 4) <> 0 then
     raise Exception.Create(string(SDL_GetError));
   Result := 0;
   for Row := 0 to Rect.H - 1 do
@@ -58,7 +69,8 @@ end;
 
 begin
   FillChar(Params, SizeOf(Params), 0);
-  Params.BackBufferWidth := 1024; Params.BackBufferHeight := 768;
+  Params.BackBufferWidth := 1024;
+  Params.BackBufferHeight := 768;
   Params.BackBufferFormat := D3DFMT_A8R8G8B8;
   Params.Windowed := True;
   Params.PresentationInterval := D3DPRESENT_INTERVAL_IMMEDIATE;
@@ -72,16 +84,25 @@ begin
   FillChar(Quad, SizeOf(Quad), 0);
   for I := 0 to 3 do
   begin
-    Quad[I].RHW := 1; Quad[I].Color := $FFFFFFFF;
+    Quad[I].RHW := 1;
+    Quad[I].Color := $FFFFFFFF;
   end;
-  Quad[1].U := 1; Quad[2].U := 1; Quad[2].V := 1; Quad[3].V := 1;
+  Quad[1].U := 1;
+  Quad[2].U := 1;
+  Quad[2].V := 1;
+  Quad[3].V := 1;
   Gaps := RenderTiles(800 / 1024, False);
-  if Gaps = 0 then raise Exception.Create('Fractional seam reproduction did not trigger');
+  if Gaps = 0 then
+    raise Exception.Create('Fractional seam reproduction did not trigger');
   WriteLn('Reproduced fractional gaps: ', Gaps);
   Gaps := RenderTiles(800 / 1024, True);
-  if Gaps <> 0 then raise Exception.CreateFmt('Scaled UI has %d gap pixels', [Gaps]);
-  if RenderTiles(1, False) <> 0 then raise Exception.Create('Native UI has gap pixels');
+  if Gaps <> 0 then
+    raise Exception.CreateFmt('Scaled UI has %d gap pixels', [Gaps]);
+  if RenderTiles(1, False) <> 0 then
+    raise Exception.Create('Native UI has gap pixels');
   WriteLn('PASS: continuous UI tiles at 800x600 scale and native 1024x768');
-  Texture := nil; Device := nil; Graphics := nil;
+  Texture := nil;
+  Device := nil;
+  Graphics := nil;
   CloseGameWindow;
 end.

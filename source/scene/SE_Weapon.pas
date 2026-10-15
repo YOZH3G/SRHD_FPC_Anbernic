@@ -102,12 +102,7 @@ type
     procedure DetachFromSpace; override;
     procedure Advance; override;
     procedure LoadTemplate(Block: TBlockParEC); override;
-    constructor Create(
-        const GraphKey: WideString;
-        UnusedPosition: TPoint;
-        ShotVisual: Integer;
-        Variant: Integer
-    );
+    constructor Create(const GraphKey: WideString; UnusedPosition: TPoint; ShotVisual: Integer; Variant: Integer);
     destructor Destroy; override;
     procedure SetHit(Color: Integer; Damage: Integer; Destroyed: Boolean; PlaySound: Boolean);
     procedure SetEndpoints(Source: TObjectSE; Target: TObjectSE);
@@ -152,11 +147,7 @@ uses
   GI_PDTurretWeapon,
   GI_PSEyes;
 
-constructor TWeaponSE.Create(
-    const GraphKey: WideString;
-    UnusedPosition: TPoint;
-    ShotVisual, Variant: Integer
-);
+constructor TWeaponSE.Create(const GraphKey: WideString; UnusedPosition: TPoint; ShotVisual, Variant: Integer);
 begin
   Self.ShotVisual := ShotVisual;
   HitVariant := Variant;
@@ -230,9 +221,7 @@ begin
     SourceAnimation.SetOrigin(HalfPoint(SourceAnimation.ClientSize));
     SourceAnimation.SetDepthByName('Weapon');
     SourceAnimation.SetPositionModeW(True);
-    SourceAnimation.LoadFrameSequenceFromText(
-        '[50,0-' + IntToStr(SourceAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    SourceAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(SourceAnimation.GetMainImageFrameCount - 1) + ']');
     SourceAnimation.SetPosition(TruncatePointF(GetSourcePoint));
     SourceAnimation.StopAutoPlayback;
     SourceAnimationInterval := 3;
@@ -249,9 +238,7 @@ begin
     SourceAnimation.SetOrigin(HalfPoint(SourceAnimation.ClientSize));
     SourceAnimation.SetDepthByName('Weapon');
     SourceAnimation.SetPositionModeW(True);
-    SourceAnimation.LoadFrameSequenceFromText(
-        '[50,0-' + IntToStr(SourceAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    SourceAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(SourceAnimation.GetMainImageFrameCount - 1) + ']');
     SourceAnimation.SetPosition(TruncatePointF(GetSourcePoint));
     SourceAnimation.StopAutoPlayback;
     SourceAnimationInterval := 3;
@@ -268,9 +255,7 @@ begin
     TargetAnimation.SetOrigin(HalfPoint(TargetAnimation.ClientSize));
     TargetAnimation.SetDepthByName('Weapon');
     TargetAnimation.SetPositionModeW(True);
-    TargetAnimation.LoadFrameSequenceFromText(
-        '[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    TargetAnimation.LoadFrameSequenceFromText('[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']');
     TargetAnimation.StopAutoPlayback;
     TargetAnimationInterval := 2;
   end
@@ -293,9 +278,7 @@ begin
     TargetAnimation.SetOrigin(HalfPoint(TargetAnimation.ClientSize));
     TargetAnimation.SetDepthByName('Weapon');
     TargetAnimation.SetPositionModeW(True);
-    TargetAnimation.LoadFrameSequenceFromText(
-        '[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    TargetAnimation.LoadFrameSequenceFromText('[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']');
     TargetAnimation.StopAutoPlayback;
     TargetAnimationInterval := 2;
   end
@@ -328,9 +311,7 @@ begin
     TargetAnimation.SetOrigin(HalfPoint(TargetAnimation.ClientSize));
     TargetAnimation.SetDepthByName('Weapon');
     TargetAnimation.SetPositionModeW(True);
-    TargetAnimation.LoadFrameSequenceFromText(
-        '[50,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    TargetAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']');
     TargetAnimation.StopAutoPlayback;
     TargetAnimationInterval := 2;
   end
@@ -367,9 +348,7 @@ begin
     TargetAnimation.SetOrigin(HalfPoint(TargetAnimation.ClientSize));
     TargetAnimation.SetDepthByName('Weapon');
     TargetAnimation.SetPositionModeW(True);
-    TargetAnimation.LoadFrameSequenceFromText(
-        '[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']'
-    );
+    TargetAnimation.LoadFrameSequenceFromText('[40,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']');
     TargetAnimation.StopAutoPlayback;
     TargetAnimationInterval := 2;
   end
@@ -424,9 +403,7 @@ begin
   if TargetDestroyed then
   begin
     if DestructionEffect = 0 then
-      if (TargetObject is TRuinsSE)
-          or (TargetObject.Size.X > 128)
-          or (TargetObject.Size.Y > 128) then
+      if (TargetObject is TRuinsSE) or (TargetObject.Size.X > 128) or (TargetObject.Size.Y > 128) then
         DestructionEffect := 4;
     if DestructionEffect = 7 then
     begin
@@ -456,17 +433,14 @@ begin
       DestructionAnimation.SetOrigin(HalfPoint(DestructionAnimation.ClientSize));
       DestructionAnimation.SetDepthByName('Weapon');
       DestructionAnimation.SetPositionModeW(True);
-      DestructionAnimation.LoadFrameSequenceFromText(
-          '[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      DestructionAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']');
       DestructionAnimation.StopAutoPlayback;
       DestructionFrameInterval := 2;
       DestructionDetachStep := DestructionAnimation.SequenceFrameCount div 3;
       if TargetObject <> nil then
       begin
         DestructionAlpha := TargetObject.GetAlpha;
-        DestructionAlphaStep :=
-            (0.0 - DestructionAlpha) / (DestructionAnimation.GetMainImageFrameCount div 2 - 1);
+        DestructionAlphaStep := (0.0 - DestructionAlpha) / (DestructionAnimation.GetMainImageFrameCount div 2 - 1);
       end
       else
       begin
@@ -483,9 +457,7 @@ begin
       DestructionAnimation.SetOrigin(HalfPoint(DestructionAnimation.ClientSize));
       DestructionAnimation.SetDepthByName('Weapon');
       DestructionAnimation.SetPositionModeW(True);
-      DestructionAnimation.LoadFrameSequenceFromText(
-          '[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      DestructionAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']');
       DestructionAnimation.StopAutoPlayback;
       DestructionFrameInterval := 1;
       DestructionDetachStep := DestructionAnimation.SequenceFrameCount div 3;
@@ -499,9 +471,7 @@ begin
       DestructionAnimation.SetOrigin(HalfPoint(DestructionAnimation.ClientSize));
       DestructionAnimation.SetDepthByName('Weapon');
       DestructionAnimation.SetPositionModeW(True);
-      DestructionAnimation.LoadFrameSequenceFromText(
-          '[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      DestructionAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']');
       DestructionAnimation.StopAutoPlayback;
       for I := 0 to 3 do
       begin
@@ -509,15 +479,11 @@ begin
         ExtraDestructionAnimations[I].SetActive(False);
         ExtraDestructionAnimations[I].SetImagePath('Bm.Weapon.Expl0');
         ExtraDestructionAnimations[I].SetSize(ExtraDestructionAnimations[I].GetContentSize);
-        ExtraDestructionAnimations[I]
-            .SetOrigin(HalfPoint(ExtraDestructionAnimations[I].ClientSize));
+        ExtraDestructionAnimations[I].SetOrigin(HalfPoint(ExtraDestructionAnimations[I].ClientSize));
         ExtraDestructionAnimations[I].SetDepthByName('Weapon');
         ExtraDestructionAnimations[I].SetPositionModeW(True);
         ExtraDestructionAnimations[I]
-            .LoadFrameSequenceFromText(
-                '[50,0-'
-                    + IntToStr(ExtraDestructionAnimations[I].GetMainImageFrameCount - 1)
-                    + ']');
+            .LoadFrameSequenceFromText('[50,0-' + IntToStr(ExtraDestructionAnimations[I].GetMainImageFrameCount - 1) + ']');
         ExtraDestructionAnimations[I].StopAutoPlayback;
         Distance := RandomIntRange(50, 100);
         Angle := HeadingDegreesToRadians(RandomIntRange(0, 360));
@@ -528,8 +494,7 @@ begin
       if TargetObject <> nil then
       begin
         DestructionAlpha := TargetObject.GetAlpha;
-        DestructionAlphaStep :=
-            (0.0 - DestructionAlpha) / (DestructionAnimation.GetMainImageFrameCount div 2 - 1);
+        DestructionAlphaStep := (0.0 - DestructionAlpha) / (DestructionAnimation.GetMainImageFrameCount div 2 - 1);
       end
       else
       begin
@@ -545,9 +510,7 @@ begin
       TargetAnimation.SetOrigin(HalfPoint(TargetAnimation.ClientSize));
       TargetAnimation.SetDepthByName('Weapon');
       TargetAnimation.SetPositionModeW(True);
-      TargetAnimation.LoadFrameSequenceFromText(
-          '[1,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      TargetAnimation.LoadFrameSequenceFromText('[1,0-' + IntToStr(TargetAnimation.GetMainImageFrameCount - 1) + ']');
       TargetAnimation.StopAutoPlayback;
       TargetAnimationInterval := 3;
       if FilmSoundEffectsEnabled then
@@ -564,9 +527,7 @@ begin
       DestructionAnimation.SetOrigin(HalfPoint(DestructionAnimation.ClientSize));
       DestructionAnimation.SetDepthByName('Weapon');
       DestructionAnimation.SetPositionModeW(True);
-      DestructionAnimation.LoadFrameSequenceFromText(
-          '[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      DestructionAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']');
       DestructionAnimation.StopAutoPlayback;
       DestructionFrameInterval := 4;
       DestructionDetachStep := DestructionAnimation.SequenceFrameCount div 3;
@@ -580,9 +541,7 @@ begin
       DestructionAnimation.SetOrigin(HalfPoint(DestructionAnimation.ClientSize));
       DestructionAnimation.SetDepthByName('Weapon');
       DestructionAnimation.SetPositionModeW(True);
-      DestructionAnimation.LoadFrameSequenceFromText(
-          '[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']'
-      );
+      DestructionAnimation.LoadFrameSequenceFromText('[50,0-' + IntToStr(DestructionAnimation.GetMainImageFrameCount - 1) + ']');
       DestructionAnimation.StopAutoPlayback;
       DestructionFrameInterval := 4;
       DestructionDetachStep := DestructionAnimation.SequenceFrameCount div 5;
@@ -690,9 +649,7 @@ begin
   else if TargetObject is TShip2SE then
     Result :=
         (TargetObject as TShip2SE)
-            .GetTargetPoint(
-                (TargetObject as TShip2SE).GetAngle,
-                (Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
+            .GetTargetPoint((TargetObject as TShip2SE).GetAngle, (Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
   else
     Result := TargetObject.Position;
 end;
@@ -704,14 +661,9 @@ begin
   else if SourceObject is TShip2SE then
     Result :=
         TShip2SE(SourceObject)
-            .GetWeaponPortPoint(
-                SourceObject.GetAngle,
-                (Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
+            .GetWeaponPortPoint(SourceObject.GetAngle, (Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
   else if SourceObject is TRuinsSE then
-    Result :=
-        TRuinsSE(SourceObject)
-            .GetWeaponPortPoint(
-                (Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
+    Result := TRuinsSE(SourceObject).GetWeaponPortPoint((Cardinal(TargetObject) + Cardinal(SourceObject) + Cardinal(Self)) shr 2)
   else
     Result := SourceObject.Position;
 end;
@@ -726,16 +678,12 @@ begin
   begin
     if not HitEffect.Started then
     begin
-      if not ProjectileFinished
-          and (HitEffect.LeftTime >= Projectile.RemainingTicks)
-          and HitEffect.BeforeEnd then
+      if not ProjectileFinished and (HitEffect.LeftTime >= Projectile.RemainingTicks) and HitEffect.BeforeEnd then
       begin
         HitEffect.Started := True;
         HitEffect.Start;
       end
-      else if not ProjectileFinished
-          and not HitEffect.BeforeEnd
-          and (Projectile.GetElapsedTicks >= HitEffect.LeftTime) then
+      else if not ProjectileFinished and not HitEffect.BeforeEnd and (Projectile.GetElapsedTicks >= HitEffect.LeftTime) then
       begin
         HitEffect.Started := True;
         HitEffect.Start;
@@ -889,10 +837,8 @@ begin
         DestructionAnimation.SetSequenceFrame(DestructionAnimation.SequenceFrame + 1);
         for Index := Low(ExtraDestructionAnimations) to High(ExtraDestructionAnimations) do
           if ExtraDestructionAnimations[Index] <> nil then
-            ExtraDestructionAnimations[Index]
-                .SetSequenceFrame(ExtraDestructionAnimations[Index].SequenceFrame + 1);
-        if (DestructionAnimation.SequenceFrame = DestructionDetachStep)
-            and (TargetObject <> nil) then
+            ExtraDestructionAnimations[Index].SetSequenceFrame(ExtraDestructionAnimations[Index].SequenceFrame + 1);
+        if (DestructionAnimation.SequenceFrame = DestructionDetachStep) and (TargetObject <> nil) then
           TargetObject.DetachFromSpace;
       end;
       DestructionAnimation.SetPosition(TruncatePointF(GetTargetPoint));
@@ -901,10 +847,8 @@ begin
           ExtraDestructionAnimations[Index]
               .SetPosition(
                   Classes.Point(
-                      DestructionAnimation.LocalPosition.X
-                          + ExtraDestructionAnimations[Index].UserValue,
-                      DestructionAnimation.LocalPosition.Y
-                          + ExtraDestructionAnimations[Index].UserIndex
+                      DestructionAnimation.LocalPosition.X + ExtraDestructionAnimations[Index].UserValue,
+                      DestructionAnimation.LocalPosition.Y + ExtraDestructionAnimations[Index].UserIndex
                   ));
       if DestructionAlphaStep <> 0 then
       begin
@@ -1040,8 +984,7 @@ var
   Block: TBlockParEC;
   Item: PWeaponEffectItem;
 begin
-  Block :=
-      GameDataConfig.GetBlockByPath('Weapon.' + IntToStr(EffectIndex) + '.D:' + IntToStr(Index));
+  Block := GameDataConfig.GetBlockByPath('Weapon.' + IntToStr(EffectIndex) + '.D:' + IntToStr(Index));
   Item := AddItem;
   Item.AtTarget := True;
   Item.Position := MakePointF(0, ExtractDecimalToSingleW(Block.GetParam('StartPos')));
@@ -1067,9 +1010,7 @@ begin
   Item.Image.SetSize(Item.Image.GetContentSize);
   Item.Image.SetOrigin(HalfPoint(Item.Image.ClientSize));
   Item.Image.SetDepthByName(DepthExpression);
-  Item.Image.SetPosition(
-      TruncatePointF(OffsetPointByRadiusAngle(TargetPoint, Item.Position.Y, Item.Angle))
-  );
+  Item.Image.SetPosition(TruncatePointF(OffsetPointByRadiusAngle(TargetPoint, Item.Position.Y, Item.Angle)));
   Item.Image.SetPositionModeW(True);
   Item.Image.SetSequenceFrame(0);
   if Item.SkipTime = 0 then
@@ -1090,8 +1031,7 @@ var
   Block: TBlockParEC;
   Item: PWeaponEffectItem;
 begin
-  Block :=
-      GameDataConfig.GetBlockByPath('Weapon.' + IntToStr(EffectIndex) + '.S:' + IntToStr(Index));
+  Block := GameDataConfig.GetBlockByPath('Weapon.' + IntToStr(EffectIndex) + '.S:' + IntToStr(Index));
   Item := AddItem;
   Item.AtTarget := False;
   Item.Position := MakePointF(0, ExtractDecimalToSingleW(Block.GetParam('StartPos')));
@@ -1117,9 +1057,7 @@ begin
   Item.Image.SetSize(Item.Image.GetContentSize);
   Item.Image.SetOrigin(HalfPoint(Item.Image.ClientSize));
   Item.Image.SetDepthByName(DepthExpression);
-  Item.Image.SetPosition(
-      TruncatePointF(OffsetPointByRadiusAngle(SourcePoint, Item.Position.Y, Item.Angle))
-  );
+  Item.Image.SetPosition(TruncatePointF(OffsetPointByRadiusAngle(SourcePoint, Item.Position.Y, Item.Angle)));
   Item.Image.SetPositionModeW(True);
   Item.Image.SetSequenceFrame(0);
   if Item.SkipTime = 0 then
@@ -1171,17 +1109,9 @@ begin
     if Item.Image <> nil then
     begin
       if Item.AtTarget then
-        Item.Image.SetPosition(
-            TruncatePointF(
-                OffsetPointByRadiusAngle(TargetPoint, Item.Position.Y, Item.Angle - 90.0)
-            )
-        )
+        Item.Image.SetPosition(TruncatePointF(OffsetPointByRadiusAngle(TargetPoint, Item.Position.Y, Item.Angle - 90.0)))
       else
-        Item.Image.SetPosition(
-            TruncatePointF(
-                OffsetPointByRadiusAngle(SourcePoint, Item.Position.Y, Item.Angle - 90.0)
-            )
-        );
+        Item.Image.SetPosition(TruncatePointF(OffsetPointByRadiusAngle(SourcePoint, Item.Position.Y, Item.Angle - 90.0)));
       if Item.SkipTime = 0 then
       begin
         Dec(AnimationCountdown);

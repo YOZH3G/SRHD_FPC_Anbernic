@@ -158,14 +158,8 @@ end;
 
 procedure TRotateImage2GI.LoadImageProperties(Block: TBlockParEC);
 begin
-  if (Block.CountParams('Image') > 0)
-      and (Block.CountParams('Size') > 0)
-      and (Block.CountParams('Sme') > 0) then
-    SetImage(
-        Block.GetParam('Image'),
-        GetPointGI(Block.GetParam('Size')),
-        GetPointGI(Block.GetParam('Sme'))
-    );
+  if (Block.CountParams('Image') > 0) and (Block.CountParams('Size') > 0) and (Block.CountParams('Sme') > 0) then
+    SetImage(Block.GetParam('Image'), GetPointGI(Block.GetParam('Size')), GetPointGI(Block.GetParam('Sme')));
   if Block.CountParams('Angle') > 0 then
     SetAngle(StrToInt(Block.GetParam('Angle')));
   if Block.CountParams('Trans') > 0 then

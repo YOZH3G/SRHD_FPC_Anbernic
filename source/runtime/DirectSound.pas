@@ -129,16 +129,9 @@ type
 
   IDirectSound = interface(IInterface)
     ['{279AFA83-4981-11CE-A521-0020AF0BE560}']
-    function CreateSoundBuffer(
-        const Desc: TDSBufferDesc;
-        out Buffer: IDirectSoundBuffer;
-        Outer: IInterface
-    ): LongInt; stdcall;
+    function CreateSoundBuffer(const Desc: TDSBufferDesc; out Buffer: IDirectSoundBuffer; Outer: IInterface): LongInt; stdcall;
     function GetCaps(Caps: Pointer): LongInt; stdcall;
-    function DuplicateSoundBuffer(
-        Original: IDirectSoundBuffer;
-        out Duplicate: IDirectSoundBuffer
-    ): LongInt; stdcall;
+    function DuplicateSoundBuffer(Original: IDirectSoundBuffer; out Duplicate: IDirectSoundBuffer): LongInt; stdcall;
     function SetCooperativeLevel(Window: Cardinal; Level: Cardinal): LongInt; stdcall;
     function Compact: LongInt; stdcall;
     function GetSpeakerConfig(out Configuration: Cardinal): LongInt; stdcall;
@@ -172,33 +165,18 @@ type
     function SetPan(Pan: Integer): LongInt; stdcall;
     function SetFrequency(Frequency: Cardinal): LongInt; stdcall;
     function Stop: LongInt; stdcall;
-    function Unlock(
-        Audio1: Pointer;
-        Bytes1: Cardinal;
-        Audio2: Pointer;
-        Bytes2: Cardinal
-    ): LongInt; stdcall;
+    function Unlock(Audio1: Pointer; Bytes1: Cardinal; Audio2: Pointer; Bytes2: Cardinal): LongInt; stdcall;
     function Restore: LongInt; stdcall;
   end;
 
   IDirectSoundNotify = interface(IInterface)
     ['{B0210783-89CD-11D0-AF08-00A0C925CD16}']
-    function SetNotificationPositions(
-        Count: Cardinal;
-        Positions: PDSPositionNotify
-    ): LongInt; stdcall;
+    function SetNotificationPositions(Count: Cardinal; Positions: PDSPositionNotify): LongInt; stdcall;
   end;
 
-  TDirectSoundCreate =
-      function(Guid: Pointer; out DirectSound: IDirectSound; Outer: IInterface): LongInt; stdcall;
+  TDirectSoundCreate = function(Guid: Pointer; out DirectSound: IDirectSound; Outer: IInterface): LongInt; stdcall;
 
-  TDSEnumCallback =
-      function(
-          Guid: Pointer;
-          Description: PAnsiChar;
-          Module: PAnsiChar;
-          Context: Pointer
-      ): LongBool; stdcall;
+  TDSEnumCallback = function(Guid: Pointer; Description: PAnsiChar; Module: PAnsiChar; Context: Pointer): LongBool; stdcall;
 
 function DirectSoundEnumerateA(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
 

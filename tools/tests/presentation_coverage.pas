@@ -1,6 +1,12 @@
 program PresentationCoverage;
 {$MODE DELPHI}
-uses SysUtils, Types, GameGraphics, GameWindow, Direct3D9, SDL2;
+uses
+  SysUtils,
+  Types,
+  GameGraphics,
+  GameWindow,
+  Direct3D9,
+  SDL2;
 var
   Graphics: IDirect3D9;
   Device: IDirect3DDevice9;
@@ -30,7 +36,8 @@ begin
     Ramp.Red[I] := I * 257;
     Ramp.Green[I] := I * 257;
     Ramp.Blue[I] := I * 257;
-    if UseGamma then Ramp.Red[I] := 0;
+    if UseGamma then
+      Ramp.Red[I] := 0;
   end;
   Device.SetRenderTarget(0, Screen);
   Device.BeginScene;
@@ -48,16 +55,21 @@ begin
   if SDL_RenderSetLogicalSize(GameSDLRenderer, 0, 0) <> 0 then
     raise Exception.Create(string(SDL_GetError));
   SetLength(Pixels, W * H);
-  if SDL_RenderReadPixels(GameSDLRenderer, nil, SDL_PIXELFORMAT_ARGB8888,
-      @Pixels[0], W * 4) <> 0 then
+  if SDL_RenderReadPixels(GameSDLRenderer, nil, SDL_PIXELFORMAT_ARGB8888, @Pixels[0], W * 4) <> 0 then
     raise Exception.Create(string(SDL_GetError));
   if W > H then
   begin
-    Left := (W - H) div 2; Right := Left + H; Top := 0; Bottom := H;
+    Left := (W - H) div 2;
+    Right := Left + H;
+    Top := 0;
+    Bottom := H;
   end
   else
   begin
-    Left := 0; Right := W; Top := (H - W) div 2; Bottom := Top + W;
+    Left := 0;
+    Right := W;
+    Top := (H - W) div 2;
+    Bottom := Top + W;
   end;
   for Y := 0 to H - 1 do
     for X := 0 to W - 1 do
@@ -66,10 +78,12 @@ begin
       if (X >= Left) and (X < Right) and (Y >= Top) and (Y < Bottom) then
       begin
         Expected := Fill;
-        if UseGamma then Expected := Fill and $FF00FFFF;
+        if UseGamma then
+          Expected := Fill and $FF00FFFF;
       end;
       if Pixels[Y * W + X] <> Expected then
-        raise Exception.CreateFmt('Output %dx%d gamma=%s at %d,%d: %.8x <> %.8x',
+        raise Exception.CreateFmt(
+            'Output %dx%d gamma=%s at %d,%d: %.8x <> %.8x',
             [W, H, BoolToStr(UseGamma, True), X, Y, Pixels[Y * W + X], Expected]);
     end;
   // Restore the D3D target after reading the window directly.
@@ -93,9 +107,11 @@ end;
 
 begin
   FillChar(Params, SizeOf(Params), 0);
-  Params.BackBufferWidth := 64; Params.BackBufferHeight := 64;
+  Params.BackBufferWidth := 64;
+  Params.BackBufferHeight := 64;
   Params.BackBufferFormat := D3DFMT_A8R8G8B8;
-  Params.Windowed := True; Params.PresentationInterval := D3DPRESENT_INTERVAL_IMMEDIATE;
+  Params.Windowed := True;
+  Params.PresentationInterval := D3DPRESENT_INTERVAL_IMMEDIATE;
   ConfigureGameUi(gumDesktop);
   Graphics := CreateGameGraphics;
   Graphics.CreateDevice(0, D3DDEVTYPE_HAL, 0, 0, Params, Device);
@@ -103,5 +119,8 @@ begin
   ConfigureGameUi(gumMobile);
   RunCases;
   WriteLn('PASS: desktop/native raster, full output, resizing, bars, gamma and reset');
-  Screen := nil; Device := nil; Graphics := nil; CloseGameWindow;
+  Screen := nil;
+  Device := nil;
+  Graphics := nil;
+  CloseGameWindow;
 end.

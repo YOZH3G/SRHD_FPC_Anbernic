@@ -23,14 +23,7 @@ type
     ChoiceImages: array[1..4] of TImageGI;
     procedure OnOpen; override;
     procedure ProcessCallbackTimers; override;
-    procedure AddChoice(
-        Index: Integer;
-        X: Integer;
-        Y: Integer;
-        Text: WideString;
-        Selected: Boolean;
-        Disabled: Boolean
-    );
+    procedure AddChoice(Index: Integer; X: Integer; Y: Integer; Text: WideString; Selected: Boolean; Disabled: Boolean);
     procedure ChoiceMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure ChoiceMouseEnter(Sender: TObjectGI);
     procedure ChoiceMouseLeave(Sender: TObjectGI);
@@ -90,14 +83,7 @@ var
 
   function FormatChameleonChargeCount(Count: Integer): WideString;
   begin
-    Result :=
-        ' ('
-            + FormatText1(
-                LocalizedText('ShipInfo.AddInfo.Chameleon.Count'),
-                '',
-                '<Count>',
-                IntToStr(Count))
-            + ')';
+    Result := ' (' + FormatText1(LocalizedText('ShipInfo.AddInfo.Chameleon.Count'), '', '<Count>', IntToStr(Count)) + ')';
   end;
 
   function ChameleonSeriesColor(Series: TDominatorSeries): WideString;
@@ -130,10 +116,7 @@ begin
   AcceptButton.SetImageDownPath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'OkD');
   AcceptButton.SetSize(AcceptButton.GetMaxStateImageSize);
   AcceptButton.SetPosition(
-      Classes.Point(
-          Size.X div 2 - AcceptButton.ClientSize.X - GiScalePixels(5),
-          Size.Y - WorkRect.Bottom - AcceptButton.ClientSize.Y
-      )
+      Classes.Point(Size.X div 2 - AcceptButton.ClientSize.X - GiScalePixels(5), Size.Y - WorkRect.Bottom - AcceptButton.ClientSize.Y)
   );
   AcceptButton.HitKind := gbhRect;
   AcceptButton.UpdateStateImagePlacement;
@@ -149,12 +132,7 @@ begin
   CancelButton.SetImageNormalActivePath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelA');
   CancelButton.SetImageDownPath('GI,Bm.FormMessageBox.' + GiResourceSuffix + 'CancelD');
   CancelButton.SetSize(CancelButton.GetMaxStateImageSize);
-  CancelButton.SetPosition(
-      Classes.Point(
-          Size.X div 2 + GiScalePixels(5),
-          Size.Y - WorkRect.Bottom - CancelButton.ClientSize.Y
-      )
-  );
+  CancelButton.SetPosition(Classes.Point(Size.X div 2 + GiScalePixels(5), Size.Y - WorkRect.Bottom - CancelButton.ClientSize.Y));
   CancelButton.HitKind := gbhRect;
   CancelButton.UpdateStateImagePlacement;
   CancelButton.UpdateStateVisuals;
@@ -163,15 +141,8 @@ begin
   Caption.SetDepth(0);
   Caption.SetFontName(NormalFontName);
   Caption.SetTextColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
-  ShipName :=
-      LookupLocalizedTextByKey(
-          'ShipType.Dominator.' + DominatorSeriesNames[dsBlazer] + '.' + IntToStr(Ord(VisualType))
-      );
-  Caption.SetText(
-      LocalizedText('ShipInfo.AddInfo.Chameleon.Name')
-          + ' - '
-          + WrapTextInColor(ShipName, DialogHighlightColorTag)
-  );
+  ShipName := LookupLocalizedTextByKey('ShipType.Dominator.' + DominatorSeriesNames[dsBlazer] + '.' + IntToStr(Ord(VisualType)));
+  Caption.SetText(LocalizedText('ShipInfo.AddInfo.Chameleon.Name') + ' - ' + WrapTextInColor(ShipName, DialogHighlightColorTag));
   Caption.SetTextAlignX(taxCenter);
   Caption.SetTextAlignY(tayAuto);
   Caption.SetPosition(Classes.Point(0, WorkRect.Bottom));
@@ -180,31 +151,20 @@ begin
   Index := 1;
   SeriesText := LocalizedText('ShipInfo.AddInfo.Chameleon.Series');
   Inc(Y, 30);
-  AddChoice(
-      Index,
-      20,
-      Y,
-      LocalizedText('ShipInfo.AddInfo.Chameleon.Disable'),
-      ChameleonActive,
-      not ChameleonActive
-  );
+  AddChoice(Index, 20, Y, LocalizedText('ShipInfo.AddInfo.Chameleon.Disable'), ChameleonActive, not ChameleonActive);
   NeedSelection := not ChameleonActive;
   HasSelection := ChameleonActive;
   for Series := Low(TDominatorSeries) to High(TDominatorSeries) do
   begin
     Inc(Y, 20);
     Inc(Index);
-    NameText :=
-        LookupLocalizedTextByKey('ShipType.Dominator.' + DominatorSeriesNames[Series] + '.0');
+    NameText := LookupLocalizedTextByKey('ShipType.Dominator.' + DominatorSeriesNames[Series] + '.0');
     Disabled := ChameleonChargeUnavailable(Charges[Series]);
     AddChoice(
         Index,
         20,
         Y,
-        SeriesText
-            + ' '
-            + WrapTextInColor(NameText, ChameleonSeriesColor(Series))
-            + FormatChameleonChargeCount(Charges[Series]),
+        SeriesText + ' ' + WrapTextInColor(NameText, ChameleonSeriesColor(Series)) + FormatChameleonChargeCount(Charges[Series]),
         NeedSelection and not Disabled,
         Disabled
     );
@@ -225,12 +185,7 @@ begin
   ContentPanel.UpdateSubtreeHitBounds;
 end;
 
-procedure TfChameleon.AddChoice(
-    Index, X: Integer;
-    Y: Integer;
-    Text: WideString;
-    Selected, Disabled: Boolean
-);
+procedure TfChameleon.AddChoice(Index, X: Integer; Y: Integer; Text: WideString; Selected, Disabled: Boolean);
 var
   Image: TImageGI;
   Caption: TLabelGI;

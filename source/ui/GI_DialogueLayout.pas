@@ -13,16 +13,8 @@ uses
 // Called once after the original control tree has been loaded.
 procedure PrepareDialoguePanel(TalkPanel: TObjectGI; ContentHeight: Integer; const Bounds: TRect);
 procedure FitDialogueChoices(TalkPanel: TObjectGI; ChoicesHeight: Integer);
-procedure RefreshDialogueText(
-    Panel: TPanelScrollBarGI;
-    LabelControl: TLabelGI;
-    const Text: WideString
-);
-procedure ShowDialogueChoices(
-    Panel: TPanelScrollBarGI;
-    ContentHeight, LineHeight: Integer;
-    var SavedScroll: Integer
-);
+procedure RefreshDialogueText(Panel: TPanelScrollBarGI; LabelControl: TLabelGI; const Text: WideString);
+procedure ShowDialogueChoices(Panel: TPanelScrollBarGI; ContentHeight, LineHeight: Integer; var SavedScroll: Integer);
 
 implementation
 
@@ -64,73 +56,40 @@ begin
   Expansion := MeasureDialogueExpansion(ContentHeight);
   TextExtra := Expansion.Text;
   ChoiceExtra := Expansion.Choices;
-  TalkPanel.SetPosition(
-      Classes.Point(TalkPanel.LocalPosition.X + ExtraScreenWidth div 2, TalkPanel.LocalPosition.Y)
-  );
-  TalkPanel.SetSize(
-      Classes.Point(TalkPanel.ClientSize.X, TalkPanel.ClientSize.Y + TextExtra + ChoiceExtra)
-  );
+  TalkPanel.SetPosition(Classes.Point(TalkPanel.LocalPosition.X + ExtraScreenWidth div 2, TalkPanel.LocalPosition.Y));
+  TalkPanel.SetSize(Classes.Point(TalkPanel.ClientSize.X, TalkPanel.ClientSize.Y + TextExtra + ChoiceExtra));
   Child := TalkPanel.FirstChild;
-  TImageGI(Child)
-      .SetImagePath(
-          'GI,Bm.FormGov2.' + GiResourceSuffix + 'TWinB?content-height=' + IntToStr(ContentHeight));
+  TImageGI(Child).SetImagePath('GI,Bm.FormGov2.' + GiResourceSuffix + 'TWinB?content-height=' + IntToStr(ContentHeight));
   Child.SetPosition(Classes.Point(Child.LocalPosition.X, Child.LocalPosition.Y + TextExtra));
   Child.SetSize(Classes.Point(Child.ClientSize.X, Child.ClientSize.Y + ChoiceExtra));
   AddButton := TalkPanel.FindByNameRecursive('UserMsgAdd');
-  AddButton
-      .SetPosition(Classes.Point(AddButton.LocalPosition.X, AddButton.LocalPosition.Y + TextExtra));
+  AddButton.SetPosition(Classes.Point(AddButton.LocalPosition.X, AddButton.LocalPosition.Y + TextExtra));
   CloseButton := TalkPanel.FindByNameRecursive('ButFormClose');
-  CloseButton.SetPosition(
-      Classes
-          .Point(CloseButton.LocalPosition.X, CloseButton.LocalPosition.Y + TextExtra + ChoiceExtra)
-  );
+  CloseButton.SetPosition(Classes.Point(CloseButton.LocalPosition.X, CloseButton.LocalPosition.Y + TextExtra + ChoiceExtra));
   TextPanel := TalkPanel.FindByNameRecursive('TextScroll') as TPanelScrollBarGI;
   TextPanel.SetSize(Classes.Point(TextPanel.ClientSize.X, TextPanel.ClientSize.Y + TextExtra));
   TextPanel.VerticalScrollBar.SetSize(
-      Classes.Point(
-          TextPanel.VerticalScrollBar.ClientSize.X,
-          TextPanel.VerticalScrollBar.ClientSize.Y + TextExtra
-      )
+      Classes.Point(TextPanel.VerticalScrollBar.ClientSize.X, TextPanel.VerticalScrollBar.ClientSize.Y + TextExtra)
   );
   TextLabel := TextPanel.FindByNameRecursive('TalkText');
   TextLabel.SetSize(Classes.Point(TextLabel.ClientSize.X, TextLabel.ClientSize.Y + TextExtra));
   ChoicePanel := TalkPanel.FindByNameRecursive('TalkPA') as TPanelScrollBarGI;
-  ChoicePanel.SetPosition(
-      Classes.Point(ChoicePanel.LocalPosition.X, ChoicePanel.LocalPosition.Y + TextExtra)
-  );
-  ChoicePanel
-      .SetSize(Classes.Point(ChoicePanel.ClientSize.X, ChoicePanel.ClientSize.Y + ChoiceExtra));
+  ChoicePanel.SetPosition(Classes.Point(ChoicePanel.LocalPosition.X, ChoicePanel.LocalPosition.Y + TextExtra));
+  ChoicePanel.SetSize(Classes.Point(ChoicePanel.ClientSize.X, ChoicePanel.ClientSize.Y + ChoiceExtra));
   TObjectGI(ChoicePanel.VerticalScrollBar)
-      .SetPosition(
-          Classes.Point(
-              ChoicePanel.VerticalScrollBar.LocalPosition.X,
-              ChoicePanel.VerticalScrollBar.LocalPosition.Y + TextExtra
-          ));
+      .SetPosition(Classes.Point(ChoicePanel.VerticalScrollBar.LocalPosition.X, ChoicePanel.VerticalScrollBar.LocalPosition.Y + TextExtra));
   ChoicePanel.VerticalScrollBar.SetSize(
-      Classes.Point(
-          ChoicePanel.VerticalScrollBar.ClientSize.X,
-          ChoicePanel.VerticalScrollBar.ClientSize.Y + ChoiceExtra
-      )
+      Classes.Point(ChoicePanel.VerticalScrollBar.ClientSize.X, ChoicePanel.VerticalScrollBar.ClientSize.Y + ChoiceExtra)
   );
   Border := ChoicePanel.NextSibling;
-  TImageGI(Border)
-      .SetImagePath(
-          'GI,Bm.FormGov2.' + GiResourceSuffix + 'TWin?content-height=' + IntToStr(ContentHeight));
+  TImageGI(Border).SetImagePath('GI,Bm.FormGov2.' + GiResourceSuffix + 'TWin?content-height=' + IntToStr(ContentHeight));
   Border.SetSize(Classes.Point(Border.ClientSize.X, Border.ClientSize.Y + TextExtra + ChoiceExtra));
   BottomBorder := Border.NextSibling;
-  BottomBorder.SetPosition(
-      Classes.Point(
-          BottomBorder.LocalPosition.X,
-          BottomBorder.LocalPosition.Y + TextExtra + ChoiceExtra
-      )
-  );
+  BottomBorder.SetPosition(Classes.Point(BottomBorder.LocalPosition.X, BottomBorder.LocalPosition.Y + TextExtra + ChoiceExtra));
   Separator := BottomBorder.NextSibling;
-  Separator
-      .SetPosition(Classes.Point(Separator.LocalPosition.X, Separator.LocalPosition.Y + TextExtra));
+  Separator.SetPosition(Classes.Point(Separator.LocalPosition.X, Separator.LocalPosition.Y + TextExtra));
   Decoration := Separator.NextSibling;
-  Decoration.SetPosition(
-      Classes.Point(Decoration.LocalPosition.X, Decoration.LocalPosition.Y + TextExtra)
-  );
+  Decoration.SetPosition(Classes.Point(Decoration.LocalPosition.X, Decoration.LocalPosition.Y + TextExtra));
 end;
 
 constructor TDialogueArtworkGI.Create(Owner: TObjectGI);
@@ -174,24 +133,8 @@ begin
   Scratch.FillPixels(0);
   // Keep the rounded header, the centre separator and the lower bezel.
   // Only plain strips repeat; the original corners are never stretched.
-  Scratch.DrawNinePatch(
-      0,
-      0,
-      Width,
-      TextBottom,
-      Frame,
-      Rect(0, 0, Frame.Width, 430),
-      Rect(190, 54, 190, 42)
-  );
-  Scratch.DrawNinePatch(
-      0,
-      TextBottom,
-      Width,
-      Height - TextBottom,
-      Frame,
-      Rect(0, 430, Frame.Width, Frame.Height),
-      Rect(190, 32, 190, 52)
-  );
+  Scratch.DrawNinePatch(0, 0, Width, TextBottom, Frame, Rect(0, 0, Frame.Width, 430), Rect(190, 54, 190, 42));
+  Scratch.DrawNinePatch(0, TextBottom, Width, Height - TextBottom, Frame, Rect(0, 430, Frame.Width, Frame.Height), Rect(190, 32, 190, 52));
   GraphBuf.BlendRect32(Point(0, 0), Scratch, Rect(0, 0, Width, Height));
   SetSize(Point(Width, Height));
   LastWidth := Width;
@@ -219,9 +162,7 @@ begin
   TextPanel.SetSize(Point(TextPanel.ClientSize.X, TextBottom - 16 - TextPanel.LocalPosition.Y));
   TextPanel.UpdateScrollRanges;
   TextPanel.VerticalScrollBar.SetLargeChange(TextPanel.ClientSize.Y);
-  TextPanel.VerticalScrollBar.SetActive(
-      TextPanel.FindByNameRecursive('TalkText').ClientSize.Y > TextPanel.ClientSize.Y
-  );
+  TextPanel.VerticalScrollBar.SetActive(TextPanel.FindByNameRecursive('TalkText').ClientSize.Y > TextPanel.ClientSize.Y);
   ChoicePanel := TalkPanel.FindByNameRecursive('TalkPA') as TPanelScrollBarGI;
   ChoicePanel.SetPosition(Point(12, TextBottom + 10));
   ChoicePanel.SetSize(Point(Width - 46, Height - 54 - ChoicePanel.LocalPosition.Y));
@@ -258,8 +199,7 @@ begin
   Scale := Min(GetGameMobileUiScale(1.05), (Bounds.Bottom - PanelTop - 8) / 460);
   Scale := Min(Scale, (Bounds.Right - Bounds.Left - 24) / (2 * Width));
   Height := Min(620, Floor((Bounds.Bottom - PanelTop - 8) / Scale));
-  PanelLeft :=
-      Max(Bounds.Left + 12, (Bounds.Left + Bounds.Right) div 2 - Round(Width * Scale) - 42);
+  PanelLeft := Max(Bounds.Left + 12, (Bounds.Left + Bounds.Right) div 2 - Round(Width * Scale) - 42);
   PlaceControlAtScreen(TalkPanel, Point(PanelLeft, PanelTop), Scale);
   TalkPanel.SetSize(Point(Width, Height));
   TextPanel := TalkPanel.FindByNameRecursive('TextScroll') as TPanelScrollBarGI;
@@ -297,11 +237,7 @@ begin
     LayoutDesktopDialogue(TalkPanel, ContentHeight);
 end;
 
-procedure RefreshDialogueText(
-    Panel: TPanelScrollBarGI;
-    LabelControl: TLabelGI;
-    const Text: WideString
-);
+procedure RefreshDialogueText(Panel: TPanelScrollBarGI; LabelControl: TLabelGI; const Text: WideString);
 begin
   if GameMobileUiEnabled then
     LabelControl.SetTextAlignX(taxLeft);
@@ -314,11 +250,7 @@ begin
   Panel.VerticalScrollBar.SetPageSize(Panel.ClientSize.Y);
 end;
 
-procedure ShowDialogueChoices(
-    Panel: TPanelScrollBarGI;
-    ContentHeight, LineHeight: Integer;
-    var SavedScroll: Integer
-);
+procedure ShowDialogueChoices(Panel: TPanelScrollBarGI; ContentHeight, LineHeight: Integer; var SavedScroll: Integer);
 begin
   Panel.SetActive(True);
   Panel.VerticalScrollBar.SetSmallChange(LineHeight);

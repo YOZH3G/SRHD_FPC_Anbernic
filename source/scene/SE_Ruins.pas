@@ -85,9 +85,7 @@ begin
     inherited Create(GraphKey, UnusedPosition);
     AlphaLimit := 255;
   end;
-  HasTransitionImages :=
-      CacheDataRoot.FileExistsByPath(ImagePath + 'To')
-          and CacheDataRoot.FileExistsByPath(ImagePath + 'From');
+  HasTransitionImages := CacheDataRoot.FileExistsByPath(ImagePath + 'To') and CacheDataRoot.FileExistsByPath(ImagePath + 'From');
   State := rsInitial;
   Alpha := 255;
 end;
@@ -96,12 +94,8 @@ procedure TRuinsSE.AttachToSpace(ASpace: TSpaceSE);
 begin
   if not IsAttachedToSpace then
   begin
-    ConfigureLoopSound(
-        'Ruins.' + ExtractDelimitedPartW(ImagePath, CountDelimitedPartsW(ImagePath, '.') - 1, '.')
-    );
-    ConfigureRandomSound(
-        'Ruins.' + ExtractDelimitedPartW(ImagePath, CountDelimitedPartsW(ImagePath, '.') - 1, '.')
-    );
+    ConfigureLoopSound('Ruins.' + ExtractDelimitedPartW(ImagePath, CountDelimitedPartsW(ImagePath, '.') - 1, '.'));
+    ConfigureRandomSound('Ruins.' + ExtractDelimitedPartW(ImagePath, CountDelimitedPartsW(ImagePath, '.') - 1, '.'));
     inherited AttachToSpace(ASpace);
     if AnimShipFull or (CurrentScreenId = screenArcadeBattle) then
     begin
@@ -162,9 +156,7 @@ begin
     MinimapImage := TImageGI.Create(SpaceObjectUiLoop.ContentPanel);
     MinimapImage.SetPositionModeW(True);
     MinimapImage.SetDepthByName(DepthExpression);
-    MinimapImage.SetPosition(
-        TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale))
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(Position.X * Space.MinimapScale, Position.Y * Space.MinimapScale)));
     MinimapImage.SetImagePath(MinimapImagePath);
     MinimapImage.SetSize(MinimapImage.GetContentSize);
     MinimapImage.SetOrigin(HalfPoint(MinimapImage.ClientSize));
@@ -291,11 +283,7 @@ begin
       StaticImage.SetPosition(TruncatePointF(APosition));
     if Animation <> nil then
       Animation.SetPosition(TruncatePointF(APosition));
-    MinimapImage.SetPosition(
-        TruncatePointF(
-            MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)
-        )
-    );
+    MinimapImage.SetPosition(TruncatePointF(MakePointF(APosition.X * Space.MinimapScale, APosition.Y * Space.MinimapScale)));
   end;
 end;
 
@@ -376,21 +364,12 @@ var
   begin
     if CountDelimitedPartsW(PointText, ',') < 2 then
       raise Exception.Create('GetPointGI. tstr=' + PointText);
-    Result :=
-        Classes.Point(
-            StrToInt(ExtractDelimitedPartW(PointText, 0, ',')),
-            StrToInt(ExtractDelimitedPartW(PointText, 1, ','))
-        );
+    Result := Classes.Point(StrToInt(ExtractDelimitedPartW(PointText, 0, ',')), StrToInt(ExtractDelimitedPartW(PointText, 1, ',')));
   end;
 
   function ParseRuinsEnabled(Name: WideString): Boolean;
   begin
-    if (Name = 'Yes')
-        or (Name = 'yes')
-        or (Name = 'True')
-        or (Name = 'true')
-        or (Name = 'TRUE')
-        or (Name = '1') then
+    if (Name = 'Yes') or (Name = 'yes') or (Name = 'True') or (Name = 'true') or (Name = 'TRUE') or (Name = '1') then
       Result := True
     else
       Result := False;
@@ -401,9 +380,7 @@ begin
   ImagePath := Block.GetParam('Image');
   StaticImagePath := Block.GetParam('ImageI');
   MinimapImagePath := Block.GetParam('ImageMap');
-  HasTransitionImages :=
-      CacheDataRoot.FileExistsByPath(ImagePath + 'To')
-          and CacheDataRoot.FileExistsByPath(ImagePath + 'From');
+  HasTransitionImages := CacheDataRoot.FileExistsByPath(ImagePath + 'To') and CacheDataRoot.FileExistsByPath(ImagePath + 'From');
   if Block.CountParams('PanelPartnerImage') > 0 then
     PanelPartnerImage := Block.GetParam('PanelPartnerImage')
   else
@@ -417,8 +394,7 @@ begin
   begin
     if Block.CountParams('WeaponPort' + IntToWideString(Index)) <= 0 then
       Break;
-    WeaponPorts[Index] :=
-        PointToPointF(ParseRuinsPoint(Block.GetParam('WeaponPort' + IntToWideString(Index))));
+    WeaponPorts[Index] := PointToPointF(ParseRuinsPoint(Block.GetParam('WeaponPort' + IntToWideString(Index))));
     Inc(WeaponPortCount);
   end;
 end;

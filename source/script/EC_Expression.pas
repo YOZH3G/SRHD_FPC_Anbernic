@@ -176,16 +176,8 @@ type
   TExpressionVarKind = (evNamed = 0, evOwned = 1, evIndexed = 2);
 
   {$Z1}
-  TCodeOpcode = (
-      coLabel = 0,
-      coExpression = 1,
-      coBranchFalse = 2,
-      coJump = 3,
-      coExit = 4,
-      coPushHandler = 5,
-      coPopHandler = 6,
-      coThrow = 7
-  );
+  TCodeOpcode =
+      (coLabel = 0, coExpression = 1, coBranchFalse = 2, coJump = 3, coExit = 4, coPushHandler = 5, coPopHandler = 6, coThrow = 7);
 
   PCodeAnalyzerUnitEC = PointerToTCodeAnalyzerUnitEC;
 
@@ -531,8 +523,7 @@ var
 
 const
 
-  ScriptHexDigits: array[0..15] of WideChar =
-      ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+  ScriptHexDigits: array[0..15] of WideChar = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
 
 var
 
@@ -570,11 +561,7 @@ function TryReadMemberName(var Token: TCodeAnalyzerUnitEC; var Name: WideString)
 
 procedure FreeScriptArrayTree(Values: TVarArrayEC);
 
-procedure GrowScriptArray(
-    Values: TVarArrayEC;
-    Dimensions: array of Integer;
-    DimensionIndex: Integer
-);
+procedure GrowScriptArray(Values: TVarArrayEC; Dimensions: array of Integer; DimensionIndex: Integer);
 
 procedure ResizeScriptArray(Values: TVarArrayEC; Count: Integer);
 
@@ -662,12 +649,7 @@ uses
   Math;
 
 // Reference parameters avoid copies of Self and RunStart in composed inline calls.
-procedure FlushTokenRun(
-    var Analyzer: TCodeAnalyzerEC;
-    const Text: WideString;
-    var RunStart: Integer;
-    RunLength: Integer
-); inline;
+procedure FlushTokenRun(var Analyzer: TCodeAnalyzerEC; const Text: WideString; var RunStart: Integer; RunLength: Integer); inline;
 begin
   if (RunStart >= 0) and (RunLength > 0) then
   begin
@@ -676,11 +658,7 @@ begin
   end;
 end;
 
-procedure FlushQuotedRun(
-    var Analyzer: TCodeAnalyzerEC;
-    const Text: WideString;
-    RunStart, RunLength: Integer
-); inline;
+procedure FlushQuotedRun(var Analyzer: TCodeAnalyzerEC; const Text: WideString; RunStart, RunLength: Integer); inline;
 begin
   if (RunStart >= 0) and (RunLength > 0) then
   begin
@@ -1769,8 +1747,7 @@ begin
       // Native $461FD0 delegates to SetInt. Preserve that signed conversion
       // for other scalar types, but retain full object addresses in integer cells.
       // Empty/string references must also retain addresses outside Win32.
-      if (RefValue.ValueKind in [vkInt, vkDword])
-          or ((RefValue.ValueKind in [vkEmpty, vkString]) and (Value > High(Cardinal))) then
+      if (RefValue.ValueKind in [vkInt, vkDword]) or ((RefValue.ValueKind in [vkEmpty, vkString]) and (Value > High(Cardinal))) then
         RefValue.AsDword := Value
       else
         RefValue.AsInteger := Integer(Value);
@@ -2089,11 +2066,7 @@ begin
   Values.Free;
 end;
 
-procedure GrowScriptArray(
-    Values: TVarArrayEC;
-    Dimensions: array of Integer;
-    DimensionIndex: Integer
-);
+procedure GrowScriptArray(Values: TVarArrayEC; Dimensions: array of Integer; DimensionIndex: Integer);
 var
   i, Count: Integer;
   Item: TVarEC;
@@ -3172,15 +3145,13 @@ begin
     if NameOrder = nil then
       NameOrder := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, Count * SizeOf(Integer))
     else
-      NameOrder :=
-          GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
+      NameOrder := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
     SetNameOrderIndex(Count - 1, Count - 1);
   end
   else
   begin
     Inc(Count);
-    NameOrder :=
-        GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
+    NameOrder := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, NameOrder, Count * SizeOf(Integer));
     for i := Count - 1 downto InsertionIndex + 1 do
       SetNameOrderIndex(i, GetNameOrderIndex(i - 1));
     SetNameOrderIndex(InsertionIndex, Count - 1);
@@ -3388,32 +3359,12 @@ begin
         EmitToken(Self, Text, RunStart, RunLength, Token, ctCloseBracket, Index, SourceOffset, 1)
       else if (C = '/') and (Index + 1 < TextLength) and (Text[(Index + 1) + 1] = '*') then
       begin
-        EmitToken(
-            Self,
-            Text,
-            RunStart,
-            RunLength,
-            Token,
-            ctBlockCommentStart,
-            Index,
-            SourceOffset,
-            2
-        );
+        EmitToken(Self, Text, RunStart, RunLength, Token, ctBlockCommentStart, Index, SourceOffset, 2);
         Inc(Index);
       end
       else if (C = '*') and (Index + 1 < TextLength) and (Text[(Index + 1) + 1] = '/') then
       begin
-        EmitToken(
-            Self,
-            Text,
-            RunStart,
-            RunLength,
-            Token,
-            ctBlockCommentEnd,
-            Index,
-            SourceOffset,
-            2
-        );
+        EmitToken(Self, Text, RunStart, RunLength, Token, ctBlockCommentEnd, Index, SourceOffset, 2);
         Inc(Index);
       end
       else if (C = '/') and (Index + 1 < TextLength) and (Text[(Index + 1) + 1] = '/') then
@@ -3518,8 +3469,7 @@ begin
       begin
         EmitToken(Self, Text, RunStart, RunLength, Token, ctNewline, Index, SourceOffset, 1);
         Inc(SourceOffset, NewlineOffset);
-        if (Index + 1 < TextLength)
-            and ((Text[(Index + 1) + 1] = #13) or (Text[(Index + 1) + 1] = #10)) then
+        if (Index + 1 < TextLength) and ((Text[(Index + 1) + 1] = #13) or (Text[(Index + 1) + 1] = #10)) then
         begin
           Inc(Index);
           Inc(Token.SourceLength);
@@ -4062,16 +4012,9 @@ function TExpressionEC.AddVariable: Integer;
 begin
   Inc(VariableCount);
   if Variables = nil then
-    Variables :=
-        GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, VariableCount * SizeOf(TExpressionVarEC))
+    Variables := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, VariableCount * SizeOf(TExpressionVarEC))
   else
-    Variables :=
-        GameHeap.HeapReAlloc(
-            GameHeap.GetProcessHeap,
-            0,
-            Variables,
-            VariableCount * SizeOf(TExpressionVarEC)
-        );
+    Variables := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, Variables, VariableCount * SizeOf(TExpressionVarEC));
   SetVariable(VariableCount - 1, TExpressionVarEC.Create);
   Result := VariableCount - 1;
 end;
@@ -4107,17 +4050,9 @@ function TExpressionEC.AddInstruction: Integer;
 begin
   Inc(InstructionCount);
   if Instructions = nil then
-    Instructions :=
-        GameHeap
-            .HeapAlloc(GameHeap.GetProcessHeap, 0, InstructionCount * SizeOf(TExpressionInstrEC))
+    Instructions := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, InstructionCount * SizeOf(TExpressionInstrEC))
   else
-    Instructions :=
-        GameHeap.HeapReAlloc(
-            GameHeap.GetProcessHeap,
-            0,
-            Instructions,
-            InstructionCount * SizeOf(TExpressionInstrEC)
-        );
+    Instructions := GameHeap.HeapReAlloc(GameHeap.GetProcessHeap, 0, Instructions, InstructionCount * SizeOf(TExpressionInstrEC));
   SetInstruction(InstructionCount - 1, TExpressionInstrEC.Create);
   Result := InstructionCount - 1;
 end;
@@ -4244,11 +4179,7 @@ begin
 end;
 
 // Callers exit immediately after this; Compiler has been freed.
-procedure RejectExpression(
-    var Compiler: TCompilerEC;
-    SourceStart: Integer;
-    var ErrorText: WideString
-); inline;
+procedure RejectExpression(var Compiler: TCompilerEC; SourceStart: Integer; var ErrorText: WideString); inline;
 begin
   ErrorText := FormatScriptError(0, SourceStart);
   Compiler.Free;
@@ -4378,8 +4309,7 @@ begin
           Item := Compiler.AddUnit;
           Item.SourceStart := Token.SourceStart;
           if Next = nil then
-            Item.SourceLength :=
-                Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
+            Item.SourceLength := Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
           else
             Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Token.SourceStart;
           Item.Kind := cuFloatLiteral;
@@ -4392,8 +4322,7 @@ begin
           Item := Compiler.AddUnit;
           Item.SourceStart := Token.SourceStart;
           if Next = nil then
-            Item.SourceLength :=
-                Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
+            Item.SourceLength := Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
           else
             Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Token.SourceStart;
           Item.Kind := cuDwordLiteral;
@@ -4406,8 +4335,7 @@ begin
           Item := Compiler.AddUnit;
           Item.SourceStart := Token.SourceStart;
           if Next = nil then
-            Item.SourceLength :=
-                Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
+            Item.SourceLength := Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
           else
             Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Token.SourceStart;
           Item.Kind := cuIntLiteral;
@@ -4420,8 +4348,7 @@ begin
           Item := Compiler.AddUnit;
           Item.SourceStart := Token.SourceStart;
           if Next = nil then
-            Item.SourceLength :=
-                Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
+            Item.SourceLength := Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
           else
             Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Token.SourceStart;
           Item.Kind := cuStringLiteral;
@@ -4434,8 +4361,7 @@ begin
           Item := Compiler.AddUnit;
           Item.SourceStart := Token.SourceStart;
           if Next = nil then
-            Item.SourceLength :=
-                Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
+            Item.SourceLength := Analyzer.Last.SourceStart + Analyzer.Last.SourceLength - Token.SourceStart
           else
             Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Token.SourceStart;
           Item.Kind := cuName;
@@ -4798,11 +4724,7 @@ begin
   end;
 end;
 
-procedure TExpressionEC.Evaluate(
-    Process: TCodeProcessEC;
-    Code: TCodeEC;
-    DebugContext: TScriptDebugState
-);
+procedure TExpressionEC.Evaluate(Process: TCodeProcessEC; Code: TCodeEC; DebugContext: TScriptDebugState);
 var
   i, j: Integer;
   Instruction: TExpressionInstrEC;
@@ -4824,9 +4746,7 @@ begin
   while i < InstructionCount do
   begin
     Instruction := GetInstruction(i);
-    if (Instruction.Opcode = eoNegate)
-        or (Instruction.Opcode = eoBitNot)
-        or (Instruction.Opcode = eoNot) then
+    if (Instruction.Opcode = eoNegate) or (Instruction.Opcode = eoBitNot) or (Instruction.Opcode = eoNot) then
     begin
       Dest := GetVariable(Instruction.Operands[0]);
       Left := GetVariable(Instruction.Operands[1]);
@@ -4836,9 +4756,7 @@ begin
         eoNot: Dest.Resolve(Left.Value.ValueKind).ONot(Left.Resolve(vkEmpty));
       end;
     end
-    else if (Instruction.Opcode <> eoCall)
-        and (Instruction.Opcode <> eoAssign)
-        and (Instruction.Opcode <> eoIndex) then
+    else if (Instruction.Opcode <> eoCall) and (Instruction.Opcode <> eoAssign) and (Instruction.Opcode <> eoIndex) then
     begin
       Dest := GetVariable(Instruction.Operands[0]);
       Left := GetVariable(Instruction.Operands[1]);
@@ -4868,14 +4786,11 @@ begin
         eoShiftLeft: Dest.Resolve(ResultKind).OShl(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
         eoShiftRight: Dest.Resolve(ResultKind).OShr(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
         eoEqual: Dest.Resolve(ResultKind).OEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
-        eoNotEqual:
-          Dest.Resolve(ResultKind).ONotEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
+        eoNotEqual: Dest.Resolve(ResultKind).ONotEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
         eoLess: Dest.Resolve(ResultKind).OLess(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
         eoGreater: Dest.Resolve(ResultKind).OMore(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
-        eoLessEqual:
-          Dest.Resolve(ResultKind).OLessEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
-        eoGreaterEqual:
-          Dest.Resolve(ResultKind).OMoreEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
+        eoLessEqual: Dest.Resolve(ResultKind).OLessEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
+        eoGreaterEqual: Dest.Resolve(ResultKind).OMoreEqual(Left.Resolve(vkEmpty), Right.Resolve(vkEmpty));
       end;
     end
     else if Instruction.Opcode = eoAssign then
@@ -4900,12 +4815,7 @@ begin
           Value := Value.AsArray.GetVarNE(IndexValue.AsString);
           if Value = nil then
             raise ExceptionExpressionEC.Create(
-                'Error array. name='
-                    + Left.Resolve(vkEmpty).Name
-                    + ' index='
-                    + Right.Value.AsString
-                    + ' level='
-                    + IntToStr(j - 1));
+                'Error array. name=' + Left.Resolve(vkEmpty).Name + ' index=' + Right.Value.AsString + ' level=' + IntToStr(j - 1));
         end
         else
         begin
@@ -4972,8 +4882,7 @@ begin
       end
       else if Callee.ValueKind = vkFunction then
       begin
-        if Callee.AsFunction.LocalVar.NamedItems['funBaseVarCount'].AsInteger
-            < Instruction.OperandCount - 2 then
+        if Callee.AsFunction.LocalVar.NamedItems['funBaseVarCount'].AsInteger < Instruction.OperandCount - 2 then
           raise ExceptionExpressionEC.Create('Count var error. fun:' + Left.Name);
         Invocation := TCodeEC.Create;
         Invocation.Parent := Callee.AsFunction;
@@ -5004,8 +4913,7 @@ begin
             ScriptCallTrace[ScriptCallTracePosition] := Callee;
             ScriptCallTraceCount := Min(20, ScriptCallTraceCount + 1);
             ScriptCallTracePosition := (ScriptCallTracePosition + 1) mod 20;
-            raise ExceptionExpressionEC.Create(
-                'Error in function ' + Callee.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
+            raise ExceptionExpressionEC.Create('Error in function ' + Callee.Name + ' (' + E.ClassName + ' ' + E.Message + ')');
           end;
         end;
         Invocation.Free;
@@ -5094,9 +5002,7 @@ begin
   begin
     if Item.Kind = cuUnaryOperator then
     begin
-      if (Item.Next <> nil)
-          and (Item.Next.Kind = cuVariable)
-          and (Candidates[PrecedenceUnary] = nil) then
+      if (Item.Next <> nil) and (Item.Next.Kind = cuVariable) and (Candidates[PrecedenceUnary] = nil) then
         Candidates[PrecedenceUnary] := Item;
     end
     else if Item.Kind = cuBinaryOperator then
@@ -5106,22 +5012,15 @@ begin
         Following := Item.Next.Next;
         while Following <> nil do
         begin
-          if (Following.Kind = cuOpenParen)
-              or (Following.Kind = cuOpenBracket)
-              or (Following.Kind = cuCall) then
+          if (Following.Kind = cuOpenParen) or (Following.Kind = cuOpenBracket) or (Following.Kind = cuCall) then
             Break;
           if (Following.Kind = cuCloseParen) or (Following.Kind = cuCloseBracket) then
             Break;
           Following := Following.Next;
         end;
-        if (Following = nil)
-            or ((Following.Kind <> cuOpenParen)
-                and (Following.Kind <> cuOpenBracket)
-                and (Following.Kind <> cuCall)) then
+        if (Following = nil) or ((Following.Kind <> cuOpenParen) and (Following.Kind <> cuOpenBracket) and (Following.Kind <> cuCall)) then
         begin
-          if (Item.OperatorToken = ctMultiply)
-              or (Item.OperatorToken = ctDivide)
-              or (Item.OperatorToken = ctModulo) then
+          if (Item.OperatorToken = ctMultiply) or (Item.OperatorToken = ctDivide) or (Item.OperatorToken = ctModulo) then
           begin
             if Candidates[PrecedenceMultiply] = nil then
               Candidates[PrecedenceMultiply] := Item;
@@ -5176,9 +5075,7 @@ begin
     end
     else if Item.Kind = cuAssignment then
     begin
-      if (Item.Prev.Kind = cuVariable)
-          and (Item.Next.Kind = cuVariable)
-          and (Candidates[PrecedenceAssign] = nil) then
+      if (Item.Prev.Kind = cuVariable) and (Item.Next.Kind = cuVariable) and (Candidates[PrecedenceAssign] = nil) then
         Candidates[PrecedenceAssign] := Item;
     end;
     Item := Item.Next;
@@ -5589,18 +5486,7 @@ begin
   Result := '';
   if FirstToken = nil then
     FirstToken := Analyzer.First;
-  Result :=
-      CompileBlock(
-          Analyzer,
-          SourceContext,
-          IncludeResolver,
-          FirstToken,
-          nil,
-          NextToken,
-          nil,
-          nil,
-          nil
-      );
+  Result := CompileBlock(Analyzer, SourceContext, IncludeResolver, FirstToken, nil, NextToken, nil, nil, nil);
 end;
 
 function TCodeEC.CompileBlock(
@@ -5792,17 +5678,7 @@ begin
           else
           begin
             Result :=
-                CompileBlock(
-                    Analyzer,
-                    SourceContext,
-                    IncludeResolver,
-                    Token,
-                    LoopStart,
-                    NextToken,
-                    @Token,
-                    BreakTarget,
-                    ContinueTarget
-                );
+                CompileBlock(Analyzer, SourceContext, IncludeResolver, Token, LoopStart, NextToken, @Token, BreakTarget, ContinueTarget);
             if Result <> '' then
               Exit;
           end;
@@ -5819,9 +5695,7 @@ begin
           Item.SourceLength := 0;
           Item.SourceContext := SourceContext;
           Branch.Target := Item;
-          if (Token.Next <> nil)
-              and (Token.Next.TokenKind = ctText)
-              and (LowerCase(AnsiString(Token.Next.Text)) = 'if') then
+          if (Token.Next <> nil) and (Token.Next.TokenKind = ctText) and (LowerCase(AnsiString(Token.Next.Text)) = 'if') then
           begin
             Token := Token.Next;
             Continue;
@@ -5834,17 +5708,7 @@ begin
           if Token.Next.TokenKind = ctSemicolon then
             Continue;
           Result :=
-              CompileBlock(
-                  Analyzer,
-                  SourceContext,
-                  IncludeResolver,
-                  Token.Next,
-                  EndLabel,
-                  NextToken,
-                  @Token,
-                  BreakTarget,
-                  ContinueTarget
-              );
+              CompileBlock(Analyzer, SourceContext, IncludeResolver, Token.Next, EndLabel, NextToken, @Token, BreakTarget, ContinueTarget);
           if Result <> '' then
             Exit;
           if (StatementEnd <> nil) and (Depth = 0) then
@@ -5906,18 +5770,7 @@ begin
           Token := Token.Next
         else
         begin
-          Result :=
-              CompileBlock(
-                  Analyzer,
-                  SourceContext,
-                  IncludeResolver,
-                  Token,
-                  Item,
-                  NextToken,
-                  @Token,
-                  EndLabel,
-                  LoopStart
-              );
+          Result := CompileBlock(Analyzer, SourceContext, IncludeResolver, Token, Item, NextToken, @Token, EndLabel, LoopStart);
           if Result <> '' then
             Exit;
         end;
@@ -6106,18 +5959,7 @@ begin
           Token := Token.Next
         else
         begin
-          Result :=
-              CompileBlock(
-                  Analyzer,
-                  SourceContext,
-                  IncludeResolver,
-                  Token,
-                  Item,
-                  NextToken,
-                  @Token,
-                  EndLabel,
-                  StepStart
-              );
+          Result := CompileBlock(Analyzer, SourceContext, IncludeResolver, Token, Item, NextToken, @Token, EndLabel, StepStart);
           if Result <> '' then
             Exit;
         end;
@@ -6224,14 +6066,7 @@ begin
         end;
         InsertSource := Keyword = '#insert';
         Included := TCodeAnalyzerEC.Create;
-        IntValue :=
-            IncludeResolver(
-                SourceContext,
-                Token.Next.Text,
-                InsertSource,
-                IncludedContext,
-                Included
-            );
+        IntValue := IncludeResolver(SourceContext, Token.Next.Text, InsertSource, IncludedContext, Included);
         if (IntValue = 2) or (IntValue = 3) then
         begin
           Included.Free;
@@ -6247,18 +6082,7 @@ begin
             Result := FormatScriptError(0, Token.Next.SourceStart);
             Exit;
           end;
-          Result :=
-              CompileBlock(
-                  Included,
-                  IncludedContext,
-                  IncludeResolver,
-                  Included.First,
-                  BeforeUnit,
-                  nil,
-                  nil,
-                  nil,
-                  nil
-              );
+          Result := CompileBlock(Included, IncludedContext, IncludeResolver, Included.First, BeforeUnit, nil, nil, nil, nil);
           if Result <> '' then
           begin
             Included.Free;
@@ -6276,9 +6100,7 @@ begin
           Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
-        if (Token.Next.TokenKind <> ctText)
-            or not IsNonIntegerScriptText(Token.Next.Text)
-            or (Token.Next.Next = nil) then
+        if (Token.Next.TokenKind <> ctText) or not IsNonIntegerScriptText(Token.Next.Text) or (Token.Next.Next = nil) then
         begin
           Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
@@ -6305,9 +6127,7 @@ begin
             Next := Next.Next
           else
             Keyword := 'unknown';
-          if (Next = nil)
-              or (Next.TokenKind <> ctText)
-              or not IsNonIntegerScriptText(Next.Text) then
+          if (Next = nil) or (Next.TokenKind <> ctText) or not IsNonIntegerScriptText(Next.Text) then
             Break;
           Value := nil;
           if Keyword = 'unknown' then
@@ -6334,8 +6154,7 @@ begin
           begin
             if Next.Next = nil then
             begin
-              Result :=
-                  FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
+              Result := FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
               Exit;
             end;
             Next := Next.Next;
@@ -6429,11 +6248,7 @@ begin
               Result := FormatScriptError(0, Token.SourceStart);
               Exit;
             end;
-            Definition
-                .LocalVar
-                .Add(Token.Text, vkFunction)
-                .AsFunction
-                .CopyFrom(BaseValue.AsFunction);
+            Definition.LocalVar.Add(Token.Text, vkFunction).AsFunction.CopyFrom(BaseValue.AsFunction);
             Token := Token.Next;
             if Token.TokenKind <> ctComma then
               Break;
@@ -6479,18 +6294,7 @@ begin
         LoopStart.SourceStart := Token.SourceStart;
         LoopStart.SourceLength := 0;
         LoopStart.SourceContext := SourceContext;
-        Result :=
-            CompileBlock(
-                Analyzer,
-                SourceContext,
-                IncludeResolver,
-                Token.Next,
-                BeforeUnit,
-                NextToken,
-                @Token,
-                nil,
-                nil
-            );
+        Result := CompileBlock(Analyzer, SourceContext, IncludeResolver, Token.Next, BeforeUnit, NextToken, @Token, nil, nil);
         if Result <> '' then
           Exit;
         Item := InsertCodeUnitBefore(BeforeUnit);
@@ -6591,18 +6395,7 @@ begin
           Item.SourceLength := 0;
           Item.SourceContext := SourceContext;
         end;
-        Result :=
-            CompileBlock(
-                Analyzer,
-                SourceContext,
-                IncludeResolver,
-                Token,
-                Item,
-                NextToken,
-                @Token,
-                nil,
-                nil
-            );
+        Result := CompileBlock(Analyzer, SourceContext, IncludeResolver, Token, Item, NextToken, @Token, nil, nil);
         if Result <> '' then
           Exit;
         if (StatementEnd <> nil) and (Depth = 0) then
@@ -6892,9 +6685,7 @@ begin
   while Item <> nil do
   begin
     WaitResult := WaitGameEvent(DebugContext.StopEvent, 0);
-    if (WaitResult = WAIT_FAILED)
-        or (WaitResult = WAIT_OBJECT_0)
-        or (WaitResult = WAIT_ABANDONED_0) then
+    if (WaitResult = WAIT_FAILED) or (WaitResult = WAIT_OBJECT_0) or (WaitResult = WAIT_ABANDONED_0) then
       Break;
     if (DebugContext.Paused and (Item.SourceLength > 0)) or Item.Breakpoint then
     begin
@@ -6903,8 +6694,7 @@ begin
       WaitResult := WaitGameEvents(Length(Events), @Events, False, INFINITE);
       if (WaitResult = WAIT_FAILED)
           or (WaitResult = WAIT_OBJECT_0)
-          or ((WaitResult >= WAIT_ABANDONED_0)
-              and (WaitResult < WAIT_ABANDONED_0 + Length(Events))) then
+          or ((WaitResult >= WAIT_ABANDONED_0) and (WaitResult < WAIT_ABANDONED_0 + Length(Events))) then
         Break;
       DebugContext.CurrentCode := Self;
       if DebugContext.StepMode = 1 then
@@ -6988,8 +6778,7 @@ begin
       DebugContext.Paused := True;
     Item := Item.Next;
   end;
-  if ((DebugContext.StepMode = 2) or (DebugContext.StepMode = 3))
-      and (DebugContext.CurrentCode = Self) then
+  if ((DebugContext.StepMode = 2) or (DebugContext.StepMode = 3)) and (DebugContext.CurrentCode = Self) then
     DebugContext.Paused := True;
   if Caught <> nil then
     Caught.Free;
@@ -7323,10 +7112,7 @@ begin
   end;
   while Start <= TextLength - SearchLength do
   begin
-    if CompareMem(
-        Pointer(PAnsiChar(Text) + Start * SizeOf(WideChar)),
-        PWideChar(Search),
-        SearchLength * 2) then
+    if CompareMem(Pointer(PAnsiChar(Text) + Start * SizeOf(WideChar)), PWideChar(Search), SearchLength * 2) then
     begin
       av[0].AsInteger := Start;
       Exit;
@@ -7389,10 +7175,7 @@ begin
     Exit;
   end;
   // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
-  Text :=
-      Copy(Text, 1, Start)
-          + WideLowerCase(Copy(Text, Start + 1, Count))
-          + Copy(Text, Start + Count + 1, MaxInt);
+  Text := Copy(Text, 1, Start) + WideLowerCase(Copy(Text, Start + 1, Count)) + Copy(Text, Start + Count + 1, MaxInt);
   av[0].AsString := Text;
 end;
 
@@ -7417,10 +7200,7 @@ begin
     Exit;
   end;
   // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
-  Text :=
-      Copy(Text, 1, Start)
-          + WideUpperCase(Copy(Text, Start + 1, Count))
-          + Copy(Text, Start + Count + 1, MaxInt);
+  Text := Copy(Text, 1, Start) + WideUpperCase(Copy(Text, Start + 1, Count)) + Copy(Text, Start + Count + 1, MaxInt);
   av[0].AsString := Text;
 end;
 

@@ -46,10 +46,7 @@ begin
   Result := LifetimeTicks - RemainingTicks;
 end;
 
-function TPSWeaponGI.SampleGradientColor(
-    const ColorValues: array of Single;
-    Phase: Single
-): Cardinal;
+function TPSWeaponGI.SampleGradientColor(const ColorValues: array of Single; Phase: Single): Cardinal;
 var
   Count, Index, NextIndex: Integer;
   Fraction: Single;
@@ -64,10 +61,8 @@ begin
   Result :=
       CurrentPixelFormat.PackNormalizedRgb(
           (ColorValues[3 * NextIndex] - ColorValues[3 * Index]) * Fraction + ColorValues[3 * Index],
-          (ColorValues[3 * NextIndex + 1] - ColorValues[3 * Index + 1]) * Fraction
-              + ColorValues[3 * Index + 1],
-          (ColorValues[3 * NextIndex + 2] - ColorValues[3 * Index + 2]) * Fraction
-              + ColorValues[3 * Index + 2]
+          (ColorValues[3 * NextIndex + 1] - ColorValues[3 * Index + 1]) * Fraction + ColorValues[3 * Index + 1],
+          (ColorValues[3 * NextIndex + 2] - ColorValues[3 * Index + 2]) * Fraction + ColorValues[3 * Index + 2]
       );
 end;
 

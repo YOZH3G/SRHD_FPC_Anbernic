@@ -153,9 +153,7 @@ begin
     begin
       UsedSubportal := False;
       RepeatPenalty := 0;
-      if (GetPlayer.Order = soJumpHole)
-          and (GetPlayer.OrderTarget <> nil)
-          and (GetPlayer.OrderTarget is THole) then
+      if (GetPlayer.Order = soJumpHole) and (GetPlayer.OrderTarget <> nil) and (GetPlayer.OrderTarget is THole) then
       begin
         Hole := GetPlayer.OrderTarget as THole;
         for Index := Galaxy.GalaxyEvents.Count - 1 downto 0 do
@@ -184,12 +182,9 @@ begin
       KellerPresent := False;
       for Index := 0 to PlayerArcadeShip.Enemies.Count - 1 do
       begin
-        if (KellerArcadeShip <> nil)
-            and (PlayerArcadeShip.Enemies[Index] = KellerArcadeShip)
-            and (KellerArcadeShip <> Self) then
+        if (KellerArcadeShip <> nil) and (PlayerArcadeShip.Enemies[Index] = KellerArcadeShip) and (KellerArcadeShip <> Self) then
           KellerPresent := True;
-        if (TObject(PlayerArcadeShip.Enemies[Index]) is TabShip)
-            and (TabShip(PlayerArcadeShip.Enemies[Index]).Health > 0) then
+        if (TObject(PlayerArcadeShip.Enemies[Index]) is TabShip) and (TabShip(PlayerArcadeShip.Enemies[Index]).Health > 0) then
           Inc(LivingEnemies);
       end;
       Index := 0;
@@ -207,14 +202,12 @@ begin
           and not KellerPresent
           and (GetPlayer.Order = soJumpHole)
           and ((LivingEnemies = 0) or Preview)
-          and ((LivingEnemies + GetPlayer.BlackHoleKillCount < 20)
-              or (RandomRange(0, 100) > RepeatPenalty + 30)) then
+          and ((LivingEnemies + GetPlayer.BlackHoleKillCount < 20) or (RandomRange(0, 100) > RepeatPenalty + 30)) then
       begin
         while Reward = nil do
         begin
           Inc(Index);
-          Reward :=
-              CreateRandomLootItem(ilpArcadeBattle, oiUninhabited, AdvanceRandomSeed(RandomState));
+          Reward := CreateRandomLootItem(ilpArcadeBattle, oiUninhabited, AdvanceRandomSeed(RandomState));
           if GetPlayer.HasMatchingArtefactOrCustomItem(Reward) and (Index < 5) then
           begin
             Reward.Free;
@@ -277,10 +270,7 @@ begin
     inherited ApplyDamage(Amount, Source, Disrupt);
     LastDamageTick := ArcadeTickCount;
     Inc(RecentHitCount);
-    if (GetPlayer <> nil)
-        and (Health <= 0)
-        and (PlayerArcadeShip <> nil)
-        and (Enemies.IndexOf(PlayerArcadeShip) < 0) then
+    if (GetPlayer <> nil) and (Health <= 0) and (PlayerArcadeShip <> nil) and (Enemies.IndexOf(PlayerArcadeShip) < 0) then
     begin
       if Galaxy <> nil then
         if ScriptLabel <> '' then
@@ -289,16 +279,12 @@ begin
           Event.AddTextData(ScriptLabel);
         end;
     end
-    else if (GetPlayer <> nil)
-        and (Health <= 0)
-        and (PlayerArcadeShip <> nil)
-        and (Enemies.IndexOf(PlayerArcadeShip) >= 0) then
+    else if (GetPlayer <> nil) and (Health <= 0) and (PlayerArcadeShip <> nil) and (Enemies.IndexOf(PlayerArcadeShip) >= 0) then
     begin
       Galaxy.CheckIntegrityChecksum1(619);
       LivingEnemies := 0;
       for Index := 0 to PlayerArcadeShip.Enemies.Count - 1 do
-        if (TObject(PlayerArcadeShip.Enemies[Index]) is TabShip)
-            and (TabShip(PlayerArcadeShip.Enemies[Index]).Health > 0) then
+        if (TObject(PlayerArcadeShip.Enemies[Index]) is TabShip) and (TabShip(PlayerArcadeShip.Enemies[Index]).Health > 0) then
           Inc(LivingEnemies);
       RandomState := InitialRandomSeed;
       if GetPlayer.Order = soJumpHole then
@@ -367,18 +353,9 @@ begin
             RewardScale := 1.2 * RewardScale;
         end
         else
-          RewardScale :=
-              RemapClamped(
-                      CurrentArcadeSpace.Danger + CurrentArcadeSpace.ApproachDanger,
-                      50,
-                      250,
-                      0.3,
-                      2)
-                  * RewardScale;
-        MinSize :=
-            RemapClamped(Galaxy.TechLevel, 3, 8, EquipmentSizeFactors[4], EquipmentSizeFactors[5]);
-        MaxSize :=
-            RemapClamped(Galaxy.TechLevel, 3, 8, EquipmentSizeFactors[2], EquipmentSizeFactors[4]);
+          RewardScale := RemapClamped(CurrentArcadeSpace.Danger + CurrentArcadeSpace.ApproachDanger, 50, 250, 0.3, 2) * RewardScale;
+        MinSize := RemapClamped(Galaxy.TechLevel, 3, 8, EquipmentSizeFactors[4], EquipmentSizeFactors[5]);
+        MaxSize := RemapClamped(Galaxy.TechLevel, 3, 8, EquipmentSizeFactors[2], EquipmentSizeFactors[4]);
         MinLevel := Round(RemapClamped(Galaxy.TechLevel, 3, 8, 0, 0.75) * 7 + 1);
         MaxLevel := Round(RemapClamped(Galaxy.TechLevel, 1, 7, 0.5, 1) * 7 + 1);
         SavedNextItemId := Galaxy.NextItemId;
@@ -387,26 +364,15 @@ begin
           if RandomRange(1, 110) > 70 then
           begin
             WeaponTech := RandomRange(Max(1, Galaxy.TechLevel - 1), Min(8, Galaxy.TechLevel + 1));
-            Info :=
-                Galaxy.SelectWeaponInfo(
-                    RandomRange(1, 100000),
-                    [waFree],
-                    Min(WeaponTech + 1, 8),
-                    Max(1, WeaponTech - 1)
-                );
-            Weight :=
-                RandomRange(Round(Info.AverageSize * MinSize), Round(Info.AverageSize * MaxSize));
+            Info := Galaxy.SelectWeaponInfo(RandomRange(1, 100000), [waFree], Min(WeaponTech + 1, 8), Max(1, WeaponTech - 1));
+            Weight := RandomRange(Round(Info.AverageSize * MinSize), Round(Info.AverageSize * MaxSize));
             Level := RandomRange(MinLevel, MaxLevel);
             Item := CreateGeneratedWeapon(Info, Weight, Level, oiUninhabited);
           end
           else
           begin
             ItemType := TItemType(PickRandomItemType(UtilityEquipmentTypes));
-            Weight :=
-                RandomRange(
-                    Round(GetAverageItemSize(ItemType) * MinSize),
-                    Round(GetAverageItemSize(ItemType) * MaxSize)
-                );
+            Weight := RandomRange(Round(GetAverageItemSize(ItemType) * MinSize), Round(GetAverageItemSize(ItemType) * MaxSize));
             Level := RandomRange(MinLevel, MaxLevel);
             Item := CreateGeneratedEquipment(ItemType, Weight, Level, oiUninhabited);
           end;
@@ -430,17 +396,8 @@ begin
             Continue;
           end;
           if ((Item.GetConditionAdjustedCost
-                      < Max(
-                          800,
-                          GetPlayer.Wealth
-                              * RemapClamped(
-                                  Attempts,
-                                  0,
-                                  500,
-                                  0.01 * RewardScale,
-                                  0.03 * RewardScale)))
-                  and ((Item.GetConditionAdjustedCost > GetPlayer.Wealth * 0.008 * RewardScale)
-                      or (Attempts > 500)))
+                      < Max(800, GetPlayer.Wealth * RemapClamped(Attempts, 0, 500, 0.01 * RewardScale, 0.03 * RewardScale)))
+                  and ((Item.GetConditionAdjustedCost > GetPlayer.Wealth * 0.008 * RewardScale) or (Attempts > 500)))
               <> False then
           begin
             ClearPlayerHoldEntries;
@@ -468,14 +425,12 @@ end;
 procedure TabShipAI.UpdateState;
 begin
   inherited UpdateState;
-  InsideCurrentZone :=
-      ab_Zone_FindContainingOrNearest(State.LongitudeDegrees, State.PolarAngleDegrees, CurrentZone);
+  InsideCurrentZone := ab_Zone_FindContainingOrNearest(State.LongitudeDegrees, State.PolarAngleDegrees, CurrentZone);
   HeadingInsideCurrentZone := False;
   CurrentZoneBearing := 0;
   if CurrentZone <> nil then
     if not InsideCurrentZone then
-      HeadingInsideCurrentZone :=
-          ab_Zone_IsHeadingInside(State, CurrentZone, CurrentZoneBearing, CurrentZoneAngularRadius);
+      HeadingInsideCurrentZone := ab_Zone_IsHeadingInside(State, CurrentZone, CurrentZoneBearing, CurrentZoneAngularRadius);
 end;
 
 procedure TabShipAI.Advance;
@@ -490,15 +445,12 @@ begin
       RecentHitCount := 0;
     if (PlayerArcadeShip <> Self) or ArcadeAutopilotEnabled then
     begin
-      if (WeaponCount > 1)
-          and ((ArcadeTickCount and 31) = 0)
-          and (Weapons[PrimaryWeapon].Ammo < Weapons[PrimaryWeapon].MaxAmmo / 4) then
+      if (WeaponCount > 1) and ((ArcadeTickCount and 31) = 0) and (Weapons[PrimaryWeapon].Ammo < Weapons[PrimaryWeapon].MaxAmmo / 4) then
         for Attempt := 0 to WeaponCount - 2 do
         begin
           Index := RandomRange(0, WeaponCount - 1);
           if (Weapons[Index].Ammo > Weapons[Index].MaxAmmo * 0.9)
-              or (((Weapons[Index].Kind = 13) or (Weapons[Index].Kind = 14))
-                  and (Weapons[Index].Ammo > Weapons[Index].MaxAmmo * 0.7)) then
+              or (((Weapons[Index].Kind = 13) or (Weapons[Index].Kind = 14)) and (Weapons[Index].Ammo > Weapons[Index].MaxAmmo * 0.7)) then
           begin
             SelectWeapon(Index);
             Break;
@@ -508,9 +460,7 @@ begin
         TargetShip := nil;
       if (TargetShip <> nil) and (TargetShip.Health <= 0) then
         TargetShip := nil;
-      if (TargetShip <> nil)
-          and (TargetShip.BonusTicks[abkInvisibility] > 0)
-          and (TargetShip.RevealTicks <= 0) then
+      if (TargetShip <> nil) and (TargetShip.BonusTicks[abkInvisibility] > 0) and (TargetShip.RevealTicks <= 0) then
         TargetShip := nil;
       if TargetShip = nil then
         TargetShip := FindNearestEnemy(Self);
@@ -673,19 +623,14 @@ begin
       and ((RandomIntRange(0, 120) = 0)
           or ((BonusTicks[abkWeaponLock] > 0) and (RandomIntRange(0, 20) = 0))
           or ((TargetShip = nil) and (RandomIntRange(0, 20) = 0))
-          or ((PlayerArcadeShip = Self)
-              and (Health < MaxHealth * 0.3)
-              and (RandomIntRange(0, 20) = 0))) then
+          or ((PlayerArcadeShip = Self) and (Health < MaxHealth * 0.3) and (RandomIntRange(0, 20) = 0))) then
     AvoidanceZone := ab_Zone_RandomRoute(CurrentZone, 2);
   if (AvoidanceZone <> nil)
       and ((AvoidanceZone = CurrentZone)
           or IncomingThreat
           or (RandomIntRange(0, 100) = 0)
           or (RecentHitCount >= 3)
-          or not TryMoveToDestination(
-              AvoidanceZone,
-              AvoidanceZone.Longitude,
-              AvoidanceZone.PolarAngle)) then
+          or not TryMoveToDestination(AvoidanceZone, AvoidanceZone.Longitude, AvoidanceZone.PolarAngle)) then
     AvoidanceZone := nil;
   if RetreatRequested and (RandomIntRange(0, 50) = 0) then
   begin
@@ -715,9 +660,7 @@ begin
         Obj := FirstArcadeObject;
         while Obj <> nil do
         begin
-          if (Obj <> Self)
-              and (Obj is TabShipAI)
-              and (TabShipAI(Obj).TargetBonus = TargetBonus) then
+          if (Obj <> Self) and (Obj is TabShipAI) and (TabShipAI(Obj).TargetBonus = TargetBonus) then
           begin
             TargetBonus := nil;
             Break;
@@ -730,10 +673,7 @@ begin
   if (TargetBonus <> nil)
       and ((RecentHitCount >= 3)
           or (IncomingThreat and (RandomIntRange(0, 50) = 0))
-          or not TryMoveToDestination(
-              BonusRouteZone,
-              TargetBonus.State.LongitudeDegrees,
-              TargetBonus.State.PolarAngleDegrees)) then
+          or not TryMoveToDestination(BonusRouteZone, TargetBonus.State.LongitudeDegrees, TargetBonus.State.PolarAngleDegrees)) then
     TargetBonus := nil;
   if RouteZone <> nil then
   begin
@@ -748,10 +688,7 @@ begin
   end;
   if (Enemies.Count <= 1) and (KellerArcadeShip <> nil) and (KellerArcadeShip.Health = 0) then
   begin
-    SetDirectDestination(
-        KellerArcadeShip.State.LongitudeDegrees,
-        KellerArcadeShip.State.PolarAngleDegrees
-    );
+    SetDirectDestination(KellerArcadeShip.State.LongitudeDegrees, KellerArcadeShip.State.PolarAngleDegrees);
     FollowDirectDestination;
   end;
   if DamagingZone <> nil then
@@ -793,9 +730,7 @@ begin
         else if Weapons[PrimaryWeapon].Kind = 17 then
           FirePrimary
         else if Abs(BearingDeltaDegrees) < 5 then
-          if not (Weapons[PrimaryWeapon].Kind in WeaponsRestrictedWhileCruising)
-              or (Thrust <= 1.25)
-              or (Abs(TurnInput) >= 0.01) then
+          if not (Weapons[PrimaryWeapon].Kind in WeaponsRestrictedWhileCruising) or (Thrust <= 1.25) or (Abs(TurnInput) >= 0.01) then
             FirePrimaryAt(Enemy);
       end;
       if SecondaryWeapon >= 0 then
@@ -807,9 +742,7 @@ begin
         else if Weapons[SecondaryWeapon].Kind = 12 then
           FireSecondaryAt(Enemy)
         else if Abs(BearingDeltaDegrees) < 5 then
-          if not (Weapons[SecondaryWeapon].Kind in WeaponsRestrictedWhileCruising)
-              or (Thrust <= 1.25)
-              or (Abs(TurnInput) >= 0.01) then
+          if not (Weapons[SecondaryWeapon].Kind in WeaponsRestrictedWhileCruising) or (Thrust <= 1.25) or (Abs(TurnInput) >= 0.01) then
             FireSecondaryAt(Enemy);
       end;
     end;
@@ -859,8 +792,7 @@ end;
 
 procedure TabShipAI.AvoidImmediateObstacle;
 begin
-  if (Thrust > 0)
-      and ((ObstacleLevels[0] >= 3) or (ObstacleLevels[1] >= 3) or (ObstacleLevels[7] >= 3)) then
+  if (Thrust > 0) and ((ObstacleLevels[0] >= 3) or (ObstacleLevels[1] >= 3) or (ObstacleLevels[7] >= 3)) then
   begin
     if ObstacleLevels[1] < ObstacleLevels[7] then
       SetTurnInput(100)
@@ -880,8 +812,7 @@ begin
   RouteZone := ab_Zone_GetRoute(CurrentZone, Target);
   HeadingInsideRoute := False;
   if RouteZone <> nil then
-    HeadingInsideRoute :=
-        ab_Zone_IsHeadingInside(State, RouteZone, RouteBearing, RouteAngularRadius);
+    HeadingInsideRoute := ab_Zone_IsHeadingInside(State, RouteZone, RouteBearing, RouteAngularRadius);
 end;
 
 procedure TabShipAI.FollowRoute;
@@ -900,11 +831,7 @@ begin
       Exit;
     end;
     if (RouteZone <> nil)
-        and not ab_StopLine_IsBlocked(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            RouteZone.Longitude,
-            RouteZone.PolarAngle) then
+        and not ab_StopLine_IsBlocked(State.LongitudeDegrees, State.PolarAngleDegrees, RouteZone.Longitude, RouteZone.PolarAngle) then
     begin
       if RouteBearing < 45 then
         StartThrust
@@ -1029,8 +956,7 @@ end;
 function TabShipAI.ScoreReverseTurn: Integer;
 begin
   Result := 0;
-  if (Abs(TargetBearing.BearingDeltaDegrees) > 120)
-      and ((ObstacleLevels[3] = 0) or (ObstacleLevels[4] = 0) or (ObstacleLevels[5] = 0)) then
+  if (Abs(TargetBearing.BearingDeltaDegrees) > 120) and ((ObstacleLevels[3] = 0) or (ObstacleLevels[4] = 0) or (ObstacleLevels[5] = 0)) then
   begin
     Inc(Result, 3);
     if (PlayerArcadeShip = Self) and (Health < Round(MaxHealth * 0.4)) then
@@ -1079,11 +1005,7 @@ begin
       SphereRadius
   );
   ab_StopLine_GetDistances(
-      MakeSphericalBearingState(
-          State.LongitudeDegrees,
-          State.PolarAngleDegrees,
-          WrapHeadingDegrees(State.BearingDegrees + Bearing)
-      ),
+      MakeSphericalBearingState(State.LongitudeDegrees, State.PolarAngleDegrees, WrapHeadingDegrees(State.BearingDegrees + Bearing)),
       ForwardDistance,
       BackwardDistance
   );
@@ -1108,8 +1030,7 @@ begin
     RouteZone := ab_Zone_GetRoute(CurrentZone, Target);
   HeadingInsideRoute := False;
   if RouteZone <> nil then
-    HeadingInsideRoute :=
-        ab_Zone_IsHeadingInside(State, RouteZone, RouteBearing, RouteAngularRadius);
+    HeadingInsideRoute := ab_Zone_IsHeadingInside(State, RouteZone, RouteBearing, RouteAngularRadius);
   FollowDestinationRoute;
 end;
 
@@ -1129,11 +1050,7 @@ begin
       Exit;
     end;
     if (RouteZone <> nil)
-        and not ab_StopLine_IsBlocked(
-            State.LongitudeDegrees,
-            State.PolarAngleDegrees,
-            RouteZone.Longitude,
-            RouteZone.PolarAngle) then
+        and not ab_StopLine_IsBlocked(State.LongitudeDegrees, State.PolarAngleDegrees, RouteZone.Longitude, RouteZone.PolarAngle) then
     begin
       if RouteBearing < 45 then
         StartThrust

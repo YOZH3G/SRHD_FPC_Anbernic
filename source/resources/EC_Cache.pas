@@ -73,18 +73,11 @@ type
     procedure ResetControl(Control: TCacheControlEC);
     procedure AddDataToLruHead(Data: TCacheDataEC);
     procedure RemoveAndFreeData(Data: TCacheDataEC);
-    function FindDataByKeyAndClass(
-        const Key: WideString;
-        CacheDataClass: TCacheDataClass
-    ): TCacheDataEC;
+    function FindDataByKeyAndClass(const Key: WideString; CacheDataClass: TCacheDataClass): TCacheDataEC;
     procedure TouchData(Data: TCacheDataEC);
     function OpenDataBuffer(const Path: WideString): TBufEC;
     procedure TrimToBudget(BudgetBytes: Integer);
-    procedure QueueNamedLoadIfMissing(
-        PendingLoads: TList;
-        const CacheKind: WideString;
-        const Key: WideString
-    );
+    procedure QueueNamedLoadIfMissing(PendingLoads: TList; const CacheKind: WideString; const Key: WideString);
   end;
 
 procedure EvictMainMenuShipCachesWhenAddressSpaceHigh;
@@ -492,10 +485,7 @@ begin
   end;
 end;
 
-function TCacheEC.FindDataByKeyAndClass(
-    const Key: WideString;
-    CacheDataClass: TCacheDataClass
-): TCacheDataEC;
+function TCacheEC.FindDataByKeyAndClass(const Key: WideString; CacheDataClass: TCacheDataClass): TCacheDataEC;
 var
   Data: TCacheDataEC;
 begin
@@ -582,11 +572,7 @@ begin
   CacheLock.Leave;
 end;
 
-procedure TCacheEC.QueueNamedLoadIfMissing(
-    PendingLoads: TList;
-    const CacheKind: WideString;
-    const Key: WideString
-);
+procedure TCacheEC.QueueNamedLoadIfMissing(PendingLoads: TList; const CacheKind: WideString; const Key: WideString);
 var
   AlphaBitmap: TCAlphaBitmapControlEC;
   Bitmap: TCBitmapControlEC;

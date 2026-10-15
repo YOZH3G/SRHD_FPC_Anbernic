@@ -147,17 +147,12 @@ begin
       if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
       begin
         if not GetPlayer.CurrentPlanet.IsMainPiratePlanet then
-          MusicManager.PlayCategory(
-              'Nation.'
-                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                  + 'Pirate'
-          )
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
         else
           MusicManager.PlayCategory('Nation.PiratePlanetMain');
       end
       else
-        MusicManager
-            .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+        MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
     end
     else if GetPlayer.IsDockedToShip then
     begin
@@ -173,14 +168,9 @@ begin
       begin
         // Retain the native CurrentPlanet lookup in this non-station docking branch.
         if GetPlayer.CurrentPlanet.OwnerId = oiPirate then
-          MusicManager.PlayCategory(
-              'Nation.'
-                  + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName
-                  + 'Pirate'
-          )
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[RaceToOwner(GetPlayer.CurrentPlanet.RaceId)].InternalName + 'Pirate')
         else
-          MusicManager
-              .PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
+          MusicManager.PlayCategory('Nation.' + OwnerInfo[GetPlayer.CurrentPlanet.OwnerId].InternalName);
       end;
     end
     else if GetPlayer.InNormalSpace then
@@ -249,11 +239,7 @@ begin
         end;
       end
       else
-        ShowMessageBoxGI(
-            Self,
-            LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.LoadError'),
-            mbgOK or mbgError
-        );
+        ShowMessageBoxGI(Self, LanguageDataConfig.GetParamByPathOrMarker('FormSaveManager.LoadError'), mbgOK or mbgError);
       RequestedScreenId := screenMainMenu;
       ApplyEditableSaveOnLoad := False;
       RequestClose(1);

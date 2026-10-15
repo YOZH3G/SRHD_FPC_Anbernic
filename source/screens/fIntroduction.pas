@@ -100,25 +100,13 @@ begin
     with FindByNameRecursive('ImageScreen') do
       SetPosition(Classes.Point(LocalPosition.X, LocalPosition.Y + ExtraScreenHeight div 2));
     with FindByNameRecursive('Ok') do
-      SetPosition(
-          Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight)
-      );
+      SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth, LocalPosition.Y + ExtraScreenHeight));
     for I := 1 to 8 do
     begin
       with FindByNameRecursive(AnsiString('ICW') + IntToStr(I)) do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2,
-                LocalPosition.Y + ExtraScreenHeight
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight));
       with FindByNameRecursive(AnsiString('MCW') + IntToStr(I)) do
-        SetPosition(
-            Classes.Point(
-                LocalPosition.X + ExtraScreenWidth div 2,
-                LocalPosition.Y + ExtraScreenHeight
-            )
-        );
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2, LocalPosition.Y + ExtraScreenHeight));
     end;
     with FindByNameRecursive('PanelText') do
     begin
@@ -158,60 +146,18 @@ begin
     SetDisabled(True);
   end;
   if NewGameGenerationThread = nil then
-    Text :=
-        FormatText1(
-            LocalizedText('FormIntroduction.Text'),
-            TextHighlightColorTag,
-            '<Player>',
-            GetPlayer.Name
-        )
+    Text := FormatText1(LocalizedText('FormIntroduction.Text'), TextHighlightColorTag, '<Player>', GetPlayer.Name)
   else
-    Text :=
-        FormatText1(
-            LocalizedText('FormIntroduction.Text'),
-            TextHighlightColorTag,
-            '<Player>',
-            NewGameGenerationThread.PlayerName
-        );
+    Text := FormatText1(LocalizedText('FormIntroduction.Text'), TextHighlightColorTag, '<Player>', NewGameGenerationThread.PlayerName);
   with GetByName('GBText') as TGraphBufGI do
   begin
     SourceHasPerPixelAlpha := True;
     if (ExtraScreenWidth > 127) and (ExtraScreenHeight > 127) then
-      RenderLabelTextToBuffer(
-          GraphBuf,
-          ClientSize.X,
-          1,
-          0,
-          Text,
-          BigFontName,
-          $FFFDFFD7,
-          $FF373737,
-          $FFDBDA9C
-      )
+      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, BigFontName, $FFFDFFD7, $FF373737, $FFDBDA9C)
     else if ExtraScreenWidth > 127 then
-      RenderLabelTextToBuffer(
-          GraphBuf,
-          ClientSize.X,
-          1,
-          0,
-          Text,
-          SmoothIntroFontName,
-          $FFFDFFD7,
-          $FF373737,
-          $FFDBDA9C
-      )
+      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, SmoothIntroFontName, $FFFDFFD7, $FF373737, $FFDBDA9C)
     else
-      RenderLabelTextToBuffer(
-          GraphBuf,
-          ClientSize.X,
-          1,
-          0,
-          Text,
-          IntroFontName,
-          $FFFDFFD7,
-          $FF373737,
-          $FFDBDA9C
-      );
+      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, IntroFontName, $FFFDFFD7, $FF373737, $FFDBDA9C);
     SetSize(Classes.Point(ClientSize.X, GraphBuf.Height));
     SetPosition(Classes.Point(LocalPosition.X, TextPanelHeight));
   end;
@@ -307,8 +253,7 @@ begin
       if (DisplayedGenerationStage >= 1) and (DisplayedGenerationStage <= 8) then
         GetByName(AnsiString('ICW') + IntToStr(DisplayedGenerationStage)).SetActive(True);
       if (DisplayedGenerationStage >= 1) and (DisplayedGenerationStage <= 8) then
-        (GetByName(AnsiString('MCW') + IntToStr(DisplayedGenerationStage)) as TLabelGI)
-            .SetTextColor(IntroductionBlinkColorA);
+        (GetByName(AnsiString('MCW') + IntToStr(DisplayedGenerationStage)) as TLabelGI).SetTextColor(IntroductionBlinkColorA);
     end;
   end;
   if ProgressPulsePhase < 0.5 then
@@ -317,11 +262,8 @@ begin
     Amount := 1 - (ProgressPulsePhase - 0.5) * 2;
   if (DisplayedGenerationStage + 1 >= 1) and (DisplayedGenerationStage + 1 <= 8) then
     (GetByName(AnsiString('MCW') + IntToStr(DisplayedGenerationStage + 1)) as TLabelGI)
-        .SetTextColor(
-            CurrentPixelFormat
-                .InterpolateRgb(IntroductionBlinkColorA, IntroductionBlinkColorB, Amount));
-  if (NewGameGenerationThread = nil)
-      or (not NewGameGenerationThread.IsRunning and (DisplayedGenerationStage = 8)) then
+        .SetTextColor(CurrentPixelFormat.InterpolateRgb(IntroductionBlinkColorA, IntroductionBlinkColorB, Amount));
+  if (NewGameGenerationThread = nil) or (not NewGameGenerationThread.IsRunning and (DisplayedGenerationStage = 8)) then
   begin
     if GenerationProgressTimer <> nil then
     begin

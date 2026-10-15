@@ -62,25 +62,12 @@ type
     procedure LoadFromBlock(Block: TBlockParEC); override;
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
-    procedure SetImage(
-        const MaskPath: WideString;
-        const ImagePath: WideString;
-        const LightMapPath: WideString
-    );
+    procedure SetImage(const MaskPath: WideString; const ImagePath: WideString; const LightMapPath: WideString);
     procedure SetCloud1Image(const Path: WideString);
     procedure SetCloud2Image(const Path: WideString);
     procedure SetCloud3Image(const Path: WideString);
-    procedure SetImageWithRadius(
-        const MaskPath: WideString;
-        const ImagePath: WideString;
-        const LightMapPath: WideString;
-        Radius: Integer
-    );
-    procedure SetImageFromTemplate(
-        const TemplateKey: WideString;
-        const ImagePath: WideString;
-        Radius: Integer
-    );
+    procedure SetImageWithRadius(const MaskPath: WideString; const ImagePath: WideString; const LightMapPath: WideString; Radius: Integer);
+    procedure SetImageFromTemplate(const TemplateKey: WideString; const ImagePath: WideString; Radius: Integer);
     procedure SetAtmosphere(ImagePath: WideString; MaskPath: WideString; Color: Cardinal);
     procedure BuildAtmospherePalette;
     procedure RebuildAtmosphereImage;
@@ -227,17 +214,10 @@ begin
         and (Image.Bitmap.Width <> 512)
         and (Image.Bitmap.Width <> 1024)
         and (Image.Bitmap.Width <> 2048) then
-      raise Exception.Create(
-          'TPlanetGI.SetImage. Error create template planet. LenX<>16 or 32 or 64 or 128 or 256 or 512 or 1024 or 2048');
+      raise Exception.Create('TPlanetGI.SetImage. Error create template planet. LenX<>16 or 32 or 64 or 128 or 256 or 512 or 1024 or 2048');
     MapWidthMask := Image.Bitmap.Width - 1;
     SetSize(Classes.Point(Image.Bitmap.Height + 1, Image.Bitmap.Height + 1));
-    TemplateCache.SetCacheKey(
-        MaskPath
-            + '?'
-            + IntToStr(Cardinal(Image.Bitmap.Width))
-            + ','
-            + IntToStr(Cardinal(Image.Bitmap.Height))
-    );
+    TemplateCache.SetCacheKey(MaskPath + '?' + IntToStr(Cardinal(Image.Bitmap.Width)) + ',' + IntToStr(Cardinal(Image.Bitmap.Height)));
     LightControl := TCPalBitmapControlEC.Create;
     GlobalCache.ResetControl(LightControl);
     LightControl.SetCacheKey(LightMapPath);
@@ -246,22 +226,12 @@ begin
       if (Cardinal(Image.Bitmap.Height) > Cardinal(LightImage.Bitmap.Width))
           or (Cardinal(Image.Bitmap.Height) > Cardinal(LightImage.Bitmap.Height)) then
         raise Exception.Create('TPlanetGI.SetImage. Error: Size light map < planet.');
-      SourceLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          SourceLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      SourceLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(SourceLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if SourceLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
-      RotatedLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          RotatedLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      RotatedLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(RotatedLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if RotatedLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
       Ex_OKGR_LightBuf_Init(SourceLightBuffer, 0);
@@ -347,10 +317,7 @@ begin
   end;
 end;
 
-procedure TPlanetGI.SetImageWithRadius(
-    const MaskPath, ImagePath, LightMapPath: WideString;
-    Radius: Integer
-);
+procedure TPlanetGI.SetImageWithRadius(const MaskPath, ImagePath, LightMapPath: WideString; Radius: Integer);
 var
   Image: TCPalBitmapEC;
   LightControl: TCPalBitmapControlEC;
@@ -383,38 +350,21 @@ begin
         and (Image.Bitmap.Width <> 512)
         and (Image.Bitmap.Width <> 1024)
         and (Image.Bitmap.Width <> 2048) then
-      raise Exception.Create(
-          'TPlanetGI.SetImage. Error create template planet. LenX<>16 or 32 or 64 or 128 or 256 or 512 or 1024 or 2048');
+      raise Exception.Create('TPlanetGI.SetImage. Error create template planet. LenX<>16 or 32 or 64 or 128 or 256 or 512 or 1024 or 2048');
     MapWidthMask := Image.Bitmap.Width - 1;
     SetSize(Classes.Point(Radius * 2 + 1, Radius * 2 + 1));
-    TemplateCache.SetCacheKey(
-        MaskPath
-            + '?'
-            + IntToStr(Cardinal(Image.Bitmap.Width))
-            + ','
-            + IntToStr(Cardinal(Image.Bitmap.Height))
-    );
+    TemplateCache.SetCacheKey(MaskPath + '?' + IntToStr(Cardinal(Image.Bitmap.Width)) + ',' + IntToStr(Cardinal(Image.Bitmap.Height)));
     LightControl := TCPalBitmapControlEC.Create;
     GlobalCache.ResetControl(LightControl);
     LightControl.SetCacheKey(LightMapPath);
     LightImage := AcquireOrCreatePalBitmap(LightControl);
     try
-      SourceLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          SourceLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      SourceLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(SourceLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if SourceLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
-      RotatedLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          RotatedLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      RotatedLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(RotatedLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if RotatedLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
       Ex_OKGR_LightBuf_Init(SourceLightBuffer, 0);
@@ -476,22 +426,12 @@ begin
     LightControl.SetCacheKey(SatelliteLightMapPath);
     LightImage := AcquireOrCreatePalBitmap(LightControl);
     try
-      SourceLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          SourceLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      SourceLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(SourceLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if SourceLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
-      RotatedLightBuffer :=
-          Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
-      Ex_OKGR_LightBuf_SetSme(
-          RotatedLightBuffer,
-          LightImage.Bitmap.Width shr 1,
-          LightImage.Bitmap.Height shr 1
-      );
+      RotatedLightBuffer := Ex_OKGR_LightBuf_Create(LightImage.Bitmap.Width, LightImage.Bitmap.Height);
+      Ex_OKGR_LightBuf_SetSme(RotatedLightBuffer, LightImage.Bitmap.Width shr 1, LightImage.Bitmap.Height shr 1);
       if RotatedLightBuffer = nil then
         raise Exception.Create('TPlanetGI.SetImage. Error create light buffer.');
       Ex_OKGR_LightBuf_Init(SourceLightBuffer, 0);
@@ -601,8 +541,7 @@ begin
     Mask := AcquireOrCreateBitmap(AtmosphereMaskCache);
     Rotation := AcquireOrCreateRotateBuf(AtmosphereRotationCache);
     RotatedMask := TGraphBufGR.Create(False);
-    if (AtmosphereBuffer.Width <> Image.Bitmap.Width)
-        or (AtmosphereBuffer.Height <> Image.Bitmap.Height) then
+    if (AtmosphereBuffer.Width <> Image.Bitmap.Width) or (AtmosphereBuffer.Height <> Image.Bitmap.Height) then
     begin
       AtmosphereBuffer.AllocateTight(Image.Bitmap.Width, Image.Bitmap.Height, 256);
       AtmospherePaletteDirty := True;
@@ -612,10 +551,7 @@ begin
       AtmospherePaletteDirty := False;
       BuildAtmospherePalette;
     end;
-    RotatedMask.AllocateGrayscale(
-        Mask.Bitmap.Width + (Mask.Bitmap.Width shr 1),
-        Mask.Bitmap.Height + (Mask.Bitmap.Height shr 1)
-    );
+    RotatedMask.AllocateGrayscale(Mask.Bitmap.Width + (Mask.Bitmap.Width shr 1), Mask.Bitmap.Height + (Mask.Bitmap.Height shr 1));
     RotatedMask.ClearPixels;
     Ex_OKGR_RotateBuf_Draw_BYTE(
         RotatedMask.GetPixels,
@@ -727,9 +663,7 @@ var
 begin
   inherited LoadFromConfigPath(Path);
   Block := UiStyleConfig.GetBlockByPath(Path);
-  if (Block.CountParams('Mask') > 0)
-      or (Block.CountParams('Image') > 0)
-      or (Block.CountParams('ImageLight') > 0) then
+  if (Block.CountParams('Mask') > 0) or (Block.CountParams('Image') > 0) or (Block.CountParams('ImageLight') > 0) then
     SetImage(Block.GetParam('Mask'), Block.GetParam('Image'), Block.GetParam('ImageLight'));
   if Block.CountParams('SmeMap') > 0 then
     SurfaceMapOffset := StrToInt(Block.GetParam('SmeMap'));
@@ -792,8 +726,7 @@ begin
     begin
       if TextureCache = nil then
         TextureCache := CreateTextureCache;
-      if ((HitTestBounds.Right - HitTestBounds.Left) <> TextureSize.X)
-          or ((HitTestBounds.Bottom - HitTestBounds.Top) <> TextureSize.Y) then
+      if ((HitTestBounds.Right - HitTestBounds.Left) <> TextureSize.X) or ((HitTestBounds.Bottom - HitTestBounds.Top) <> TextureSize.Y) then
       begin
         RenderedMapOffsets[0] := $FFFFFF;
         RenderedMapOffsets[1] := RenderedMapOffsets[0];
@@ -802,18 +735,13 @@ begin
         for Index := 0 to 3 do
           TextureCache.SetSurface(nil, Index);
       end;
-      TextureSize :=
-          Classes.Point(
-              HitTestBounds.Right - HitTestBounds.Left,
-              HitTestBounds.Bottom - HitTestBounds.Top
-          );
+      TextureSize := Classes.Point(HitTestBounds.Right - HitTestBounds.Left, HitTestBounds.Bottom - HitTestBounds.Top);
       Texture := TextureCache.GetSurface(0);
       if (SurfaceMapOffset <> RenderedMapOffsets[0]) or (Texture = nil) then
       begin
         RenderedMapOffsets[0] := SurfaceMapOffset;
         if Texture = nil then
-          Texture :=
-              GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+          Texture := GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
         Texture.LockRect(0, Locked, nil, 0);
         if Locked.Bits <> nil then
         begin
@@ -849,16 +777,7 @@ begin
           TextureCache.SetSurface(Texture, 0);
         end;
       end;
-      DrawTexture(
-          Texture,
-          HitTestBounds.Left,
-          HitTestBounds.Top,
-          255,
-          RgbWhite,
-          @ClipRect,
-          False,
-          False
-      );
+      DrawTexture(Texture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
       if HasCloud1 then
       begin
         Texture := TextureCache.GetSurface(1);
@@ -866,8 +785,7 @@ begin
         begin
           RenderedMapOffsets[1] := Cloud1MapOffset;
           if Texture = nil then
-            Texture :=
-                GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+            Texture := GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
           Texture.LockRect(0, Locked, nil, 0);
           if Locked.Bits <> nil then
             Ex_OKGR_Planet4_DrawAndLight_32(
@@ -886,16 +804,7 @@ begin
           Texture.UnlockRect(0);
           TextureCache.SetSurface(Texture, 1);
         end;
-        DrawTexture(
-            Texture,
-            HitTestBounds.Left,
-            HitTestBounds.Top,
-            255,
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+        DrawTexture(Texture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
       end
       else
         TextureCache.SetSurface(nil, 1);
@@ -906,8 +815,7 @@ begin
         begin
           RenderedMapOffsets[2] := Cloud2MapOffset;
           if Texture = nil then
-            Texture :=
-                GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+            Texture := GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
           Texture.LockRect(0, Locked, nil, 0);
           if Locked.Bits <> nil then
             Ex_OKGR_Planet4_DrawAndLight_32(
@@ -926,16 +834,7 @@ begin
           Texture.UnlockRect(0);
           TextureCache.SetSurface(Texture, 2);
         end;
-        DrawTexture(
-            Texture,
-            HitTestBounds.Left,
-            HitTestBounds.Top,
-            255,
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+        DrawTexture(Texture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
       end
       else
         TextureCache.SetSurface(nil, 2);
@@ -946,8 +845,7 @@ begin
         begin
           RenderedMapOffsets[3] := Cloud3MapOffset;
           if Texture = nil then
-            Texture :=
-                GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+            Texture := GR_CreateTexture(TextureSize.X, TextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
           Texture.LockRect(0, Locked, nil, 0);
           if Locked.Bits <> nil then
             Ex_OKGR_Planet4_DrawAndLight_32(
@@ -966,33 +864,16 @@ begin
           Texture.UnlockRect(0);
           TextureCache.SetSurface(Texture, 3);
         end;
-        DrawTexture(
-            Texture,
-            HitTestBounds.Left,
-            HitTestBounds.Top,
-            255,
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+        DrawTexture(Texture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
       end
       else
         TextureCache.SetSurface(nil, 3);
-      if not AtmosphereImageCache.HasEmptyCacheKey
-          and AtmosphereDirty
-          and (AtmosphereColor <> 0) then
+      if not AtmosphereImageCache.HasEmptyCacheKey and AtmosphereDirty and (AtmosphereColor <> 0) then
       begin
         AtmosphereDirty := False;
         RebuildAtmosphereImage;
         AtmosphereTextureSize := Classes.Point(AtmosphereBuffer.Width, AtmosphereBuffer.Height);
-        Texture :=
-            GR_CreateTexture(
-                AtmosphereTextureSize.X,
-                AtmosphereTextureSize.Y,
-                D3DFMT_A8R8G8B8,
-                D3DPOOL_MANAGED
-            );
+        Texture := GR_CreateTexture(AtmosphereTextureSize.X, AtmosphereTextureSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
         if Texture <> nil then
         begin
           Texture.LockRect(0, Locked, nil, 0);
@@ -1011,19 +892,8 @@ begin
         end;
       end;
       Texture := TextureCache.GetSurface(4);
-      if not AtmosphereImageCache.HasEmptyCacheKey
-          and (Texture <> nil)
-          and (AtmosphereColor <> 0) then
-        DrawTexture(
-            Texture,
-            HitTestBounds.Left,
-            HitTestBounds.Top,
-            255,
-            RgbWhite,
-            @ClipRect,
-            False,
-            False
-        );
+      if not AtmosphereImageCache.HasEmptyCacheKey and (Texture <> nil) and (AtmosphereColor <> 0) then
+        DrawTexture(Texture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
     end
     else
     begin
@@ -1102,25 +972,17 @@ begin
             HitTestBounds.Top + (HitTestBounds.Bottom - HitTestBounds.Top) div 2,
             ClipRect
         );
-      if not AtmosphereImageCache.HasEmptyCacheKey
-          and AtmosphereDirty
-          and (AtmosphereColor <> 0) then
+      if not AtmosphereImageCache.HasEmptyCacheKey and AtmosphereDirty and (AtmosphereColor <> 0) then
       begin
         AtmosphereDirty := False;
         RebuildAtmosphereImage;
       end;
-      if not AtmosphereImageCache.HasEmptyCacheKey
-          and (AtmosphereBuffer.Pixels <> nil)
-          and (AtmosphereColor <> 0) then
+      if not AtmosphereImageCache.HasEmptyCacheKey and (AtmosphereBuffer.Pixels <> nil) and (AtmosphereColor <> 0) then
         BlendPaletteBuffer16Clipped(
             ScreenRenderBuffer.GetPixels,
             ScreenRenderBuffer.PitchBytes,
-            HitTestBounds.Left
-                + (HitTestBounds.Right - HitTestBounds.Left) div 2
-                - (AtmosphereBuffer.Width shr 1),
-            HitTestBounds.Top
-                + (HitTestBounds.Bottom - HitTestBounds.Top) div 2
-                - (AtmosphereBuffer.Height shr 1),
+            HitTestBounds.Left + (HitTestBounds.Right - HitTestBounds.Left) div 2 - (AtmosphereBuffer.Width shr 1),
+            HitTestBounds.Top + (HitTestBounds.Bottom - HitTestBounds.Top) div 2 - (AtmosphereBuffer.Height shr 1),
             AtmosphereBuffer,
             ClipRect
         );

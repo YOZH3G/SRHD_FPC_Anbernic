@@ -213,8 +213,7 @@ begin
   SuccessRelationDelta := 0;
   EditorGridWidth := 10;
   EditorGridHeight := 8;
-  QuestSuccessGovMessageText.Text :=
-      MessageText.QuestMessages.GetText('GameContent.QuestSuccessGovMessage');
+  QuestSuccessGovMessageText.Text := MessageText.QuestMessages.GetText('GameContent.QuestSuccessGovMessage');
   QuestDescriptionText.Text := MessageText.QuestMessages.GetText('GameContent.QuestDecription');
   ToStarText.Text := MessageText.QuestMessages.GetText('GameContent.RToStar');
   ToPlanetText.Text := MessageText.QuestMessages.GetText('GameContent.RToPlanet');
@@ -535,9 +534,7 @@ begin
     if GetLocation(i).Id = LocationId then
       Result := i;
   if Result = 0 then
-    ShowGameDialog(
-        AnsiString('Cannot find Location with Location Number ' + IntToWideString(LocationId))
-    );
+    ShowGameDialog(AnsiString('Cannot find Location with Location Number ' + IntToWideString(LocationId)));
 end;
 
 function TTextQuest.FindPathIndex(PathId: Integer): Integer;
@@ -607,13 +604,7 @@ var
   begin
     Sequence.PrependPath(Path);
     Location := GetLocation(FindLocationIndex(Path.FromLocationId));
-    CountLegacySequenceConnections(
-        Location,
-        IncomingCount,
-        OutgoingCount,
-        IncomingPath,
-        OutgoingPath
-    );
+    CountLegacySequenceConnections(Location, IncomingCount, OutgoingCount, IncomingPath, OutgoingPath);
     if OutgoingCount = 1 then
     begin
       Sequence.AddLocation(Location);
@@ -630,13 +621,7 @@ var
   begin
     Sequence.AddPath(Path);
     Location := GetLocation(FindLocationIndex(Path.ToLocationId));
-    CountLegacySequenceConnections(
-        Location,
-        IncomingCount,
-        OutgoingCount,
-        IncomingPath,
-        OutgoingPath
-    );
+    CountLegacySequenceConnections(Location, IncomingCount, OutgoingCount, IncomingPath, OutgoingPath);
     if IncomingCount = 1 then
     begin
       Sequence.AddLocation(Location);
@@ -649,13 +634,7 @@ begin
   for i := 1 to GetLocationCount do
   begin
     Location := GetLocation(i);
-    CountLegacySequenceConnections(
-        Location,
-        IncomingCount,
-        OutgoingCount,
-        IncomingPath,
-        OutgoingPath
-    );
+    CountLegacySequenceConnections(Location, IncomingCount, OutgoingCount, IncomingPath, OutgoingPath);
     if (IncomingCount = 1) or (OutgoingCount = 1) then
     begin
       Sequence := TSequence.Create;
@@ -783,18 +762,8 @@ begin
   Text := Output;
   for i := 1 to GetParameterCount do
   begin
-    Text :=
-        ReplaceAllWideString(
-            Text,
-            '[' + TrimWideString(GetParameter(i).NameText.Text) + ']',
-            '[p' + IntToWideString(i) + ']'
-        );
-    Text :=
-        ReplaceAllWideString(
-            Text,
-            '[' + TrimWideString(GetParameter(i).NameText.Text) + ':',
-            '[d' + IntToWideString(i) + ':'
-        );
+    Text := ReplaceAllWideString(Text, '[' + TrimWideString(GetParameter(i).NameText.Text) + ']', '[p' + IntToWideString(i) + ']');
+    Text := ReplaceAllWideString(Text, '[' + TrimWideString(GetParameter(i).NameText.Text) + ':', '[d' + IntToWideString(i) + ':');
   end;
   for i := 1 to GetParameterCount do
   begin
@@ -841,23 +810,13 @@ begin
   end;
   for i := 1 to GetParameterCount do
   begin
-    Text :=
-        ReplaceAllWideString(
-            Text,
-            '[p' + IntToWideString(i) + ']',
-            ColorStart + IntToWideString(GetParameter(i).Value) + ColorEnd
-        );
+    Text := ReplaceAllWideString(Text, '[p' + IntToWideString(i) + ']', ColorStart + IntToWideString(GetParameter(i).Value) + ColorEnd);
     if System.Pos('[d' + IntToWideString(i) + ']', Text) > 0 then
     begin
       ValueText := GetParameter(i).GetValueText(GetParameter(i).Value);
       ValueText := ReplaceAllWideString(ValueText, '<>', IntToWideString(GetParameter(i).Value));
       ValueText := ExpandText(ValueText, True);
-      Text :=
-          ReplaceAllWideString(
-              Text,
-              '[d' + IntToWideString(i) + ']',
-              ColorStart + ValueText + ColorEnd
-          );
+      Text := ReplaceAllWideString(Text, '[d' + IntToWideString(i) + ']', ColorStart + ValueText + ColorEnd);
     end;
   end;
   Calc.Free;
@@ -938,8 +897,7 @@ begin
         GetParameter(i).CriticalEventOverride := nil;
         if GetParameter(i).IsMoney and (Money >= 0) then
           GetParameter(i).Value := Money
-        else if not PreserveExternalParameters
-            or (FindTextPosW('ext_', GetParameter(i).NameText.Text) <> 1) then
+        else if not PreserveExternalParameters or (FindTextPosW('ext_', GetParameter(i).NameText.Text) <> 1) then
           if GetParameter(i).InitialRange.RangeCount > 0 then
             GetParameter(i).Value := Trunc(GetParameter(i).InitialRange.GetRandomValue);
       end;
@@ -1017,8 +975,7 @@ begin
   for i := 1 to GetPathCount do
   begin
     Path := GetPath(i);
-    if (Location.Id <> Path.FromLocationId)
-        or ((Path.TraversalLimit > 0) and (Path.TraversalCount >= Path.TraversalLimit)) then
+    if (Location.Id <> Path.FromLocationId) or ((Path.TraversalLimit > 0) and (Path.TraversalCount >= Path.TraversalLimit)) then
       Continue;
     Eligible := False;
     for j := 1 to GetLocationCount do
@@ -1113,9 +1070,7 @@ begin
     Chosen.Free;
     Group.Free;
     Pending.Free;
-    ShowGameDialog(
-        AnsiString('No available answers from location ' + IntToWideString(Location.Id))
-    );
+    ShowGameDialog(AnsiString('No available answers from location ' + IntToWideString(Location.Id)));
     Exit;
   end;
   if Chosen.Count = 1 then
@@ -1250,9 +1205,7 @@ begin
   begin
     Text := '';
     for i := 1 to GetParameterCount do
-      if GetParameter(i).Enabled
-          and not GetParameter(i).Hidden
-          and ((GetParameter(i).Value <> 0) or GetParameter(i).ShowWhenZero) then
+      if GetParameter(i).Enabled and not GetParameter(i).Hidden and ((GetParameter(i).Value <> 0) or GetParameter(i).ShowWhenZero) then
       begin
         ValueText := GetParameter(i).GetValueText(GetParameter(i).Value);
         ValueText := ReplaceAllWideString(ValueText, '<>', IntToWideString(GetParameter(i).Value));

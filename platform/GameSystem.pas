@@ -53,35 +53,22 @@ var
   InstanceFile: THandle = THandle(-1);
 
 {$IFDEF SWITCH}
-procedure NativeSwitchMemoryStatus(
-    out Capacity,
-    Available: QWord
-); cdecl; external name 'sr_switch_memory_status';
+procedure NativeSwitchMemoryStatus(out Capacity, Available: QWord); cdecl; external name 'sr_switch_memory_status';
 {$ENDIF}
 
 {$IFDEF FPC_WASM_EMSCRIPTEN}
-procedure NativeWasmMemoryStatus(
-    out Capacity,
-    Available: QWord
-); cdecl; external name 'sr_fpc_memory_status';
+procedure NativeWasmMemoryStatus(out Capacity, Available: QWord); cdecl; external name 'sr_fpc_memory_status';
 {$ENDIF}
 
 {$IFDEF MSWINDOWS}
 // The FPC Windows unit does not declare the extended memory query.
-function NativeGlobalMemoryStatusEx(
-    var Status: TGameMemoryStatus
-): LongBool; stdcall; external 'kernel32.dll' name 'GlobalMemoryStatusEx';
+function NativeGlobalMemoryStatusEx(var Status: TGameMemoryStatus): LongBool; stdcall; external 'kernel32.dll' name 'GlobalMemoryStatusEx';
 {$ENDIF}
 
 {$IFDEF DARWIN}
 function mach_host_self: Cardinal; cdecl; external 'c';
 function host_page_size(Host: Cardinal; out Size: PtrUInt): Integer; cdecl; external 'c';
-function host_statistics64(
-    Host: Cardinal;
-    Flavor: Integer;
-    Info: Pointer;
-    var Count: Cardinal
-): Integer; cdecl; external 'c';
+function host_statistics64(Host: Cardinal; Flavor: Integer; Info: Pointer; var Count: Cardinal): Integer; cdecl; external 'c';
 function mach_port_deallocate(Task, Name: Cardinal): Integer; cdecl; external 'c';
 var
   mach_task_self_: Cardinal;
@@ -312,7 +299,8 @@ end;
 
 function GameUserDirectory: UnicodeString;
 begin
-  if UserDirectoryOverride <> '' then Exit(UserDirectoryOverride);
+  if UserDirectoryOverride <> '' then
+    Exit(UserDirectoryOverride);
 {$IFDEF SWITCH}
   Exit('sdmc:/switch/SpaceRangersHD/user/');
 {$ENDIF}
@@ -349,7 +337,8 @@ end;
 
 procedure SetGameUserDirectory(const Path: UnicodeString);
 begin
-  if Path = '' then raise EInOutError.Create('Empty user directory');
+  if Path = '' then
+    raise EInOutError.Create('Empty user directory');
   UserDirectoryOverride := IncludeTrailingPathDelimiter(UTF8Decode(ExpandFileName(UTF8Encode(Path))));
   if not ForceDirectories(UTF8Encode(UserDirectoryOverride)) then
     raise EInOutError.Create('Cannot create user directory: ' + UTF8Encode(Path));
@@ -386,9 +375,7 @@ begin
   Result := 1500;
 {$IFDEF DARWIN}
   Size := SizeOf(Frequency);
-  if (FPsysctlbyname('hw.cpufrequency', @Frequency, @Size, nil, 0) = 0)
-      and (Size = SizeOf(Frequency))
-      and (Frequency > 0) then
+  if (FPsysctlbyname('hw.cpufrequency', @Frequency, @Size, nil, 0) = 0) and (Size = SizeOf(Frequency)) and (Frequency > 0) then
     Result := Frequency / 1000000;
 {$ENDIF}
 {$IFDEF MSWINDOWS}
