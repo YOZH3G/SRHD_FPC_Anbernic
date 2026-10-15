@@ -4213,6 +4213,11 @@ begin
       GlobalCache.ResidentByteLimit := $18000000
     else
       GlobalCache.ResidentByteLimit := Min(Int64(Cardinal(MemoryStatus.AvailVirtual) div 3), Int64($18000000));
+  // 64-bit address space is never short, so the automatic budget above is
+  // always 384 MiB. Without swap that exhausts 1 GiB handhelds; an explicit
+  // CacheSize still applies as configured.
+  if (GlobalCache.ResidentByteLimit = $18000000) and (MemoryStatus.TotalPhys > 0) then
+    GlobalCache.ResidentByteLimit := Min(Int64(GlobalCache.ResidentByteLimit), Int64(MemoryStatus.TotalPhys div 6));
   LogGameMessage(gllInfo, 'config', 'Cache Size=' + IntToStr(GlobalCache.ResidentByteLimit div 1024) + ' KB');
   if UserSettingsConfig.CountParams('Brightness') > 0 then
     DisplayBrightness := ParseDecimalToSingleW(UserSettingsConfig.GetParamByPathOrMarker('Brightness'));
@@ -4743,6 +4748,7 @@ var
   DeviceFlags: Cardinal;
   Identifier: TD3DAdapterIdentifier9;
   Caps: TD3DCaps9;
+  Memory: TMemoryStatusEx;
 begin
   FreeScreenRenderBuffers;
   WindowedModeRequested := False;
@@ -4934,6 +4940,14 @@ begin
     end
     else
       LogGameMessage(gllInfo, 'renderer', 'Texture cache limit=' + IntToStr(AvailableTextureBytes shr 20) + ' MiB');
+    // The budgets suit desktops. Handhelds share 1-2 GiB between the CPU and
+    // GPU without swap, so keep resident textures to an eighth of memory.
+    Memory.Length := SizeOf(Memory);
+    if QueryGameMemory(Memory) and (Memory.TotalPhys div 8 < ResidentTextureBudget) then
+    begin
+      ResidentTextureBudget := Memory.TotalPhys div 8;
+      LogGameMessage(gllInfo, 'renderer', 'Resident texture budget=' + IntToStr(ResidentTextureBudget shr 20) + ' MiB');
+    end;
     for Index := Low(DrawVertices) to High(DrawVertices) do
     begin
       DrawVertices[Index].Z := 1;

@@ -68,6 +68,9 @@ var
 
   ReservedTextureBytes: Cardinal = 0;
 
+  // Resident texture bytes above which idle textures are released.
+  ResidentTextureBudget: Cardinal = $10000000;
+
   TextureIdleSeconds: Integer = 120;
 
   LastTextureEvictionTick: Cardinal = 0;
@@ -260,7 +263,7 @@ begin
     Exit;
   LastTextureEvictionTick := NowTick;
   AvailableBytes := Max(0, Integer(Direct3DDevice.GetAvailableTextureMem - ReservedTextureBytes));
-  if (ResidentTextureBytes < $10000000) and (AvailableBytes > $1400000) and not Force then
+  if (ResidentTextureBytes < ResidentTextureBudget) and (AvailableBytes > $1400000) and not Force then
     Exit;
   i := 0;
   while i < TextureCaches.Count do
@@ -277,7 +280,7 @@ begin
   AvailableBytes := Max(0, Integer(Direct3DDevice.GetAvailableTextureMem - ReservedTextureBytes));
   if (AvailableBytes > 30 * 1024 * 1024.0) and (TextureIdleSeconds < 120) then
     Inc(TextureIdleSeconds, 10);
-  if (ResidentTextureBytes > $10000000) or (AvailableBytes < $1400000) then
+  if (ResidentTextureBytes > ResidentTextureBudget) or (AvailableBytes < $1400000) then
     if TextureIdleSeconds > 20 then
       Dec(TextureIdleSeconds, 10);
 end;
