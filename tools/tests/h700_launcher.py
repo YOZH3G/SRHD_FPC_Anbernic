@@ -13,23 +13,30 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class LauncherTests(unittest.TestCase):
-    def run_launcher(self, bits="64", fallback="aarch64", assets=True, arches=("armhf", "aarch64")):
+    def run_launcher(self, bits="64", fallback="aarch64", assets=True, arches=("armhf", "aarch64"),
+                     layout="beside", portmaster=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            port = root / "spacerangershd"
-            port.mkdir()
+            scripts = root / "ROMS/Ports"
+            scripts.mkdir(parents=True)
+            # PortMaster's installer puts the folder in /$directory/ports, as on muOS.
+            port = (scripts if layout == "beside" else root / "ports") / "spacerangershd"
+            port.mkdir(parents=True)
             (port / "game").mkdir()
             if assets:
                 (port / "game/INSTALL.TXT").touch()
-            launch = root / "Space Rangers HD.sh"
+            if layout != "missing":
+                (port / "rangers.gptk").touch()
+            launch = scripts / "Space Rangers HD.sh"
             shutil.copy2(ROOT / "platform/linux/Space Rangers HD PortMaster.sh", launch)
             pm = root / "PortMaster"
             pm.mkdir()
-            (pm / "control.txt").write_text(
-                "CFW_NAME=muOS\nGPTOKEYB=/bin/true\n"
-                'get_controls() { sdl_controllerconfig="test-controller"; }\n'
-                'pm_platform_helper() { echo "HELPER:$1"; }\n'
-            )
+            if portmaster:
+                (pm / "control.txt").write_text(
+                    f"CFW_NAME=muOS\nGPTOKEYB=/bin/true\ndirectory={str(root)[1:]}\n"
+                    'get_controls() { sdl_controllerconfig="test-controller"; }\n'
+                    'pm_platform_helper() { echo "HELPER:$1"; }\n'
+                )
             fake_bin = root / "bin"
             fake_bin.mkdir()
             getconf = fake_bin / "getconf"
@@ -56,6 +63,10 @@ class LauncherTests(unittest.TestCase):
                 SDL_GAMECONTROLLERCONFIG="old-controller",
             )
             result = subprocess.run(["bash", str(launch)], env=env, capture_output=True, text=True)
+            log = port / "log.txt"
+            start_log = scripts / "spacerangershd-start.log"
+            result.log = log.read_text() if log.exists() else None
+            result.start_log = start_log.read_text() if start_log.exists() else None
             return result
 
     def test_64_bit(self):
@@ -67,6 +78,8 @@ class LauncherTests(unittest.TestCase):
         self.assertIn("CONTROLS:test-controller", result.stdout)
         self.assertIn("/lib/aarch64", result.stdout)
         self.assertIn("HELPER:Rangers.aarch64", result.stdout)
+        self.assertIn("Firmware: muOS", result.log)
+        self.assertIsNone(result.start_log)
 
     def test_32_bit_userland_overrides_64_bit_kernel(self):
         result = self.run_launcher(bits="32", fallback="aarch64")
@@ -84,6 +97,24 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("Copy the original game resources", result.stdout)
         self.assertNotIn("EXEC:", result.stdout)
+
+    def test_port_folder_in_portmaster_ports_directory(self):
+        result = self.run_launcher(layout="ports")
+        self.assertEqual(result.returncode, 23, result.stdout + result.stderr)
+        self.assertIn("EXEC:./Rangers.aarch64", result.log)
+        self.assertRegex(result.log, r"Port folder: /.*/ports/spacerangershd\n")
+        self.assertIsNone(result.start_log)
+
+    def test_missing_port_folder_is_logged_beside_the_script(self):
+        result = self.run_launcher(layout="missing")
+        self.assertEqual(result.returncode, 1)
+        self.assertIsNone(result.log)
+        self.assertIn("Folder spacerangershd not found", result.start_log)
+
+    def test_missing_portmaster_is_logged_beside_the_script(self):
+        result = self.run_launcher(portmaster=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Install or update PortMaster", result.start_log)
 
     def test_knulli_package_rejects_32_bit_userland(self):
         result = self.run_launcher(bits="32", arches=("aarch64",))

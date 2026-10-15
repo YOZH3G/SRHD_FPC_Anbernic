@@ -1,7 +1,11 @@
 #!/bin/bash
 # Use firmware SDL to preserve display, rotation, Wayland and audio support.
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 1
-gamedir="$script_dir/spacerangershd"
+# Log from the first line: until the game directory is found, write next to
+# this script, since the menu discards the output.
+start_log="$script_dir/spacerangershd-start.log"
+: 2>/dev/null >"$start_log" || start_log="${TMPDIR:-/tmp}/spacerangershd-start.log"
+exec 3>&1 4>&2 >"$start_log" 2>&1
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 controlfolder=""
 for candidate in "${PORTMASTER_DIR:-}" /mnt/mmc/MUOS/PortMaster /opt/muos/PortMaster "$XDG_DATA_HOME/PortMaster" /userdata/system/.local/share/PortMaster /opt/system/Tools/PortMaster /opt/tools/PortMaster /roms/tools/PortMaster /roms2/tools/PortMaster /roms/ports/PortMaster /roms2/ports/PortMaster /storage/roms/ports/PortMaster /PortMaster "$script_dir/PortMaster"; do
@@ -17,8 +21,25 @@ fi
 source "$controlfolder/control.txt"
 [ -f "$controlfolder/mod_${CFW_NAME}.txt" ] && source "$controlfolder/mod_${CFW_NAME}.txt"
 get_controls
+# The port folder sits next to this script, or where PortMaster's installer
+# puts it: ports/ under the firmware's directory (/mnt/mmc/ports on muOS).
+gamedir=""
+for candidate in "$script_dir/spacerangershd" ${directory:+"/$directory/ports/spacerangershd"}; do
+    if [ -f "$candidate/rangers.gptk" ]; then
+        gamedir="$candidate"
+        break
+    fi
+done
+if [ -z "$gamedir" ]; then
+    echo "Folder spacerangershd not found next to $script_dir/${BASH_SOURCE[0]##*/}${directory:+ or in /$directory/ports}. Copy the whole archive (see README.txt)."
+    exit 1
+fi
 cd "$gamedir" || exit 1
+exec 1>&3 2>&4 3>&- 4>&-
 exec > >(tee "$gamedir/log.txt") 2>&1
+cat "$start_log"
+rm -f "$start_log"
+echo "Port folder: $gamedir"
 
 # A 64-bit kernel can host a 32-bit userland; prefer the userland word size.
 case "$(getconf LONG_BIT 2>/dev/null)" in

@@ -56,6 +56,8 @@ SDL2 и звуковые/GPU-драйверы используются из пр
    | ROCKNIX | `/roms/ports` либо его расположение `/storage/roms/ports` |
 
 3. Проверьте, что рядом находятся `Space Rangers HD.sh` и папка `spacerangershd`.
+   Папку можно положить и туда, куда порты ставит PortMaster: на muOS это
+   `/mnt/mmc/ports/spacerangershd`, а скрипт остаётся в `ROMS/Ports`.
 4. Скопируйте из установленной на компьютере игры непосредственно
    в `spacerangershd/game/` файлы `INSTALL.TXT`, `INSTALL_ENGLISH.TXT`,
    `INSTALL_RUSSIAN.TXT`, `CFG.TXT`, папки `CFG/` и `DATA/` с файлами `*.pkg`.
@@ -64,7 +66,8 @@ SDL2 и звуковые/GPU-драйверы используются из пр
    из раздела портов.
 
 Сохранения и настройки будут в `spacerangershd/profile/`, журнал запуска —
-в `spacerangershd/log.txt`. Перед заменой старого пакета сохраните его профиль
+в `spacerangershd/log.txt`. Если лаунчер не нашёл PortMaster или папку
+`spacerangershd`, причина записана в `spacerangershd-start.log` рядом со скриптом. Перед заменой старого пакета сохраните его профиль
 и используйте чистый каталог библиотек нового пакета.
 
 ## Стоковая прошивка Anbernic и Stock OS Mod
