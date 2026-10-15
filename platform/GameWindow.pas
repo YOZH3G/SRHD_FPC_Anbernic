@@ -88,6 +88,9 @@ procedure ShowGameDialog(const Text: UnicodeString);
 function GameMessagesPending: Boolean;
 procedure CancelGamePointerInput;
 procedure SetGameArcadeControls(Flags: Integer);
+// Presentation statistics since StartGameFrameStats, for the game log.
+procedure StartGameFrameStats(out Counter, Frames: QWord);
+function DescribeGameFrameStats(Counter, Frames: QWord): string;
 
 var
   // Read by settings; apply changes through ConfigureGameUi at a tree rebuild.
@@ -112,6 +115,9 @@ var
   GameTextureGeneration, GameTargetGeneration: LongInt;
   GameDisplayGeneration: LongInt = 1;
   GamePresentedFrames: QWord;
+  // SDL performance-counter ticks of the last present and the longest gap
+  // between two presents; reset the gap to start a new measurement.
+  GameLastPresentCounter, GameLongestPresentInterval: QWord;
 
 implementation
 
@@ -206,6 +212,29 @@ begin
   ArcadeControls := ((ArcadeControls + $100) and $7FFFFF00) or Cardinal(Flags);
   Value := AnsiString(UIntToStr(ArcadeControls));
   SDL_SetHint('SRHD_ARCADE_CONTROLS', PAnsiChar(Value));
+end;
+
+procedure StartGameFrameStats(out Counter, Frames: QWord);
+begin
+  Counter := SDL_GetPerformanceCounter;
+  Frames := GamePresentedFrames;
+  GameLastPresentCounter := Counter;
+  GameLongestPresentInterval := 0;
+end;
+
+function DescribeGameFrameStats(Counter, Frames: QWord): string;
+var
+  Frequency, Seconds: Double;
+  Count: QWord;
+  Format: TFormatSettings;
+begin
+  Frequency := SDL_GetPerformanceFrequency;
+  Seconds := (SDL_GetPerformanceCounter - Counter) / Frequency;
+  Count := GamePresentedFrames - Frames;
+  Format := DefaultFormatSettings;
+  Format.DecimalSeparator := '.';
+  Result := SysUtils.Format('frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms',
+      [Count, Seconds, Count / Max(Seconds, 0.001), GameLongestPresentInterval * 1000 / Frequency], Format);
 end;
 
 procedure LogGameVideo(const Text: UnicodeString);

@@ -1021,6 +1021,7 @@ var
   Destination: TSDL_Rect;
   DestinationPtr: PSDL_Rect;
   CoversOutput: Boolean;
+  PresentCounter: QWord;
 begin
   TestCooperativeLevel;
   Screen := ImageOf(ScreenSurface);
@@ -1115,6 +1116,10 @@ begin
 {$ENDIF}
   SDL_RenderPresent(GameSDLRenderer);
   Inc(GamePresentedFrames);
+  PresentCounter := SDL_GetPerformanceCounter;
+  if GameLastPresentCounter <> 0 then
+    GameLongestPresentInterval := Max(GameLongestPresentInterval, PresentCounter - GameLastPresentCounter);
+  GameLastPresentCounter := PresentCounter;
 {$IFDEF FPC_WASM_EMSCRIPTEN}
   BrowserFramePresented;
 {$ENDIF}
