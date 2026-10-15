@@ -252,8 +252,11 @@ class TrimUILauncherTests(unittest.TestCase):
                 loader.parent.mkdir()
                 loader.touch()
             # Only the commands every TrimUI BusyBox firmware has; getconf is not one of them.
-            for command in ("dirname", "kill", "mkdir", "sleep", "true", "uname"):
+            for command in ("dirname", "kill", "mkdir", "sleep", "true"):
                 (fake_bin / command).symlink_to(shutil.which(command))
+            uname = fake_bin / "uname"
+            uname.write_text(f'#!/bin/sh\necho {"aarch64" if bits == "64" else "armv7l"}\n')
+            uname.chmod(0o755)
             env.update(
                 PATH=str(fake_bin),
                 TRIMUI_AARCH64_LOADER=str(loader),
@@ -283,6 +286,8 @@ class TrimUILauncherTests(unittest.TestCase):
             with self.subTest(shell=shell):
                 result, log, root = self.run_launcher(shell=shell)
                 self.assertEqual(result.returncode, 23, log + result.stderr)
+                # BusyBox sh runs its own uname applet, so only the loader is predictable here.
+                self.assertRegex(log, r"^Launcher: TrimUI 2; machine: \S+; AArch64 loader: yes\n")
                 self.assertIn("EXEC:./Rangers.aarch64", log)
                 self.assertIn("--fullscreen", log)
                 self.assertIn("--on-screen-keyboard", log)
@@ -310,6 +315,7 @@ class TrimUILauncherTests(unittest.TestCase):
     def test_rejects_32_bit_firmware(self):
         result, log, _ = self.run_launcher(bits="32")
         self.assertEqual(result.returncode, 1)
+        self.assertIn("machine: armv7l; AArch64 loader: no", log)
         self.assertIn("64-bit TrimUI firmware", log)
         self.assertNotIn("EXEC:", log)
 
