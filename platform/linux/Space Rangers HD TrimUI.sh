@@ -8,11 +8,20 @@ cd "$gamedir" || exit 1
 # MainUI discards app output.
 exec >"$gamedir/log.txt" 2>&1
 
-# BusyBox on these firmwares has no getconf; the game needs the AArch64 loader.
-if [ ! -e "${TRIMUI_AARCH64_LOADER:-/lib/ld-linux-aarch64.so.1}" ]; then
-    echo "This package requires a 64-bit TrimUI firmware."
-    exit 1
-fi
+# BusyBox on these firmwares has no getconf. Only refuse when the system
+# clearly cannot run AArch64 programs; otherwise let the platform probe try.
+machine=$(uname -m 2>/dev/null)
+loader="${TRIMUI_AARCH64_LOADER:-/lib/ld-linux-aarch64.so.1}"
+echo "Launcher: TrimUI 2; machine: ${machine:-unknown}; AArch64 loader: $([ -e "$loader" ] && echo yes || echo no)"
+case "$machine" in
+    aarch64|arm64|armv8*) ;;
+    *)
+        if [ ! -e "$loader" ]; then
+            echo "This package requires a 64-bit TrimUI firmware."
+            exit 1
+        fi
+        ;;
+esac
 binary="Rangers.aarch64"
 # Smart Pro, Brick and Brick Pro keep SDL 2.30 in /usr/trimui/lib, the Smart
 # Pro S keeps SDL 2.32 in /usr/lib. CrossMix puts its own libraries, among them
