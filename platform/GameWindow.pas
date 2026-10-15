@@ -251,7 +251,7 @@ begin
 {$ENDIF}
 end;
 
-function ProbeSystemCursor: Boolean;
+function ProbeSystemCursor(const Driver: string): Boolean;
 var
   Pixel: Cardinal;
   Surface, Cursor: Pointer;
@@ -259,10 +259,14 @@ begin
 {$IFDEF SWITCH}
   Result := False;
 {$ELSE}
-  // Framebuffer drivers such as the Mali one on Anbernic stock firmware have
-  // no cursors; the game then draws its own, as with ShowSystemMouse off.
-  Pixel := 0;
+  // Framebuffer drivers such as the Mali one on Anbernic and TrimUI stock
+  // firmware have no cursors; the game then draws its own, as with
+  // ShowSystemMouse off. SDL 2.30 and later hand out a placeholder cursor
+  // that is never drawn instead of failing, so name these drivers.
   Result := False;
+  if (Driver = 'mali') or (Driver = 'vivante') or (Driver = 'dummy') or (Driver = 'offscreen') then
+    Exit;
+  Pixel := 0;
   Surface := SDL_CreateRGBSurfaceFrom(@Pixel, 1, 1, 32, 4, $FF0000, $FF00, $FF, $FF000000);
   if Surface = nil then
     Exit;
@@ -338,7 +342,7 @@ begin
     RaiseGameSDLError('SDL_RegisterEvents(game messages, count=1)');
   SDL_AddEventWatch(WatchRendererReset, nil);
   Touch := TGameTouch.Create;
-  SystemCursorAvailable := ProbeSystemCursor;
+  SystemCursorAvailable := ProbeSystemCursor(Driver);
   VideoInitialized := True;
 end;
 
