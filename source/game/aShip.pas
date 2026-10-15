@@ -6756,25 +6756,44 @@ begin
     Result := DockedTo.CanRepairArtefactsAtLocation;
 end;
 
+type
+  TShipTechnologyKind = (stkOrdinary, stkTranclucator, stkDominator);
+
+function ShipTechnologyKind(Ship: TShip): TShipTechnologyKind;
+var
+  ShipClass: TClass;
+begin
+  { Both special classes directly inherit TShip. Walk the ancestry once,
+    including subclasses, without caching objects or class identities. }
+  Result := stkOrdinary;
+  if Ship = nil then
+    Exit;
+  ShipClass := Ship.ClassType;
+  while (ShipClass <> nil) and (ShipClass.ClassParent <> TShip) do
+    ShipClass := ShipClass.ClassParent;
+  if ShipClass = TTranclucator then
+    Result := stkTranclucator
+  else if ShipClass = TKling then
+    Result := stkDominator;
+end;
+
 function TShip.CanUseEquipmentTech(Item: TEquipment): Boolean;
 var
   Level: Integer;
+  Kind: TShipTechnologyKind;
 begin
   if (Galaxy = nil) or Galaxy.IsEquipmentKnowledgeUnrestricted then
-    Result := True
-  else if (Self is TTranclucator) and (TTranclucator(Self).OwnerShip <> nil) then
-    Result := TTranclucator(Self).OwnerShip.CanUseEquipmentTech(Item)
-  else if (Self is TKling) or (Item.OwnerId <> oiDominator) then
-    Result := True
+    Exit(True);
+  Kind := ShipTechnologyKind(Self);
+  if (Kind = stkTranclucator) and (TTranclucator(Self).OwnerShip <> nil) then
+    Exit(TTranclucator(Self).OwnerShip.CanUseEquipmentTech(Item));
+  if (Kind = stkDominator) or (Item.OwnerId <> oiDominator) then
+    Exit(True);
+  if Item is TWeapon then
+    Level := TWeapon(Item).GetWeaponInfo.TechLevel
   else
-  begin
-    if Item is TWeapon then
-      Level := TWeapon(Item).GetWeaponInfo.TechLevel
-    else
-      Level := Item.GetLevel;
-    Dec(Level, 4);
-    Result := TechKnowledge >= Level;
-  end;
+    Level := Item.GetLevel;
+  Result := TechKnowledge >= Level - 4;
 end;
 
 function TShip.CanRepairEquipmentTech(Item: TEquipment): Boolean;
@@ -7086,22 +7105,66 @@ end;
 function TShip.GetTotalStatBonus(BonusKind: TEquipmentBonusKind): Integer;
 var
   Item: TEquipment;
+  Items: PPointerList;
   I, Strength: Integer;
+  PermissionShip: TShip;
+  PermissionReady, Unrestricted: Boolean;
+  Kind: TShipTechnologyKind;
+
+  function CanUse(Item: TEquipment): Boolean;
+  var
+    Level: Integer;
+  begin
+    { Reuse permission state only inside this read-only query. Subsequent
+      queries must observe equipment, ownership and rule changes. }
+    if not PermissionReady then
+    begin
+      Unrestricted := (Galaxy = nil) or Galaxy.IsEquipmentKnowledgeUnrestricted;
+      if not Unrestricted then
+        while True do
+        begin
+          Kind := ShipTechnologyKind(PermissionShip);
+          if (Kind <> stkTranclucator) or (TTranclucator(PermissionShip).OwnerShip = nil) then
+            Break;
+          PermissionShip := TTranclucator(PermissionShip).OwnerShip;
+        end;
+      PermissionReady := True;
+    end;
+    if Unrestricted or (Kind = stkDominator) or (Item.OwnerId <> oiDominator) then
+      Exit(True);
+    if Item is TWeapon then
+      Level := TWeapon(Item).GetWeaponInfo.TechLevel
+    else
+      Level := Item.GetLevel;
+    Result := PermissionShip.TechKnowledge >= Level - 4;
+  end;
+
 begin
+  PermissionShip := Self;
+  PermissionReady := False;
+  Unrestricted := False;
+  Kind := stkOrdinary;
   Result := GetOwnStatBonus(BonusKind);
+  Items := Inventory.List;
   for I := 0 to Inventory.Count - 1 do
   begin
-    Item := Inventory[I];
-    if ((I = 0) or (Item.EquippedFlag <> 0)) and IsEquipmentUsable(Item) then
+    Item := Items^[I];
+    if ((I = 0) or (Item.EquippedFlag <> 0))
+        and (Item <> nil)
+        and (not (Item.ItemType in [t_FuelTanks..t_CustomWeapon, t_Satellite]) or (Item.BrokenFlag = 0))
+        and CanUse(Item) then
       Inc(Result, GetEquipmentStatBonus(BonusKind, Item));
   end;
   if Artefacts <> nil then
+  begin
+    Items := Artefacts.List;
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Item := Artefacts[I];
+      Item := Items^[I];
       if (Item.EquippedFlag <> 0) and (Item.BrokenFlag = 0) then
         Inc(Result, GetEquipmentStatBonus(BonusKind, Item));
     end;
+  end;
   Strength := Round(GetCombatStatusStrength(cseMagnetic));
   if Strength >= 1 then
     case BonusKind of

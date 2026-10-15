@@ -1622,7 +1622,14 @@ begin
 end;
 
 procedure TWarrior.ManeuverFlagship;
+type
+  TPositionStats = record
+    Minimum, Maximum, Area: Integer;
+    Attack, Defense, Repair: Double;
+  end;
+  TPositionStatsArray = array of TPositionStats;
 var
+  EnemyStats, AllyStats: TPositionStatsArray;
   Enemies: TList;
   SupportWeight: Single;
   OwnMinRange, OwnMaxRange: Integer;
@@ -1683,6 +1690,25 @@ var
       end;
   end;
 
+  procedure CachePositionStats(Ships: TList; var Stats: TPositionStatsArray; Enemy: Boolean);
+  var
+    Index: Integer;
+    Other: TShip;
+  begin
+    SetLength(Stats, Ships.Count);
+    for Index := 0 to Ships.Count - 1 do
+    begin
+      Other := Ships[Index];
+      GetWeaponRangeBounds(Other, Stats[Index].Minimum, Stats[Index].Maximum);
+      if Enemy then
+        Stats[Index].Area := AreaWeaponScore(Other);
+      Stats[Index].Attack := Other.CalculateAttackStrength;
+      if Enemy then
+        Stats[Index].Repair := Other.GetRepairStrengthFactor;
+      Stats[Index].Defense := Other.CalculateDefenseStrength;
+    end;
+  end;
+
   function ProjectOutsideStar(Point: TPointF): TPointF;
   var
     SquaredDistance: Single;
@@ -1733,9 +1759,10 @@ var
     for I := 0 to Enemies.Count - 1 do
     begin
       Ship := Enemies[I];
-      GetWeaponRangeBounds(Ship, Minimum, Maximum);
+      Minimum := EnemyStats[I].Minimum;
+      Maximum := EnemyStats[I].Maximum;
       ShipDistance := PointDistance(Point, Ship.Position);
-      Attack := Ship.CalculateAttackStrength * (1 + AreaWeaponScore(Ship) * (0.1 * RemapClamped(SupportWeight, 0, 2, 0.1, 1)));
+      Attack := EnemyStats[I].Attack * (1 + EnemyStats[I].Area * (0.1 * RemapClamped(SupportWeight, 0, 2, 0.1, 1)));
       Threat := Attack * RemapClamped(ShipDistance, Minimum, Maximum, 1, 0);
       if Attack * 0.99 > Threat then
         Threat := Threat + (Attack - Threat) * Ship.Speed / (Ship.Speed + ShipDistance - Minimum);
@@ -1746,9 +1773,7 @@ var
       if Attack * 0.99 > Threat then
         Threat := Threat + (Attack - Threat) * Speed / (Speed + ShipDistance - OwnMinRange);
       Threat :=
-          Threat
-              / (Max(OwnAttack, Ship.CalculateDefenseStrength)
-                  * (1 + Ship.GetRepairStrengthFactor * (0.1 * RemapClamped(SupportWeight, 0, 2, 1, 0.1))));
+          Threat / (Max(OwnAttack, EnemyStats[I].Defense) * (1 + EnemyStats[I].Repair * (0.1 * RemapClamped(SupportWeight, 0, 2, 1, 0.1))));
       if (Ship is TKling) and ((Ship as TKling).KlingType = ktBertor) then
         Threat := 1.5 * Threat;
       if Threat > BestEnemyPotential then
@@ -1759,12 +1784,12 @@ var
     for I := 0 to Allies.Count - 1 do
     begin
       Ship := Allies[I];
-      GetWeaponRangeBounds(Ship, Minimum, Maximum);
+      Minimum := AllyStats[I].Minimum;
+      Maximum := AllyStats[I].Maximum;
       ShipDistance := PointDistance(Point, Ship.Position);
-      Attack := Ship.CalculateAttackStrength;
+      Attack := AllyStats[I].Attack;
       SupportPotential :=
-          SupportPotential
-              + Attack * RemapClamped(ShipDistance, OwnMinRange, OwnMaxRange, 1, 0) / Max(OwnAttack, Ship.CalculateDefenseStrength);
+          SupportPotential + Attack * RemapClamped(ShipDistance, OwnMinRange, OwnMaxRange, 1, 0) / Max(OwnAttack, AllyStats[I].Defense);
       Threat := Attack * RemapClamped(ShipDistance, Minimum, Maximum, 1, 0);
       Attack := Attack - Threat;
       if Attack > Threat * 0.01 then
@@ -1876,6 +1901,11 @@ begin
   AttackWeight := 1;
   SupportWeight := RemapClamped(AllyAreaScore * EnemyRepair - EnemyAreaScore * AllyRepair, -100, 100, -2, 2);
   FearWeight := RemapClamped(GetHull.HullPoints, 0, GetHull.Weight, 2, 0.75);
+  { Buffs above can change equipment-derived values. The candidate search
+    only reads these stats; retain the query return types and discard the
+    snapshots on return, without changing candidate order or rounding. }
+  CachePositionStats(Enemies, EnemyStats, True);
+  CachePositionStats(Allies, AllyStats, False);
   BestShip := nil;
   BestShipScore := 0;
   for I := 0 to Allies.Count - 1 do
