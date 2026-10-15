@@ -334,8 +334,12 @@ begin
   Count := GamePresentedFrames - Frames;
   Format := DefaultFormatSettings;
   Format.DecimalSeparator := '.';
-  Result := SysUtils.Format('frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms',
-      [Count, Seconds, Count / Max(Seconds, 0.001), GameLongestPresentInterval * 1000 / Frequency], Format);
+  Result :=
+      SysUtils.Format(
+          'frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms',
+          [Count, Seconds, Count / Max(Seconds, 0.001), GameLongestPresentInterval * 1000 / Frequency],
+          Format
+      );
 end;
 
 procedure LogGameVideo(const Text: UnicodeString);
