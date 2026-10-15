@@ -362,6 +362,12 @@ uses
   aTranclucator,
   ab_MainForm;
 
+var
+  // Presentation statistics of the turn film being shown, logged when it ends.
+  FilmStatsCounter, FilmStatsFrames: QWord;
+  FilmStatsTurn: Integer;
+  FilmStatsCombat: Boolean;
+
 type
   // A marker follows a world point, but its child draws in enlarged UI pixels.
   // Scaling the image directly would also scale its position and camera offset.
@@ -6802,6 +6808,9 @@ begin
   SpaceProcess.ActionRange := SecondaryFilm.RadarRange;
   SpaceProcess.ActionColor := CurrentPixelFormat.PackRgbBytes(0, 255, 0);
   MainPanel.SetDateRange(SecondaryFilm.Turn, SecondaryFilm.Turn + 1);
+  FilmStatsTurn := SecondaryFilm.Turn;
+  FilmStatsCombat := SecondaryFilm.PlayerCombatRecorded;
+  StartGameFrameStats(FilmStatsCounter, FilmStatsFrames);
   if SecondaryFilm.PlayerCombatRecorded and not BattleMusicSelected and not DoNotChangeMusicInBattle then
   begin
     if not MusicInSpaceEnabled then
@@ -6852,6 +6861,10 @@ end;
 procedure TfStarMap.StopTurnFilm(StopTurnProcessing: Boolean);
 begin
   DisplayedFilmObject := nil;
+  if Mode = smmTurnFilm then
+    LogGameMessage(gllInfo, 'performance', 'Turn film; turn=' + IntToStr(FilmStatsTurn)
+        + '; player combat=' + BoolToStr(FilmStatsCombat, 'yes', 'no') + '; '
+        + DescribeGameFrameStats(FilmStatsCounter, FilmStatsFrames));
   Mode := smmInactive;
   (GetByName('PM_Break') as TGraphButtonGI).SetDisabled(True);
   if StopTurnProcessing and ContinueTurnCalculation then
