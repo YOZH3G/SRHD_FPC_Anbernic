@@ -87,6 +87,11 @@ function GameMessageBox(const Text, Title: UnicodeString; Options: Cardinal): In
 procedure ShowGameDialog(const Text: UnicodeString);
 function GameMessagesPending: Boolean;
 procedure CancelGamePointerInput;
+// Touch overlays (Android, iOS) and handheld gamepads (Anbernic, TrimUI) steer
+// arcade combat through WM_GAME_ARCADE_INPUT. Handheld gamepads also have
+// their own key layout there; see platform/linux/ANBERNIC.md.
+function GameWindowHasArcadeControls: Boolean;
+function GameWindowHasGamepadArcadeLayout: Boolean;
 procedure SetGameArcadeControls(Flags: Integer);
 // Presentation statistics since StartGameFrameStats, for the game log.
 procedure StartGameFrameStats(out Counter, Frames: QWord);
@@ -177,6 +182,17 @@ var
   HasPendingActivation: Boolean;
   PendingActivation: Cardinal;
   ArcadeControls: Cardinal;
+{$IFDEF SRHD_ANBERNIC}
+  // gptokeyb turns the D-pad and left stick into mouse motion and A/B into
+  // mouse buttons. During arcade combat they steer and fire instead, and the
+  // cursor stays where it was.
+  PadSteering: Boolean;
+  PadMouse: TPoint;
+  PadAxisX, PadAxisY: Double;
+  PadButtons, PadSentButtons: Cardinal;
+  PadSentAxes: Integer;
+  PadMotionTicks: QWord;
+{$ENDIF}
 
 {$IFDEF SWITCH}
 var
@@ -202,14 +218,99 @@ begin
   Result := CombinedMouseState(SDL_GetMouseState(X, Y));
 end;
 
+function GameWindowHasArcadeControls: Boolean;
+begin
+{$IFDEF SRHD_ANBERNIC}
+  Result := True;
+{$ELSE}
+  Result := GameWindowIsMobile;
+{$ENDIF}
+end;
+
+function GameWindowHasGamepadArcadeLayout: Boolean;
+begin
+{$IFDEF SRHD_ANBERNIC}
+  Result := True;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
+
+{$IFDEF SRHD_ANBERNIC}
+procedure SetPadSteering(Active: Boolean);
+begin
+  if PadSteering = Active then
+    Exit;
+  if Active then
+    GetGameMouse(PadMouse);
+  PadSteering := Active;
+  PadAxisX := 0;
+  PadAxisY := 0;
+  PadButtons := 0;
+  PadSentAxes := 0;
+  PadSentButtons := 0;
+  // SDL kept moving its pointer during combat; put it back under the cursor.
+  if not Active then
+    WarpGameMouse(PadMouse.X, PadMouse.Y);
+  LogGameMessage(gllInfo, 'input', 'Gamepad arcade combat controls: ' + BoolToStr(Active, 'on', 'off'));
+end;
+
+procedure AddPadMotion(X, Y: Integer);
+begin
+  // The D-pad repeats a fixed step every few milliseconds, the stick a step
+  // proportional to its deflection. Smooth X and Y, which may arrive in
+  // separate events, into one screen direction (Y up, as on touch sticks).
+  if GetTickCount64 - PadMotionTicks > 80 then
+  begin
+    PadAxisX := 0;
+    PadAxisY := 0;
+  end;
+  PadAxisX := PadAxisX * 0.5 + X;
+  PadAxisY := PadAxisY * 0.5 - Y;
+  PadMotionTicks := GetTickCount64;
+end;
+
+function PollPadSteering(var Message: TGameMessage): Boolean;
+var
+  Magnitude, Scale: Double;
+  Axes: Integer;
+begin
+  // gptokeyb sends no event on release; the repeats just stop.
+  if GetTickCount64 - PadMotionTicks > 80 then
+  begin
+    PadAxisX := 0;
+    PadAxisY := 0;
+  end;
+  Axes := 0;
+  Magnitude := Sqrt(Sqr(PadAxisX) + Sqr(PadAxisY));
+  if Magnitude >= 0.5 then
+  begin
+    // A held D-pad direction settles at twice its step (5): full thrust.
+    Scale := Min(100, Magnitude * 100 / 8) / Magnitude;
+    Axes := (Round(PadAxisX * Scale) and $FFFF) or (Round(PadAxisY * Scale) shl 16);
+  end;
+  Result := (Axes <> PadSentAxes) or (PadButtons <> PadSentButtons);
+  if not Result then
+    Exit;
+  PadSentAxes := Axes;
+  PadSentButtons := PadButtons;
+  Message.Message := WM_GAME_ARCADE_INPUT;
+  Message.WParam := PadButtons;
+  Message.LParam := Axes;
+end;
+{$ENDIF}
+
 procedure SetGameArcadeControls(Flags: Integer);
 var
   Value: AnsiString;
 begin
-  if not GameWindowIsMobile or (Integer(ArcadeControls and $FF) = Flags) then
+  if not GameWindowHasArcadeControls or (Integer(ArcadeControls and $FF) = Flags) then
     Exit;
   // Each visibility/group change invalidates queued input from the old overlay.
   ArcadeControls := ((ArcadeControls + $100) and $7FFFFF00) or Cardinal(Flags);
+{$IFDEF SRHD_ANBERNIC}
+  SetPadSteering(Flags and 1 <> 0);
+{$ENDIF}
   Value := AnsiString(UIntToStr(ArcadeControls));
   SDL_SetHint('SRHD_ARCADE_CONTROLS', PAnsiChar(Value));
 end;
@@ -1127,6 +1228,10 @@ begin
       Message.WParam := Message.WParam or (Cardinal(Word(Step * WHEEL_DELTA)) shl 16);
       Exit;
     end;
+{$IFDEF SRHD_ANBERNIC}
+    if PadSteering and PollPadSteering(Message) then
+      Exit;
+{$ENDIF}
     if HasPendingEvent then
     begin
       Event := PendingEvent;
@@ -1287,6 +1392,13 @@ begin
       begin
         if Event.Motion.Which = SDL_TOUCH_MOUSEID then
           Continue;
+{$IFDEF SRHD_ANBERNIC}
+        if PadSteering then
+        begin
+          AddPadMotion(Event.Motion.XRel, Event.Motion.YRel);
+          Continue;
+        end;
+{$ENDIF}
         TouchMouseActive := False;
         if (Event.Motion.XRel <> 0) or (Event.Motion.YRel <> 0) then
           PointerCursorActive := True;
@@ -1302,6 +1414,18 @@ begin
       begin
         if Event.Button.Which = SDL_TOUCH_MOUSEID then
           Continue;
+{$IFDEF SRHD_ANBERNIC}
+        // A (left button) fires the primary group, B (right) the secondary.
+        if PadSteering then
+        begin
+          if Event.Button.Button in [1, 3] then
+            if Event.Kind = SDL_MOUSEBUTTONDOWN then
+              PadButtons := PadButtons or (1 shl (Event.Button.Button shr 1))
+            else
+              PadButtons := PadButtons and not (1 shl (Event.Button.Button shr 1));
+          Continue;
+        end;
+{$ENDIF}
         TouchMouseActive := False;
         PointerCursorActive := True;
         case Event.Button.Button of
@@ -1485,6 +1609,13 @@ begin
     Point := TouchMouse;
     Exit;
   end;
+{$IFDEF SRHD_ANBERNIC}
+  if PadSteering then
+  begin
+    Point := PadMouse;
+    Exit;
+  end;
+{$ENDIF}
   if (GameSDLWindow <> nil) and DesktopMouseAvailable then
   begin
     // The original GetCursorPos + ScreenToClient also works outside the window.

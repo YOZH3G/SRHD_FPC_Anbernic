@@ -84,6 +84,21 @@ focused field. While it is open:
 The keyboard respects each field's length and character limits. It is on by
 default in PortMaster; manual launches use `--on-screen-keyboard`.
 
+### Arcade combat
+
+During arcade combat the buttons fly the ship and the cursor stays put:
+
+| Button | Action |
+| --- | --- |
+| D-pad / left stick | fly in that direction |
+| Right stick | thrust/reverse and turn, like the arrow keys |
+| A | primary weapons |
+| B / X / R2 | secondary weapons |
+| L2 | next primary weapon |
+| Y | autopilot on/off |
+| Start / R1 | pause; the cursor works again while paused |
+| Select | leave the battle |
+
 ## Resolution and renderer
 
 The minimum internal resolution is **800×600**: set `VideoMode=800,600` in
