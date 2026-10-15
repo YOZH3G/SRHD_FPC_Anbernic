@@ -38,6 +38,11 @@ def main():
         help="Run on a firmware root filesystem and its own SDL instead of the SDK.",
     )
     parser.add_argument(
+        "--firmware-library-dirs",
+        help="Colon-separated firmware library directories, relative to --firmware-root "
+        "(default: the Debian multiarch directories).",
+    )
+    parser.add_argument(
         "--package-dir",
         type=Path,
         help="Packaged spacerangershd directory to test instead of the build output.",
@@ -75,8 +80,9 @@ def main():
         # Firmware SDL comes from the multiarch directory, as the launchers arrange.
         libraries = str(package / "lib" / args.arch)
     game_log = profile / "########.log"
+    firmware_dirs = (args.firmware_library_dirs or f"usr/lib/{triple}:lib/{triple}").split(":")
     variables = {
-        "LD_LIBRARY_PATH": f"{libraries}:{sdk}/usr/lib/{triple}:{sdk}/lib/{triple}",
+        "LD_LIBRARY_PATH": ":".join([libraries, *(f"{sdk}/{folder}" for folder in firmware_dirs)]),
         "LD_PRELOAD": str(args.preload.resolve()),
         "SDL_VIDEODRIVER": args.video_driver,
         "SDL_AUDIODRIVER": "dummy",

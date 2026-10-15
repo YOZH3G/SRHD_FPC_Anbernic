@@ -3,7 +3,7 @@
 # Space Rangers HD — Anbernic Linux / FPC Port
 
 An unofficial Free Pascal port of **Space Rangers HD: A War Apart** for Anbernic
-Linux handhelds, with a built-in Russian/English on-screen keyboard and a UI
+and TrimUI Linux handhelds, with a built-in Russian/English on-screen keyboard and a UI
 adapted to 800×600. Supply game assets from your own licensed copy; downloads
 contain the port only.
 
@@ -26,6 +26,7 @@ Choose your installed firmware first, then check the model:
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
+| TrimUI stock or CrossMix-OS | TrimUI Smart Pro, Smart Pro S, Brick, Brick Pro | `SpaceRangersHD-TrimUI.zip` | AArch64 |
 
 RG351P/M on ArkOS require a compatible community release. The original
 RG35XX 2022/2023, 32-bit stock firmware and Android are not covered by these packages.
@@ -49,6 +50,11 @@ Extract `SpaceRangersHD-H700-StockOS.zip` into `Roms/APPS` on the games card,
 copy the game assets into `Roms/APPS/spacerangershd/game/` and launch
 **Space Rangers HD** from the Apps section. See the
 [full instructions](platform/linux/ANBERNIC.md) (Russian).
+
+**TrimUI (stock firmware or CrossMix-OS):** PortMaster is not needed. Extract
+`SpaceRangersHD-TrimUI.zip` into the SD card root, copy the game assets into
+`Apps/SpaceRangersHD/spacerangershd/game/` and launch **Space Rangers HD** from
+the Apps section.
 
 Settings and saves live in `spacerangershd/profile/`; the launcher log is
 `spacerangershd/log.txt`. Back up `game/` and `profile/` before updating and do
@@ -128,7 +134,9 @@ Every release is rebuilt from source. The final binaries for both architectures
 pass the main menu, a new game, station, hangar, takeoff and 20 seconds in space
 under QEMU; glibc imports no newer than 2.29 and launcher scenarios are checked
 too. The stock-firmware package also runs that scenario on the system libraries
-of the stock firmware images for all 11 H700 models. Release notes list the SHA256 of the verified binaries. RU/EN input and
+of the stock firmware images for all 11 H700 models, and the TrimUI package on
+the Smart Pro S firmware libraries and the Smart Pro, Brick and Brick Pro root
+filesystems. Release notes list the SHA256 of the verified binaries. RU/EN input and
 the 800×600 screens were verified by dedicated scenarios when introduced.
 
 Not verified: physical handhelds, their GPUs and display rotation, sound and

@@ -159,7 +159,13 @@ python tools/tests/anbernic_runtime.py --arch aarch64 --scenario flight \
   --firmware-root /mnt/stock-rootfs --package-dir /path/to/H700-StockOS/spacerangershd
 ```
 
-A release contains exactly the six ZIPs and `SHA256SUMS`; game assets and
+The TrimUI package (`SpaceRangersHD-TrimUI.zip`) is checked the same way. Its
+firmwares keep SDL elsewhere, so name the library directories inside the rootfs:
+`--firmware-library-dirs usr/lib:lib` for the Smart Pro S. The Smart Pro, Brick
+and Brick Pro SDL has no `dummy` video driver; run their rootfs with a test SDL
+directory first in that list.
+
+A release contains exactly the seven ZIPs and `SHA256SUMS`; game assets and
 saves are never committed or published.
 
 ## Nintendo Switch (homebrew)

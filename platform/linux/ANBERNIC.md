@@ -1,4 +1,4 @@
-# Space Rangers HD FPC на Anbernic Linux
+# Space Rangers HD FPC на Anbernic и TrimUI (Linux)
 
 Это экспериментальные пакеты. Двоичные файлы ARMHF и AArch64 каждого релиза
 проходят под QEMU с ресурсами игры сценарий от меню до вылета в космос.
@@ -15,6 +15,7 @@
 | RG351P/M/V/MP | ArkOS: `SpaceRangersHD-Rockchip-ArkOS.zip`; AmberELEC: `SpaceRangersHD-Rockchip-AmberELEC.zip` |
 | RG552 | AmberELEC: `SpaceRangersHD-Rockchip-AmberELEC.zip`; ROCKNIX: `SpaceRangersHD-Rockchip-ROCKNIX.zip` |
 | RG503 | ArkOS: `SpaceRangersHD-Rockchip-ArkOS.zip`; ROCKNIX: `SpaceRangersHD-Rockchip-ROCKNIX.zip` |
+| TrimUI Smart Pro, Smart Pro S, Brick, Brick Pro | стоковая прошивка TrimUI или CrossMix-OS: `SpaceRangersHD-TrimUI.zip` |
 
 Устанавливайте прошивку, предназначенную для вашей модели. В пакет muOS входят
 ARMHF и AArch64; запуск выбирает вариант по разрядности пользовательской системы.
@@ -129,6 +130,46 @@ Mali в `/usr/lib/aarch64-linux-gnu`, SDL 2.0.12 в `/usr/lib`, PortMaster 6.55.
 
 На настоящих приставках экран Mali, звук и кнопки пока не проверены. Если
 игра не запускается, пришлите `Roms/APPS/spacerangershd/log.txt`.
+
+## TrimUI: стоковая прошивка и CrossMix-OS
+
+Пакет `SpaceRangersHD-TrimUI.zip` рассчитан на TrimUI Smart Pro, Smart Pro S,
+Brick и Brick Pro со стоковой прошивкой или с
+[CrossMix-OS](https://github.com/cizia64/CrossMix-OS). PortMaster не нужен:
+игра запускается из раздела «Приложения» (Apps), управление обеспечивает
+gptokeyb из пакета. Оригинальный TrimUI Smart (Model S) слишком слаб и не
+поддерживается.
+
+1. Распакуйте архив в корень SD-карты: появится папка `Apps/SpaceRangersHD`.
+2. Скопируйте ресурсы игры в `Apps/SpaceRangersHD/spacerangershd/game/`, как в
+   шаге 4 установки выше.
+3. Откройте раздел «Приложения» и запустите **Space Rangers HD**.
+
+Журнал запуска — `Apps/SpaceRangersHD/spacerangershd/log.txt`. Select+Start
+закрывает игру.
+
+Что учитывает лаунчер:
+
+- На Smart Pro, Brick и Brick Pro SDL 2.30.8 лежит в `/usr/trimui/lib`, на
+  Smart Pro S SDL 2.32.6 — в `/usr/lib`. Лаунчер берёт ту, что есть.
+- CrossMix ставит перед ними свои библиотеки, среди них `libEGL` от GLVND.
+  Лаунчер убирает их из пути и передаёт SDL библиотеки EGL и GLES прошивки
+  (PowerVR или Mali) через `SDL_VIDEO_EGL_DRIVER` и `SDL_VIDEO_GL_DRIVER`.
+- Встроенный геймпад `TRIMUI Player1` (его создаёт `trimui_inputd`) выглядит
+  для системы как контроллер Xbox 360, и SDL знает его раскладку сама.
+- На Smart Pro, Brick и Brick Pro приложения запускаются через BusyBox `sh`,
+  поэтому лаунчер написан на POSIX sh. Перед стартом игры он ждёт секунду,
+  чтобы udev успел зарегистрировать клавиатуру и мышь gptokeyb.
+- Системного курсора у драйвера SDL нет, игра рисует свой.
+
+Проверены официальные прошивки: Smart Pro 1.1.1, Brick 1.1.1, Brick Pro 1.1.1
+(Tina Linux, glibc 2.33, SDL 2.30.8 с драйвером `mali` поверх PowerVR) и
+Smart Pro S 1.0.1 (Buildroot, glibc 2.33, SDL 2.32.6 с KMSDRM и Mali). На всех
+четырёх пробник платформы загружает SDL прошивки, gptokeyb запускается. На
+библиотеках Smart Pro S под QEMU игра проходит меню, новую игру, станцию, ангар
+и вылет. В SDL остальных трёх нет драйвера `dummy`, поэтому их rootfs
+проверены тем же сценарием с тестовой SDL вместо системной. Экран, звук и
+кнопки на настоящих TrimUI пока не проверены.
 
 ## Управление
 

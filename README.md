@@ -3,7 +3,7 @@
 # Space Rangers HD — Anbernic Linux / FPC Port
 
 Неофициальный Free Pascal-порт **«Космических рейнджеров HD: Революция»**
-для портативных приставок Anbernic на Linux, с экранной клавиатурой RU/EN
+для портативных приставок Anbernic и TrimUI на Linux, с экранной клавиатурой RU/EN
 и интерфейсом, адаптированным к 800×600. Для запуска нужны ресурсы вашей
 лицензионной копии игры: в архивы входит только порт.
 
@@ -26,6 +26,7 @@
 | ArkOS | RG353V/VS/M, RG351P/M/V/MP, RG503 | `SpaceRangersHD-Rockchip-ArkOS.zip` | AArch64 |
 | AmberELEC | RG351P/M/V/MP, RG552 | `SpaceRangersHD-Rockchip-AmberELEC.zip` | AArch64 |
 | ROCKNIX | RG353P/PS/V/VS/M, RG552, RG503 | `SpaceRangersHD-Rockchip-ROCKNIX.zip` | AArch64 |
+| Стоковая TrimUI или CrossMix-OS | TrimUI Smart Pro, Smart Pro S, Brick, Brick Pro | `SpaceRangersHD-TrimUI.zip` | AArch64 |
 
 Для RG351P/M на ArkOS нужен подходящий выпуск сообщества. Оригинальный
 RG35XX 2022/2023, 32-битные стоковые прошивки и Android этими пакетами не охвачены.
@@ -49,6 +50,12 @@ RG35XX 2022/2023, 32-битные стоковые прошивки и Android �
 с играми, скопируйте ресурсы игры в `Roms/APPS/spacerangershd/game/`
 и запустите **Space Rangers HD** из раздела «Приложения». Подробности —
 в [инструкции](platform/linux/ANBERNIC.md#стоковая-прошивка-anbernic-и-stock-os-mod).
+
+**TrimUI (стоковая прошивка или CrossMix-OS):** PortMaster не нужен.
+Распакуйте `SpaceRangersHD-TrimUI.zip` в корень SD-карты, скопируйте ресурсы
+игры в `Apps/SpaceRangersHD/spacerangershd/game/` и запустите
+**Space Rangers HD** из раздела «Приложения». Подробности —
+в [инструкции](platform/linux/ANBERNIC.md#trimui-стоковая-прошивка-и-crossmix-os).
 
 Настройки и сохранения — в `spacerangershd/profile/`, журнал запуска —
 `spacerangershd/log.txt`. Перед обновлением сохраните папки `game/` и `profile/`
@@ -129,7 +136,9 @@ SDL-рендерер оптимизирован без изменения раз
 архитектур под QEMU проходят главное меню, создание новой игры, станция, ангар,
 вылет и 20 секунд космоса; проверяются также импорт символов glibc не новее 2.29
 и сценарии launcher. Пакет для стоковой прошивки дополнительно проходит этот
-сценарий на системных библиотеках образов стоковой прошивки всех 11 моделей H700. Описание релиза содержит SHA256 проверенных бинарников.
+сценарий на системных библиотеках образов стоковой прошивки всех 11 моделей H700,
+пакет TrimUI — на библиотеках прошивки Smart Pro S и на rootfs Smart Pro, Brick
+и Brick Pro. Описание релиза содержит SHA256 проверенных бинарников.
 Ввод RU/EN и экраны 800×600 проверены отдельными сценариями при их разработке.
 
 Не проверены: физические приставки, их GPU и поворот дисплея, звук и кнопки,

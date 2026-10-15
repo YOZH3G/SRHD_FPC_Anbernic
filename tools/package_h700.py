@@ -33,18 +33,44 @@ def package(
     directory: str | None = None,
 ) -> Path:
     arches = ("armhf", "aarch64") if firmware == "muOS" else ("aarch64",)
-    stock = firmware == "StockOS"
-    staging = output / f"{family}-{firmware}"
+    trimui = firmware == "TrimUI"
+    # Firmwares without PortMaster: the package brings its own gptokeyb.
+    stock = firmware in ("StockOS", "TrimUI")
+    bundle_name = "TrimUI" if trimui else f"{family}-{firmware}"
+    staging = output / bundle_name
     if staging.exists():
         raise FileExistsError(f"Remove or choose another staging directory: {staging}")
-    port = staging / "spacerangershd"
+    # TrimUI's MainUI lists Apps/<name>/config.json; the archive unpacks to the card root.
+    app = staging / "Apps/SpaceRangersHD" if trimui else staging
+    port = app / "spacerangershd"
     port.mkdir(parents=True)
-    launcher = staging / "Space Rangers HD.sh"
+    launcher = app / ("launch.sh" if trimui else "Space Rangers HD.sh")
     shutil.copy2(
-        ROOT / "platform/linux" / ("Space Rangers HD Stock.sh" if stock else "Space Rangers HD PortMaster.sh"),
+        ROOT / "platform/linux" / (
+            "Space Rangers HD TrimUI.sh" if trimui
+            else "Space Rangers HD Stock.sh" if stock
+            else "Space Rangers HD PortMaster.sh"
+        ),
         launcher,
     )
     launcher.chmod(0o755)
+    if trimui:
+        (app / "config.json").write_text(
+            json.dumps(
+                {
+                    "label": "Space Rangers HD",
+                    # Stock MainUI reads icontop; CrossMix reads icon and iconsel.
+                    "icontop": "icon.png",
+                    "icon": "icon.png",
+                    "iconsel": "icon.png",
+                    "launch": "launch.sh",
+                    "description": "Space Rangers HD FPC",
+                },
+                indent=4,
+            )
+            + "\n"
+        )
+        shutil.copy2(ROOT / "platform/linux/trimui-icon.png", app / "icon.png")
     shutil.copy2(ROOT / "platform/linux/rangers.gptk", port / "rangers.gptk")
     licenses = port / "licenses"
     licenses.mkdir()
@@ -122,10 +148,13 @@ def package(
         directory = {
             "muOS": "/mnt/mmc/ROMS/Ports",
             "StockOS": "Roms/APPS",
+            "TrimUI": "корень SD-карты",
         }.get(firmware, "/userdata/roms/ports")
     model_note = (
         "RG35XX 2024 — версия с H700, не оригинальный RG35XX 2022/2023.\n"
         if family == "H700"
+        else "Оригинальный TrimUI Smart (Model S) не поддерживается.\n"
+        if trimui
         else "Используйте прошивку, предназначенную для конкретной модели.\n"
     )
     storage_note = {
@@ -133,10 +162,14 @@ def package(
         "KNULLI": "",
         "StockOS": "   Это папка Roms/APPS на карте с играми (TF1 или TF2).\n"
         "   Игра появится в разделе «Приложения» (App Center).\n",
+        "TrimUI": "   Появится папка Apps/SpaceRangersHD; игра будет в разделе «Приложения» (Apps).\n",
     }.get(firmware, "   ArkOS: на второй карте /roms2/ports; ROCKNIX: также /storage/roms/ports.\n")
     architecture_note = (
         "В пакет muOS входят ARMHF и AArch64; выбор по разрядности userland.\n"
         if firmware == "muOS"
+        else "Подходит стоковая прошивка TrimUI и CrossMix-OS.\n"
+        "PortMaster не нужен: управление обеспечивает gptokeyb из пакета.\n"
+        if trimui
         else "Подходит стоковая прошивка Anbernic и Stock OS Mod, только 64-битные.\n"
         "PortMaster не нужен: управление обеспечивает gptokeyb из пакета.\n"
         if stock
@@ -146,6 +179,9 @@ def package(
         "Стики не обязательны. RG28XX: экран 640x480, RG34XX SP: 720x480;\n"
         "кадр масштабируется в fullscreen с сохранением пропорций.\n"
         if family == "H700"
+        else "Smart Pro и Smart Pro S: экран 1280x720, Brick и Brick Pro: 1024x768;\n"
+        "кадр масштабируется в fullscreen с сохранением пропорций.\n"
+        if trimui
         else "Стики не обязательны. Изображение масштабируется в fullscreen.\n"
     )
     (port / "game").mkdir()
@@ -153,18 +189,29 @@ def package(
         "Скопируйте сюда ресурсы игры; см. ../README.txt.\n"
     )
     (port / "README.txt").write_text(
-        f"Space Rangers HD FPC — {family} / {firmware}, экспериментальная сборка\n\n"
+        (
+            "Space Rangers HD FPC — TrimUI (стоковая прошивка и CrossMix-OS), "
+            if trimui
+            else f"Space Rangers HD FPC — {family} / {firmware}, "
+        )
+        + "экспериментальная сборка\n\n"
         "Модели для проверки: " + ", ".join(models) + ".\n" + model_note + "\n"
         "Установка:\n"
         + (
-            "1. Установите 64-битную стоковую прошивку или Stock OS Mod для своей модели.\n"
+            "1. Обновите стоковую прошивку TrimUI или установите CrossMix-OS.\n"
+            if trimui
+            else "1. Установите 64-битную стоковую прошивку или Stock OS Mod для своей модели.\n"
             if stock
             else "1. Установите актуальную прошивку для своей модели и обновите PortMaster.\n"
         )
         + f"2. Распакуйте содержимое архива в {directory}.\n"
         + storage_note
-        + "3. Скопируйте в spacerangershd/game ресурсы оригинальной игры:\n"
-        "   INSTALL.TXT, INSTALL_ENGLISH.TXT, INSTALL_RUSSIAN.TXT, CFG.TXT,\n"
+        + (
+            "3. Скопируйте в Apps/SpaceRangersHD/spacerangershd/game ресурсы игры:\n"
+            if trimui
+            else "3. Скопируйте в spacerangershd/game ресурсы оригинальной игры:\n"
+        )
+        + "   INSTALL.TXT, INSTALL_ENGLISH.TXT, INSTALL_RUSSIAN.TXT, CFG.TXT,\n"
         "   CFG/, DATA/*.pkg; при необходимости Mods/. Сохраняйте регистр имён.\n"
         + (
             "4. Запустите Space Rangers HD из раздела «Приложения».\n\n"
@@ -193,7 +240,9 @@ def package(
         "  getconf LONG_BIT\n"
         "  getconf GNU_LIBC_VERSION\n"
         + (
-            '  LD_LIBRARY_PATH="$PWD/lib/aarch64:/usr/lib/aarch64-linux-gnu" ./check-platform.aarch64\n\n'
+            '  LD_LIBRARY_PATH="$PWD/lib/aarch64:/usr/trimui/lib:/usr/lib" ./check-platform.aarch64\n\n'
+            if trimui
+            else '  LD_LIBRARY_PATH="$PWD/lib/aarch64:/usr/lib/aarch64-linux-gnu" ./check-platform.aarch64\n\n'
             if stock
             else '  LD_LIBRARY_PATH="$PWD/lib/aarch64" ./check-platform.aarch64\n'
             "  Для 32-битной muOS замените aarch64 на armhf.\n\n"
@@ -245,7 +294,7 @@ def package(
         )
         + "\n"
     )
-    archive = output / f"SpaceRangersHD-{family}-{firmware}.zip"
+    archive = output / f"SpaceRangersHD-{bundle_name}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
         for path in sorted(staging.rglob("*")):
             if path.is_file():

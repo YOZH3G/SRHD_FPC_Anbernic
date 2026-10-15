@@ -210,5 +210,108 @@ class StockLauncherTests(unittest.TestCase):
         self.assertNotIn("GPTOKEYB:", log)
 
 
+class TrimUILauncherTests(unittest.TestCase):
+    """Apps/SpaceRangersHD on TrimUI stock firmware and CrossMix-OS."""
+
+    def run_launcher(self, bits="64", assets=True, shell=("sh",), trimui_sdl=True, gpu=True):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            system = root / "usr/lib"
+            system.mkdir(parents=True)
+            sdl = root / "usr/trimui/lib"
+            sdl.mkdir(parents=True)
+            ((sdl if trimui_sdl else system) / "libSDL2-2.0.so.0").touch()
+            if gpu:
+                (system / "libEGL.so.1").touch()
+                (system / "libGLESv2.so.2").touch()
+            app = root / "Apps/SpaceRangersHD"
+            port = app / "spacerangershd"
+            (port / "game").mkdir(parents=True)
+            if assets:
+                (port / "game/INSTALL.TXT").touch()
+            (port / "lib/aarch64").mkdir(parents=True)
+            launch = app / "launch.sh"
+            shutil.copy2(ROOT / "platform/linux/Space Rangers HD TrimUI.sh", launch)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            scripts = {
+                fake_bin / "getconf": f'#!/bin/sh\necho "{bits}"\n',
+                port / "check-platform.aarch64": '#!/bin/sh\necho "PROBE:$LD_LIBRARY_PATH"\n',
+                port / "gptokeyb.aarch64": '#!/bin/sh\necho "GPTOKEYB:$*"\nsleep 5\n',
+                port / "Rangers.aarch64": '#!/bin/sh\nsleep 0.2\necho "EXEC:$0"\n'
+                'echo "ARGS:$*"\necho "CONTROLS:${SDL_GAMECONTROLLERCONFIG-unset}"\n'
+                'echo "GPU:$SDL_VIDEO_EGL_DRIVER,$SDL_VIDEO_GL_DRIVER"\nexit 23\n',
+            }
+            for path, text in scripts.items():
+                path.write_text(text)
+                path.chmod(0o755)
+            env = os.environ.copy()
+            # CrossMix exports its own libraries, a GLVND libEGL among them,
+            # and PortMaster's controller mapping.
+            env.update(
+                PATH=f"{fake_bin}:{env['PATH']}",
+                LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib",
+                SDL_GAMECONTROLLERCONFIG="crossmix-controller",
+                TRIMUI_SYSTEM_LIBRARY_DIR=str(system),
+                TRIMUI_SDL_LIBRARY_DIR=str(sdl),
+                TRIMUI_CONTROLS_DELAY="0",
+            )
+            for name in ("SDL_VIDEO_EGL_DRIVER", "SDL_VIDEO_GL_DRIVER"):
+                env.pop(name, None)
+            result = subprocess.run(
+                [*shell, str(launch)], cwd="/", env=env, capture_output=True, text=True
+            )
+            log = (port / "log.txt").read_text() if (port / "log.txt").exists() else ""
+            # gptokeyb must not outlive the game, or it keeps grabbing the pad in MainUI.
+            leftover = subprocess.run(
+                ["pgrep", "-f", str(port / "gptokeyb.aarch64")], capture_output=True
+            )
+            self.assertNotEqual(leftover.returncode, 0, "gptokeyb still running")
+            return result, log, str(root)
+
+    def test_menu_shell_starts_game_with_firmware_sdl_and_controls(self):
+        # Smart Pro, Brick and Brick Pro run apps with BusyBox sh.
+        shells = [("sh",), ("dash",), ("busybox", "sh"), ("bash",)]
+        for shell in (shell for shell in shells if shutil.which(shell[0])):
+            with self.subTest(shell=shell):
+                result, log, root = self.run_launcher(shell=shell)
+                self.assertEqual(result.returncode, 23, log + result.stderr)
+                self.assertIn("EXEC:./Rangers.aarch64", log)
+                self.assertIn("--fullscreen", log)
+                self.assertIn("--on-screen-keyboard", log)
+                self.assertIn("GPTOKEYB:-1 Rangers.aarch64 -c", log)
+                self.assertIn("CONTROLS:unset", log)
+                libraries = next(line for line in log.splitlines() if line.startswith("PROBE:"))
+                self.assertEqual(
+                    libraries,
+                    f"PROBE:{root}/Apps/SpaceRangersHD/spacerangershd/lib/aarch64:"
+                    f"{root}/usr/trimui/lib:{root}/usr/lib:/lib",
+                )
+                self.assertIn(f"GPU:{root}/usr/lib/libEGL.so.1,{root}/usr/lib/libGLESv2.so.2\n", log)
+
+    def test_smart_pro_s_sdl_in_system_directory(self):
+        result, log, root = self.run_launcher(trimui_sdl=False)
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        self.assertIn(f"SDL: {root}/usr/lib\n", log)
+        self.assertIn(f"PROBE:{root}/Apps/SpaceRangersHD/spacerangershd/lib/aarch64:{root}/usr/lib:", log)
+
+    def test_without_gpu_libraries_sdl_chooses(self):
+        result, log, _ = self.run_launcher(gpu=False)
+        self.assertEqual(result.returncode, 23, log + result.stderr)
+        self.assertIn("GPU:,\n", log)
+
+    def test_rejects_32_bit_firmware(self):
+        result, log, _ = self.run_launcher(bits="32")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("64-bit TrimUI firmware", log)
+        self.assertNotIn("EXEC:", log)
+
+    def test_missing_assets(self):
+        result, log, _ = self.run_launcher(assets=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Copy the original game resources", log)
+        self.assertNotIn("GPTOKEYB:", log)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -25,11 +25,18 @@ STOCK_MODELS = [
 ]
 
 
+# Firmware images checked: Smart Pro 1.1.1, Brick 1.1.1, Brick Pro 1.1.1 (glibc 2.33,
+# SDL 2.30.8, PowerVR) and Smart Pro S 1.0.1 (glibc 2.33, SDL 2.32.6, Mali).
+TRIMUI_MODELS = ["TrimUI Smart Pro", "TrimUI Brick", "TrimUI Brick Pro", "TrimUI Smart Pro S"]
+
+
 TARGETS = [
     ("muOS", "H700", MODELS, "/mnt/mmc/ROMS/Ports"),
     ("KNULLI", "H700", MODELS, "/userdata/roms/ports"),
     # Anbernic's own 64-bit firmware and Stock OS Mod, started from the Apps menu.
     ("StockOS", "H700", STOCK_MODELS, "Roms/APPS"),
+    # TrimUI stock firmware and CrossMix-OS, started from the Apps menu.
+    ("TrimUI", "A133P/A523", TRIMUI_MODELS, None),
     (
         "ArkOS",
         "Rockchip",
