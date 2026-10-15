@@ -72,6 +72,9 @@ uses
   aKling,
   Types,
   SysUtils,
+{$IFDEF UNIX}
+  BaseUnix,
+{$ENDIF}
   EC_File,
   EC_Str,
   EC_BlockPar,
@@ -114,6 +117,38 @@ uses
   fRuinsTalk,
   fInfo,
   fJump;
+
+// Some handheld SD card drivers (TrimUI stock firmware) reject non-ASCII file
+// names with EINVAL. Transliterate Russian letters; other characters become _.
+function AsciiSaveFileName(const Path: WideString): WideString;
+const
+  // U+0430..U+044F, in alphabetical order without Yo.
+  Latin: array[0..31] of string = ('a', 'b', 'v', 'g', 'd', 'e', 'zh', 'z', 'i', 'y', 'k', 'l', 'm', 'n', 'o', 'p',
+      'r', 's', 't', 'u', 'f', 'kh', 'ts', 'ch', 'sh', 'shch', '', 'y', '', 'e', 'yu', 'ya');
+var
+  Index, Code, Start: Integer;
+  Text: string;
+begin
+  Start := Length(Path);
+  while (Start > 0) and (Path[Start] <> '\') do
+    Dec(Start);
+  Result := Copy(Path, 1, Start);
+  for Index := Start + 1 to Length(Path) do
+  begin
+    Code := Ord(Path[Index]);
+    if Code < $80 then
+      Text := Char(Code)
+    else if (Code = $401) or (Code = $451) then
+      Text := 'e'
+    else if (Code >= $410) and (Code <= $44F) then
+      Text := Latin[(Code - $410) mod 32]
+    else
+      Text := '_';
+    if (Text <> '') and (((Code >= $410) and (Code <= $42F)) or (Code = $401)) then
+      Text[1] := UpCase(Text[1]);
+    Result := Result + WideString(Text);
+  end;
+end;
 
 procedure TSaver.Execute;
 var
@@ -185,7 +220,20 @@ begin
       if FileExists(NativeGamePath(AnsiString(TargetName))) then
         SysUtils.DeleteFile(NativeGamePath(TargetName));
       if not RenameFile(NativeGamePath(SourceName), NativeGamePath(TargetName)) then
-        RaiseLastOSError;
+      begin
+{$IFDEF UNIX}
+        if (GetLastOSError <> ESysEINVAL) or (AsciiSaveFileName(TargetName) = TargetName) then
+{$ENDIF}
+          RaiseLastOSError;
+        LogGameMessage(gllWarning, 'save', 'The file system rejected "' + ExtractFileName(NativeGamePath(TargetName))
+            + '"; saving as "' + ExtractFileName(NativeGamePath(AsciiSaveFileName(TargetName))) + '"');
+        TargetName := AsciiSaveFileName(TargetName);
+        FileName := TargetName;
+        if FileExists(NativeGamePath(AnsiString(TargetName))) then
+          SysUtils.DeleteFile(NativeGamePath(TargetName));
+        if not RenameFile(NativeGamePath(SourceName), NativeGamePath(TargetName)) then
+          RaiseLastOSError;
+      end;
       LogGameMessage(
           gllInfo,
           'save',
