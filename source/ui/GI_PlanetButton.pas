@@ -77,7 +77,7 @@ begin
   if not AllowsTouchActivation then
     Exit;
   inherited ProcessLeftButtonDown(KeyState, Point);
-  DispatchNamedEvent(1, Point.X, Point.Y);
+  DispatchNamedEvent(nceButtonDown, Point.X, Point.Y);
 end;
 
 procedure TPlanetButtonGI.LoadFromConfigPath(const Path: WideString);

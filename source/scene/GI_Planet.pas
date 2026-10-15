@@ -756,8 +756,6 @@ var
   Locked: TD3DLockedRect;
   Index: Integer;
   Texture: IDirect3DTexture9;
-  // Native frame retains eight unused bytes; their original types are unknown.
-  UnusedLocals: array[0..7] of Byte;
 begin
   HasCloud1 := Cloud1ImageCache.CacheKey <> '';
   HasCloud2 := Cloud2ImageCache.CacheKey <> '';

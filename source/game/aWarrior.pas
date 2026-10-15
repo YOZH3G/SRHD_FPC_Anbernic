@@ -203,7 +203,7 @@ begin
         Config.GetParamValue(NextRandomIntRange(LastNameIndex, FirstNameIndex, RandomState))
             + ' '
             + '-'
-            + IntToStr(Cardinal(Id) mod 100 + 1)
+            + IntToStr(Id mod 100 + 1)
             + '-';
   end;
   if Length(GetName) = 0 then
@@ -224,7 +224,7 @@ begin
         Config.GetParamValue(NextRandomIntRange(LastNameIndex, FirstNameIndex, RandomState))
             + ' '
             + '-'
-            + IntToStr(Cardinal(Id) mod 100 + 1)
+            + IntToStr(Id mod 100 + 1)
             + '-';
   end;
   if GetPlayer <> nil then
@@ -1165,6 +1165,9 @@ begin
 end;
 
 procedure TWarrior.AssignWeaponTargetsInStar;
+const
+  MissileShotTypes = [wstTorpedo..wstRocket];
+  AreaOrMissileShotTypes = [wstAreaDamage..wstRocket];
 var
   I, J, Assigned: Integer;
   Ship: TShip;
@@ -1199,8 +1202,7 @@ begin
             for J := 1 to WeaponCount do
             begin
               Weapon := Weapons[J];
-              if (not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket])
-                      or (Weapon.Ammo <> 0))
+              if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
                   and (Weapon.Target = nil)
                   and IsEquipmentUsable(Weapon) then
                 if GetWeaponRange(Weapon) >= Distance then
@@ -1243,8 +1245,7 @@ begin
           for J := 1 to WeaponCount do
           begin
             Weapon := Weapons[J];
-            if (not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket])
-                    or (Weapon.Ammo <> 0))
+            if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
                 and (Weapon.Target = nil)
                 and IsEquipmentUsable(Weapon) then
               if PointDistanceSquared(Position, EnemyShip.Position)
@@ -1280,7 +1281,7 @@ begin
                 begin
                   Stage := 36;
                   Weapon := Weapons[J];
-                  if not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket])
+                  if not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes)
                       or (Weapon.Ammo <> 0) then
                   begin
                     Stage := 37;
@@ -1310,7 +1311,7 @@ begin
           for J := 1 to WeaponCount do
           begin
             Weapon := Weapons[J];
-            if not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket])
+            if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes)
                 and (Weapon.Target = nil)
                 and IsEquipmentUsable(Weapon) then
               if PointDistanceSquared(Position, Missile.Position)
@@ -1335,7 +1336,7 @@ begin
             begin
               Weapon := Weapons[J];
               // Native asteroid targeting can overwrite an existing assignment.
-              if not (Weapon.GetWeaponInfo^.ShotType in [wstAreaDamage..wstRocket])
+              if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
                   and IsEquipmentUsable(Weapon) then
                 if Sqr(GetWeaponRange(Weapon)) >= Distance then
                 begin
@@ -1363,7 +1364,7 @@ begin
                 for J := 1 to WeaponCount do
                 begin
                   Weapon := Weapons[J];
-                  if not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket])
+                  if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes)
                       and (Weapon.Target = nil)
                       and IsEquipmentUsable(Weapon) then
                     if PointDistanceSquared(Position, Item.Position)
@@ -1385,7 +1386,7 @@ begin
         for J := 1 to WeaponCount do
         begin
           Weapon := Weapons[J];
-          if (not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+          if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
               and (Weapon.Target = nil)
               and IsEquipmentUsable(Weapon) then
             if PointDistanceSquared(Position, GetPlayer.Position)
@@ -1769,15 +1770,13 @@ begin
     begin
       if EnemyShip.CurrentPlanet <> nil then
       begin
-        if (EnemyShip is TRanger)
-            and (Cardinal((EnemyShip as TRanger).PrisonTermRemaining) > 0) then
+        if (EnemyShip is TRanger) and ((EnemyShip as TRanger).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
           Exit;
         end;
-        if (EnemyShip is TPirate)
-            and (Cardinal((EnemyShip as TPirate).PrisonTermRemaining) > 0) then
+        if (EnemyShip is TPirate) and ((EnemyShip as TPirate).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
@@ -2194,7 +2193,7 @@ begin
         NearbyThreat := 0;
         for J := 1 to Galaxy.Stars.Count div 5 do
         begin
-          NearbyStar := TObject(Star.StarDistances[J].Star) as TStar;
+          NearbyStar := Star.StarDistances[J].Star;
           if NearbyStar.ConstellationGraphIndex <> 20 then
             if NearbyStar.Status.CustomFaction <> '' then
               NearbyThreat := NearbyThreat + 5 / (J + 5)
@@ -2708,37 +2707,22 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * WarriorSkillBonusWeights[BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
             Result
                 + (WarriorSkillBonusWeights[BonusKind] * 0.05)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6);
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
         Result :=
-            Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -WarriorSkillBonusWeights[BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
             Result
                 + (WarriorSkillBonusWeights[BonusKind] * 0.03)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -2748,9 +2732,7 @@ begin
         Result
             * 0.01
             * (100 + SeededRandomIntRange(-30, 30, Seed + 131 * Ord(BonusKind)))
-            * RaceSkillEvaluationFactors[
-                PilotRace,
-                EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]]
+            * RaceSkillEvaluationFactors[PilotRace, EquipmentBonusSkills[BonusKind]]
   else
     Result := Result * 0.01 * (100 + SeededRandomIntRange(-10, 10, Seed + 131 * Ord(BonusKind)));
 end;

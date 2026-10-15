@@ -323,13 +323,11 @@ begin
     end
     else
       Result :=
-          Byte(
-                  RotatedImage.GetPaletteColor(
-                          RotatedImage.GetPixelIndex(
-                              Point.X - HitTestBounds.Left,
-                              Point.Y - HitTestBounds.Top
-                          ))
-                      shr 24)
+          RotatedImage
+                  .GetPaletteColor(
+                      RotatedImage
+                          .GetPixelIndex(Point.X - HitTestBounds.Left, Point.Y - HitTestBounds.Top))
+                  .A
               > 8;
   end;
 end;

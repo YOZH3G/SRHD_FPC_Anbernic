@@ -225,8 +225,8 @@ type
     PlayerCombatRecorded: Boolean;
     BackgroundImage: Integer;
     StarGenerationSeed: Cardinal;
-    InitialActivity: Integer;
-    FinalActivity: Integer;
+    InitialActivity: Cardinal;
+    FinalActivity: Cardinal;
     CameraAnchor: TPointF;
     ForceCameraMovement: Boolean;
     ObjectInfo: TObject;
@@ -409,7 +409,7 @@ begin
   Count := DataBuffers.Count;
   for I := 0 to Count - 1 do
   begin
-    Obj := TObject(DataBuffers[I]);
+    Obj := DataBuffers[I];
     Obj.Free;
   end;
   DataBuffers.Clear;
@@ -1323,7 +1323,8 @@ begin
           (Command.Obj.SceneObject as TGateSE).Close;
       efcSetGateState:
         if HasSceneObject(Command, TGateSE) then
-          (Command.Obj.SceneObject as TGateSE).SetState(PEFilmObjectCommand(Command).Value);
+          (Command.Obj.SceneObject as TGateSE)
+              .SetState(TGateState(PEFilmObjectCommand(Command).Value));
       efcSetGateSize:
         if HasSceneObject(Command, TGateSE) then
           (Command.Obj.SceneObject as TGateSE)
@@ -1357,9 +1358,7 @@ begin
               SoundManager.PlaySound(StringTable.GetTextAt(PEFilmObjectCommand(Command).Value));
       efcSetObjectStateBuffer:
         if HasSceneObject(Command) then
-          Command.Obj.SceneObject.LoadStateBuffer(
-              TBufEC(DataBuffers[PEFilmObjectCommand(Command).Value])
-          );
+          Command.Obj.SceneObject.LoadStateBuffer(DataBuffers[PEFilmObjectCommand(Command).Value]);
       efcPlayPickupSound:
         if HasSceneObject(Command) then
           if SoundInSpaceEnabled
@@ -1457,7 +1456,7 @@ begin
   Buffer.AddWideChar(WideChar(Count));
   for I := 0 to Count - 1 do
   begin
-    Data := TBufEC(DataBuffers[I]);
+    Data := DataBuffers[I];
     Buffer.AddBuffer(Data);
   end;
   Buffer.AddWideChar(WideChar(ObjectCount));

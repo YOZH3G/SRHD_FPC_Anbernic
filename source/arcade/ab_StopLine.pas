@@ -117,8 +117,7 @@ function ab_StopLine_ReflectMovement(
     Source: TSphericalBearingState;
     Target: TSphericalBearingState;
     var HeadingDelta: Double;
-    var Speed: Double;
-    var UnusedResult: Double
+    var Speed: Double
 ): Boolean;
 
 procedure ab_StopLine_GetDistances(
@@ -484,7 +483,7 @@ end;
 
 function ab_StopLine_ReflectMovement(
     Source, Target: TSphericalBearingState;
-    var HeadingDelta, Speed, UnusedResult: Double
+    var HeadingDelta, Speed: Double
 ): Boolean;
 var
   InverseLengthSquared, LineLength: Single;
@@ -523,7 +522,6 @@ begin
   Result := False;
   if FirstStopLine <> nil then
   begin
-    UnusedResult := 0;
     A :=
         SphericalToVector3D(
             HeadingDegreesToRadians(Source.LongitudeDegrees),

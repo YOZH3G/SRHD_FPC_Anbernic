@@ -114,9 +114,9 @@ begin
   if Module = 0 then
   begin
     Error := GetLastError;
-    if Error = 126 then
+    if Error = ERROR_MOD_NOT_FOUND then
       raise Exception.Create('cant load steam_ach.dll, missing some file')
-    else if Error = 193 then
+    else if Error = ERROR_BAD_EXE_FORMAT then
       raise Exception.Create('cant load steam_ach.dll, module versions mismatch')
     else
       raise Exception.Create('cant load steam_ach.dll, lasterror=' + IntToStr(Error));
@@ -169,7 +169,7 @@ var
   Block: TBlockParEC;
   AchievementName, StatName: AnsiString;
 begin
-  SteamCreateAchievements(82);
+  SteamCreateAchievements(High(AchievementDefinitionTable));
   for Index := 0 to AchievementDefinitions.GetBlockCount - 1 do
   begin
     Block := AchievementDefinitions.GetBlockByIndex(Index);

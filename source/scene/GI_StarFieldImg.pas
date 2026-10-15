@@ -111,13 +111,15 @@ begin
 end;
 
 procedure TStarFieldImgGI.GrowStars;
+const
+  GrowthCount = 64;
 var
   Tail: Pointer;
 begin
-  Inc(Capacity, 64);
+  Inc(Capacity, GrowthCount);
   Stars := ReAllocREC(Stars, SizeOf(TStarFieldImageGI) * Capacity);
-  Tail := AddPointerOffset(Stars, SizeOf(TStarFieldImageGI) * (Capacity - 64));
-  FillChar(Tail^, SizeOf(TStarFieldImageGI) * 64, 0);
+  Tail := AddPointerOffset(Stars, SizeOf(TStarFieldImageGI) * (Capacity - GrowthCount));
+  FillChar(Tail^, SizeOf(TStarFieldImageGI) * GrowthCount, 0);
 end;
 
 function TStarFieldImgGI.AllocateStar: PStarFieldImageGI;

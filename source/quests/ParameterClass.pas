@@ -202,7 +202,7 @@ begin
   NameText.LoadTextLinesFromReader(Reader);
   EnsureViewStringCapacity(ViewStringCount, 0);
   for i := 1 to ViewStringCount do
-    TParViewString(ViewStrings[i]).LoadFromReader(Reader);
+    ViewStrings[i].LoadFromReader(Reader);
   if ViewStringCount <= 0 then
   begin
     ViewStringCount := 1;
@@ -234,7 +234,7 @@ begin
   NameText.LoadTextLinesFromReader(Reader);
   EnsureViewStringCapacity(ViewStringCount, 0);
   for i := 1 to ViewStringCount do
-    TParViewString(ViewStrings[i]).LoadFromReader(Reader);
+    ViewStrings[i].LoadFromReader(Reader);
   if ViewStringCount <= 0 then
   begin
     ViewStringCount := 1;
@@ -265,7 +265,7 @@ begin
   NameText.LoadTextLinesFromReader(Reader);
   EnsureViewStringCapacity(ViewStringCount, 0);
   for i := 1 to ViewStringCount do
-    TParViewString(ViewStrings[i]).LoadFromReader(Reader);
+    ViewStrings[i].LoadFromReader(Reader);
   if ViewStringCount <= 0 then
   begin
     ViewStringCount := 1;
@@ -299,7 +299,7 @@ begin
   NameText.LoadTextLinesFromReader(Reader);
   EnsureViewStringCapacity(ViewStringCount, 0);
   for i := 1 to ViewStringCount do
-    TParViewString(ViewStrings[i]).LoadFromReader(Reader);
+    ViewStrings[i].LoadFromReader(Reader);
   if ViewStringCount <= 0 then
   begin
     ViewStringCount := 1;
@@ -330,7 +330,7 @@ begin
   NameText.LoadTextLinesFromReader(Reader);
   EnsureViewStringCapacity(ViewStringCount, 0);
   for i := 1 to ViewStringCount do
-    TParViewString(ViewStrings[i]).LoadFromReader(Reader);
+    ViewStrings[i].LoadFromReader(Reader);
   if ViewStringCount <= 0 then
   begin
     ViewStringCount := 1;

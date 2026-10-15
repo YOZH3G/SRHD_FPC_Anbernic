@@ -3680,20 +3680,16 @@ var
   I: Integer;
   Ship: TShip;
   RadarRangeSquared: Integer;
-  ReservedFlag: Boolean;
-  FollowMode: TFollowMode;
 begin
   DialogText := TalkShip.LookupTalkText('Talk.Pirate.AttackList');
   ClearChoices(False);
-  ReservedFlag := False;
-  FollowMode := TFollowMode(Byte(ReservedFlag));
   RadarRangeSquared := GetPlayer.GetRadarRange * GetPlayer.GetRadarRange;
   for I := 0 to GetPlayer.CurrentStar.Ships.Count - 1 do
   begin
     Ship := GetPlayer.CurrentStar.Ships[I];
     if ((TalkShip.OrderTarget <> Ship)
             or (TalkShip.Order <> soFollowShip)
-            or (TalkShip.OrderStateData = Ord(FollowMode)))
+            or (TalkShip.OrderStateData = Ord(fmFollowNear)))
         and (GetPlayer <> Ship)
         and (TalkShip <> Ship)
         and (GetPlayer <> Ship.PartnerShip)
@@ -4460,9 +4456,7 @@ begin
   GetPlayer.RefreshDerivedStats(True);
   Effect := TWeaponSE.Create('Weapon.NoGraph', Classes.Point(0, 0), 0, -1);
   Effect.SetEndpoints(GetPlayer.Graphic, GetPlayer.Graphic);
-  // Multiplication by -1 retains the native DCC32 register copy before NEG.
-  Effect
-      .SetHit(OwnerToFilmColor(RaceToOwner(GetPlayer.PilotRace)), RepairAmount * -1, False, False);
+  Effect.SetHit(OwnerToFilmColor(RaceToOwner(GetPlayer.PilotRace)), -RepairAmount, False, False);
   StarMapScreen.PendingSceneObjects.Add(Effect);
   SoundManager.PlaySound('Sound.Repair');
   DialogText := TalkShip.LookupTalkText('Talk.MilitarySupport.AfterRepairHull');

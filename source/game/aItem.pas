@@ -12,6 +12,7 @@ uses
   EC_Buf,
   EC_Struct,
   SE_Space,
+  SE_Container,
   aEFilm,
   aGalaxy,
   aGalaxyStruct;
@@ -76,8 +77,7 @@ type
 
   PointerToTExtraSpecial = ^TExtraSpecial;
 
-  {$Z1}
-  TItemLootPool = (ilpArcadeBattle = 0, ilpTreasure = 1, ilpReward = 2, ilpAnyAvailable = 3);
+  TTechLevel = 1..8;
 
   {$Z1}
   TInterceptorTargetingStrategy = (
@@ -103,9 +103,9 @@ type
 
   PExtraSpecial = PointerToTExtraSpecial;
 
-  TItem = class(TObjectEx)
-    GraphObject: TObjectSE;
-    Id: Integer;
+  TItem = class(TRegisteredGameObject)
+    GraphObject: TContainerSE;
+    Id: Cardinal;
     ItemType: TItemType;
     Position: TPointF;
     Weight: Integer;
@@ -133,7 +133,7 @@ type
     function CalculateResaleValue(TradingSkill: Byte): Integer;
     function GetConditionAdjustedCost: Integer;
     function GetCategoryConfigName: WideString;
-    function GetGraphObject: TObjectSE;
+    function GetGraphObject: TContainerSE;
     procedure ReleaseGraphObject;
     function GetOwnerConfigName: WideString;
   end;
@@ -193,14 +193,14 @@ type
     Armor: ShortInt;
     HullType: THullType;
     HullSeries: Integer;
-    OwnerShip: Pointer;
+    OwnerShip: TObject;
     CapitalShip: Byte;
     PirateBuilt: Boolean;
     ImpulseShieldsEnabled: Boolean;
     InterceptorsEnabled: Boolean;
     Energy: Integer;
     EnergyMax: Integer;
-    InterceptorTarget: Pointer;
+    InterceptorTarget: TObject;
     InterceptorTargetingStrategy: TInterceptorTargetingStrategy;
     InterceptorPassCountOverride: Byte;
     procedure SaveToBuffer(Buffer: TBufEC); override;
@@ -540,7 +540,7 @@ type
 
   TSatellite = class(TEquipment)
     SatelliteTypeId: Byte;
-    TargetPlanet: Pointer;
+    TargetPlanet: TObject;
     TrajectoryIndex: Integer;
     WearPerTurn: Single;
     WaterExplorationRate: Byte;
@@ -562,7 +562,7 @@ type
   end;
 
   TTreasureMap = class(TEquipment)
-    TargetPlanet: Pointer;
+    TargetPlanet: TObject;
     SourceShipName: WideString;
     PreviewTablePage1: WideString;
     PreviewTablePage2: WideString;
@@ -574,9 +574,9 @@ type
     function GetInfoText(ColorTag: WideString; Ship: Pointer): WideString; override;
     function GetDescriptionText: WideString; override;
     function GetBitmapResourceName: WideString; override;
-    procedure Init(Planet: Pointer; Victim: Pointer);
+    procedure Init(Planet: TObject; Victim: Pointer);
     function GetTargetPlanetName: WideString;
-    function BuildPreviewTable(PageIndex: Integer; Planet: Pointer): WideString;
+    function BuildPreviewTable(PageIndex: Integer; Planet: TObject): WideString;
   end;
 
   TMicroModule = class(TEquipment)
@@ -622,7 +622,7 @@ type
   end;
 
   TArtefactTranclucator = class(TArtefact)
-    Ship: Pointer;
+    Ship: TObject;
     procedure SaveToBuffer(Buffer: TBufEC); override;
     procedure LoadFromBuffer(Buffer: TBufEC; Galaxy: TGalaxy); override;
     procedure ResolveLoadedReferences(Galaxy: TGalaxy); override;
@@ -632,7 +632,7 @@ type
     function GetDisplayName: WideString; override;
     function Clone: TItem; override;
     destructor Destroy; override;
-    procedure InitTranclucator(Owner: TOwnerId; OwnerShip: Pointer; ExistingShip: Pointer);
+    procedure InitTranclucator(Owner: TOwnerId; OwnerShip: TObject; ExistingShip: TObject);
   end;
 
   TArtefactCustom = class(TArtefact)
@@ -679,17 +679,33 @@ function CalculateGeneratedFuelTanksCost(
     Owner: TOwnerId
 ): Integer;
 
-function CalculateGeneratedEngineCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedEngineCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 
-function CalculateGeneratedRadarCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedRadarCost(Weight: Cardinal; Level: TTechLevel; Owner: TOwnerId): Integer;
 
-function CalculateGeneratedScanerCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedScanerCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 
-function CalculateGeneratedRepairRobotCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedRepairRobotCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 
-function CalculateGeneratedCargoHookCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedCargoHookCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 
-function GetGeneratedDefenseDamageFactor(Level: Byte): Double;
+function GetGeneratedDefenseDamageFactor(Level: TTechLevel): Double;
 
 function DefenseDamageFactorToPercent(Factor: Double): TPercent;
 
@@ -697,7 +713,7 @@ function DefensePercentToDamageFactor(Percent: Integer): Double;
 
 function CalculateGeneratedDefGeneratorCost(
     Weight: Cardinal;
-    Level: Byte;
+    Level: TTechLevel;
     Owner: TOwnerId
 ): Integer;
 
@@ -839,7 +855,7 @@ end;
 procedure TItem.LoadFromBuffer(Buffer: TBufEC; Galaxy: TGalaxy);
 begin
   Id := Buffer.GetUInt32;
-  if Galaxy.NextItemId <= Cardinal(Id) then
+  if Galaxy.NextItemId <= Id then
     Galaxy.NextItemId := Id + 1;
   ItemType := MigrateSavedItemType(Buffer.GetByte);
   Position.X := Buffer.GetSingle;
@@ -935,7 +951,7 @@ end;
 
 function TItem.GetCategoryConfigName: WideString;
 begin
-  if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  if ItemType in WeaponItemTypes then
     Result := 'Weapon'
   else if ItemType in [t_ArtefactHull..t_ArtFastRacks] then
     Result := 'Artefact'
@@ -953,7 +969,7 @@ begin
   Result := '';
 end;
 
-function TItem.GetGraphObject: TObjectSE;
+function TItem.GetGraphObject: TContainerSE;
 
   procedure CreateContainer(
       GraphKey: WideString
@@ -1011,39 +1027,31 @@ begin
     else if (Self is TProtoplasm) and ((Self as TProtoplasm).DropFlag <> 0) then
     begin
       if Weight <= 29 then
-        CreateContainer('n0_' + IntToStr(Cardinal(Id) mod 5))
+        CreateContainer('n0_' + IntToStr(Id mod 5))
       else if Weight <= 59 then
-        CreateContainer('n1_' + IntToStr(Cardinal(Id) mod 5))
+        CreateContainer('n1_' + IntToStr(Id mod 5))
       else if Weight <= 99 then
-        CreateContainer('n2_' + IntToStr(Cardinal(Id) mod 5))
+        CreateContainer('n2_' + IntToStr(Id mod 5))
       else
-        CreateContainer('n3_' + IntToStr(Cardinal(Id) mod 5));
+        CreateContainer('n3_' + IntToStr(Id mod 5));
     end
     else if (Self is TCountableItem) and ((Self as TCountableItem).DropFlag <> 0) then
     begin
       if Weight <= 29 then
         CreateContainer(
-            (Self as TCountableItem).ConfigBlockName
-                + '0_'
-                + WideString(IntToStr(Cardinal(Id) mod 5))
+            (Self as TCountableItem).ConfigBlockName + '0_' + WideString(IntToStr(Id mod 5))
         )
       else if Weight <= 59 then
         CreateContainer(
-            (Self as TCountableItem).ConfigBlockName
-                + '1_'
-                + WideString(IntToStr(Cardinal(Id) mod 5))
+            (Self as TCountableItem).ConfigBlockName + '1_' + WideString(IntToStr(Id mod 5))
         )
       else if Weight <= 99 then
         CreateContainer(
-            (Self as TCountableItem).ConfigBlockName
-                + '2_'
-                + WideString(IntToStr(Cardinal(Id) mod 5))
+            (Self as TCountableItem).ConfigBlockName + '2_' + WideString(IntToStr(Id mod 5))
         )
       else
         CreateContainer(
-            (Self as TCountableItem).ConfigBlockName
-                + '3_'
-                + WideString(IntToStr(Cardinal(Id) mod 5))
+            (Self as TCountableItem).ConfigBlockName + '3_' + WideString(IntToStr(Id mod 5))
         );
     end
     else if (Self is TEquipment) and ((Self as TEquipment).CustomFaction <> '') then
@@ -1501,13 +1509,11 @@ begin
 end;
 
 function TEquipment.NeedsRepair: Boolean;
-const
-  RepairableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 begin
   if ItemType = t_Hull then
     Result := (Self as THull).HullPoints < (Self as THull).Weight
   else
-    Result := (Byte(ItemType) in RepairableTypes) and (ConditionPercent < 90);
+    Result := (ItemType in RepairableItemTypes) and (ConditionPercent < 90);
 end;
 
 function TEquipment.CalculateRepairCost: Integer;
@@ -1564,12 +1570,10 @@ begin
 end;
 
 function TEquipment.GetConditionText(PrefixNewLine: Boolean): WideString;
-const
-  SupportedTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   Prefix: WideString;
 begin
-  if not (Byte(ItemType) in SupportedTypes) then
+  if not (ItemType in RepairableItemTypes) then
   begin
     Result := '';
     Exit;
@@ -1593,13 +1597,13 @@ begin
   end;
   if BrokenFlag <> 0 then
   begin
-    if ItemType in [t_FuelTanks..t_DefGenerator] then
+    if ItemType in UtilityEquipmentTypes then
       Result :=
           WrapTextInColor(
               Prefix + LocalizedText('Items.' + ItemTypeNames[ItemType] + '.Broken'),
               RedColorTag
           )
-    else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+    else if ItemType in WeaponItemTypes then
       Result := WrapTextInColor(Prefix + LocalizedText('Items.Weapon.Broken'), RedColorTag)
     else if ItemType in [t_Artefact..t_Artefact2] then
       Result :=
@@ -1652,9 +1656,9 @@ end;
 
 function TEquipment.GetBrokenInBattleText: WideString;
 begin
-  if ItemType in [t_FuelTanks..t_DefGenerator] then
+  if ItemType in UtilityEquipmentTypes then
     Result := LocalizedText('Items.' + ItemTypeNames[ItemType] + '.BrokenInBattle')
-  else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if ItemType in WeaponItemTypes then
     Result :=
         FormatText1(
             LocalizedText('Items.Weapon.BrokenInBattle'),
@@ -1677,9 +1681,9 @@ end;
 
 function TEquipment.GetBrokenInUseText: WideString;
 begin
-  if ItemType in [t_FuelTanks..t_DefGenerator] then
+  if ItemType in UtilityEquipmentTypes then
     Result := LocalizedText('Items.' + ItemTypeNames[ItemType] + '.BrokenInUse')
-  else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if ItemType in WeaponItemTypes then
     Result :=
         FormatText1(
             LocalizedText('Items.Weapon.BrokenInUse'),
@@ -1703,9 +1707,9 @@ end;
 function TEquipment.GetBrokenByForceText: WideString;
 begin
   Result := '';
-  if ItemType in [t_FuelTanks..t_DefGenerator] then
+  if ItemType in UtilityEquipmentTypes then
     Result := LocalizedText('Items.' + ItemTypeNames[ItemType] + '.BrokenByForce')
-  else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if ItemType in WeaponItemTypes then
     Result :=
         FormatText1(
             LocalizedText('Items.Weapon.BrokenByForce'),
@@ -1740,7 +1744,7 @@ begin
     t_CargoHook: Result := (Self as TCargoHook).TechLevel;
     t_DefGenerator: Result := (Self as TDefGenerator).TechLevel;
   else
-    if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+    if ItemType in WeaponItemTypes then
       Result := (Self as TWeapon).TechLevel
     else
       Result := 0;
@@ -1766,7 +1770,7 @@ end;
 
 function TEquipment.GetDescriptionText: WideString;
 begin
-  if (ItemType in [t_FuelTanks..t_DefGenerator]) and (OwnerId = oiDominator) then
+  if (ItemType in UtilityEquipmentTypes) and (OwnerId = oiDominator) then
     Result :=
         LocalizedText(
             'Items.' + ItemTypeNames[ItemType] + '.KlingDescription.' + IntToStr(GetLevel)
@@ -1825,8 +1829,8 @@ end;
 
 procedure TEquipment.ImproveAtScientificBase;
 begin
-  DetailImprovement := (Cardinal(Id) mod 2) + 1;
-  case (Cardinal(Id) div 3) mod 6 of
+  DetailImprovement := (Id mod 2) + 1;
+  case (Id div 3) mod 6 of
     0: Improve(ikMajor);
     1..2: Improve(ikMedium);
   else
@@ -1949,8 +1953,7 @@ begin
     Result := MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[BonusKind]
   else
     Result := 0;
-  if (ItemType in [t_IndustrialLaser..t_CustomWeapon])
-      and (BonusKind in [bonWEnergy..bonWRadius, bonMissileSpeed]) then
+  if (ItemType in WeaponItemTypes) and (BonusKind in [bonWEnergy..bonWRadius, bonMissileSpeed]) then
     Exit;
   if SpecialModuleIndex <> 0 then
     SpecialBonus := MicroModuleTemplates[SpecialModuleIndex - 1].StatBonuses[BonusKind]
@@ -2002,8 +2005,7 @@ begin
     Result := MicroModuleTemplates[MicroModuleIndex - 1].StatBonuses[BonusKind]
   else
     Result := 0;
-  if (ItemType in [t_IndustrialLaser..t_CustomWeapon])
-      and (BonusKind in [bonWEnergy..bonWRadius, bonMissileSpeed]) then
+  if (ItemType in WeaponItemTypes) and (BonusKind in [bonWEnergy..bonWRadius, bonMissileSpeed]) then
     Exit;
   CombinedBonus := 0;
   SeparatedBonus := 0;
@@ -2298,7 +2300,7 @@ begin
   if InterceptorsEnabled then
   begin
     if InterceptorTarget <> nil then
-      Buffer.AddDWord((TObject(InterceptorTarget) as TShip).Id)
+      Buffer.AddDWord((InterceptorTarget as TShip).Id)
     else
       Buffer.AddDWord(0);
     Buffer.AddAnsiChar(AnsiChar(InterceptorTargetingStrategy));
@@ -2397,7 +2399,7 @@ begin
   if LoadedSaveVersion >= 52 then
     if InterceptorsEnabled then
     begin
-      InterceptorTarget := Pointer(Buffer.GetUInt32);
+      InterceptorTarget := TObject(Buffer.GetUInt32);
       InterceptorTargetingStrategy := TInterceptorTargetingStrategy(Buffer.GetByte);
       InterceptorPassCountOverride := Buffer.GetByte;
     end
@@ -2409,7 +2411,7 @@ begin
     end
   else if LoadedSaveVersion = 51 then
   begin
-    InterceptorTarget := Pointer(Buffer.GetUInt32);
+    InterceptorTarget := TObject(Buffer.GetUInt32);
     InterceptorTargetingStrategy := itsManual;
     InterceptorPassCountOverride := 0;
   end
@@ -2424,7 +2426,7 @@ end;
 procedure THull.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   if InterceptorTarget <> nil then
-    InterceptorTarget := TObject(Galaxy.IdToShip(Integer(InterceptorTarget), False)) as TShip;
+    InterceptorTarget := Galaxy.IdToShip(Integer(InterceptorTarget), False) as TShip;
 end;
 
 procedure THull.ClearReferences;
@@ -2785,7 +2787,7 @@ begin
     Result := 'Bm.Items.' + GiResourceSuffix + 'Hull_' + GetSpecialKindGraph + '_'
   else
     RaiseWideMessage('THull.Image');
-  Ship := OwnerShip;
+  Ship := TShip(OwnerShip);
   if Ship <> nil then
   begin
     if (HullType = htSpecial)
@@ -3233,7 +3235,11 @@ begin
   Result := EngineLevelStats[TechLevel].JumpRange;
 end;
 
-function CalculateGeneratedEngineCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedEngineCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 begin
   Result :=
       RoundAndTruncateToTens(
@@ -3518,7 +3524,7 @@ begin
   Result := RadarLevelRanges[TechLevel];
 end;
 
-function CalculateGeneratedRadarCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedRadarCost(Weight: Cardinal; Level: TTechLevel; Owner: TOwnerId): Integer;
 begin
   Result :=
       RoundAndTruncateToTens(
@@ -3707,7 +3713,11 @@ begin
   Result := DefenseDamageFactorToPercent(GetGeneratedDefenseDamageFactor(TechLevel)) + 1;
 end;
 
-function CalculateGeneratedScanerCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedScanerCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 begin
   Result :=
       RoundAndTruncateToTens(
@@ -3892,7 +3902,11 @@ begin
   Result := RepairRobotLevelPoints[TechLevel];
 end;
 
-function CalculateGeneratedRepairRobotCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedRepairRobotCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 begin
   Result :=
       RoundAndTruncateToTens(
@@ -4111,7 +4125,11 @@ begin
   Result := CargoHookLevelStats[TechLevel].MaxPullSpeed;
 end;
 
-function CalculateGeneratedCargoHookCost(Weight: Cardinal; Level: Byte; Owner: TOwnerId): Integer;
+function CalculateGeneratedCargoHookCost(
+    Weight: Cardinal;
+    Level: TTechLevel;
+    Owner: TOwnerId
+): Integer;
 begin
   Result :=
       RoundAndTruncateToTens(
@@ -4409,7 +4427,7 @@ begin
   Result := DefGeneratorLevelFactors[TechLevel];
 end;
 
-function GetGeneratedDefenseDamageFactor(Level: Byte): Double;
+function GetGeneratedDefenseDamageFactor(Level: TTechLevel): Double;
 begin
   Result := DefGeneratorLevelFactors[Level];
 end;
@@ -4426,7 +4444,7 @@ end;
 
 function CalculateGeneratedDefGeneratorCost(
     Weight: Cardinal;
-    Level: Byte;
+    Level: TTechLevel;
     Owner: TOwnerId
 ): Integer;
 begin
@@ -4742,7 +4760,7 @@ procedure TWeapon.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   inherited ResolveLoadedReferences(Galaxy);
   if LoadedTargetKind = wtkShip then
-    Target := TObject(Galaxy.IdToShip(Integer(Target), True)) as TShip
+    Target := Galaxy.IdToShip(Integer(Target), True) as TShip
   else if LoadedTargetKind = wtkItem then
     Target := TObject(Galaxy.IdToItem(Integer(Target), True)) as TItem
   else if LoadedTargetKind = wtkAsteroid then
@@ -5027,8 +5045,6 @@ end;
 procedure TWeapon.ReplaceInfoTokens(var Text: WideString; ColorTag: WideString; Ship: Pointer);
 var
   BonusText: WideString;
-  UnusedNativeText:
-      WideString; // Native initializes/finalizes this extra string slot without reading it.
   ModuleBonus, EffectiveBonus, BaseDamage, I: Integer;
   DamageClass: TWeaponDamageClass;
   ExpectedRange, CurrentRange, BaseRange, ExpectedDamage: Integer;
@@ -5871,8 +5887,8 @@ var
   I: Integer;
 begin
   DisplayAsArtefact := False;
-  for I := 0 to Length(UselessItemLootPools[3]) - 1 do
-    if UselessItemLootPools[3][I] = ConfigBlockName then
+  for I := 0 to Length(UselessItemLootPools[ilpAnyAvailable]) - 1 do
+    if UselessItemLootPools[ilpAnyAvailable][I] = ConfigBlockName then
     begin
       DisplayAsArtefact := True;
       Break;
@@ -6043,7 +6059,7 @@ begin
   if TargetPlanet = nil then
     Buffer.AddDWord(0)
   else
-    Buffer.AddDWord((TObject(TargetPlanet) as TPlanet).Id);
+    Buffer.AddDWord((TargetPlanet as TPlanet).Id);
   Buffer.AddAnsiChar(AnsiChar(WaterExplorationRate));
   Buffer.AddAnsiChar(AnsiChar(LandExplorationRate));
   Buffer.AddAnsiChar(AnsiChar(HillExplorationRate));
@@ -6055,7 +6071,7 @@ begin
   inherited LoadFromBuffer(Buffer, Galaxy);
   SatelliteTypeId := Buffer.GetByte;
   TrajectoryIndex := Buffer.GetInt32;
-  TargetPlanet := Pointer(Buffer.GetUInt32);
+  TargetPlanet := TObject(Buffer.GetUInt32);
   WaterExplorationRate := Buffer.GetByte;
   LandExplorationRate := Buffer.GetByte;
   HillExplorationRate := Buffer.GetByte;
@@ -6085,7 +6101,7 @@ end;
 procedure TSatellite.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   inherited ResolveLoadedReferences(Galaxy);
-  TargetPlanet := TObject(Galaxy.IdToPlanet(Cardinal(TargetPlanet))) as TPlanet;
+  TargetPlanet := Galaxy.IdToPlanet(Cardinal(TargetPlanet)) as TPlanet;
 end;
 
 procedure TSatellite.ClearReferences;
@@ -6104,7 +6120,7 @@ begin
             + ' '
             + LocalizedText('Items.Satellite.' + IntToStr(SatelliteTypeId) + '.Name')
             + '-'
-            + IntToStr(Cardinal(Id) mod 100 + 1);
+            + IntToStr(Id mod 100 + 1);
 end;
 
 function TSatellite.GetInfoText(ColorTag: WideString; Ship: Pointer): WideString;
@@ -6131,7 +6147,7 @@ var
 begin
   Result := LocalizedText('Items.' + ItemTypeNames[ItemType] + '.BrokenInUse');
   if TargetPlanet <> nil then
-    PlanetName := (TObject(TargetPlanet) as TPlanet).Name
+    PlanetName := (TargetPlanet as TPlanet).Name
   else
     PlanetName := '';
   ReplaceTextToken(Result, '<Name>', GetDisplayName, TextHighlightColorTag);
@@ -6144,7 +6160,7 @@ var
 begin
   Result := LocalizedText('Items.' + ItemTypeNames[ItemType] + '.IdleInfo');
   if TargetPlanet <> nil then
-    PlanetName := (TObject(TargetPlanet) as TPlanet).Name
+    PlanetName := (TargetPlanet as TPlanet).Name
   else
     PlanetName := '';
   ReplaceTextToken(Result, '<Name>', GetDisplayName, TextHighlightColorTag);
@@ -6165,7 +6181,7 @@ begin
     Result := 'Bm.Items.' + GiResourceSuffix + 'Satellite' + IntToStr(SatelliteTypeId) + '_';
 end;
 
-procedure TTreasureMap.Init(Planet: Pointer; Victim: Pointer);
+procedure TTreasureMap.Init(Planet: TObject; Victim: Pointer);
 begin
   ItemType := t_TreasureMap;
   Weight := 1;
@@ -6188,7 +6204,7 @@ begin
   if TargetPlanet = nil then
     Buffer.AddDWord(0)
   else
-    Buffer.AddDWord((TObject(TargetPlanet) as TPlanet).Id);
+    Buffer.AddDWord((TargetPlanet as TPlanet).Id);
   Buffer.AddWideStringZ(SourceShipName);
   Buffer.AddWideStringZ(PreviewTablePage1);
   Buffer.AddWideStringZ(PreviewTablePage2);
@@ -6197,7 +6213,7 @@ end;
 procedure TTreasureMap.LoadFromBuffer(Buffer: TBufEC; Galaxy: TGalaxy);
 begin
   inherited LoadFromBuffer(Buffer, Galaxy);
-  TargetPlanet := Pointer(Buffer.GetUInt32);
+  TargetPlanet := TObject(Buffer.GetUInt32);
   SourceShipName := Buffer.ReadWideString;
   PreviewTablePage1 := Buffer.ReadWideString;
   PreviewTablePage2 := Buffer.ReadWideString;
@@ -6206,7 +6222,7 @@ end;
 procedure TTreasureMap.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   inherited ResolveLoadedReferences(Galaxy);
-  TargetPlanet := TObject(Galaxy.IdToPlanet(Cardinal(TargetPlanet))) as TPlanet;
+  TargetPlanet := Galaxy.IdToPlanet(Cardinal(TargetPlanet)) as TPlanet;
 end;
 
 procedure TTreasureMap.ClearReferences;
@@ -6248,10 +6264,10 @@ end;
 
 function TTreasureMap.GetTargetPlanetName: WideString;
 begin
-  Result := (TObject(TargetPlanet) as TPlanet).Name;
+  Result := (TargetPlanet as TPlanet).Name;
 end;
 
-function TTreasureMap.BuildPreviewTable(PageIndex: Integer; Planet: Pointer): WideString;
+function TTreasureMap.BuildPreviewTable(PageIndex: Integer; Planet: TObject): WideString;
 var
   I, Number: Integer;
   Entry: PPlanetSurfaceLootEntry;
@@ -6283,7 +6299,7 @@ begin
           LocalizedColorText('FormGS.PlanetInfo'),
           TextHighlightColorTag,
           '<Planet>',
-          (TObject(Planet) as TPlanet).Name
+          (Planet as TPlanet).Name
       );
   Header := Header + #13#10 + '<td=' + IntToStr(0) + '>' + '<align=left>' + Caption + '</align>';
   Header :=
@@ -6299,7 +6315,7 @@ begin
           LocalizedColorText('FormGS.StarInfo'),
           TextHighlightColorTag,
           '<Star>',
-          (TObject(Planet) as TPlanet).CurrentStar.Name
+          (Planet as TPlanet).CurrentStar.Name
       );
   Header :=
       Header
@@ -6342,11 +6358,11 @@ begin
           + '</align>';
   Header := Header + #13#10 + Rule;
   if Planet <> nil then
-    if TObject(Planet) is TPlanet then
+    if Planet is TPlanet then
     begin
       Rows := '';
       Number := 1;
-      World := TObject(Planet) as TPlanet;
+      World := Planet as TPlanet;
       if World.SurfaceLootEntries <> nil then
       begin
         for I := 0 to World.SurfaceLootEntries.Count - 1 do
@@ -6675,7 +6691,7 @@ begin
                     - DefensePercentToDamageFactor(
                         MicroModuleTemplates[Item.MicroModuleIndex - 1].StatBonuses[bonDef]));
   else
-    if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+    if Item.ItemType in WeaponItemTypes then
     begin
       BonusKind :=
           WeaponDamageClasses[ClassifyWeaponDamageFlags(TWeapon(Item).GetWeaponInfo.DamageFlags)]
@@ -6778,7 +6794,7 @@ begin
                     - DefensePercentToDamageFactor(
                         MicroModuleTemplates[Item.MicroModuleIndex - 1].StatBonuses[bonDef]));
   else
-    if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+    if Item.ItemType in WeaponItemTypes then
     begin
       BonusKind :=
           WeaponDamageClasses[ClassifyWeaponDamageFlags(TWeapon(Item).GetWeaponInfo.DamageFlags)]
@@ -6826,7 +6842,7 @@ begin
     if (Item.Cost < 0) or (Item.Cost > MaxMonetaryValue) then
       Item.Cost := MaxMonetaryValue;
   end;
-  if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  if Item.ItemType in WeaponItemTypes then
   begin
     BonusKind :=
         WeaponDamageClasses[ClassifyWeaponDamageFlags(TWeapon(Item).GetWeaponInfo.DamageFlags)]
@@ -6860,7 +6876,7 @@ begin
     if (Item.Cost < 0) or (Item.Cost > MaxMonetaryValue) then
       Item.Cost := MaxMonetaryValue;
   end;
-  if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  if Item.ItemType in WeaponItemTypes then
   begin
     BonusKind :=
         WeaponDamageClasses[ClassifyWeaponDamageFlags(TWeapon(Item).GetWeaponInfo.DamageFlags)]
@@ -6988,7 +7004,7 @@ end;
 function IsBonusCompatibleWithEquipment(ModuleIndex: Integer; Item: TEquipment): Boolean;
 begin
   Result := False;
-  if not (Byte(Item.ItemType) in MicroModuleTemplates[ModuleIndex].AllowedItemTypes) then
+  if not (Item.ItemType in MicroModuleTemplates[ModuleIndex].AllowedItemTypes) then
     Exit;
   if Item.CustomFaction <> '' then
   begin
@@ -7016,7 +7032,7 @@ end;
 function IsBonusCompatibleWithHull(ModuleIndex: Integer; Hull: THull): Boolean;
 begin
   Result := False;
-  if not (Ord(t_Hull) in MicroModuleTemplates[ModuleIndex].AllowedItemTypes) then
+  if not (t_Hull in MicroModuleTemplates[ModuleIndex].AllowedItemTypes) then
     Exit;
   if Hull.CustomFaction <> '' then
   begin
@@ -7064,9 +7080,9 @@ begin
                       or (MicroModuleTemplates[ModuleIndex].AllowedDominatorSeriesMask
                           = [dsBlazer..dsTerron]))))) then
   begin
-    if Weapon.ItemType in [t_IndustrialLaser..t_Lirecron] then
+    if Weapon.ItemType in StandardWeaponItemTypes then
     begin
-      if Byte(Weapon.ItemType) in MicroModuleTemplates[ModuleIndex].AllowedItemTypes then
+      if Weapon.ItemType in MicroModuleTemplates[ModuleIndex].AllowedItemTypes then
         Result := True;
     end
     else if Weapon.ItemType = t_CustomWeapon then
@@ -7115,21 +7131,20 @@ function CreateRandomLootItem(
 var
   Index, Count: Integer;
 begin
-  Count := Length(ArtefactLootPools[Ord(Pool)]);
-  Index :=
-      Count + Length(CustomArtefactLootPools[Ord(Pool)]) + Length(UselessItemLootPools[Ord(Pool)]);
+  Count := Length(ArtefactLootPools[Pool]);
+  Index := Count + Length(CustomArtefactLootPools[Pool]) + Length(UselessItemLootPools[Pool]);
   Index := SeededRandomIntRange(0, Index - 1, Seed);
-  if Index < Length(ArtefactLootPools[Ord(Pool)]) then
+  if Index < Length(ArtefactLootPools[Pool]) then
     Result :=
-        TObject(CreateConfiguredArtefactByItemType(ArtefactLootPools[Ord(Pool)][Index], Owner))
+        CreateConfiguredArtefactByItemType(ArtefactLootPools[Pool][Index], Owner)
             as TEquipmentWithActCode
   else
   begin
     Dec(Index, Count);
-    if Index < Length(CustomArtefactLootPools[Ord(Pool)]) then
+    if Index < Length(CustomArtefactLootPools[Pool]) then
     begin
       Result := TArtefactCustom.Create;
-      Result.ConfigBlockName := CustomArtefactLootPools[Ord(Pool)][Index];
+      Result.ConfigBlockName := CustomArtefactLootPools[Pool][Index];
       TArtefactCustom(Result).LoadConfig(True);
       TArtefactCustom(Result).Data[1] := 0;
       TArtefactCustom(Result).Data[2] := 0;
@@ -7138,9 +7153,9 @@ begin
     end
     else
     begin
-      Dec(Index, Length(CustomArtefactLootPools[Ord(Pool)]));
+      Dec(Index, Length(CustomArtefactLootPools[Pool]));
       Result := TUselessItem.Create;
-      TUselessItem(Result).Init(UselessItemLootPools[Ord(Pool)][Index], dsBlazer, 0, True);
+      TUselessItem(Result).Init(UselessItemLootPools[Pool][Index], dsBlazer, 0, True);
       Result.OwnerId := Owner;
     end;
   end;
@@ -7725,7 +7740,7 @@ destructor TArtefactTranclucator.Destroy;
 begin
   if Ship <> nil then
   begin
-    TObject(Ship).Free;
+    Ship.Free;
     Ship := nil;
   end;
   inherited Destroy;
@@ -7733,8 +7748,8 @@ end;
 
 procedure TArtefactTranclucator.InitTranclucator(
     Owner: TOwnerId;
-    OwnerShip: Pointer;
-    ExistingShip: Pointer
+    OwnerShip: TObject;
+    ExistingShip: TObject
 );
 var
   Companion: TTranclucator;
@@ -7746,15 +7761,15 @@ begin
   if Ship = nil then
   begin
     Ship := TTranclucator.Create;
-    Companion := TObject(Ship) as TTranclucator;
-    Companion.Init(TObject(OwnerShip) as TShip, Owner, False);
+    Companion := Ship as TTranclucator;
+    Companion.Init(OwnerShip as TShip, Owner, False);
     if OwnerShip <> nil then
     begin
       Companion.CurrentStar.Ships.Delete(Companion.CurrentStar.Ships.IndexOf(Companion));
       Companion.CurrentStar := nil;
     end;
   end;
-  Companion := TObject(Ship) as TTranclucator;
+  Companion := Ship as TTranclucator;
   if Companion.ArtefactSize > 0 then
     Weight := Companion.ArtefactSize
   else
@@ -7776,14 +7791,14 @@ end;
 procedure TArtefactTranclucator.SaveToBuffer(Buffer: TBufEC);
 begin
   inherited SaveToBuffer(Buffer);
-  (TObject(Ship) as TTranclucator).SaveToBuffer(Buffer);
+  (Ship as TTranclucator).SaveToBuffer(Buffer);
 end;
 
 procedure TArtefactTranclucator.LoadFromBuffer(Buffer: TBufEC; Galaxy: TGalaxy);
 begin
   inherited LoadFromBuffer(Buffer, Galaxy);
   Ship := TTranclucator.Create;
-  (TObject(Ship) as TTranclucator).LoadFromBuffer(Buffer, Galaxy);
+  (Ship as TTranclucator).LoadFromBuffer(Buffer, Galaxy);
 end;
 
 function TArtefactTranclucator.Clone: TItem;
@@ -7797,7 +7812,7 @@ begin
   TTranclucator(Ship)
       .SaveToBlock(
           Block.AddBlockByPath(
-              DecodeTextW('S5heifphI4d') + IntToStr(Cardinal(TTranclucator(Ship).Id))
+              DecodeTextW('S5heifphI4d') + IntToStr(TTranclucator(Ship).Id)
           )); // 'ShipId'
 end;
 
@@ -7807,20 +7822,20 @@ begin
   TTranclucator(Ship)
       .LoadFromBlock(
           Block.GetBlockByPath(
-              DecodeTextW('S5heifphI4d') + IntToStr(Cardinal(TTranclucator(Ship).Id))
+              DecodeTextW('S5heifphI4d') + IntToStr(TTranclucator(Ship).Id)
           )); // 'ShipId'
 end;
 
 procedure TArtefactTranclucator.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   inherited ResolveLoadedReferences(Galaxy);
-  (TObject(Ship) as TTranclucator).ResolveLoadedReferences(Galaxy);
+  (Ship as TTranclucator).ResolveLoadedReferences(Galaxy);
 end;
 
 procedure TArtefactTranclucator.ClearReferences;
 begin
   inherited ClearReferences;
-  (TObject(Ship) as TTranclucator).ClearObjectReferences;
+  (Ship as TTranclucator).ClearObjectReferences;
 end;
 
 function TArtefactTranclucator.GetDisplayName: WideString;
@@ -7829,13 +7844,13 @@ begin
     Result := NameOverride
   else if Ship <> nil then
   begin
-    if Length((TObject(Ship) as TShip).Name) > 0 then
-      Result := (TObject(Ship) as TShip).Name
+    if Length((Ship as TShip).Name) > 0 then
+      Result := (Ship as TShip).Name
     else
       Result :=
           LocalizedText('Artefacts.' + ItemTypeNames[ItemType] + '.Name')
               + '-'
-              + IntToStr(Int64(Cardinal((TObject(Ship) as TShip).Id)));
+              + IntToStr((Ship as TShip).Id);
   end
   else
     Result := LocalizedText('Artefacts.' + ItemTypeNames[ItemType] + '.Name');
@@ -8033,7 +8048,7 @@ begin
     t_Artefact, t_Artefact2: Result := TArtefactCustom.Create;
     t_CustomWeapon: Result := TCustomWeapon.Create;
   else
-    if ItemType in [t_IndustrialLaser..t_Lirecron] then
+    if ItemType in StandardWeaponItemTypes then
       Result := TWeapon.Create
     else if ItemType in [t_Food..t_Narcotics] then
       Result := TGoods.Create
@@ -8125,7 +8140,7 @@ begin
       else
         if ItemType = t_CustomWeapon then
           raise Exception.Create('Error CreateEq - cant create custom weapons')
-        else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+        else if ItemType in WeaponItemTypes then
           TWeapon(Item).Init(ItemType, Weight, ActualLevel, Owner)
         else
         begin
@@ -8140,7 +8155,7 @@ end;
 function CreateGeneratedWeapon(Info: PWeaponInfo; Weight, Level: Integer; Owner: TOwnerId): TWeapon;
 begin
   Result := TWeapon(CreateItemByType(Info.ItemType));
-  if Info.ItemType in [t_IndustrialLaser..t_Lirecron] then
+  if Info.ItemType in StandardWeaponItemTypes then
     Result.Init(Info.ItemType, Weight, Level, Owner)
   else
     TCustomWeapon(Result).InitCustom(Info, False, Weight, Level, Owner);

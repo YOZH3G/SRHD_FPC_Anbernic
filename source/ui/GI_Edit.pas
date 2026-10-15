@@ -229,24 +229,24 @@ end;
 
 procedure TEditGI.ProcessKeyDown(Key: Integer);
 var
-  I, N: Integer;
+  CharIndex, TextLength: Integer;
   Control: TObjectGI;
 begin
   if (Key = VK_BACK) and not IsVirtualKeyDown(VK_SHIFT) then
   begin
     if CaretPosition > 0 then
     begin
-      N := Length(Text);
-      I := CaretPosition;
-      while I < N do
+      TextLength := Length(Text);
+      CharIndex := CaretPosition;
+      while CharIndex < TextLength do
       begin
-        Text[I] := Text[I + 1];
-        Inc(I);
+        Text[CharIndex] := Text[CharIndex + 1];
+        Inc(CharIndex);
       end;
-      SetLength(Text, N - 1);
+      SetLength(Text, TextLength - 1);
       Dec(CaretPosition);
       Invalidate;
-      DispatchNamedEvent(4, 0, 0);
+      DispatchNamedEvent(nceTextChanged, 0, 0);
       if Assigned(ChangedCallback) then
         ChangedCallback(Self);
     end;
@@ -256,24 +256,24 @@ begin
     Text := '';
     CaretPosition := 0;
     Invalidate;
-    DispatchNamedEvent(4, 0, 0);
+    DispatchNamedEvent(nceTextChanged, 0, 0);
     if Assigned(ChangedCallback) then
       ChangedCallback(Self);
   end
   else if Key = VK_DELETE then
   begin
-    N := Length(Text);
-    if CaretPosition < N then
+    TextLength := Length(Text);
+    if CaretPosition < TextLength then
     begin
-      I := CaretPosition + 1;
-      while I < N do
+      CharIndex := CaretPosition + 1;
+      while CharIndex < TextLength do
       begin
-        Text[I] := Text[I + 1];
-        Inc(I);
+        Text[CharIndex] := Text[CharIndex + 1];
+        Inc(CharIndex);
       end;
-      SetLength(Text, N - 1);
+      SetLength(Text, TextLength - 1);
       Invalidate;
-      DispatchNamedEvent(4, 0, 0);
+      DispatchNamedEvent(nceTextChanged, 0, 0);
       if Assigned(ChangedCallback) then
         ChangedCallback(Self);
     end;
@@ -336,26 +336,26 @@ end;
 
 procedure TEditGI.ProcessCharacter(Character: WideChar);
 var
-  I, N: Integer;
+  CharIndex, TextLength: Integer;
 begin
   inherited ProcessCharacter(Character);
   if HasGlyph(Character) then
     if not Assigned(AcceptCharCallback) or AcceptCharCallback(Self, Character) then
     begin
-      N := Length(Text);
-      if N < MaxLength then
+      TextLength := Length(Text);
+      if TextLength < MaxLength then
       begin
-        SetLength(Text, N + 1);
-        I := N;
-        while I > CaretPosition do
+        SetLength(Text, TextLength + 1);
+        CharIndex := TextLength;
+        while CharIndex > CaretPosition do
         begin
-          Text[I + 1] := Text[I];
-          Dec(I);
+          Text[CharIndex + 1] := Text[CharIndex];
+          Dec(CharIndex);
         end;
         Text[CaretPosition + 1] := Character;
         Inc(CaretPosition);
         Invalidate;
-        DispatchNamedEvent(4, 0, 0);
+        DispatchNamedEvent(nceTextChanged, 0, 0);
         if Assigned(ChangedCallback) then
           ChangedCallback(Self);
       end;

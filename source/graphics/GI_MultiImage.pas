@@ -96,9 +96,6 @@ uses
   GR_Main,
   GR_DX;
 
-// Neutral integer expressions retain DCC32 operand materialization order.
-// See docs/development.md; they emit no extra arithmetic.
-
 constructor TMultiImageImageGI.Create;
 begin
   inherited Create;

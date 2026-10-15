@@ -2343,10 +2343,6 @@ uses
   SysUtils;
 
 var
-  StartupState:
-      Cardinal; { Cleared by settings initialization; no retained reader found, original meaning unresolved. }
-  ScreenCenterX: Cardinal;
-  ScreenCenterY: Cardinal;
   LastWindowMessageTick: Cardinal;
   MessageIdle: Boolean;
   PendingDisplayChange: Boolean;
@@ -4156,7 +4152,7 @@ begin
   DebugCommandMessage := $C000;
   DirectXVersion := $090000;
   CopyGameFile('#ship_c.dbf', '#ship.dbf');
-  AppendLogLineThreadSafe('Build=2.1.2500 (11 August 2026)');
+  AppendLogLineThreadSafe('Build=2.1.2500 (6 October 2026)');
   PerformanceCounterFrequency := SDL_GetPerformanceFrequency;
   if not InitializePackageCollection then
     raise Exception.Create('Error while initializing package files');
@@ -4576,7 +4572,6 @@ var
   MemoryStatus: TMemoryStatusEx;
 
 begin
-  StartupState := 0;
   FinalizeRuntimeAndSettings;
 {$IFDEF MSWINDOWS}
   Text :=
@@ -4912,8 +4907,6 @@ begin
       ShowXonarWarning := True;
     end;
   GR_DXInit;
-  ScreenCenterX := Cardinal(GameScreenWidth) shr 1;
-  ScreenCenterY := Cardinal(GameScreenHeight) shr 1;
   ShowAndFocusMainWindow;
   if not ShowSystemMouse then
     ShowGameCursor(False);
@@ -5049,8 +5042,6 @@ var
   SmallestArea: Integer;
   Modes: TBlockParEC;
   Mode: TDisplayModeGR;
-  // Native reserves 16 unused local bytes here; original type is unresolved.
-  UnusedLocal: array[0..15] of Byte;
 begin
   // Refresh after display changes or a runtime restart; the previous mode list
   // does not imply that the desktop or browser viewport still has the same size.
@@ -5573,8 +5564,7 @@ begin
       MaxTextureSize.X := Caps.MaxTextureWidth;
       MaxTextureSize.Y := Caps.MaxTextureHeight;
       AppendLogLineThreadSafe(
-          'Active Max Texture Size=' + IntToStr(MaxTextureSize.X)
-              + 'x' + IntToStr(MaxTextureSize.Y)
+          'Active Max Texture Size=' + IntToStr(MaxTextureSize.X) + 'x' + IntToStr(MaxTextureSize.Y)
       );
     end;
     AvailableTextureBytes := Direct3DDevice.GetAvailableTextureMem;
@@ -5975,8 +5965,6 @@ end;
 
 function MainWindowProc(Window, Message, WParam: Cardinal; LParam: Integer): Integer; stdcall;
 var
-  Origin: TPoint;
-  Bounds: TRect;
   Index: Integer;
 begin
   if (Message = WM_GAME_CANCEL_INPUT) or (Message = WM_GAME_DISPLAY_CHANGED) then
@@ -6018,15 +6006,6 @@ begin
           GR_DXReset;
       if not Direct3DPresentParameters.Windowed then
       begin
-        Origin := Classes.Point(GameScreenRect.Left, GameScreenRect.Top);
-
-        Bounds :=
-            Classes.Rect(
-                Origin.X + GameScreenRect.Left,
-                Origin.Y + GameScreenRect.Top,
-                Origin.X + GameScreenRect.Right,
-                Origin.Y + GameScreenRect.Bottom
-            );
         SDL_SetWindowGrab(GameSDLWindow, 1);
       end;
       if Assigned(OnGameActivated) then

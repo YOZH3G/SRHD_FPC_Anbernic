@@ -917,16 +917,13 @@ var
   Finished: Boolean;
   MessageEntry: TMessagePlayer;
   Alpha: Byte;
-  Stage: Integer; // Native diagnostic-stage assignments are retained although not consumed.
 begin
   PersistentPlayerMessageLock.Enter;
-  Stage := 0;
   try
     Inc(MessagePulseStep);
     Finished := True;
     if MessagePanel.Active = True then
     begin
-      Stage := 1;
       MessagePulseStep := MessagePulseStep mod 32;
       if MessagePulseStep < 16 then
         Alpha := 255 - MessagePulseStep * 8
@@ -935,25 +932,20 @@ begin
       Control := MessagePanel.FirstChild;
       while Control <> nil do
       begin
-        Stage := 2;
         MessageEntry := TMessagePlayer(Control.UserValue);
         if IsPersistentPlayerMessageQueued(MessageEntry, True)
             and (MessageEntry.Button = Control) then
         begin
-          Stage := 3;
           if Control is TGraphButtonGI then
           begin
-            Stage := 4;
             if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead then
             begin
-              Stage := 5;
               with Control as TGraphButtonGI do
               begin
                 LoadGiByPathIntoGraphBuf(
                     'Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName,
                     ImageNormal.GraphBufControl.GraphBuf
                 );
-                Stage := 6;
                 ImageNormal.GraphBufControl.GraphBuf.ScaleAlpha(
                     Classes.Rect(
                         0,
@@ -963,30 +955,24 @@ begin
                     ),
                     Alpha
                 );
-                Stage := 7;
                 Finished := False;
                 Invalidate;
-                Stage := 8;
               end;
             end
             else if ((Control as TGraphButtonGI).ImageNormal <> nil)
                 and ((Control as TGraphButtonGI).ImageNormal.GraphBufControl <> nil) then
             begin
-              Stage := 9;
               (Control as TGraphButtonGI)
                   .ImageNormal
                   .SetImagePath(
                       'GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
-              Stage := 10;
               (Control as TGraphButtonGI).Invalidate;
             end;
           end;
         end;
-        Stage := 11;
         Control := Control.NextSibling;
       end;
     end;
-    Stage := 12;
     if Finished and (MessagePulseTimer <> nil) then
     begin
       Screen.CancelCallbackTimer(MessagePulseTimer);
@@ -1346,7 +1332,7 @@ begin
     RebuildMessageButtons(True);
     if AuxiliaryItems.Count > 0 then
     begin
-      MessageEntry := TMessagePlayer(AuxiliaryItems[0]);
+      MessageEntry := AuxiliaryItems[0];
       Control := MessagePanel.FirstChild;
       while Control <> nil do
       begin
@@ -1492,7 +1478,7 @@ begin
       begin
         if StarMapScreen.Mode = smmOrders then
         begin
-          Ship := TObject(Galaxy.IdToShip(DisplayedShipId, False)) as TShip;
+          Ship := Galaxy.IdToShip(DisplayedShipId, False) as TShip;
           if (Ship <> nil)
               and Ship.InNormalSpace
               and (Ship.CurrentStar = GetPlayer.CurrentStar) then
@@ -1518,7 +1504,7 @@ begin
       begin
         if StarMapScreen.Mode = smmOrders then
         begin
-          Planet := TObject(Galaxy.IdToPlanet(DisplayedPlanetId, False)) as TPlanet;
+          Planet := Galaxy.IdToPlanet(DisplayedPlanetId, False) as TPlanet;
           if (Planet <> nil) and (Planet.CurrentStar = GetPlayer.CurrentStar) then
           begin
             StarMapScreen.SetMapCenterManually(TruncatePointF(Planet.GetPosition));

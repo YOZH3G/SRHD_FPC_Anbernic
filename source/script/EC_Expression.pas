@@ -79,8 +79,7 @@ type
   );
 
   {$Z4}
-  TLibraryValueKind =
-      (lvVoid = 0, lvInt = 1, lvDword = 2, lvFloat = 3, lvString = 4, lvRef = 5, lvCode = 6);
+  TLibraryValueKind = (lvVoid = 0, lvInt = 1, lvDword = 2, lvFloat = 3, lvString = 4);
 
   {$Z1}
   TCodeTokenKind = (
@@ -266,6 +265,16 @@ type
     procedure SaveToBuffer(Buffer: TBufEC);
     procedure LoadFromBuffer(Buffer: TBufEC);
     procedure SetLibrarySignature(Signature: array of Dword);
+
+    property AsInteger: Integer read GetInt write SetInt;
+    property AsDword: PtrUInt read GetDword write SetDword;
+    property AsFloat: Double read GetFloat write SetFloat;
+    property AsString: WideString read GetString write SetString;
+    property AsExternFun: Pointer read GetExternFun write SetExternFun;
+    property AsFunction: TCodeEC read GetFunction write SetFunction;
+    property AsClass: TCodeEC read GetClass write SetClass;
+    property AsArray: TVarArrayEC read GetArray write SetArray;
+    property ValueKind: TVarKind read RealVType;
   end;
 
   PVarEC = PointerToTVarEC;
@@ -299,6 +308,9 @@ type
     procedure SaveToBuffer(Buffer: TBufEC);
     procedure LoadFromBuffer(Buffer: TBufEC);
     procedure AppendFromBuffer(Buffer: TBufEC);
+
+    property Items[Index: Integer]: TVarEC read GetItem write SetItem; default;
+    property NamedItems[const Name: WideString]: TVarEC read GetVar;
   end;
 
   TCodeAnalyzerUnitEC = class(TObject)
@@ -383,13 +395,12 @@ type
     procedure DeleteInstruction(Index: Integer);
     function GetInstruction(Index: Integer): TExpressionInstrEC; cdecl;
     procedure SetInstruction(Index: Integer; Value: TExpressionInstrEC); cdecl;
-    procedure Compile(
+    function Compile(
         Analyzer: TCodeAnalyzerEC;
         FirstToken: TCodeAnalyzerUnitEC;
         EndToken: TCodeAnalyzerUnitEC;
-        NextToken: PCodeAnalyzerUnitEC;
-        var ErrorText: WideString
-    );
+        NextToken: PCodeAnalyzerUnitEC
+    ): WideString;
     procedure Link(Scope: TVarArrayEC; OnlyUnlinked: Boolean);
     procedure Evaluate(Process: TCodeProcessEC; Code: TCodeEC; DebugContext: TScriptDebugState);
     function GetResult: TVarEC;
@@ -445,15 +456,14 @@ type
     procedure DeleteCodeUnit(CodeUnit: TCodeUnitEC);
     function AddCodeUnit: TCodeUnitEC;
     function InsertCodeUnitBefore(BeforeUnit: TCodeUnitEC): TCodeUnitEC;
-    procedure Compile(
+    function Compile(
         Analyzer: TCodeAnalyzerEC;
         SourceContext: Pointer;
         IncludeResolver: TScriptIncludeResolver;
         FirstToken: TCodeAnalyzerUnitEC;
-        NextToken: PCodeAnalyzerUnitEC;
-        var ErrorText: WideString
-    );
-    procedure CompileBlock(
+        NextToken: PCodeAnalyzerUnitEC
+    ): WideString;
+    function CompileBlock(
         Analyzer: TCodeAnalyzerEC;
         SourceContext: Pointer;
         IncludeResolver: TScriptIncludeResolver;
@@ -462,9 +472,8 @@ type
         NextToken: PCodeAnalyzerUnitEC;
         StatementEnd: PCodeAnalyzerUnitEC;
         BreakTarget: TCodeUnitEC;
-        ContinueTarget: TCodeUnitEC;
-        var ErrorText: WideString
-    );
+        ContinueTarget: TCodeUnitEC
+    ): WideString;
     procedure LinkAll(Scope: TVarArrayEC; OnlyUnlinked: Boolean);
     procedure LinkLocalScopes;
     procedure Run(Process: TCodeProcessEC);
@@ -547,7 +556,7 @@ function IsScriptIntegerText(Text: WideString): Boolean;
 
 function IsNonIntegerScriptText(Text: WideString): Boolean;
 
-procedure FormatScriptError(Code: Integer; Position: Integer; var Text: WideString);
+function FormatScriptError(Code: Integer; Position: Integer): WideString;
 
 function TryReadFloatLiteral(var Token: TCodeAnalyzerUnitEC; out Value: Double): Boolean;
 
@@ -646,6 +655,9 @@ procedure RegisterExpressionBuiltins(Scope: TVarArrayEC);
 implementation
 
 uses
+{$IFDEF NATIVE_SCRIPT_MODS}
+  NativeScriptLibrary,
+{$ENDIF}
   GameHeap,
   Math;
 
@@ -785,7 +797,7 @@ begin
   Sign := 1;
   for i := 1 to Count do
     if (Integer(Text[i]) >= Ord('0')) and (Integer(Text[i]) <= Ord('9')) then
-      Result := StrToInt(Text[i]) + Result * 10
+      Result := Result * 10 + (Ord(Text[i]) - Ord('0'))
     else if (Text[i] = '-') and (i = 1) then
       Sign := Sign * -1;
   Result := Sign * Result;
@@ -901,9 +913,9 @@ begin
   Result := not IsScriptIntegerText(Text);
 end;
 
-procedure FormatScriptError(Code, Position: Integer; var Text: WideString);
+function FormatScriptError(Code, Position: Integer): WideString;
 begin
-  Text := IntToStr(Code) + ',' + IntToStr(Position);
+  Result := IntToStr(Code) + ',' + IntToStr(Position);
 end;
 
 function TryReadFloatLiteral(var Token: TCodeAnalyzerUnitEC; out Value: Double): Boolean;
@@ -967,14 +979,10 @@ begin
     Exponent := ScriptStringToInt(ExponentText);
     Current := Current.Next;
   end
-  else if Count - 1 = i then
+  else if i = Count - 1 then
   begin
     Current := Current.Next;
-    if Current = nil then
-      Exit;
-    if Current.Next = nil then
-      Exit;
-    if Current.Next.TokenKind <> ctText then
+    if (Current = nil) or (Current.Next = nil) or (Current.Next.TokenKind <> ctText) then
       Exit;
     if not IsScriptIntegerText(Current.Next.Text) then
       Exit;
@@ -1283,13 +1291,10 @@ begin
   end
   else if NewKind = vkClass then
   begin
-    if Kind <> vkClass then
+    if (Kind <> vkClass) and (ClassValue <> nil) then
     begin
-      if ClassValue <> nil then
-      begin
-        ClassValue.Free;
-        ClassValue := nil;
-      end;
+      ClassValue.Free;
+      ClassValue := nil;
     end;
     IntValue := 0;
     DwordValue := 0;
@@ -1397,7 +1402,7 @@ begin
       SetArray(TVarArrayEC.Create);
     if GetArray.Count > 0 then
       GetArray.Clear;
-    GetArray.CopyFrom(Source.GetArray, True);
+    GetArray.CopyFrom(Source.AsArray, True);
   end
   else
     ArrayValue := Source.ArrayValue;
@@ -1448,7 +1453,7 @@ begin
     if RefValue = nil then
       Result := 0
     else
-      Result := RefValue.GetInt;
+      Result := RefValue.AsInteger;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1489,10 +1494,10 @@ begin
     // Win32, but truncates object addresses in pointer-width script DWORDs.
     if RefValue = nil then
       Result := 0
-    else if RefValue.RealVType in [vkInt, vkDword, vkString] then
-      Result := RefValue.GetDword
+    else if RefValue.ValueKind in [vkInt, vkDword, vkString] then
+      Result := RefValue.AsDword
     else
-      Result := Dword(RefValue.GetInt);
+      Result := Dword(RefValue.AsInteger);
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1525,7 +1530,7 @@ begin
     if RefValue = nil then
       Result := 0
     else
-      Result := RefValue.GetFloat;
+      Result := RefValue.AsFloat;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1558,7 +1563,7 @@ begin
     if RefValue = nil then
       Result := ''
     else
-      Result := RefValue.GetString;
+      Result := RefValue.AsString;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1591,7 +1596,7 @@ begin
     if RefValue = nil then
       Result := nil
     else
-      Result := RefValue.GetExternFun;
+      Result := RefValue.AsExternFun;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1624,7 +1629,7 @@ begin
     if RefValue = nil then
       Result := nil
     else
-      Result := RefValue.GetFunction;
+      Result := RefValue.AsFunction;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1657,7 +1662,7 @@ begin
     if RefValue = nil then
       Result := nil
     else
-      Result := RefValue.GetFunction;
+      Result := RefValue.AsFunction;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1690,7 +1695,7 @@ begin
     if RefValue = nil then
       Result := nil
     else
-      Result := RefValue.GetArray;
+      Result := RefValue.AsArray;
   end
   else
     raise ExceptionExpressionEC.Create('Type error');
@@ -1725,7 +1730,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetInt(Value)
+      RefValue.AsInteger := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1764,11 +1769,11 @@ begin
       // Native $461FD0 delegates to SetInt. Preserve that signed conversion
       // for other scalar types, but retain full object addresses in integer cells.
       // Empty/string references must also retain addresses outside Win32.
-      if (RefValue.RealVType in [vkInt, vkDword])
-          or ((RefValue.RealVType in [vkEmpty, vkString]) and (Value > High(Cardinal))) then
-        RefValue.SetDword(Value)
+      if (RefValue.ValueKind in [vkInt, vkDword])
+          or ((RefValue.ValueKind in [vkEmpty, vkString]) and (Value > High(Cardinal))) then
+        RefValue.AsDword := Value
       else
-        RefValue.SetInt(Integer(Value));
+        RefValue.AsInteger := Integer(Value);
     end
     else
       raise ExceptionExpressionEC.Create('Type error');
@@ -1804,7 +1809,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetFloat(Value)
+      RefValue.AsFloat := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1839,7 +1844,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetString(Value)
+      RefValue.AsString := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1874,7 +1879,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetExternFun(Value)
+      RefValue.AsExternFun := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1907,7 +1912,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetFunction(Value)
+      RefValue.AsFunction := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1942,7 +1947,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetFunction(Value)
+      RefValue.AsFunction := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -1977,7 +1982,7 @@ begin
   else if Kind = vkRef then
   begin
     if RefValue <> nil then
-      RefValue.SetArray(Value)
+      RefValue.AsArray := Value
     else
       raise ExceptionExpressionEC.Create('Type error');
   end;
@@ -2074,11 +2079,11 @@ begin
   Count := Values.Count;
   for i := 0 to Count - 1 do
   begin
-    Item := Values.GetItem(i);
-    if (Item.Kind = vkArray) and (Item.GetArray <> nil) then
+    Item := Values[i];
+    if (Item.Kind = vkArray) and (Item.AsArray <> nil) then
     begin
-      FreeScriptArrayTree(Item.GetArray);
-      Item.SetArray(nil);
+      FreeScriptArrayTree(Item.AsArray);
+      Item.AsArray := nil;
     end;
   end;
   Values.Free;
@@ -2104,8 +2109,8 @@ begin
     for i := Values.Count to Count - 1 do
     begin
       Item := Values.Add('', vkArray);
-      Item.SetArray(TVarArrayEC.Create);
-      GrowScriptArray(Item.GetArray, Dimensions, DimensionIndex + 1);
+      Item.AsArray := TVarArrayEC.Create;
+      GrowScriptArray(Item.AsArray, Dimensions, DimensionIndex + 1);
     end;
   end;
 end;
@@ -2122,8 +2127,8 @@ var
   begin
     SetLength(Dimensions, High(Dimensions) + 1 + 1);
     Dimensions[High(Dimensions)] := Values.Count;
-    if (Values.Count > 0) and (Values.GetItem(0).RealVType = vkArray) then
-      CollectScriptArrayDimensions(Values.GetItem(0).GetArray);
+    if (Values.Count > 0) and (Values[0].ValueKind = vkArray) then
+      CollectScriptArrayDimensions(Values[0].AsArray);
   end;
 
 begin
@@ -2134,9 +2139,9 @@ begin
   begin
     for i := Count to OldCount - 1 do
     begin
-      Item := Values.GetItem(i);
-      if (Item.Kind = vkArray) and (Item.GetArray <> nil) then
-        FreeScriptArrayTree(Item.GetArray);
+      Item := Values[i];
+      if (Item.Kind = vkArray) and (Item.AsArray <> nil) then
+        FreeScriptArrayTree(Item.AsArray);
     end;
     for i := OldCount - 1 downto Count do
       Values.Delete(i);
@@ -2185,14 +2190,14 @@ end;
 procedure TVarEC.OAdd(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt + Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword + Right.GetDword));
-      vkFloat: SetFloat(Left.GetFloat + Right.GetFloat);
-      vkString: SetString(Left.GetString + Right.GetString);
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger + Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword + Right.AsDword));
+      vkFloat: SetFloat(Left.AsFloat + Right.AsFloat);
+      vkString: SetString(Left.AsString + Right.AsString);
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2206,14 +2211,14 @@ end;
 procedure TVarEC.OSub(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt - Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword - Right.GetDword));
-      vkFloat: SetFloat(Left.GetFloat - Right.GetFloat);
-      vkString: SetString(Left.GetString + Right.GetString);
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger - Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword - Right.AsDword));
+      vkFloat: SetFloat(Left.AsFloat - Right.AsFloat);
+      vkString: SetString(Left.AsString + Right.AsString);
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2227,14 +2232,14 @@ end;
 procedure TVarEC.OMul(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt * Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword * Right.GetDword));
-      vkFloat: SetFloat(Left.GetFloat * Right.GetFloat);
-      vkString: SetString(Left.GetString + Right.GetString);
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger * Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword * Right.AsDword));
+      vkFloat: SetFloat(Left.AsFloat * Right.AsFloat);
+      vkString: SetString(Left.AsString + Right.AsString);
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2248,14 +2253,14 @@ end;
 procedure TVarEC.ODiv(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt div Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword) div Dword(Right.GetDword));
-      vkFloat: SetFloat(Left.GetFloat / Right.GetFloat);
-      vkString: SetString(Left.GetString + Right.GetString);
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger div Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword) div Dword(Right.AsDword));
+      vkFloat: SetFloat(Left.AsFloat / Right.AsFloat);
+      vkString: SetString(Left.AsString + Right.AsString);
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2269,13 +2274,13 @@ end;
 procedure TVarEC.OMod(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt mod Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword) mod Dword(Right.GetDword));
-      vkFloat: SetFloat(Trunc(Left.GetFloat) mod Trunc(Right.GetFloat));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger mod Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword) mod Dword(Right.AsDword));
+      vkFloat: SetFloat(Trunc(Left.AsFloat) mod Trunc(Right.AsFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2290,13 +2295,13 @@ end;
 procedure TVarEC.OBitAnd(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt and Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword and Right.GetDword));
-      vkFloat: SetFloat(Trunc(Left.GetFloat) and Trunc(Right.GetFloat));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger and Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword and Right.AsDword));
+      vkFloat: SetFloat(Trunc(Left.AsFloat) and Trunc(Right.AsFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2311,13 +2316,13 @@ end;
 procedure TVarEC.OBitOr(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt or Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword or Right.GetDword));
-      vkFloat: SetFloat(Trunc(Left.GetFloat) or Trunc(Right.GetFloat));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger or Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword or Right.AsDword));
+      vkFloat: SetFloat(Trunc(Left.AsFloat) or Trunc(Right.AsFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2332,13 +2337,13 @@ end;
 procedure TVarEC.OBitXor(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt xor Right.GetInt);
-      vkDword: SetDword(Dword(Left.GetDword xor Right.GetDword));
-      vkFloat: SetFloat(Trunc(Left.GetFloat) xor Trunc(Right.GetFloat));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger xor Right.AsInteger);
+      vkDword: SetDword(Dword(Left.AsDword xor Right.AsDword));
+      vkFloat: SetFloat(Trunc(Left.AsFloat) xor Trunc(Right.AsFloat));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2353,13 +2358,13 @@ end;
 procedure TVarEC.OAnd(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord((Left.GetDword <> 0) and (Right.GetDword <> 0)));
-      vkDword: SetDword(Ord((Left.GetDword <> 0) and (Right.GetDword <> 0)));
-      vkFloat: SetFloat(Integer((Left.GetFloat <> 0) and (Right.GetFloat <> 0)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord((Left.AsDword <> 0) and (Right.AsDword <> 0)));
+      vkDword: SetDword(Ord((Left.AsDword <> 0) and (Right.AsDword <> 0)));
+      vkFloat: SetFloat(Integer((Left.AsFloat <> 0) and (Right.AsFloat <> 0)));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2374,13 +2379,13 @@ end;
 procedure TVarEC.OOr(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord((Left.GetDword <> 0) or (Right.GetDword <> 0)));
-      vkDword: SetDword(Ord((Left.GetDword <> 0) or (Right.GetDword <> 0)));
-      vkFloat: SetFloat(Integer((Left.GetFloat <> 0) or (Right.GetFloat <> 0)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord((Left.AsDword <> 0) or (Right.AsDword <> 0)));
+      vkDword: SetDword(Ord((Left.AsDword <> 0) or (Right.AsDword <> 0)));
+      vkFloat: SetFloat(Integer((Left.AsFloat <> 0) or (Right.AsFloat <> 0)));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2415,13 +2420,13 @@ end;
 procedure TVarEC.OShl(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt shl (Right.GetInt and 31));
-      vkDword: SetDword(Dword(Dword(Left.GetDword) shl (Right.GetDword and 31)));
-      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.GetFloat), Trunc(Right.GetFloat), True));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger shl (Right.AsInteger and 31));
+      vkDword: SetDword(Dword(Dword(Left.AsDword) shl (Right.AsDword and 31)));
+      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.AsFloat), Trunc(Right.AsFloat), True));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2436,13 +2441,13 @@ end;
 procedure TVarEC.OShr(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Left.GetInt shr (Right.GetInt and 31));
-      vkDword: SetDword(Dword(Dword(Left.GetDword) shr (Right.GetDword and 31)));
-      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.GetFloat), Trunc(Right.GetFloat), False));
+    case Left.ValueKind of
+      vkInt: SetInt(Left.AsInteger shr (Right.AsInteger and 31));
+      vkDword: SetDword(Dword(Dword(Left.AsDword) shr (Right.AsDword and 31)));
+      vkFloat: SetFloat(ScriptShiftInt64(Trunc(Left.AsFloat), Trunc(Right.AsFloat), False));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2457,15 +2462,15 @@ end;
 procedure TVarEC.OEqual(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
+    case Left.ValueKind of
       // Equality compares all address bits even when a mod used an int cell.
-      vkInt: SetInt(Ord(Left.GetDword = Right.GetDword));
-      vkDword: SetDword(Ord(Left.GetDword = Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat = Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString = Right.GetString)));
+      vkInt: SetInt(Ord(Left.AsDword = Right.AsDword));
+      vkDword: SetDword(Ord(Left.AsDword = Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat = Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString = Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2479,14 +2484,14 @@ end;
 procedure TVarEC.ONotEqual(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord(Left.GetDword <> Right.GetDword));
-      vkDword: SetDword(Ord(Left.GetDword <> Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat <> Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString <> Right.GetString)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord(Left.AsDword <> Right.AsDword));
+      vkDword: SetDword(Ord(Left.AsDword <> Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat <> Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString <> Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2500,14 +2505,14 @@ end;
 procedure TVarEC.OLess(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord(Left.GetInt < Right.GetInt));
-      vkDword: SetDword(Ord(Left.GetDword < Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat < Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString < Right.GetString)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord(Left.AsInteger < Right.AsInteger));
+      vkDword: SetDword(Ord(Left.AsDword < Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat < Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString < Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2521,14 +2526,14 @@ end;
 procedure TVarEC.OMore(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord(Left.GetInt > Right.GetInt));
-      vkDword: SetDword(Ord(Left.GetDword > Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat > Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString > Right.GetString)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord(Left.AsInteger > Right.AsInteger));
+      vkDword: SetDword(Ord(Left.AsDword > Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat > Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString > Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2542,14 +2547,14 @@ end;
 procedure TVarEC.OLessEqual(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord(Left.GetInt <= Right.GetInt));
-      vkDword: SetDword(Ord(Left.GetDword <= Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat <= Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString <= Right.GetString)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord(Left.AsInteger <= Right.AsInteger));
+      vkDword: SetDword(Ord(Left.AsDword <= Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat <= Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString <= Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2563,14 +2568,14 @@ end;
 procedure TVarEC.OMoreEqual(Left, Right: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Left.RealVType);
+    ResetKind(Left.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Left.RealVType of
-      vkInt: SetInt(Ord(Left.GetInt >= Right.GetInt));
-      vkDword: SetDword(Ord(Left.GetDword >= Right.GetDword));
-      vkFloat: SetFloat(Integer(Left.GetFloat >= Right.GetFloat));
-      vkString: SetString(IntToStr(Ord(Left.GetString >= Right.GetString)));
+    case Left.ValueKind of
+      vkInt: SetInt(Ord(Left.AsInteger >= Right.AsInteger));
+      vkDword: SetDword(Ord(Left.AsDword >= Right.AsDword));
+      vkFloat: SetFloat(Integer(Left.AsFloat >= Right.AsFloat));
+      vkString: SetString(IntToStr(Ord(Left.AsString >= Right.AsString)));
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2584,14 +2589,14 @@ end;
 procedure TVarEC.OMinus(Value: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Value.RealVType);
+    ResetKind(Value.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Value.RealVType of
-      vkInt: SetInt(-Value.GetInt);
-      vkDword: SetDword(Dword(0 - Value.GetDword));
-      vkFloat: SetFloat(-Value.GetFloat);
-      vkString: SetString(Value.GetString);
+    case Value.ValueKind of
+      vkInt: SetInt(-Value.AsInteger);
+      vkDword: SetDword(Dword(0 - Value.AsDword));
+      vkFloat: SetFloat(-Value.AsFloat);
+      vkString: SetString(Value.AsString);
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
       vkClass: SetClass(nil);
@@ -2605,12 +2610,12 @@ end;
 procedure TVarEC.OBitNot(Value: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Value.RealVType);
+    ResetKind(Value.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Value.RealVType of
-      vkInt: SetInt(not Value.GetInt);
-      vkDword: SetDword(Dword(not Value.GetDword));
+    case Value.ValueKind of
+      vkInt: SetInt(not Value.AsInteger);
+      vkDword: SetDword(Dword(not Value.AsDword));
       vkFloat: SetFloat(0);
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
@@ -2626,14 +2631,14 @@ end;
 procedure TVarEC.ONot(Value: TVarEC);
 begin
   if RealVType = vkEmpty then
-    ResetKind(Value.RealVType);
+    ResetKind(Value.ValueKind);
   if RealVType <> vkEmpty then
   begin
-    case Value.RealVType of
-      vkInt: SetInt(Ord(Value.GetDword = 0));
+    case Value.ValueKind of
+      vkInt: SetInt(Ord(Value.AsDword = 0));
       // A non-nil object can have zero in its low 32 bits.
-      vkDword: SetDword(Ord(Value.GetDword = 0));
-      vkFloat: SetFloat(Integer(Value.GetFloat = 0));
+      vkDword: SetDword(Ord(Value.AsDword = 0));
+      vkFloat: SetFloat(Integer(Value.AsFloat = 0));
       vkString: SetString('');
       vkExternFun: SetExternFun(nil);
       vkFunction: SetFunction(nil);
@@ -2660,7 +2665,7 @@ begin
   if (Dest.Kind = vkExternFun) and (Source.Kind <> vkExternFun) then
     raise Exception.Create('Error assigning to function ' + Dest.Name);
   if Dest.Kind = vkEmpty then
-    Dest.ResetKind(Source.RealVType);
+    Dest.ResetKind(Source.ValueKind);
   if Dest.Kind = vkEmpty then
   begin
   end
@@ -2669,21 +2674,21 @@ begin
     // Native $465300/$46530A copies through 32-bit GetInt/SetInt. On a wider
     // target integer-to-integer assignment must also preserve object addresses.
     // This path is shared by variable assignment and script function arguments.
-    if Source.RealVType in [vkInt, vkDword] then
-      Dest.SetDword(Source.GetDword)
-    else if Source.RealVType = vkString then
-      Dest.SetString(Source.GetString)
+    if Source.ValueKind in [vkInt, vkDword] then
+      Dest.AsDword := Source.AsDword
+    else if Source.ValueKind = vkString then
+      Dest.AsString := Source.AsString
     else
-      Dest.SetInt(Source.GetInt);
+      Dest.AsInteger := Source.AsInteger;
   end
   else if Dest.Kind = vkDword then
-    Dest.SetDword(Source.GetDword)
+    Dest.AsDword := Source.AsDword
   else if Dest.Kind = vkFloat then
-    Dest.SetFloat(Source.GetFloat)
+    Dest.AsFloat := Source.AsFloat
   else if Dest.Kind = vkString then
-    Dest.SetString(Source.GetString)
+    Dest.AsString := Source.AsString
   else if Dest.Kind = vkExternFun then
-    Dest.SetExternFun(Source.GetExternFun)
+    Dest.AsExternFun := Source.AsExternFun
   else if Dest.Kind = vkLibraryFun then
   begin
     Dest.LibraryFunData := nil;
@@ -2693,23 +2698,23 @@ begin
       for i := 0 to High(Dest.LibraryFunData) do
         Dest.LibraryFunData[i] := Source.LibraryFunData[i];
     end;
-    Dest.SetString(Source.GetString);
+    Dest.AsString := Source.AsString;
   end
   else if Dest.Kind = vkFunction then
-    Dest.SetFunction(Source.GetFunction)
+    Dest.AsFunction := Source.AsFunction
   else if Dest.Kind = vkClass then
-    Dest.SetClass(Source.GetClass)
+    Dest.AsClass := Source.AsClass
   else if Dest.Kind = vkArray then
   begin
     if not CopyArrays then
-      Dest.SetArray(Source.GetArray)
+      Dest.AsArray := Source.AsArray
     else
     begin
-      if Dest.GetArray = nil then
-        Dest.SetArray(TVarArrayEC.Create);
-      if Dest.GetArray.Count > 0 then
-        Dest.GetArray.Clear;
-      Dest.GetArray.CopyFrom(Source.GetArray, True);
+      if Dest.AsArray = nil then
+        Dest.AsArray := TVarArrayEC.Create;
+      if Dest.AsArray.Count > 0 then
+        Dest.AsArray.Clear;
+      Dest.AsArray.CopyFrom(Source.AsArray, True);
     end;
   end
   else
@@ -2720,13 +2725,13 @@ function TVarEC.EqualsValue(Other: TVarEC): Boolean;
 begin
   case RealVType of
     vkEmpty: Result := IsEmpty = Other.IsEmpty;
-    vkInt: Result := GetDword = Other.GetDword;
-    vkDword: Result := GetDword = Other.GetDword;
-    vkFloat: Result := GetFloat = Other.GetFloat;
-    vkString: Result := GetString = Other.GetString;
+    vkInt: Result := GetDword = Other.AsDword;
+    vkDword: Result := GetDword = Other.AsDword;
+    vkFloat: Result := GetFloat = Other.AsFloat;
+    vkString: Result := GetString = Other.AsString;
     vkExternFun: Result := False;
     vkFunction: Result := False;
-    vkClass: Result := GetClass = Other.GetClass;
+    vkClass: Result := GetClass = Other.AsClass;
     vkArray: Result := False;
   else
     raise ExceptionExpressionEC.Create('Equal');
@@ -2737,10 +2742,10 @@ function TVarEC.LessThan(Other: TVarEC): Boolean;
 begin
   case RealVType of
     vkEmpty: Result := IsEmpty < Other.IsEmpty;
-    vkInt: Result := GetInt < Other.GetInt;
-    vkDword: Result := GetDword < Other.GetDword;
-    vkFloat: Result := GetFloat < Other.GetFloat;
-    vkString: Result := GetString < Other.GetString;
+    vkInt: Result := GetInt < Other.AsInteger;
+    vkDword: Result := GetDword < Other.AsDword;
+    vkFloat: Result := GetFloat < Other.AsFloat;
+    vkString: Result := GetString < Other.AsString;
     vkExternFun: Result := False;
     vkFunction: Result := False;
     vkClass: Result := False;
@@ -2754,10 +2759,10 @@ function TVarEC.GreaterThan(Other: TVarEC): Boolean;
 begin
   case RealVType of
     vkEmpty: Result := IsEmpty > Other.IsEmpty;
-    vkInt: Result := GetInt > Other.GetInt;
-    vkDword: Result := GetDword > Other.GetDword;
-    vkFloat: Result := GetFloat > Other.GetFloat;
-    vkString: Result := GetString > Other.GetString;
+    vkInt: Result := GetInt > Other.AsInteger;
+    vkDword: Result := GetDword > Other.AsDword;
+    vkFloat: Result := GetFloat > Other.AsFloat;
+    vkString: Result := GetString > Other.AsString;
     vkExternFun: Result := False;
     vkFunction: Result := False;
     vkClass: Result := False;
@@ -2906,8 +2911,8 @@ var
 begin
   for i := 0 to Count - 1 do
   begin
-    if (GetItem(i).Kind = vkArray) and (GetItem(i).GetArray <> nil) then
-      GetItem(i).GetArray.Clear;
+    if (GetItem(i).Kind = vkArray) and (GetItem(i).AsArray <> nil) then
+      GetItem(i).AsArray.Clear;
     GetItem(i).Free;
   end;
   ClearStorage;
@@ -2927,7 +2932,7 @@ begin
   System.Move(Pointer(Source.NameOrder)^, Pointer(NameOrder)^, Count * SizeOf(Integer));
   for i := 0 to Count - 1 do
   begin
-    SourceItem := Source.GetItem(i);
+    SourceItem := Source[i];
     Item := TVarEC.Create(vkEmpty);
     SetItem(i, Item);
     Item.Name := SourceItem.Name;
@@ -3666,7 +3671,7 @@ begin
   end;
   if OpenCount <> CloseCount then
   begin
-    FormatScriptError(0, Last.SourceStart + Last.SourceLength, Result);
+    Result := FormatScriptError(0, Last.SourceStart + Last.SourceLength);
     Exit;
   end;
   if OpenCount < 1 then
@@ -3702,7 +3707,7 @@ begin
         // Native checks total openings here, not the current stack depth.
         if (OpenCount < 1) or (Stack[Depth - 1] <> 1) then
         begin
-          FormatScriptError(0, Token.SourceStart, Result);
+          Result := FormatScriptError(0, Token.SourceStart);
           Stack := nil;
           Exit;
         end;
@@ -3712,7 +3717,7 @@ begin
       begin
         if (OpenCount < 1) or (Stack[Depth - 1] <> 2) then
         begin
-          FormatScriptError(0, Token.SourceStart, Result);
+          Result := FormatScriptError(0, Token.SourceStart);
           Stack := nil;
           Exit;
         end;
@@ -3722,7 +3727,7 @@ begin
       begin
         if (OpenCount < 1) or (Stack[Depth - 1] <> 3) then
         begin
-          FormatScriptError(0, Token.SourceStart, Result);
+          Result := FormatScriptError(0, Token.SourceStart);
           Stack := nil;
           Exit;
         end;
@@ -3732,7 +3737,7 @@ begin
       begin
         if (OpenCount < 1) or (Stack[Depth - 1] <> 4) then
         begin
-          FormatScriptError(0, Token.SourceStart, Result);
+          Result := FormatScriptError(0, Token.SourceStart);
           Stack := nil;
           Exit;
         end;
@@ -3742,7 +3747,7 @@ begin
     end;
     if Depth > 0 then
     begin
-      FormatScriptError(0, Last.SourceStart + Last.SourceLength, Result);
+      Result := FormatScriptError(0, Last.SourceStart + Last.SourceLength);
       Stack := nil;
       Exit;
     end;
@@ -3905,13 +3910,10 @@ begin
   Value := nil;
   if Kind = evNamed then
     Value := Source.Value
-  else if Kind = evOwned then
+  else if (Kind = evOwned) and (Source.Value <> nil) then
   begin
-    if Source.Value <> nil then
-    begin
-      Value := TVarEC.Create(vkEmpty);
-      Value.AssignFrom(Source.Value, False);
-    end;
+    Value := TVarEC.Create(vkEmpty);
+    Value.AssignFrom(Source.Value, False);
   end;
   if Source.MemberPath <> nil then
   begin
@@ -3987,10 +3989,10 @@ begin
       i := 0;
       while i <= High(MemberPath) do
       begin
-        if Result.RealVType = vkClass then
-          Result := Result.GetClass.FindVar(MemberPath[i])
-        else if Result.RealVType = vkFunction then
-          Result := Result.GetFunction.FindVar(MemberPath[i])
+        if Result.ValueKind = vkClass then
+          Result := Result.AsClass.FindVar(MemberPath[i])
+        else if Result.ValueKind = vkFunction then
+          Result := Result.AsFunction.FindVar(MemberPath[i])
         else
           raise ExceptionExpressionEC.Create('Not link var :' + GetFullName);
         if Result = nil then
@@ -4248,16 +4250,15 @@ procedure RejectExpression(
     var ErrorText: WideString
 ); inline;
 begin
-  FormatScriptError(0, SourceStart, ErrorText);
+  ErrorText := FormatScriptError(0, SourceStart);
   Compiler.Free;
 end;
 
-procedure TExpressionEC.Compile(
+function TExpressionEC.Compile(
     Analyzer: TCodeAnalyzerEC;
     FirstToken, EndToken: TCodeAnalyzerUnitEC;
-    NextToken: PCodeAnalyzerUnitEC;
-    var ErrorText: WideString
-);
+    NextToken: PCodeAnalyzerUnitEC
+): WideString;
 var
   Token, Next: TCodeAnalyzerUnitEC;
   Compiler: TCompilerEC;
@@ -4271,12 +4272,12 @@ var
   Text: WideString;
 begin
   Clear;
-  ErrorText := '';
+  Result := '';
   if FirstToken = nil then
     FirstToken := Analyzer.First;
   if FirstToken = nil then
   begin
-    FormatScriptError(0, 0, ErrorText);
+    Result := FormatScriptError(0, 0);
     Exit;
   end;
   Compiler := TCompilerEC.Create;
@@ -4444,7 +4445,7 @@ begin
         end
         else
         begin
-          RejectExpression(Compiler, Token.SourceStart, ErrorText);
+          RejectExpression(Compiler, Token.SourceStart, Result);
           Exit;
         end;
       end
@@ -4454,7 +4455,7 @@ begin
           Break;
         if (Token.TokenKind <> ctNewline) and (Token.TokenKind <> ctWhitespace) then
         begin
-          RejectExpression(Compiler, Token.SourceStart, ErrorText);
+          RejectExpression(Compiler, Token.SourceStart, Result);
           Exit;
         end;
       end;
@@ -4485,7 +4486,7 @@ begin
       end
       else
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end
@@ -4501,7 +4502,7 @@ begin
   begin
     if Token = nil then
       Token := Analyzer.Last;
-    RejectExpression(Compiler, Token.SourceStart + Token.SourceLength, ErrorText);
+    RejectExpression(Compiler, Token.SourceStart + Token.SourceLength, Result);
     Exit;
   end;
   Item := Compiler.First;
@@ -4543,7 +4544,7 @@ begin
     begin
       if InvalidBinaryOperands(Item) then
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end
@@ -4551,13 +4552,13 @@ begin
     begin
       if InvalidAssignmentOperands(Item) then
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end
     else if InvalidUnaryOperand(Item) then
     begin
-      RejectExpression(Compiler, Item.SourceStart, ErrorText);
+      RejectExpression(Compiler, Item.SourceStart, Result);
       Exit;
     end;
     Item := Item.Next;
@@ -4572,7 +4573,7 @@ begin
       Slot := GetVariable(Item.VariableIndex);
       Slot.Kind := evOwned;
       Slot.Value := TVarEC.Create(vkInt);
-      Slot.Value.SetInt(Item.IntValue);
+      Slot.Value.AsInteger := Item.IntValue;
     end
     else if Item.Kind = cuDwordLiteral then
     begin
@@ -4581,7 +4582,7 @@ begin
       Slot := GetVariable(Item.VariableIndex);
       Slot.Kind := evOwned;
       Slot.Value := TVarEC.Create(vkDword);
-      Slot.Value.SetDword(Item.DwordValue);
+      Slot.Value.AsDword := Item.DwordValue;
     end
     else if Item.Kind = cuFloatLiteral then
     begin
@@ -4590,7 +4591,7 @@ begin
       Slot := GetVariable(Item.VariableIndex);
       Slot.Kind := evOwned;
       Slot.Value := TVarEC.Create(vkFloat);
-      Slot.Value.SetFloat(Item.FloatValue);
+      Slot.Value.AsFloat := Item.FloatValue;
     end
     else if Item.Kind = cuStringLiteral then
     begin
@@ -4599,7 +4600,7 @@ begin
       Slot := GetVariable(Item.VariableIndex);
       Slot.Kind := evOwned;
       Slot.Value := TVarEC.Create(vkString);
-      Slot.Value.SetString(Item.Text);
+      Slot.Value.AsString := Item.Text;
     end
     else if Item.Kind = cuName then
     begin
@@ -4610,7 +4611,7 @@ begin
       Slot.Name := Item.Text;
       if not Slot.SplitMemberPath then
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end
@@ -4622,7 +4623,7 @@ begin
       Slot.Name := Item.Text;
       if not Slot.SplitMemberPath then
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end
@@ -4634,7 +4635,7 @@ begin
       Slot.Name := Item.Text;
       if not Slot.SplitMemberPath then
       begin
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
     end;
@@ -4642,7 +4643,7 @@ begin
   end;
   if Compiler.First = nil then
   begin
-    RejectExpression(Compiler, 0, ErrorText);
+    RejectExpression(Compiler, 0, Result);
     Exit;
   end;
   while Compiler.First.Next <> nil do
@@ -4656,9 +4657,9 @@ begin
     begin
       Clear;
       if Compiler.First = nil then
-        ErrorText := 'Unknown error'
+        Result := 'Unknown error'
       else
-        FormatScriptError(0, Compiler.First.SourceStart, ErrorText);
+        Result := FormatScriptError(0, Compiler.First.SourceStart);
       Compiler.Free;
       Exit;
     end;
@@ -4677,7 +4678,7 @@ begin
       if (Item.Kind = cuIndex) and (ArgumentCount < 1) then
       begin
         Clear;
-        RejectExpression(Compiler, Item.SourceStart, ErrorText);
+        RejectExpression(Compiler, Item.SourceStart, Result);
         Exit;
       end;
       ResultSlot := AddVariable;
@@ -4786,14 +4787,13 @@ begin
   for i := 0 to VariableCount - 1 do
   begin
     Slot := GetVariable(i);
-    if (not OnlyUnlinked) or (Slot.Value = nil) then
+    if OnlyUnlinked and (Slot.Value <> nil) then
+      Continue;
+    if Slot.Kind = evNamed then
     begin
-      if Slot.Kind = evNamed then
-      begin
-        Found := Scope.GetVarNE(Slot.Name);
-        if Found <> nil then
-          Slot.Value := Found;
-      end;
+      Found := Scope.GetVarNE(Slot.Name);
+      if Found <> nil then
+        Slot.Value := Found;
     end;
   end;
 end;
@@ -4804,7 +4804,6 @@ procedure TExpressionEC.Evaluate(
     DebugContext: TScriptDebugState
 );
 var
-  LibraryWord: Dword;
   i, j: Integer;
   Instruction: TExpressionInstrEC;
   Dest, Left, Right: TExpressionVarEC;
@@ -4812,7 +4811,6 @@ var
   Value, IndexValue, Callee, Argument: TVarEC;
   Invocation: TCodeEC;
   ResultKind: TVarKind;
-  SingleValue: Single;
 begin
   i := 0;
   while i < VariableCount do
@@ -4833,9 +4831,9 @@ begin
       Dest := GetVariable(Instruction.Operands[0]);
       Left := GetVariable(Instruction.Operands[1]);
       case Instruction.Opcode of
-        eoNegate: Dest.Resolve(Left.Value.RealVType).OMinus(Left.Resolve(vkEmpty));
-        eoBitNot: Dest.Resolve(Left.Value.RealVType).OBitNot(Left.Resolve(vkEmpty));
-        eoNot: Dest.Resolve(Left.Value.RealVType).ONot(Left.Resolve(vkEmpty));
+        eoNegate: Dest.Resolve(Left.Value.ValueKind).OMinus(Left.Resolve(vkEmpty));
+        eoBitNot: Dest.Resolve(Left.Value.ValueKind).OBitNot(Left.Resolve(vkEmpty));
+        eoNot: Dest.Resolve(Left.Value.ValueKind).ONot(Left.Resolve(vkEmpty));
       end;
     end
     else if (Instruction.Opcode <> eoCall)
@@ -4852,7 +4850,7 @@ begin
             or (Instruction.Opcode = eoSubtract)
             or (Instruction.Opcode = eoMultiply)
             or (Instruction.Opcode = eoDivide) then
-          ResultKind := Left.Resolve(vkEmpty).RealVType
+          ResultKind := Left.Resolve(vkEmpty).ValueKind
         else
           ResultKind := vkInt;
       end;
@@ -4891,37 +4889,37 @@ begin
       Dest := GetVariable(Instruction.Operands[0]);
       Left := GetVariable(Instruction.Operands[1]);
       Value := Left.Resolve(vkEmpty);
-      if Value.RealVType <> vkArray then
+      if Value.ValueKind <> vkArray then
         raise ExceptionExpressionEC.Create('Not array:' + Left.Name);
       for j := 2 to Instruction.OperandCount - 1 do
       begin
         Right := GetVariable(Instruction.Operands[j]);
         IndexValue := Right.Resolve(vkEmpty);
-        if IndexValue.RealVType = vkString then
+        if IndexValue.ValueKind = vkString then
         begin
-          Value := Value.GetArray.GetVarNE(IndexValue.GetString);
+          Value := Value.AsArray.GetVarNE(IndexValue.AsString);
           if Value = nil then
             raise ExceptionExpressionEC.Create(
                 'Error array. name='
                     + Left.Resolve(vkEmpty).Name
                     + ' index='
-                    + Right.Value.GetString
+                    + Right.Value.AsString
                     + ' level='
                     + IntToStr(j - 1));
         end
         else
         begin
-          Value := Value.GetArray.GetItemNE(IndexValue.GetInt);
+          Value := Value.AsArray.GetItemNE(IndexValue.AsInteger);
           if Value = nil then
             raise ExceptionExpressionEC.Create(
                 'Error array. name='
                     + Left.Resolve(vkEmpty).Name
                     + ' index='
-                    + IntToStr(Right.Value.GetInt)
+                    + IntToStr(Right.Value.AsInteger)
                     + ' level='
                     + IntToStr(j - 1));
         end;
-        if (j <> Instruction.OperandCount - 1) and (Value.RealVType <> vkArray) then
+        if (j <> Instruction.OperandCount - 1) and (Value.ValueKind <> vkArray) then
           raise ExceptionExpressionEC.Create('Error array:' + Left.Name);
       end;
       Dest.Value := Value;
@@ -4932,65 +4930,27 @@ begin
       Left := GetVariable(Instruction.Operands[1]);
       Dest.Resolve(vkEmpty);
       Callee := Left.Resolve(vkEmpty);
-      if Callee.RealVType = vkLibraryFun then
+      if Callee.ValueKind = vkLibraryFun then
       begin
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-  {$ASMMODE INTEL}
-        Value := Callee.Resolve;
-        if High(Value.LibraryFunData) + 1 - 2 <> Instruction.OperandCount - 2 then
-          raise ExceptionExpressionEC.Create('Count variable : ' + Left.Name);
-        for j := Instruction.OperandCount - 2 - 1 downto 0 do
+{$IFDEF NATIVE_SCRIPT_MODS}
+        SetLength(Arguments, Instruction.OperandCount - 1);
+        Arguments[0] := Dest.Value;
+        for j := 2 to Instruction.OperandCount - 1 do
+          Arguments[j - 1] := GetVariable(Instruction.Operands[j]).Resolve(vkEmpty);
+        if Code <> nil then
         begin
-          Argument := GetVariable(Instruction.Operands[j + 2]).Resolve(vkEmpty);
-          case TLibraryValueKind(Value.LibraryFunData[2 + j]) of
-            lvInt: LibraryWord := Argument.GetInt;
-            lvDword: LibraryWord := Argument.GetDword;
-            lvFloat:
-            begin
-              SingleValue := Argument.GetFloat;
-              LibraryWord := PDword(@SingleValue)^;
-            end;
-            lvString:
-            begin
-              IndexValue := Argument.Resolve;
-              if IndexValue.Kind <> vkString then
-                raise ExceptionExpressionEC.Create('Variable not string');
-              if Length(IndexValue.StringValue) <= 0 then
-                LibraryWord := 0
-              else
-                LibraryWord := Dword(PWideChar(IndexValue.StringValue));
-            end;
-            lvRef: LibraryWord := Dword(Argument);
-            lvCode: LibraryWord := Dword(Code);
-          else
-            LibraryWord := 0;
-          end;
-          // The imported function consumes its dynamically constructed argument stack.
-          asm
-            push LibraryWord
-          end;
+          Code.Process := Process;
+          Code.DebugContext := DebugContext;
         end;
         ScriptCallTrace[ScriptCallTracePosition] := Callee;
         ScriptCallTraceCount := Min(20, ScriptCallTraceCount + 1);
         ScriptCallTracePosition := (ScriptCallTracePosition + 1) mod 20;
-        LibraryWord := Value.LibraryFunData[1];
-        asm
-          call LibraryWord
-          mov LibraryWord, eax
-        end;
-        if Value.LibraryFunData[0] = 1 then
-          Dest.Value.SetInt(LibraryWord)
-        else if Value.LibraryFunData[0] = 2 then
-          Dest.Value.SetDword(LibraryWord)
-        else if Value.LibraryFunData[0] = 3 then
-          Dest.Value.SetFloat(PSingle(@LibraryWord)^)
-        else if Value.LibraryFunData[0] = 4 then
-          Dest.Value.SetString(AnsiString('') + PWideChar(LibraryWord));
+        InvokeNativeScriptFunction(Callee.Resolve, Arguments, Code);
 {$ELSE}
-        raise ExceptionExpressionEC.Create('Script DLL calls require 32-bit Windows');
+        raise ExceptionExpressionEC.Create('Native script libraries are disabled');
 {$ENDIF}
       end
-      else if Callee.RealVType = vkExternFun then
+      else if Callee.ValueKind = vkExternFun then
       begin
         SetLength(Arguments, Instruction.OperandCount - 1);
         Arguments[0] := Dest.Value;
@@ -5008,26 +4968,26 @@ begin
         ScriptCallTrace[ScriptCallTracePosition] := Callee;
         ScriptCallTraceCount := Min(20, ScriptCallTraceCount + 1);
         ScriptCallTracePosition := (ScriptCallTracePosition + 1) mod 20;
-        TExpressionCallback(Callee.GetExternFun())(Arguments, Code);
+        TExpressionCallback(Callee.AsExternFun)(Arguments, Code);
       end
-      else if Callee.RealVType = vkFunction then
+      else if Callee.ValueKind = vkFunction then
       begin
-        if Callee.GetFunction.LocalVar.GetVar('funBaseVarCount').GetInt
+        if Callee.AsFunction.LocalVar.NamedItems['funBaseVarCount'].AsInteger
             < Instruction.OperandCount - 2 then
           raise ExceptionExpressionEC.Create('Count var error. fun:' + Left.Name);
         Invocation := TCodeEC.Create;
-        Invocation.Parent := Callee.GetFunction;
-        Invocation.CopyFromFast(Callee.GetFunction);
+        Invocation.Parent := Callee.AsFunction;
+        Invocation.CopyFromFast(Callee.AsFunction);
         for j := 2 to Instruction.OperandCount - 1 do
         begin
           Argument := GetVariable(Instruction.Operands[j]).Resolve(vkEmpty);
-          if Invocation.LocalVar.GetItem(j - 2).Kind = vkRef then
-            Invocation.LocalVar.GetItem(j - 2).SetRef(Argument)
+          if Invocation.LocalVar[j - 2].Kind = vkRef then
+            Invocation.LocalVar[j - 2].SetRef(Argument)
           else
-            Invocation.LocalVar.GetItem(j - 2).Assume(Argument, False);
+            Invocation.LocalVar[j - 2].Assume(Argument, False);
         end;
         try
-          Invocation.LocalVar.GetVar('result').SetRef(Dest.Value);
+          Invocation.LocalVar.NamedItems['result'].SetRef(Dest.Value);
           if DebugContext = nil then
             Invocation.Run(Process)
           else
@@ -5110,20 +5070,34 @@ begin
 end;
 
 function TCompilerEC.FindReducibleOperator: TCompilerUnitEC;
+const
+  PrecedenceUnary = 0;
+  PrecedenceMultiply = 1;
+  PrecedenceAdd = 2;
+  PrecedenceShift = 3;
+  PrecedenceCompare = 4;
+  PrecedenceBitAnd = 5;
+  PrecedenceBitXor = 6;
+  PrecedenceBitOr = 7;
+  PrecedenceAnd = 8;
+  PrecedenceOr = 9;
+  PrecedenceAssign = 10;
 var
   i: Integer;
   Item, Following: TCompilerUnitEC;
-  Candidates: array[0..10] of TCompilerUnitEC;
+  Candidates: array[PrecedenceUnary..PrecedenceAssign] of TCompilerUnitEC;
 begin
-  for i := 0 to 10 do
+  for i := Low(Candidates) to High(Candidates) do
     Candidates[i] := nil;
   Item := First;
   while Item <> nil do
   begin
     if Item.Kind = cuUnaryOperator then
     begin
-      if (Item.Next <> nil) and (Item.Next.Kind = cuVariable) and (Candidates[0] = nil) then
-        Candidates[0] := Item;
+      if (Item.Next <> nil)
+          and (Item.Next.Kind = cuVariable)
+          and (Candidates[PrecedenceUnary] = nil) then
+        Candidates[PrecedenceUnary] := Item;
     end
     else if Item.Kind = cuBinaryOperator then
     begin
@@ -5134,9 +5108,9 @@ begin
         begin
           if (Following.Kind = cuOpenParen)
               or (Following.Kind = cuOpenBracket)
-              or (Following.Kind = cuCall)
-              or (Following.Kind = cuCloseParen)
-              or (Following.Kind = cuCloseBracket) then
+              or (Following.Kind = cuCall) then
+            Break;
+          if (Following.Kind = cuCloseParen) or (Following.Kind = cuCloseBracket) then
             Break;
           Following := Following.Next;
         end;
@@ -5149,18 +5123,18 @@ begin
               or (Item.OperatorToken = ctDivide)
               or (Item.OperatorToken = ctModulo) then
           begin
-            if Candidates[1] = nil then
-              Candidates[1] := Item;
+            if Candidates[PrecedenceMultiply] = nil then
+              Candidates[PrecedenceMultiply] := Item;
           end
           else if (Item.OperatorToken = ctAdd) or (Item.OperatorToken = ctSubtract) then
           begin
-            if Candidates[2] = nil then
-              Candidates[2] := Item;
+            if Candidates[PrecedenceAdd] = nil then
+              Candidates[PrecedenceAdd] := Item;
           end
           else if (Item.OperatorToken = ctShiftLeft) or (Item.OperatorToken = ctShiftRight) then
           begin
-            if Candidates[3] = nil then
-              Candidates[3] := Item;
+            if Candidates[PrecedenceShift] = nil then
+              Candidates[PrecedenceShift] := Item;
           end
           else if (Item.OperatorToken = ctEqual)
               or (Item.OperatorToken = ctNotEqual)
@@ -5169,33 +5143,33 @@ begin
               or (Item.OperatorToken = ctLessEqual)
               or (Item.OperatorToken = ctGreaterEqual) then
           begin
-            if Candidates[4] = nil then
-              Candidates[4] := Item;
+            if Candidates[PrecedenceCompare] = nil then
+              Candidates[PrecedenceCompare] := Item;
           end
           else if Item.OperatorToken = ctBitAnd then
           begin
-            if Candidates[5] = nil then
-              Candidates[5] := Item;
+            if Candidates[PrecedenceBitAnd] = nil then
+              Candidates[PrecedenceBitAnd] := Item;
           end
           else if Item.OperatorToken = ctBitXor then
           begin
-            if Candidates[6] = nil then
-              Candidates[6] := Item;
+            if Candidates[PrecedenceBitXor] = nil then
+              Candidates[PrecedenceBitXor] := Item;
           end
           else if Item.OperatorToken = ctBitOr then
           begin
-            if Candidates[7] = nil then
-              Candidates[7] := Item;
+            if Candidates[PrecedenceBitOr] = nil then
+              Candidates[PrecedenceBitOr] := Item;
           end
           else if Item.OperatorToken = ctAnd then
           begin
-            if Candidates[8] = nil then
-              Candidates[8] := Item;
+            if Candidates[PrecedenceAnd] = nil then
+              Candidates[PrecedenceAnd] := Item;
           end
           else if Item.OperatorToken = ctOr then
           begin
-            if Candidates[9] = nil then
-              Candidates[9] := Item;
+            if Candidates[PrecedenceOr] = nil then
+              Candidates[PrecedenceOr] := Item;
           end;
         end;
       end;
@@ -5204,12 +5178,12 @@ begin
     begin
       if (Item.Prev.Kind = cuVariable)
           and (Item.Next.Kind = cuVariable)
-          and (Candidates[10] = nil) then
-        Candidates[10] := Item;
+          and (Candidates[PrecedenceAssign] = nil) then
+        Candidates[PrecedenceAssign] := Item;
     end;
     Item := Item.Next;
   end;
-  for i := 0 to 10 do
+  for i := Low(Candidates) to High(Candidates) do
     if Candidates[i] <> nil then
     begin
       Result := Candidates[i];
@@ -5363,7 +5337,7 @@ var
   Entry: PVarEC;
 begin
   Entry := GameHeap.HeapAlloc(GameHeap.GetProcessHeap, 0, SizeOf(TVarEC));
-  Entry^ := TVarEC.Create(Value.RealVType);
+  Entry^ := TVarEC.Create(Value.ValueKind);
   Entry^.Assume(Value, False);
   Exceptions.Add(Entry);
 end;
@@ -5404,7 +5378,7 @@ begin
     Entry := Exceptions[i];
     if i > 0 then
       Text := Text + #13#10;
-    Text := Text + 'Exception: ' + Entry^.GetString;
+    Text := Text + 'Exception: ' + Entry^.AsString;
   end;
   if Text <> '' then
     raise ExceptionExpressionEC.Create(Text);
@@ -5546,7 +5520,7 @@ begin
     Exit;
   for i := 0 to LocalVar.Count - 1 do
   begin
-    Item := LocalVar.GetItem(i);
+    Item := LocalVar[i];
     if (Item.Kind = vkFunction) and Item.FunctionValue.IsClassDefinition then
     begin
       Result := Item.FunctionValue.FindVar(Name);
@@ -5604,42 +5578,40 @@ begin
   Result := Item;
 end;
 
-procedure TCodeEC.Compile(
+function TCodeEC.Compile(
     Analyzer: TCodeAnalyzerEC;
     SourceContext: Pointer;
     IncludeResolver: TScriptIncludeResolver;
     FirstToken: TCodeAnalyzerUnitEC;
-    NextToken: PCodeAnalyzerUnitEC;
-    var ErrorText: WideString
-);
+    NextToken: PCodeAnalyzerUnitEC
+): WideString;
 begin
-  ErrorText := '';
+  Result := '';
   if FirstToken = nil then
     FirstToken := Analyzer.First;
-  CompileBlock(
-      Analyzer,
-      SourceContext,
-      IncludeResolver,
-      FirstToken,
-      nil,
-      NextToken,
-      nil,
-      nil,
-      nil,
-      ErrorText
-  );
+  Result :=
+      CompileBlock(
+          Analyzer,
+          SourceContext,
+          IncludeResolver,
+          FirstToken,
+          nil,
+          NextToken,
+          nil,
+          nil,
+          nil
+      );
 end;
 
-procedure TCodeEC.CompileBlock(
+function TCodeEC.CompileBlock(
     Analyzer: TCodeAnalyzerEC;
     SourceContext: Pointer;
     IncludeResolver: TScriptIncludeResolver;
     Token: TCodeAnalyzerUnitEC;
     BeforeUnit: TCodeUnitEC;
     NextToken, StatementEnd: PCodeAnalyzerUnitEC;
-    BreakTarget, ContinueTarget: TCodeUnitEC;
-    var ErrorText: WideString
-);
+    BreakTarget, ContinueTarget: TCodeUnitEC
+): WideString;
 var
   Included: TCodeAnalyzerEC;
   IncludedContext: Pointer;
@@ -5704,13 +5676,13 @@ var
     begin
       if LocalVar.GetVarNE(Token.Text) <> nil then
       begin
-        FormatScriptError(0, Token.SourceStart, Result);
+        Result := FormatScriptError(0, Token.SourceStart);
         Exit;
       end;
       AddScriptLocal(TypeName, Token.Text);
       if Token.Next = nil then
       begin
-        FormatScriptError(0, Token.SourceStart + Token.SourceLength, Result);
+        Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
         Exit;
       end;
       Token := Token.Next;
@@ -5727,7 +5699,7 @@ var
         Item.SourceStart := Token.Prev.SourceStart;
         Item.SourceLength := 0;
         Item.SourceContext := SourceContext;
-        Item.Expression.Compile(Analyzer, Token.Prev, nil, @Next, Result);
+        Result := Item.Expression.Compile(Analyzer, Token.Prev, nil, @Next);
         if Result <> '' then
           Exit;
         Item.SourceLength := Next.Prev.SourceStart + Next.Prev.SourceLength - Item.SourceStart;
@@ -5739,7 +5711,7 @@ var
   end;
 
 begin
-  ErrorText := '';
+  Result := '';
   Depth := 0;
   while Token <> nil do
   begin
@@ -5748,12 +5720,12 @@ begin
       Keyword := LowerCase(AnsiString(Token.Text));
       if IsScriptLocalDeclaration(Token) then
       begin
-        ErrorText := CompileScriptLocals(Token);
-        if ErrorText <> '' then
+        Result := CompileScriptLocals(Token);
+        if Result <> '' then
           Exit;
         if Token.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         Token := Token.Next;
@@ -5775,12 +5747,12 @@ begin
         begin
           if Token.Next = nil then
           begin
-            FormatScriptError(0, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.SourceStart);
             Exit;
           end;
           if (Token.Next.TokenKind <> ctOpenParen) or (Token.Next.Next = nil) then
           begin
-            FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.Next.SourceStart);
             Exit;
           end;
           Item := InsertCodeUnitBefore(EndLabel);
@@ -5790,17 +5762,17 @@ begin
           Item.SourceContext := SourceContext;
           Item.Target := EndLabel;
           Item.Expression := TExpressionEC.Create;
-          Item.Expression.Compile(Analyzer, Token.Next.Next, nil, @Next, ErrorText);
-          if ErrorText <> '' then
+          Result := Item.Expression.Compile(Analyzer, Token.Next.Next, nil, @Next);
+          if Result <> '' then
             Exit;
           if Next = nil then
           begin
-            FormatScriptError(0, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.SourceStart);
             Exit;
           end;
           if Next.TokenKind <> ctCloseParen then
           begin
-            FormatScriptError(0, Next.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Next.SourceStart);
             Exit;
           end;
           Token := Next.Next;
@@ -5819,19 +5791,19 @@ begin
             Token := Token.Next
           else
           begin
-            CompileBlock(
-                Analyzer,
-                SourceContext,
-                IncludeResolver,
-                Token,
-                LoopStart,
-                NextToken,
-                @Token,
-                BreakTarget,
-                ContinueTarget,
-                ErrorText
-            );
-            if ErrorText <> '' then
+            Result :=
+                CompileBlock(
+                    Analyzer,
+                    SourceContext,
+                    IncludeResolver,
+                    Token,
+                    LoopStart,
+                    NextToken,
+                    @Token,
+                    BreakTarget,
+                    ContinueTarget
+                );
+            if Result <> '' then
               Exit;
           end;
           if Token = nil then
@@ -5856,24 +5828,24 @@ begin
           end;
           if Token.Next = nil then
           begin
-            FormatScriptError(0, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.SourceStart);
             Exit;
           end;
           if Token.Next.TokenKind = ctSemicolon then
             Continue;
-          CompileBlock(
-              Analyzer,
-              SourceContext,
-              IncludeResolver,
-              Token.Next,
-              EndLabel,
-              NextToken,
-              @Token,
-              BreakTarget,
-              ContinueTarget,
-              ErrorText
-          );
-          if ErrorText <> '' then
+          Result :=
+              CompileBlock(
+                  Analyzer,
+                  SourceContext,
+                  IncludeResolver,
+                  Token.Next,
+                  EndLabel,
+                  NextToken,
+                  @Token,
+                  BreakTarget,
+                  ContinueTarget
+              );
+          if Result <> '' then
             Exit;
           if (StatementEnd <> nil) and (Depth = 0) then
           begin
@@ -5893,12 +5865,12 @@ begin
         EndLabel.SourceContext := SourceContext;
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if (Token.Next.TokenKind <> ctOpenParen) or (Token.Next.Next = nil) then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         Item := InsertCodeUnitBefore(EndLabel);
@@ -5908,17 +5880,17 @@ begin
         Item.SourceContext := SourceContext;
         Item.Target := EndLabel;
         Item.Expression := TExpressionEC.Create;
-        Item.Expression.Compile(Analyzer, Token.Next.Next, nil, @Next, ErrorText);
-        if ErrorText <> '' then
+        Result := Item.Expression.Compile(Analyzer, Token.Next.Next, nil, @Next);
+        if Result <> '' then
           Exit;
         if Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if Next.TokenKind <> ctCloseParen then
         begin
-          FormatScriptError(0, Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Next.SourceStart);
           Exit;
         end;
         Token := Next.Next;
@@ -5934,19 +5906,19 @@ begin
           Token := Token.Next
         else
         begin
-          CompileBlock(
-              Analyzer,
-              SourceContext,
-              IncludeResolver,
-              Token,
-              Item,
-              NextToken,
-              @Token,
-              EndLabel,
-              LoopStart,
-              ErrorText
-          );
-          if ErrorText <> '' then
+          Result :=
+              CompileBlock(
+                  Analyzer,
+                  SourceContext,
+                  IncludeResolver,
+                  Token,
+                  Item,
+                  NextToken,
+                  @Token,
+                  EndLabel,
+                  LoopStart
+              );
+          if Result <> '' then
             Exit;
         end;
         if (StatementEnd <> nil) and (Depth = 0) then
@@ -5960,17 +5932,17 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if Token.Next.TokenKind <> ctOpenParen then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         if Token.Next.Next = nil then
         begin
-          FormatScriptError(0, Token.Next.SourceStart + Token.Next.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart + Token.Next.SourceLength);
           Exit;
         end;
         Token := Token.Next.Next;
@@ -5978,8 +5950,8 @@ begin
         begin
           if IsScriptLocalDeclaration(Token) then
           begin
-            ErrorText := CompileScriptLocals(Token);
-            if ErrorText <> '' then
+            Result := CompileScriptLocals(Token);
+            if Result <> '' then
               Exit;
           end
           else
@@ -5992,12 +5964,12 @@ begin
               Item.SourceLength := 0;
               Item.SourceContext := SourceContext;
               Item.Expression := TExpressionEC.Create;
-              Item.Expression.Compile(Analyzer, Token, nil, @Next, ErrorText);
-              if ErrorText <> '' then
+              Result := Item.Expression.Compile(Analyzer, Token, nil, @Next);
+              if Result <> '' then
                 Exit;
               if Next = nil then
               begin
-                FormatScriptError(0, Token.SourceStart, ErrorText);
+                Result := FormatScriptError(0, Token.SourceStart);
                 Exit;
               end;
               Item.SourceLength := Next.SourceStart - Item.SourceStart + Next.SourceLength;
@@ -6010,7 +5982,7 @@ begin
                 Token := Next.Next
               else
               begin
-                FormatScriptError(0, Next.SourceStart, ErrorText);
+                Result := FormatScriptError(0, Next.SourceStart);
                 Exit;
               end;
             end;
@@ -6018,12 +5990,12 @@ begin
         end;
         if Token.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         Token := Token.Next;
@@ -6050,22 +6022,22 @@ begin
           Item.SourceContext := SourceContext;
           Item.Target := EndLabel;
           Item.Expression := TExpressionEC.Create;
-          Item.Expression.Compile(Analyzer, Token, nil, @Next, ErrorText);
-          if ErrorText <> '' then
+          Result := Item.Expression.Compile(Analyzer, Token, nil, @Next);
+          if Result <> '' then
             Exit;
           if Next = nil then
           begin
-            FormatScriptError(0, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.SourceStart);
             Exit;
           end;
           if Next.TokenKind <> ctSemicolon then
           begin
-            FormatScriptError(0, Next.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Next.SourceStart);
             Exit;
           end;
           if Next.Next = nil then
           begin
-            FormatScriptError(0, Next.SourceStart + Next.SourceLength, ErrorText);
+            Result := FormatScriptError(0, Next.SourceStart + Next.SourceLength);
             Exit;
           end;
           Token := Next.Next;
@@ -6099,12 +6071,12 @@ begin
             Item.SourceLength := 0;
             Item.SourceContext := SourceContext;
             Item.Expression := TExpressionEC.Create;
-            Item.Expression.Compile(Analyzer, Token, nil, @Next, ErrorText);
-            if ErrorText <> '' then
+            Result := Item.Expression.Compile(Analyzer, Token, nil, @Next);
+            if Result <> '' then
               Exit;
             if Next = nil then
             begin
-              FormatScriptError(0, Token.SourceStart, ErrorText);
+              Result := FormatScriptError(0, Token.SourceStart);
               Exit;
             end;
             Item.SourceLength := Next.Prev.SourceStart - Item.SourceStart + Next.Prev.SourceLength;
@@ -6119,7 +6091,7 @@ begin
               Token := Next.Next
             else
             begin
-              FormatScriptError(0, Next.SourceStart, ErrorText);
+              Result := FormatScriptError(0, Next.SourceStart);
               Exit;
             end;
           end;
@@ -6134,19 +6106,19 @@ begin
           Token := Token.Next
         else
         begin
-          CompileBlock(
-              Analyzer,
-              SourceContext,
-              IncludeResolver,
-              Token,
-              Item,
-              NextToken,
-              @Token,
-              EndLabel,
-              StepStart,
-              ErrorText
-          );
-          if ErrorText <> '' then
+          Result :=
+              CompileBlock(
+                  Analyzer,
+                  SourceContext,
+                  IncludeResolver,
+                  Token,
+                  Item,
+                  NextToken,
+                  @Token,
+                  EndLabel,
+                  StepStart
+              );
+          if Result <> '' then
             Exit;
         end;
         if (StatementEnd <> nil) and (Depth = 0) then
@@ -6160,12 +6132,12 @@ begin
       begin
         if (BreakTarget = nil) or (Token.Next = nil) then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if Token.Next.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         Item := InsertCodeUnitBefore(BeforeUnit);
@@ -6186,12 +6158,12 @@ begin
       begin
         if (ContinueTarget = nil) or (Token.Next = nil) then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         if Token.Next.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         Item := InsertCodeUnitBefore(BeforeUnit);
@@ -6212,12 +6184,12 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.Next.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         Item := InsertCodeUnitBefore(BeforeUnit);
@@ -6237,17 +6209,17 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.Next.TokenKind <> ctStringLiteral then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         if not Assigned(IncludeResolver) then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         InsertSource := Keyword = '#insert';
@@ -6263,7 +6235,7 @@ begin
         if (IntValue = 2) or (IntValue = 3) then
         begin
           Included.Free;
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         if IntValue = 0 then
@@ -6272,22 +6244,22 @@ begin
           if Text <> '' then
           begin
             Included.Free;
-            FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.Next.SourceStart);
             Exit;
           end;
-          CompileBlock(
-              Included,
-              IncludedContext,
-              IncludeResolver,
-              Included.First,
-              BeforeUnit,
-              nil,
-              nil,
-              nil,
-              nil,
-              ErrorText
-          );
-          if ErrorText <> '' then
+          Result :=
+              CompileBlock(
+                  Included,
+                  IncludedContext,
+                  IncludeResolver,
+                  Included.First,
+                  BeforeUnit,
+                  nil,
+                  nil,
+                  nil,
+                  nil
+              );
+          if Result <> '' then
           begin
             Included.Free;
             Exit;
@@ -6301,23 +6273,23 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if (Token.Next.TokenKind <> ctText)
             or not IsNonIntegerScriptText(Token.Next.Text)
             or (Token.Next.Next = nil) then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         if (Token.Next.Next.TokenKind <> ctOpenParen) or (Token.Next.Next.Next = nil) then
         begin
-          FormatScriptError(0, Token.Next.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.Next.SourceStart);
           Exit;
         end;
         Value := LocalVar.Add(Token.Next.Text, vkFunction);
-        Definition := Value.GetFunction;
+        Definition := Value.AsFunction;
         Definition.Parent := Self;
         Next := Token.Next.Next.Next;
         while (Next <> nil) and (Next.TokenKind = ctText) and IsNonIntegerScriptText(Next.Text) do
@@ -6355,32 +6327,29 @@ begin
           Next := Next.Next;
           if Next = nil then
           begin
-            FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength, ErrorText);
+            Result := FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
             Exit;
           end;
           if (Keyword <> 'ref') and (Next.TokenKind = ctAssign) then
           begin
             if Next.Next = nil then
             begin
-              FormatScriptError(
-                  0,
-                  Analyzer.Last.SourceStart + Analyzer.Last.SourceLength,
-                  ErrorText
-              );
+              Result :=
+                  FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
               Exit;
             end;
             Next := Next.Next;
             if TryReadFloatLiteral(Next, FloatValue) then
-              Value.SetFloat(FloatValue)
+              Value.AsFloat := FloatValue
             else if TryReadDwordLiteral(Next, DwordValue) then
-              Value.SetDword(DwordValue)
+              Value.AsDword := DwordValue
             else if TryReadIntegerLiteral(Next, IntValue) then
-              Value.SetInt(IntValue)
+              Value.AsInteger := IntValue
             else if TryReadStringLiteral(Next, Text) then
-              Value.SetString(Text)
+              Value.AsString := Text
             else
             begin
-              FormatScriptError(0, Next.SourceStart, ErrorText);
+              Result := FormatScriptError(0, Next.SourceStart);
               Exit;
             end;
           end;
@@ -6390,35 +6359,35 @@ begin
         end;
         if (Next = nil) or (Next.TokenKind <> ctCloseParen) then
         begin
-          FormatScriptError(0, Token.Next.Next.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.Next.Next.SourceStart);
           Exit;
         end;
         Token := Next.Next;
         if Token = nil then
         begin
-          FormatScriptError(0, Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Next.SourceStart);
           Exit;
         end;
         if (Token.TokenKind <> ctOpenBrace) or (Token.Next = nil) then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         ParameterCount := Definition.LocalVar.Count;
-        Definition.LocalVar.Add('funBaseVarCount', vkInt).SetInt(ParameterCount);
+        Definition.LocalVar.Add('funBaseVarCount', vkInt).AsInteger := ParameterCount;
         Definition.LocalVar.Add('result', vkRef);
         Next := nil;
-        Definition.Compile(Analyzer, SourceContext, IncludeResolver, Token.Next, @Next, ErrorText);
-        if ErrorText <> '' then
+        Result := Definition.Compile(Analyzer, SourceContext, IncludeResolver, Token.Next, @Next);
+        if Result <> '' then
           Exit;
         if Next = nil then
         begin
-          FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
           Exit;
         end;
         if Next.TokenKind <> ctCloseBrace then
         begin
-          FormatScriptError(0, Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Next.SourceStart);
           Exit;
         end;
         Token := Next.Next;
@@ -6428,21 +6397,21 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if (Token.Next.TokenKind <> ctText) or not IsNonIntegerScriptText(Token.Next.Text) then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         if Token.Next.Next = nil then
         begin
-          FormatScriptError(0, Token.Next.SourceStart + Token.Next.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart + Token.Next.SourceLength);
           Exit;
         end;
         Value := LocalVar.Add(Token.Next.Text, vkFunction);
-        Definition := Value.GetFunction;
+        Definition := Value.AsFunction;
         Definition.Parent := Self;
         Definition.IsClassDefinition := True;
         Definition.Name := Token.Next.Text;
@@ -6455,16 +6424,16 @@ begin
             if Token.TokenKind <> ctText then
               Break;
             BaseValue := LocalVar.GetVarNE(Token.Text);
-            if (BaseValue = nil) or (BaseValue.RealVType <> vkFunction) then
+            if (BaseValue = nil) or (BaseValue.ValueKind <> vkFunction) then
             begin
-              FormatScriptError(0, Token.SourceStart, ErrorText);
+              Result := FormatScriptError(0, Token.SourceStart);
               Exit;
             end;
             Definition
                 .LocalVar
                 .Add(Token.Text, vkFunction)
-                .GetFunction
-                .CopyFrom(BaseValue.GetFunction);
+                .AsFunction
+                .CopyFrom(BaseValue.AsFunction);
             Token := Token.Next;
             if Token.TokenKind <> ctComma then
               Break;
@@ -6473,21 +6442,21 @@ begin
         end;
         if Token.TokenKind <> ctOpenBrace then
         begin
-          FormatScriptError(0, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart);
           Exit;
         end;
         Next := nil;
-        Definition.Compile(Analyzer, SourceContext, IncludeResolver, Token.Next, @Next, ErrorText);
-        if ErrorText <> '' then
+        Result := Definition.Compile(Analyzer, SourceContext, IncludeResolver, Token.Next, @Next);
+        if Result <> '' then
           Exit;
         if Next = nil then
         begin
-          FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
           Exit;
         end;
         if Next.TokenKind <> ctCloseBrace then
         begin
-          FormatScriptError(0, Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Next.SourceStart);
           Exit;
         end;
         Token := Next.Next;
@@ -6497,12 +6466,12 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.Next.TokenKind <> ctOpenBrace then
         begin
-          FormatScriptError(0, Token.Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Token.Next.SourceStart);
           Exit;
         end;
         LoopStart := InsertCodeUnitBefore(BeforeUnit);
@@ -6510,19 +6479,19 @@ begin
         LoopStart.SourceStart := Token.SourceStart;
         LoopStart.SourceLength := 0;
         LoopStart.SourceContext := SourceContext;
-        CompileBlock(
-            Analyzer,
-            SourceContext,
-            IncludeResolver,
-            Token.Next,
-            BeforeUnit,
-            NextToken,
-            @Token,
-            nil,
-            nil,
-            ErrorText
-        );
-        if ErrorText <> '' then
+        Result :=
+            CompileBlock(
+                Analyzer,
+                SourceContext,
+                IncludeResolver,
+                Token.Next,
+                BeforeUnit,
+                NextToken,
+                @Token,
+                nil,
+                nil
+            );
+        if Result <> '' then
           Exit;
         Item := InsertCodeUnitBefore(BeforeUnit);
         Item.Opcode := coPopHandler;
@@ -6531,22 +6500,22 @@ begin
         Item.SourceContext := SourceContext;
         if Token = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.TokenKind <> ctText then
         begin
-          FormatScriptError(1001, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(1001, Token.SourceStart);
           Exit;
         end;
         if (Token.Text <> 'catch') and (Token.Text <> 'finally') then
         begin
-          FormatScriptError(1001, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(1001, Token.SourceStart);
           Exit;
         end;
         if Token.Next = nil then
         begin
-          FormatScriptError(1001, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(1001, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.Text = 'catch' then
@@ -6559,37 +6528,37 @@ begin
         begin
           if Token.Next = nil then
           begin
-            FormatScriptError(1001, Token.SourceStart + Token.SourceLength, ErrorText);
+            Result := FormatScriptError(1001, Token.SourceStart + Token.SourceLength);
             Exit;
           end;
           Token := Token.Next;
           if Token.TokenKind <> ctText then
           begin
-            FormatScriptError(1001, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(1001, Token.SourceStart);
             Exit;
           end;
           Value := LocalVar.Add(Token.Text, vkEmpty);
           if Token.Next = nil then
           begin
-            FormatScriptError(1001, Token.SourceStart + Token.SourceLength, ErrorText);
+            Result := FormatScriptError(1001, Token.SourceStart + Token.SourceLength);
             Exit;
           end;
           Token := Token.Next;
           if Token.TokenKind <> ctCloseParen then
           begin
-            FormatScriptError(1001, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(1001, Token.SourceStart);
             Exit;
           end;
           if Token.Next = nil then
           begin
-            FormatScriptError(1001, Token.SourceStart + Token.SourceLength, ErrorText);
+            Result := FormatScriptError(1001, Token.SourceStart + Token.SourceLength);
             Exit;
           end;
           Token := Token.Next;
         end;
         if Token.TokenKind <> ctOpenBrace then
         begin
-          FormatScriptError(1001, Token.SourceStart, ErrorText);
+          Result := FormatScriptError(1001, Token.SourceStart);
           Exit;
         end;
         EndLabel := InsertCodeUnitBefore(BeforeUnit);
@@ -6622,19 +6591,19 @@ begin
           Item.SourceLength := 0;
           Item.SourceContext := SourceContext;
         end;
-        CompileBlock(
-            Analyzer,
-            SourceContext,
-            IncludeResolver,
-            Token,
-            Item,
-            NextToken,
-            @Token,
-            nil,
-            nil,
-            ErrorText
-        );
-        if ErrorText <> '' then
+        Result :=
+            CompileBlock(
+                Analyzer,
+                SourceContext,
+                IncludeResolver,
+                Token,
+                Item,
+                NextToken,
+                @Token,
+                nil,
+                nil
+            );
+        if Result <> '' then
           Exit;
         if (StatementEnd <> nil) and (Depth = 0) then
         begin
@@ -6647,7 +6616,7 @@ begin
       begin
         if Token.Next = nil then
         begin
-          FormatScriptError(0, Token.SourceStart + Token.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Token.SourceStart + Token.SourceLength);
           Exit;
         end;
         if Token.Next.TokenKind = ctSemicolon then
@@ -6667,17 +6636,17 @@ begin
           Item.SourceLength := Token.Next.SourceStart - Token.SourceStart + Token.Next.SourceLength;
           Item.SourceContext := SourceContext;
           Item.Expression := TExpressionEC.Create;
-          Item.Expression.Compile(Analyzer, Token.Next, nil, @Next, ErrorText);
-          if ErrorText <> '' then
+          Result := Item.Expression.Compile(Analyzer, Token.Next, nil, @Next);
+          if Result <> '' then
             Exit;
           if Next = nil then
           begin
-            FormatScriptError(0, Token.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Token.SourceStart);
             Exit;
           end;
           if Next.TokenKind <> ctSemicolon then
           begin
-            FormatScriptError(0, Next.SourceStart, ErrorText);
+            Result := FormatScriptError(0, Next.SourceStart);
             Exit;
           end;
           Token := Next.Next;
@@ -6698,17 +6667,17 @@ begin
         Item.SourceStart := Token.SourceStart;
         Item.SourceLength := 0;
         Item.SourceContext := SourceContext;
-        Item.Expression.Compile(Analyzer, Token, nil, @Next, ErrorText);
-        if ErrorText <> '' then
+        Result := Item.Expression.Compile(Analyzer, Token, nil, @Next);
+        if Result <> '' then
           Exit;
         if Next = nil then
         begin
-          FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength, ErrorText);
+          Result := FormatScriptError(0, Analyzer.Last.SourceStart + Analyzer.Last.SourceLength);
           Exit;
         end;
         if Next.TokenKind <> ctSemicolon then
         begin
-          FormatScriptError(0, Next.SourceStart, ErrorText);
+          Result := FormatScriptError(0, Next.SourceStart);
           Exit;
         end;
         Item.SourceLength := Next.SourceStart + Next.SourceLength - Item.SourceStart;
@@ -6740,7 +6709,7 @@ begin
     end
     else
     begin
-      FormatScriptError(0, Token.SourceStart, ErrorText);
+      Result := FormatScriptError(0, Token.SourceStart);
       Exit;
     end;
     if Token = nil then
@@ -6763,7 +6732,7 @@ begin
   end;
   for i := 0 to LocalVar.Count - 1 do
   begin
-    with LocalVar.GetItem(i) do
+    with LocalVar[i] do
     begin
       if (Kind = vkFunction) and (GetFunction <> nil) then
         GetFunction.LinkAll(Scope, OnlyUnlinked)
@@ -6782,16 +6751,10 @@ var
 begin
   for i := 0 to LocalVar.Count - 1 do
   begin
-    with LocalVar.GetItem(i) do
+    with LocalVar[i] do
     begin
-      if Kind = vkFunction then
-      begin
-        if FunctionValue <> nil then
-        begin
-          if FunctionValue.IsClassDefinition then
-            FunctionValue.LinkLocalScopes;
-        end;
-      end;
+      if (Kind = vkFunction) and (FunctionValue <> nil) and FunctionValue.IsClassDefinition then
+        FunctionValue.LinkLocalScopes;
     end;
   end;
   LinkAll(LocalVar, False);
@@ -7044,12 +7007,12 @@ begin
   av[0].Assume(av[1], False);
   for i := 2 to Count - 1 do
   begin
-    if (av[0].RealVType = vkString) and (av[i].RealVType in [vkInt, vkDword, vkFloat]) then
-      av[0].ConvertToKind(av[i].RealVType)
-    else if av[i].RealVType = vkFloat then
+    if (av[0].ValueKind = vkString) and (av[i].ValueKind in [vkInt, vkDword, vkFloat]) then
+      av[0].ConvertToKind(av[i].ValueKind)
+    else if av[i].ValueKind = vkFloat then
     begin
-      if av[0].RealVType in [vkInt, vkDword] then
-        av[0].ConvertToKind(av[i].RealVType);
+      if av[0].ValueKind in [vkInt, vkDword] then
+        av[0].ConvertToKind(av[i].ValueKind);
     end;
     if av[0].GreaterThan(av[i]) then
       av[0].Assume(av[i], False);
@@ -7066,12 +7029,12 @@ begin
   av[0].Assume(av[1], False);
   for i := 2 to Count - 1 do
   begin
-    if (av[0].RealVType = vkString) and (av[i].RealVType in [vkInt, vkDword, vkFloat]) then
-      av[0].ConvertToKind(av[i].RealVType)
-    else if av[i].RealVType = vkFloat then
+    if (av[0].ValueKind = vkString) and (av[i].ValueKind in [vkInt, vkDword, vkFloat]) then
+      av[0].ConvertToKind(av[i].ValueKind)
+    else if av[i].ValueKind = vkFloat then
     begin
-      if av[0].RealVType in [vkInt, vkDword] then
-        av[0].ConvertToKind(av[i].RealVType);
+      if av[0].ValueKind in [vkInt, vkDword] then
+        av[0].ConvertToKind(av[i].ValueKind);
     end;
     if av[0].LessThan(av[i]) then
       av[0].Assume(av[i], False);
@@ -7091,12 +7054,12 @@ begin
   SetLength(Dimensions, Count);
   for i := 0 to Count - 1 do
   begin
-    if (av[i + 1].RealVType <> vkInt) or (av[i + 1].GetInt < 1) then
+    if (av[i + 1].ValueKind <> vkInt) or (av[i + 1].AsInteger < 1) then
     begin
       Dimensions := nil;
       Exit;
     end;
-    Dimensions[i] := av[i + 1].GetInt;
+    Dimensions[i] := av[i + 1].AsInteger;
   end;
   av[0].CreateArray(Dimensions);
   Dimensions := nil;
@@ -7110,8 +7073,8 @@ begin
     Exit;
   Dimension := 0;
   if High(av) >= 3 then
-    Dimension := av[3].GetInt;
-  av[1].ResizeArray(av[2].GetInt, Dimension);
+    Dimension := av[3].AsInteger;
+  av[1].ResizeArray(av[2].AsInteger, Dimension);
 end;
 
 procedure EF_Free(av: array of TVarEC; code: TCodeEC);
@@ -7133,10 +7096,10 @@ begin
   Count := High(av) + 1 - 1;
   if Count < 1 then
     Exit;
-  if av[1].RealVType = vkArray then
-    av[0].SetInt(av[1].GetArray.Count);
-  if av[1].RealVType = vkString then
-    av[0].SetInt(Length(av[1].GetString));
+  if av[1].ValueKind = vkArray then
+    av[0].AsInteger := av[1].AsArray.Count;
+  if av[1].ValueKind = vkString then
+    av[0].AsInteger := Length(av[1].AsString);
 end;
 
 procedure EF_Copy(av: array of TVarEC; code: TCodeEC);
@@ -7146,7 +7109,7 @@ begin
   Count := High(av) + 1 - 1;
   if Count < 2 then
     Exit;
-  av[1].ResetKind(av[2].RealVType);
+  av[1].ResetKind(av[2].ValueKind);
   av[1].Assume(av[2], True);
 end;
 
@@ -7157,10 +7120,10 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  if av[1].RealVType = vkInt then
-    av[0].SetInt(Abs(av[1].GetInt))
+  if av[1].ValueKind = vkInt then
+    av[0].AsInteger := Abs(av[1].AsInteger)
   else
-    av[0].SetFloat(Abs(av[1].GetFloat));
+    av[0].AsFloat := Abs(av[1].AsFloat);
 end;
 
 procedure EF_ArcTan(av: array of TVarEC; code: TCodeEC);
@@ -7170,7 +7133,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(ArcTan(av[1].GetFloat));
+  av[0].AsFloat := ArcTan(av[1].AsFloat);
 end;
 
 procedure EF_Exp(av: array of TVarEC; code: TCodeEC);
@@ -7180,7 +7143,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Exp(av[1].GetFloat));
+  av[0].AsFloat := Exp(av[1].AsFloat);
 end;
 
 procedure EF_Ln(av: array of TVarEC; code: TCodeEC);
@@ -7190,7 +7153,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Ln(av[1].GetFloat));
+  av[0].AsFloat := Ln(av[1].AsFloat);
 end;
 
 procedure EF_Round(av: array of TVarEC; code: TCodeEC);
@@ -7201,13 +7164,13 @@ begin
   if Count < 2 then
     Exit;
   if Count >= 3 then
-    Step := av[2].GetInt
+    Step := av[2].AsInteger
   else
     Step := 1;
-  if av[1].RealVType = vkFloat then
-    av[0].SetInt(Integer(Round(av[1].GetFloat / Step)) * Step)
+  if av[1].ValueKind = vkFloat then
+    av[0].AsInteger := Integer(Round(av[1].AsFloat / Step)) * Step
   else
-    av[0].SetInt(Integer(Round(av[1].GetInt / Step)) * Step);
+    av[0].AsInteger := Integer(Round(av[1].AsInteger / Step)) * Step;
 end;
 
 procedure EF_Sin(av: array of TVarEC; code: TCodeEC);
@@ -7217,7 +7180,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Sin(av[1].GetFloat));
+  av[0].AsFloat := Sin(av[1].AsFloat);
 end;
 
 procedure EF_Cos(av: array of TVarEC; code: TCodeEC);
@@ -7227,7 +7190,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Cos(av[1].GetFloat));
+  av[0].AsFloat := Cos(av[1].AsFloat);
 end;
 
 procedure EF_Sqr(av: array of TVarEC; code: TCodeEC);
@@ -7237,10 +7200,10 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  if av[1].RealVType = vkInt then
-    av[0].SetInt(av[1].GetInt * av[1].GetInt)
+  if av[1].ValueKind = vkInt then
+    av[0].AsInteger := av[1].AsInteger * av[1].AsInteger
   else
-    av[0].SetFloat(Sqr(av[1].GetFloat));
+    av[0].AsFloat := Sqr(av[1].AsFloat);
 end;
 
 procedure EF_Sqrt(av: array of TVarEC; code: TCodeEC);
@@ -7250,7 +7213,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Sqrt(av[1].GetFloat));
+  av[0].AsFloat := Sqrt(av[1].AsFloat);
 end;
 
 procedure EF_Frac(av: array of TVarEC; code: TCodeEC);
@@ -7260,7 +7223,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetFloat(Frac(av[1].GetFloat));
+  av[0].AsFloat := Frac(av[1].AsFloat);
 end;
 
 procedure EF_Int(av: array of TVarEC; code: TCodeEC);
@@ -7270,7 +7233,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetInt(Trunc(av[1].GetFloat));
+  av[0].AsInteger := Trunc(av[1].AsFloat);
 end;
 
 procedure EF_Ord(av: array of TVarEC; code: TCodeEC);
@@ -7279,9 +7242,9 @@ var
 begin
   if High(av) < 1 then
     Exit;
-  Text := av[1].GetString;
+  Text := av[1].AsString;
   if Length(Text) > 0 then
-    av[0].SetInt(Ord(Text[1]));
+    av[0].AsInteger := Ord(Text[1]);
 end;
 
 procedure EF_Rnd(av: array of TVarEC; code: TCodeEC);
@@ -7291,7 +7254,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetInt(Random(av[1].GetInt));
+  av[0].AsInteger := Random(av[1].AsInteger);
 end;
 
 procedure EF_Randomize(av: array of TVarEC; code: TCodeEC);
@@ -7306,9 +7269,9 @@ begin
   Count := High(av) + 1;
   if Count < 1 then
     Exit;
-  av[0].SetInt(RandSeed);
+  av[0].AsInteger := RandSeed;
   if Count >= 2 then
-    RandSeed := av[1].GetInt;
+    RandSeed := av[1].AsInteger;
 end;
 
 procedure EF_SubStr(av: array of TVarEC; code: TCodeEC);
@@ -7318,20 +7281,20 @@ begin
   Count := High(av) + 1;
   if Count < 3 then
     Exit;
-  TextLength := Length(av[1].GetString);
-  Start := av[2].GetInt;
+  TextLength := Length(av[1].AsString);
+  Start := av[2].AsInteger;
   if Count >= 4 then
-    Size := av[3].GetInt
+    Size := av[3].AsInteger
   else
     Size := 1999999999;
   if (Start < 0) or (Start >= TextLength) then
   begin
-    av[0].SetString('');
+    av[0].AsString := '';
     Exit;
   end;
   if Start + Size > TextLength then
     Size := TextLength - Start;
-  av[0].SetString(Copy(av[1].GetString, Start + 1, Size));
+  av[0].AsString := Copy(av[1].AsString, Start + 1, Size);
 end;
 
 procedure EF_FindSubStr(av: array of TVarEC; code: TCodeEC);
@@ -7341,21 +7304,21 @@ var
 begin
   if High(av) < 2 then
     Exit;
-  Text := av[1].GetString;
-  Search := av[2].GetString;
+  Text := av[1].AsString;
+  Search := av[2].AsString;
   Start := 0;
   if High(av) >= 3 then
-    Start := av[3].GetInt;
+    Start := av[3].AsInteger;
   TextLength := Length(Text);
   SearchLength := Length(Search);
   if TextLength - Start < SearchLength then
   begin
-    av[0].SetInt(-1);
+    av[0].AsInteger := -1;
     Exit;
   end;
   if (TextLength < 1) and (SearchLength < 1) then
   begin
-    av[0].SetInt(-1);
+    av[0].AsInteger := -1;
     Exit;
   end;
   while Start <= TextLength - SearchLength do
@@ -7365,12 +7328,12 @@ begin
         PWideChar(Search),
         SearchLength * 2) then
     begin
-      av[0].SetInt(Start);
+      av[0].AsInteger := Start;
       Exit;
     end;
     Inc(Start);
   end;
-  av[0].SetInt(-1);
+  av[0].AsInteger := -1;
 end;
 
 procedure EF_Trim(av: array of TVarEC; code: TCodeEC);
@@ -7380,7 +7343,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetString(TrimScriptString(av[1].GetString));
+  av[0].AsString := TrimScriptString(av[1].AsString);
 end;
 
 procedure EF_ToAnsi(av: array of TVarEC; code: TCodeEC);
@@ -7390,7 +7353,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetString(av[1].GetString);
+  av[0].AsString := av[1].AsString;
   av[0].PackAnsiString;
 end;
 
@@ -7401,7 +7364,7 @@ begin
   Count := High(av) + 1;
   if Count < 2 then
     Exit;
-  av[0].SetString(av[1].GetString);
+  av[0].AsString := av[1].AsString;
   av[0].UnpackAnsiString;
 end;
 
@@ -7412,17 +7375,17 @@ var
 begin
   if High(av) < 1 then
     Exit;
-  Text := av[1].GetString;
+  Text := av[1].AsString;
   Start := 0;
   if High(av) >= 2 then
-    Start := av[2].GetInt;
+    Start := av[2].AsInteger;
   if High(av) >= 3 then
-    Count := av[3].GetInt
+    Count := av[3].AsInteger
   else
     Count := Length(Text) - Start;
   if (Start < 0) or (Start + Count > Length(Text)) or (Count < 1) then
   begin
-    av[0].SetString(Text);
+    av[0].AsString := Text;
     Exit;
   end;
   // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
@@ -7430,7 +7393,7 @@ begin
       Copy(Text, 1, Start)
           + WideLowerCase(Copy(Text, Start + 1, Count))
           + Copy(Text, Start + Count + 1, MaxInt);
-  av[0].SetString(Text);
+  av[0].AsString := Text;
 end;
 
 procedure EF_UpperCase(av: array of TVarEC; code: TCodeEC);
@@ -7440,17 +7403,17 @@ var
 begin
   if High(av) < 1 then
     Exit;
-  Text := av[1].GetString;
+  Text := av[1].AsString;
   Start := 0;
   if High(av) >= 2 then
-    Start := av[2].GetInt;
+    Start := av[2].AsInteger;
   if High(av) >= 3 then
-    Count := av[3].GetInt
+    Count := av[3].AsInteger
   else
     Count := Length(Text) - Start;
   if (Start < 0) or (Start + Count > Length(Text)) or (Count < 1) then
   begin
-    av[0].SetString(Text);
+    av[0].AsString := Text;
     Exit;
   end;
   // Start/count are UTF-16 code-unit offsets, as in the original Unicode API.
@@ -7458,21 +7421,21 @@ begin
       Copy(Text, 1, Start)
           + WideUpperCase(Copy(Text, Start + 1, Count))
           + Copy(Text, Start + Count + 1, MaxInt);
-  av[0].SetString(Text);
+  av[0].AsString := Text;
 end;
 
 procedure EF_LoadLibrary(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 1 then
     Exit;
-  av[0].SetDword(LoadScriptLibrary(av[1].GetString));
+  av[0].AsDword := LoadScriptLibrary(av[1].AsString);
 end;
 
 procedure EF_FreeLibrary(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 1 then
     Exit;
-  av[0].SetInt(Integer(FreeScriptLibrary(av[1].GetDword)));
+  av[0].AsInteger := Integer(FreeScriptLibrary(av[1].AsDword));
 end;
 
 procedure TVarEC.SetLibrarySignature(Signature: array of Dword);
@@ -7486,50 +7449,28 @@ begin
 end;
 
 procedure EF_LibraryFunction(av: array of TVarEC; code: TCodeEC);
+{$IFDEF NATIVE_SCRIPT_MODS}
 var
   i: Integer;
-  Proc: Pointer;
-  KindName: WideString;
+  Signature: WideString;
+{$ENDIF}
 begin
   if High(av) < 3 then
     Exit;
-  Proc := ScriptLibraryProc(av[1].GetDword, PAnsiChar(AnsiString(av[3].GetString)));
-  if Proc = nil then
+{$IFDEF NATIVE_SCRIPT_MODS}
+  if FreeNativeScriptLibrary(av[1].AsDword) then
   begin
-    av[0].SetInt(0);
-    Exit;
+    Signature := av[2].AsString + ',' + av[3].AsString;
+    for i := 4 to High(av) do
+      Signature := Signature + ',' + av[i].AsString;
+    if InitNativeScriptFunction(av[0], av[1].AsDword, av[3].AsString, Signature) then
+    begin
+      av[0].AsString := NativeScriptLibraryName(av[1].AsDword) + ',' + av[3].AsString;
+      Exit;
+    end;
   end;
-  av[0].ConvertToKind(vkLibraryFun);
-  SetLength(av[0].LibraryFunData, 2 + High(av) - 3);
-  if av[2].GetString = 'int' then
-    av[0].LibraryFunData[0] := 1
-  else if av[2].GetString = 'dword' then
-    av[0].LibraryFunData[0] := 2
-  else if av[2].GetString = 'float' then
-    av[0].LibraryFunData[0] := 3
-  else if av[2].GetString = 'str' then
-    av[0].LibraryFunData[0] := 4
-  else
-    av[0].LibraryFunData[0] := 0;
-  av[0].LibraryFunData[1] := Dword(Proc);
-  for i := 0 to High(av) - 3 - 1 do
-  begin
-    KindName := av[4 + i].GetString;
-    if KindName = 'int' then
-      av[0].LibraryFunData[2 + i] := 1
-    else if KindName = 'dword' then
-      av[0].LibraryFunData[2 + i] := 2
-    else if KindName = 'float' then
-      av[0].LibraryFunData[2 + i] := 3
-    else if KindName = 'str' then
-      av[0].LibraryFunData[2 + i] := 4
-    else if KindName = 'ref' then
-      av[0].LibraryFunData[2 + i] := 5
-    else if KindName = 'code' then
-      av[0].LibraryFunData[2 + i] := 6
-    else
-      raise ExceptionExpressionEC.Create('LibraryFunction. Unknown type');
-  end;
+{$ENDIF}
+  av[0].AsInteger := 0;
 end;
 
 procedure EF_New(av: array of TVarEC; code: TCodeEC);
@@ -7543,17 +7484,16 @@ begin
     Exit;
   while (code <> nil) and (code.Parent <> nil) do
     code := code.Parent;
-  Found := code.LocalVar.GetVar(av[1].GetString);
-  if Found.RealVType = vkFunction then
+  Found := code.LocalVar.NamedItems[av[1].AsString];
+  if Found.ValueKind = vkFunction then
   begin
-    Definition := Found.GetFunction;
-    if Definition.IsClassDefinition then
-    begin
-      Instance := TCodeEC.Create;
-      Instance.CopyFromFast(Definition);
-      Instance.LinkLocalScopes;
-      av[0].SetClass(Instance);
-    end;
+    Definition := Found.AsFunction;
+    if not Definition.IsClassDefinition then
+      Exit;
+    Instance := TCodeEC.Create;
+    Instance.CopyFromFast(Definition);
+    Instance.LinkLocalScopes;
+    av[0].AsClass := Instance;
   end;
 end;
 
@@ -7561,50 +7501,50 @@ procedure EF_Delete(av: array of TVarEC; code: TCodeEC);
 begin
   if High(av) <> 1 then
     Exit;
-  if av[1].RealVType = vkClass then
+  if av[1].ValueKind = vkClass then
   begin
-    av[1].GetClass.Free;
+    av[1].AsClass.Free;
     av[1].ResetKind(vkEmpty);
   end;
 end;
 
 procedure RegisterExpressionBuiltins(Scope: TVarArrayEC);
 begin
-  Scope.Add('pi', vkFloat).SetFloat(Pi);
-  Scope.Add('min', vkExternFun).SetExternFun(@EF_Min);
-  Scope.Add('max', vkExternFun).SetExternFun(@EF_Max);
-  Scope.Add('newarray', vkExternFun).SetExternFun(@EF_NewArray);
-  Scope.Add('arraychange', vkExternFun).SetExternFun(@EF_ArrayChange);
-  Scope.Add('free', vkExternFun).SetExternFun(@EF_Free);
-  Scope.Add('count', vkExternFun).SetExternFun(@EF_Count);
-  Scope.Add('copy', vkExternFun).SetExternFun(@EF_Copy);
-  Scope.Add('abs', vkExternFun).SetExternFun(@EF_Abs);
-  Scope.Add('arctan', vkExternFun).SetExternFun(@EF_ArcTan);
-  Scope.Add('exp', vkExternFun).SetExternFun(@EF_Exp);
-  Scope.Add('ln', vkExternFun).SetExternFun(@EF_Ln);
-  Scope.Add('round', vkExternFun).SetExternFun(@EF_Round);
-  Scope.Add('sin', vkExternFun).SetExternFun(@EF_Sin);
-  Scope.Add('cos', vkExternFun).SetExternFun(@EF_Cos);
-  Scope.Add('sqr', vkExternFun).SetExternFun(@EF_Sqr);
-  Scope.Add('sqrt', vkExternFun).SetExternFun(@EF_Sqrt);
-  Scope.Add('frac', vkExternFun).SetExternFun(@EF_Frac);
-  Scope.Add('int', vkExternFun).SetExternFun(@EF_Int);
-  Scope.Add('ord', vkExternFun).SetExternFun(@EF_Ord);
-  Scope.Add('rnd', vkExternFun).SetExternFun(@EF_Rnd);
-  Scope.Add('randomize', vkExternFun).SetExternFun(@EF_Randomize);
-  Scope.Add('randseed', vkExternFun).SetExternFun(@EF_RandSeed);
-  Scope.Add('substr', vkExternFun).SetExternFun(@EF_SubStr);
-  Scope.Add('findsubstr', vkExternFun).SetExternFun(@EF_FindSubStr);
-  Scope.Add('trim', vkExternFun).SetExternFun(@EF_Trim);
-  Scope.Add('toansi', vkExternFun).SetExternFun(@EF_ToAnsi);
-  Scope.Add('tounicode', vkExternFun).SetExternFun(@EF_ToUnicode);
-  Scope.Add('lowercase', vkExternFun).SetExternFun(@EF_LowerCase);
-  Scope.Add('uppercase', vkExternFun).SetExternFun(@EF_UpperCase);
-  Scope.Add('loadlibrary', vkExternFun).SetExternFun(@EF_LoadLibrary);
-  Scope.Add('freelibrary', vkExternFun).SetExternFun(@EF_FreeLibrary);
-  Scope.Add('libraryfunction', vkExternFun).SetExternFun(@EF_LibraryFunction);
-  Scope.Add('new', vkExternFun).SetExternFun(@EF_New);
-  Scope.Add('delete', vkExternFun).SetExternFun(@EF_Delete);
+  Scope.Add('pi', vkFloat).AsFloat := Pi;
+  Scope.Add('min', vkExternFun).AsExternFun := @EF_Min;
+  Scope.Add('max', vkExternFun).AsExternFun := @EF_Max;
+  Scope.Add('newarray', vkExternFun).AsExternFun := @EF_NewArray;
+  Scope.Add('arraychange', vkExternFun).AsExternFun := @EF_ArrayChange;
+  Scope.Add('free', vkExternFun).AsExternFun := @EF_Free;
+  Scope.Add('count', vkExternFun).AsExternFun := @EF_Count;
+  Scope.Add('copy', vkExternFun).AsExternFun := @EF_Copy;
+  Scope.Add('abs', vkExternFun).AsExternFun := @EF_Abs;
+  Scope.Add('arctan', vkExternFun).AsExternFun := @EF_ArcTan;
+  Scope.Add('exp', vkExternFun).AsExternFun := @EF_Exp;
+  Scope.Add('ln', vkExternFun).AsExternFun := @EF_Ln;
+  Scope.Add('round', vkExternFun).AsExternFun := @EF_Round;
+  Scope.Add('sin', vkExternFun).AsExternFun := @EF_Sin;
+  Scope.Add('cos', vkExternFun).AsExternFun := @EF_Cos;
+  Scope.Add('sqr', vkExternFun).AsExternFun := @EF_Sqr;
+  Scope.Add('sqrt', vkExternFun).AsExternFun := @EF_Sqrt;
+  Scope.Add('frac', vkExternFun).AsExternFun := @EF_Frac;
+  Scope.Add('int', vkExternFun).AsExternFun := @EF_Int;
+  Scope.Add('ord', vkExternFun).AsExternFun := @EF_Ord;
+  Scope.Add('rnd', vkExternFun).AsExternFun := @EF_Rnd;
+  Scope.Add('randomize', vkExternFun).AsExternFun := @EF_Randomize;
+  Scope.Add('randseed', vkExternFun).AsExternFun := @EF_RandSeed;
+  Scope.Add('substr', vkExternFun).AsExternFun := @EF_SubStr;
+  Scope.Add('findsubstr', vkExternFun).AsExternFun := @EF_FindSubStr;
+  Scope.Add('trim', vkExternFun).AsExternFun := @EF_Trim;
+  Scope.Add('toansi', vkExternFun).AsExternFun := @EF_ToAnsi;
+  Scope.Add('tounicode', vkExternFun).AsExternFun := @EF_ToUnicode;
+  Scope.Add('lowercase', vkExternFun).AsExternFun := @EF_LowerCase;
+  Scope.Add('uppercase', vkExternFun).AsExternFun := @EF_UpperCase;
+  Scope.Add('loadlibrary', vkExternFun).AsExternFun := @EF_LoadLibrary;
+  Scope.Add('freelibrary', vkExternFun).AsExternFun := @EF_FreeLibrary;
+  Scope.Add('libraryfunction', vkExternFun).AsExternFun := @EF_LibraryFunction;
+  Scope.Add('new', vkExternFun).AsExternFun := @EF_New;
+  Scope.Add('delete', vkExternFun).AsExternFun := @EF_Delete;
 end;
 
 end.

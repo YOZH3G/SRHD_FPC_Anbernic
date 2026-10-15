@@ -450,9 +450,6 @@ end;
 
 function RunRewards(ParentLoop: TMessageLoopGI; ReadOnly: Boolean): Boolean;
 var
-  CursorAlignment:
-      array[0..1] of
-          Byte; // Native cursor record starts at EBP-$20; the shared packed layout otherwise lands two bytes higher.
   State: TCursorStateGI;
 begin
   ParentLoop.RootUiObject.OnModalSuspend;

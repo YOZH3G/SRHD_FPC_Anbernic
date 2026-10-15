@@ -404,13 +404,6 @@ begin
           ClipRect.Bottom - ClipRect.Top
       );
     end;
-  end
-  else if Kind = ckMulLight then
-  begin
-    // The native branch retains only this renderer test.
-    if HardwareRenderingEnabled then
-    begin
-    end;
   end;
 end;
 

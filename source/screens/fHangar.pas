@@ -24,7 +24,7 @@ type
 
   THangarShipSlot = record
     AnimationState: Integer;
-    ShipId: Integer;
+    ShipId: Cardinal;
     ImageBuffer: TGraphBufGR;
     Opacity: Integer;
     ImageControl: TGraphBufGI;
@@ -147,7 +147,7 @@ begin
   PlanetPanel := TfPanelPlanet.Create;
   StationPanel := TfPanelRuins.Create;
   LoadPanel := TfPanelLoad.Create;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     ShipSlots[I].ImageBuffer := TGraphBufGR.Create(False);
   SelectedShip := nil;
 end;
@@ -171,7 +171,7 @@ begin
     LoadPanel.Free;
     LoadPanel := nil;
   end;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     if ShipSlots[I].ImageBuffer <> nil then
     begin
       ShipSlots[I].ImageBuffer.Free;
@@ -311,7 +311,7 @@ begin
   end;
   AppendLogLineThreadSafe('ok');
   ShipInfoWindow := GetByName('InfoShip') as TWindowGI;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     ShipSlots[I].ImageControl := GetByName('Ship' + IntToStr(I)) as TGraphBufGI;
   GetByName('MainPanel').MouseMoveCallback := MainMouseMove;
   GetByName('MainPanel').RightButtonDownCallback := MainRightButtonDown;
@@ -482,7 +482,7 @@ begin
     RestartPlayback;
   end;
   CaptureDispatcherMirror(nil);
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
   begin
     ShipSlots[I].AnimationState := 0;
     ShipSlots[I].Opacity := 0;
@@ -511,7 +511,7 @@ begin
     ShipInfoHideTimer := nil;
   end;
   LoadPanel.OnClose;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
   begin
     (GetByName('Ship' + IntToStr(I)) as TGraphBufGI).GraphBuf.Clear;
     if ShipSlots[I].ImageBuffer <> nil then
@@ -1269,7 +1269,7 @@ procedure TfHangar.AnimateDockedShips(Timer: PCallbackTimerGI; UserData: PtrInt)
 var
   I: Integer;
 begin
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     if ShipSlots[I].AnimationState = 1 then
     begin
       Inc(ShipSlots[I].Opacity, 10);
@@ -1305,7 +1305,7 @@ var
 begin
   if IsTurnCalculationRunning then
     WaitForTurnCalculation;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     if ShipSlots[I].AnimationState = 2 then
     begin
       Ship := TShip(Galaxy.IdToShip(ShipSlots[I].ShipId, False));
@@ -1317,7 +1317,7 @@ begin
         ShipSlots[I].Opacity := 255;
       end;
     end;
-  for I := 1 to 8 do
+  for I := 1 to High(ShipSlots) do
     if (ShipSlots[I].AnimationState = 0) and (ShipSlots[I].ShipId <> 0) then
     begin
       Ship := TShip(Galaxy.IdToShip(ShipSlots[I].ShipId, False));
@@ -1329,7 +1329,7 @@ begin
         else
         begin
           K := 0;
-          while K <= 8 do
+          while K <= High(ShipSlots) do
           begin
             if (ShipSlots[K].AnimationState <> 0) and (ShipSlots[K].ShipId = Ship.Id) then
             begin
@@ -1353,7 +1353,7 @@ begin
       LoadDockedShipImage(I, Path, LargeHull, GetShipPortraitScale(Ship));
       SetDockedShipOpacity(I, ShipSlots[I].Opacity);
     end;
-  for I := 0 to 8 do
+  for I := Low(SlotOrder) to High(SlotOrder) do
     SlotOrder[I] := I;
   for I := 0 to 10 do
   begin
@@ -1363,7 +1363,7 @@ begin
     SlotOrder[J] := SlotOrder[K];
     SlotOrder[K] := Swap;
   end;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
     if ShipSlots[SlotOrder[I]].AnimationState = 0 then
     begin
       Ship := nil;
@@ -1375,7 +1375,7 @@ begin
         begin
           for J := 0 to GetPlayer.CurrentStar.Ships.Count - 1 do
           begin
-            Ship := TShip(GetPlayer.CurrentStar.Ships[J]);
+            Ship := GetPlayer.CurrentStar.Ships[J];
             if GetPlayer = Ship then
               Ship := nil
             else if GetPlayer.CurrentPlanet <> Ship.CurrentPlanet then
@@ -1383,13 +1383,13 @@ begin
             else
             begin
               K := 0;
-              while K <= 8 do
+              while K <= High(ShipSlots) do
               begin
                 if (ShipSlots[K].AnimationState <> 0) and (ShipSlots[K].ShipId = Ship.Id) then
                   Break;
                 Inc(K);
               end;
-              if K > 8 then
+              if K > High(ShipSlots) then
                 Break;
               Ship := nil;
             end;
@@ -1397,19 +1397,19 @@ begin
           if Ship = nil then
             for J := 0 to GetPlayer.CurrentPlanet.Warriors.Count - 1 do
             begin
-              Ship := TShip(GetPlayer.CurrentPlanet.Warriors[J]);
+              Ship := GetPlayer.CurrentPlanet.Warriors[J];
               if GetPlayer.CurrentPlanet <> Ship.CurrentPlanet then
                 Ship := nil
               else
               begin
                 K := 0;
-                while K <= 8 do
+                while K <= High(ShipSlots) do
                 begin
                   if (ShipSlots[K].AnimationState <> 0) and (ShipSlots[K].ShipId = Ship.Id) then
                     Break;
                   Inc(K);
                 end;
-                if K > 8 then
+                if K > High(ShipSlots) then
                   Break;
                 Ship := nil;
               end;
@@ -1418,7 +1418,7 @@ begin
         else if GetPlayer.IsDockedToShip then
           for J := 0 to GetPlayer.CurrentStar.Ships.Count - 1 do
           begin
-            Ship := TShip(GetPlayer.CurrentStar.Ships[J]);
+            Ship := GetPlayer.CurrentStar.Ships[J];
             if GetPlayer = Ship then
               Ship := nil
             else if GetPlayer.DockedTo <> Ship.DockedTo then
@@ -1426,13 +1426,13 @@ begin
             else
             begin
               K := 0;
-              while K <= 8 do
+              while K <= High(ShipSlots) do
               begin
                 if (ShipSlots[K].AnimationState <> 0) and (ShipSlots[K].ShipId = Ship.Id) then
                   Break;
                 Inc(K);
               end;
-              if K > 8 then
+              if K > High(ShipSlots) then
                 Break;
               Ship := nil;
             end;
@@ -1463,7 +1463,7 @@ begin
   if (Galaxy = nil) or (GetPlayer = nil) or GetPlayer.IsHullDestroyed then
     Exit;
   CursorPoint := GetCursorPoint;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
   begin
     Ship := TShip(Galaxy.IdToShip(ShipSlots[I].ShipId, False));
     if (Ship <> nil) and ShipSlots[I].ImageControl.HitTestPixel(CursorPoint) then
@@ -1501,7 +1501,7 @@ var
   CursorPoint: TPoint;
 begin
   CursorPoint := GetCursorPoint;
-  for I := 0 to 8 do
+  for I := Low(ShipSlots) to High(ShipSlots) do
   begin
     Ship := TShip(Galaxy.IdToShip(ShipSlots[I].ShipId, False));
     if (Ship <> nil)
@@ -1599,13 +1599,13 @@ begin
                               + '.AddToShipInfo'
                       ),
                       RedColorTag));
-    if (Ship is TRanger) and (Cardinal((Ship as TRanger).PrisonTermRemaining) > 0) then
+    if (Ship is TRanger) and ((Ship as TRanger).PrisonTermRemaining > 0) then
       (GetByName('InfoShipName') as TLabelGI)
           .SetText(
               (GetByName('InfoShipName') as TLabelGI).GetText
                   + #13#10
                   + WrapTextInColor(LocalizedColorText('FormHangar.Prison'), RedColorTag))
-    else if (Ship is TPirate) and (Cardinal((Ship as TPirate).PrisonTermRemaining) > 0) then
+    else if (Ship is TPirate) and ((Ship as TPirate).PrisonTermRemaining > 0) then
       (GetByName('InfoShipName') as TLabelGI)
           .SetText(
               (GetByName('InfoShipName') as TLabelGI).GetText

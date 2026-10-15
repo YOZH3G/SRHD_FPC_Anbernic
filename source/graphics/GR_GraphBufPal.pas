@@ -32,7 +32,7 @@ type
         APaletteCount: Integer;
         APitchBytes: Integer
     );
-    function GetPaletteColor(Index: Integer): Cardinal;
+    function GetPaletteColor(Index: Integer): TColorRGBA;
     procedure SetPalette(Source: PColorRGBA; Count: Integer);
     function GetPixelIndex(X: Integer; Y: Integer): Byte;
     procedure LoadImage(Buffer: TBufEC);
@@ -103,9 +103,9 @@ begin
     raise Exception.Create('TGraphBufPalGR.CreateN');
 end;
 
-function TGraphBufPalGR.GetPaletteColor(Index: Integer): Cardinal;
+function TGraphBufPalGR.GetPaletteColor(Index: Integer): TColorRGBA;
 begin
-  Result := PCardinal(AddPointerOffset(Palette, Index * SizeOf(Palette^)))^;
+  Result := PColorRGBA(AddPointerOffset(Palette, Index * SizeOf(TColorRGBA)))^;
 end;
 
 procedure TGraphBufPalGR.SetPalette(Source: PColorRGBA; Count: Integer);

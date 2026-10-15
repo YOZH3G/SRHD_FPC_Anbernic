@@ -189,7 +189,7 @@ begin
   begin
     for I := 0 to GetPlayer.CurrentPlanet.EquipmentShop.Count - 1 do
     begin
-      Item := TItem(GetPlayer.CurrentPlanet.EquipmentShop[I]);
+      Item := GetPlayer.CurrentPlanet.EquipmentShop[I];
       Slot := TShopSlot.Create;
       TemporaryShopSlots.Add(Slot);
       Slot.Item := Item;
@@ -206,7 +206,7 @@ begin
     Station := GetPlayer.DockedTo as TRuins;
     for I := 0 to Station.EquipmentShop.Count - 1 do
     begin
-      Item := TItem(Station.EquipmentShop[I]);
+      Item := Station.EquipmentShop[I];
       Slot := TShopSlot.Create;
       TemporaryShopSlots.Add(Slot);
       Slot.Item := Item;
@@ -431,7 +431,7 @@ begin
   GridPoint.Y := Buffer.GetByte;
   if Buffer.GetByte = 1 then
   begin
-    Item := TObject(CreateItemByType(MigrateSavedItemType(Buffer.GetByte))) as TEquipment;
+    Item := CreateItemByType(MigrateSavedItemType(Buffer.GetByte)) as TEquipment;
     Item.LoadFromBuffer(Buffer, Galaxy);
   end;
 end;
@@ -1769,8 +1769,6 @@ begin
 end;
 
 procedure TfEquipmentShop.RefreshItemInfo(Item: TItem);
-const
-  DurableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   Equipment: TEquipment;
   Price: WideString;
@@ -1874,7 +1872,7 @@ begin
         SetImageKindX(ikxCenter);
         SetImageKindY(ikyCenter);
       end;
-      if not (Byte(Equipment.ItemType) in DurableTypes) and (Equipment.ItemType <> t_Hull) then
+      if not (Equipment.ItemType in RepairableItemTypes) and (Equipment.ItemType <> t_Hull) then
       begin
         with GetByName('InfoDurable') as TImageGI do
           Parent.Parent.SetActive(False);
@@ -2044,9 +2042,6 @@ var
   DisplayKind: TKlingType;
   Series: TDominatorSeries;
   BarWidth, CapWidth, MinimumWidth: Integer;
-  UnusedNativeLocal:
-      array[0..7] of
-          Byte; { Eight unreferenced frame bytes precede the managed temporaries; original local type is unknown. }
 begin
   Window := Target.GetByName('InfoHull') as TWindowGI;
   TextLabel := Target.GetByName('InfoHullText') as TLabelGI;
@@ -2093,11 +2088,11 @@ begin
     DisplayKind := GetPlayer.ChameleonVisualType;
     Series := GetPlayer.ChameleonSeries;
   end;
-  if (Hull.OwnerShip <> nil) and (TObject(Hull.OwnerShip) is TKling) then
+  if (Hull.OwnerShip <> nil) and (Hull.OwnerShip is TKling) then
   begin
     HullKind := htKling;
-    DisplayKind := (TObject(Hull.OwnerShip) as TKling).KlingType;
-    Series := (TObject(Hull.OwnerShip) as TKling).DominatorSeries;
+    DisplayKind := (Hull.OwnerShip as TKling).KlingType;
+    Series := (Hull.OwnerShip as TKling).DominatorSeries;
   end;
   if not SuppressImage then
     with Target.GetByName('InfoHullImage') as TImageGI do

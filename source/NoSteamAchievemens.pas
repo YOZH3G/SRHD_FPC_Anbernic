@@ -64,7 +64,8 @@ var
   Block: TBlockParEC;
   Version: Integer;
   Key: WideString;
-  Seed, Checksum: Integer;
+  Seed: Integer;
+  Checksum: Cardinal;
   Cursor: PByte;
 begin
   FileName := GetGameUserDirectory + 'achievements.dat';
@@ -92,16 +93,16 @@ begin
                 - SeedRngRemainder * (Seed div SeedRngQuotient);
         if Seed <= 0 then
           Inc(Seed, SeedRngModulus);
-        Cursor := PByte(PAnsiChar(Cursor) + 1);
+        Inc(Cursor);
       end;
       Checksum := 0;
       Cursor := PByte(PAnsiChar(Buffer.Data) + SizeOf(TEncodedTableHeaderEC));
       for Index := SizeOf(TEncodedTableHeaderEC) to Size - 1 do
       begin
         Inc(Checksum, Byte(Cursor^ xor $FF));
-        Cursor := PByte(PAnsiChar(Cursor) + 1);
+        Inc(Cursor);
       end;
-      if Buffer.GetUInt32At(8) <> Cardinal(Checksum) then
+      if Buffer.GetUInt32At(8) <> Checksum then
         raise EAbort.Create('Error unpacking achievements.dat');
       Buffer.SetPosition(SizeOf(TEncodedTableHeaderEC));
       Count := Buffer.GetInt32;
@@ -157,7 +158,7 @@ begin
   for Index := SizeOf(TEncodedTableHeaderEC) to Size - 1 do
   begin
     Inc(Checksum, Byte(Cursor^ xor $FF));
-    Cursor := PByte(PAnsiChar(Cursor) + 1);
+    Inc(Cursor);
   end;
   Buffer.SetInt32At(8, Checksum);
   Cursor := @PEncodedTableHeaderEC(Buffer.Data).Checksum;
@@ -169,7 +170,7 @@ begin
             - SeedRngRemainder * (Seed div SeedRngQuotient);
     if Seed <= 0 then
       Inc(Seed, SeedRngModulus);
-    Cursor := PByte(PAnsiChar(Cursor) + 1);
+    Inc(Cursor);
   end;
   Buffer.CompressZlibPayloadInPlace(False);
   FileHandle := TFileEC.Create;

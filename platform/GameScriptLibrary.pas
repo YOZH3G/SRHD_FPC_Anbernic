@@ -1,50 +1,40 @@
 unit GameScriptLibrary;
 
 {$MODE DELPHI}
+{$I mods/NativeMods.inc}
 
 interface
 
 function LoadScriptLibrary(const FileName: UnicodeString): Cardinal;
 function FreeScriptLibrary(Handle: Cardinal): Boolean;
-function ScriptLibraryProc(Handle: Cardinal; const Name: AnsiString): Pointer;
 
 implementation
 
 uses
-  SysUtils
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-  ,
-  Windows
+{$IFDEF NATIVE_SCRIPT_MODS}
+  NativeScriptLibrary,
 {$ENDIF}
-      ;
+  SysUtils;
 
 function LoadScriptLibrary(const FileName: UnicodeString): Cardinal;
 begin
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-  Result := Windows.LoadLibraryW(PWideChar(FileName));
-{$ELSE}
-  // Script imports describe Win32 stdcall words, including addresses and float
-  // bit patterns. Loading a native library would not make that ABI portable.
-  raise Exception.Create('Script DLL imports require 32-bit Windows: ' + FileName);
+{$IFDEF NATIVE_SCRIPT_MODS}
+  Result := LoadNativeScriptLibrary(FileName);
+  if Result <> 0 then
+    Exit;
 {$ENDIF}
+  // Even Win32 FPC objects do not have the original Delphi layout/VMT ABI.
+  // Never substitute the original DLL when its portable implementation is off.
+  raise Exception.Create('Native script library is disabled or unavailable: ' + FileName);
 end;
 
 function FreeScriptLibrary(Handle: Cardinal): Boolean;
 begin
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-  Result := Windows.FreeLibrary(Handle);
-{$ELSE}
+{$IFDEF NATIVE_SCRIPT_MODS}
+  if FreeNativeScriptLibrary(Handle) then
+    Exit(True);
+{$ENDIF}
   Result := Handle = 0;
-{$ENDIF}
-end;
-
-function ScriptLibraryProc(Handle: Cardinal; const Name: AnsiString): Pointer;
-begin
-{$IF Defined(MSWINDOWS) and Defined(CPU386)}
-  Result := Windows.GetProcAddress(Handle, PAnsiChar(Name));
-{$ELSE}
-  Result := nil;
-{$ENDIF}
 end;
 
 end.

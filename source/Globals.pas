@@ -47,6 +47,7 @@ uses
   aEFilm,
   aEFilmEnd,
   SE_Space,
+  SE_Planet,
   SE_Process,
   aPlanet,
   fShip2,
@@ -67,6 +68,8 @@ const
   PersistentMessageLifetimeTurns = 1000000;
 
 type
+
+  TScriptVariableTypeNames = array[TVarKind] of WideString;
 
   TPlanetTempl = class;
 
@@ -123,7 +126,7 @@ type
     Style: Integer;
     StyleVariant: Integer;
     Radius: Integer;
-    SpaceObject: TObjectSE;
+    SpaceObject: TPlanetSE;
   end;
 
   TSputnikTempl = class(TObject)
@@ -798,7 +801,7 @@ begin
   ScriptUiRequestEvent := CreateGameEvent(True, False);
   ScriptUiAbortEvent := CreateGameEvent(True, False);
   TurnCalculationThread := TThreadCalc.Create;
-  TurnCalculationThread.SetPriority(2);
+  TurnCalculationThread.SetPriority(ThreadPriorityBelowNormal);
   ScriptTemplates := TList.Create;
   GlobalScriptVariables := TVarArrayEC.Create;
   SharedScriptVariables := TVarArrayEC.Create;
@@ -902,7 +905,7 @@ begin
 end;
 
 var
-  ScriptVariableTypeNames: array[0..10] of WideString = (
+  ScriptVariableTypeNames: TScriptVariableTypeNames = (
       'Unknown',
       'Int',
       'DW',
@@ -1240,15 +1243,15 @@ begin
               'Warning! Mismatching global variables with same name <'
                   + Variable.Name
                   + '> found! Types are '
-                  + ScriptVariableTypeNames[Ord(Variable.RealVType)]
+                  + ScriptVariableTypeNames[Variable.RealVType]
                   + ' and '
-                  + ScriptVariableTypeNames[Ord(Other.RealVType)];
+                  + ScriptVariableTypeNames[Other.RealVType];
           if Variable.RealVType = vkEmpty then
           begin
             WarningText :=
                 WarningText
                     + ', '
-                    + ScriptVariableTypeNames[Ord(Variable.RealVType)]
+                    + ScriptVariableTypeNames[Variable.RealVType]
                     + ' will be discarded';
             GlobalScriptVariables.Remove(Variable);
           end
@@ -1257,7 +1260,7 @@ begin
             WarningText :=
                 WarningText
                     + ', '
-                    + ScriptVariableTypeNames[Ord(Other.RealVType)]
+                    + ScriptVariableTypeNames[Other.RealVType]
                     + ' will be discarded';
             GlobalScriptVariables.Remove(Other);
           end;
@@ -1668,13 +1671,13 @@ begin
   for Index := 0 to Count - 1 do
     ArcadeItemSounds[Index] := Section.GetParamValue(Index);
   Section := GameDataConfig.GetBlock('ABSound').GetBlock('WeaponFirst');
-  for Index := 0 to 17 do
+  for Index := Low(ArcadeWeaponFirstSounds) to High(ArcadeWeaponFirstSounds) do
     if Section.CountParams(WideString(IntToStr(Index))) <= 0 then
       ArcadeWeaponFirstSounds[Index] := ''
     else
       ArcadeWeaponFirstSounds[Index] := Section.GetParam(WideString(IntToStr(Index)));
   Section := GameDataConfig.GetBlock('ABSound').GetBlock('WeaponLoop');
-  for Index := 0 to 17 do
+  for Index := Low(ArcadeWeaponLoopSounds) to High(ArcadeWeaponLoopSounds) do
     if Section.CountParams(WideString(IntToStr(Index))) <= 0 then
     begin
       ArcadeWeaponLoopSounds[Index] := '';
@@ -1696,8 +1699,8 @@ begin
   Result := nil;
   for Index := Low(TGameScreenId) to High(TGameScreenId) do
     if (TMessageLoopGI(RegisteredScreens[Index]) <> nil)
-        and (TObject(RegisteredScreens[Index]) is TMessageLoopGI)
-        and ((TObject(RegisteredScreens[Index]) as TMessageLoopGI).RegisteredLoopName = Name) then
+        and (RegisteredScreens[Index] is TMessageLoopGI)
+        and ((RegisteredScreens[Index] as TMessageLoopGI).RegisteredLoopName = Name) then
     begin
       Result := TMessageLoopGI(RegisteredScreens[Index]);
       Break;
@@ -2728,14 +2731,10 @@ end;
 
 procedure HandleRuntimeExitCheck1;
 begin
-  if ExitScreenLoop then
-    ;
 end;
 
 procedure HandleRuntimeExitCheck2;
 begin
-  if ExitScreenLoop then
-    ;
 end;
 
 function ParseRobotMapRaceMask(Text: WideString): TOwnerMask;

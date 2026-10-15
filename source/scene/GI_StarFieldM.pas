@@ -154,13 +154,15 @@ begin
 end;
 
 procedure TStarFieldMGI.GrowStars;
+const
+  GrowthCount = 64;
 var
   Tail: Pointer;
 begin
-  Inc(Capacity, 64);
+  Inc(Capacity, GrowthCount);
   Stars := ReAllocREC(Stars, SizeOf(TMovingStarPixel) * Capacity);
-  Tail := AddPointerOffset(Stars, SizeOf(TMovingStarPixel) * (Capacity - 64));
-  FillChar(Tail^, SizeOf(TMovingStarPixel) * 64, 0);
+  Tail := AddPointerOffset(Stars, SizeOf(TMovingStarPixel) * (Capacity - GrowthCount));
+  FillChar(Tail^, SizeOf(TMovingStarPixel) * GrowthCount, 0);
 end;
 
 function TStarFieldMGI.AllocateStar: PMovingStarPixel;

@@ -143,7 +143,7 @@ begin
     if TrimWideString(ExpressionText.Text) <> '' then
       Exit;
   end
-  else if not (not SetValue and (ChangeValue = 0)) then
+  else if SetValue or (ChangeValue <> 0) then
     Exit;
   Result := True;
 end;
@@ -306,6 +306,10 @@ begin
 end;
 
 procedure TParameterDelta.LoadChangeFromReader(Reader: TBufEC);
+const
+  ChangeSetValue = 0;
+  ChangeByPercentage = 2;
+  ChangeFromExpression = 3;
 var
   ChangeKind: Byte;
 begin
@@ -313,9 +317,9 @@ begin
   ChangeValue := Reader.GetInt32;
   VisibilityChange := TParameterVisibilityChange(Reader.GetByte);
   ChangeKind := Reader.GetByte;
-  SetValue := (ChangeKind = 0);
-  ChangeByPercent := (ChangeKind = 2);
-  UseExpression := (ChangeKind = 3);
+  SetValue := ChangeKind = ChangeSetValue;
+  ChangeByPercent := ChangeKind = ChangeByPercentage;
+  UseExpression := ChangeKind = ChangeFromExpression;
   ExpressionText.LoadTextLinesFromReader(Reader);
   CriticalEvent.Text.LoadTextLinesFromReader(Reader);
   CriticalEvent.Picture.LoadTextLinesFromReader(Reader);

@@ -140,7 +140,7 @@ var
   Index, ItemIndex, Count: Integer;
   Polygons: array of PabPolygon;
   Polygon: PabPolygon;
-  Cursor: Pointer;
+  Cursor: PAnsiChar;
   PointIndex: Integer;
   Group: PabPolygonGroup;
 begin
@@ -164,36 +164,36 @@ begin
     Group := @PolygonGroups[Index];
     Count := Buffer.GetWord;
     SetLength(Group.Polygons, Count);
-    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
+    Cursor := PAnsiChar(Buffer.Data) + Buffer.Position;
     for ItemIndex := 0 to High(Group.Polygons) do
     begin
       Group.Polygons[ItemIndex] := Polygons[PWord(Cursor)^];
-      Cursor := Pointer(PAnsiChar(Cursor) + 2);
+      Inc(Cursor, SizeOf(Word));
     end;
-    Buffer.SetPosition(Buffer.Position + Count * 2);
-    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
+    Buffer.SetPosition(Buffer.Position + Count * SizeOf(Word));
+    Cursor := PAnsiChar(Buffer.Data) + Buffer.Position;
     Group.Corners[0].X := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[0].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[0].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[1].X := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[1].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[1].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[2].X := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[2].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[2].Z := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[3].X := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[3].Y := PSingle(Cursor)^;
-    Cursor := Pointer(PAnsiChar(Cursor) + 4);
+    Inc(Cursor, SizeOf(Single));
     Group.Corners[3].Z := PSingle(Cursor)^;
     Buffer.SetPosition(Buffer.Position + 48);
   end;
@@ -202,23 +202,23 @@ begin
     CurrentPolygonCell := @PolygonCells[Index];
     Count := Buffer.GetWord;
     SetLength(CurrentPolygonCell.Points, Count);
-    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
+    Cursor := PAnsiChar(Buffer.Data) + Buffer.Position;
     for ItemIndex := 0 to Count - 1 do
     begin
       PointIndex := PWord(Cursor)^;
       CurrentPolygonCell.Points[ItemIndex] := StopPointIndex[PointIndex];
-      Cursor := Pointer(PAnsiChar(Cursor) + 2);
+      Inc(Cursor, SizeOf(Word));
     end;
-    Buffer.SetPosition(Buffer.Position + Count * 2);
+    Buffer.SetPosition(Buffer.Position + Count * SizeOf(Word));
     Count := Buffer.GetWord;
     SetLength(CurrentPolygonCell.Groups, Count);
-    Cursor := Pointer(PAnsiChar(Buffer.Data) + Buffer.Position);
+    Cursor := PAnsiChar(Buffer.Data) + Buffer.Position;
     for ItemIndex := 0 to Count - 1 do
     begin
       CurrentPolygonCell.Groups[ItemIndex] := @PolygonGroups[PWord(Cursor)^];
-      Cursor := Pointer(PAnsiChar(Cursor) + 2);
+      Inc(Cursor, SizeOf(Word));
     end;
-    Buffer.SetPosition(Buffer.Position + Count * 2);
+    Buffer.SetPosition(Buffer.Position + Count * SizeOf(Word));
   end;
   Polygons := nil;
   CurrentPolygonCell := nil;
@@ -391,13 +391,13 @@ begin
     if FirstPolygon = nil then
       FirstPolygon := Polygon;
     Polygon.MapValue30 := Buffer.GetInt32;
-    for Vertex := 0 to 2 do
+    for Vertex := Low(Polygon.Vertices) to High(Polygon.Vertices) do
     begin
       Polygon.Vertices[Vertex].Point := StopPointIndex[Buffer.GetInt32];
       Polygon.Vertices[Vertex].Color :=
           Pointer(PAnsiChar(ArcadeMapColorBuffer.Data) + Buffer.GetInt32);
     end;
-    Polygon := Pointer(PAnsiChar(Polygon) + SizeOf(TabPolygon));
+    Inc(Polygon);
   end;
 end;
 

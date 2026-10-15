@@ -560,7 +560,7 @@ begin
                     ))
             + ' '
             + '-'
-            + IntToStr(Cardinal(Id) mod 100 + 1)
+            + IntToStr(Id mod 100 + 1)
             + '-';
   if Length(GetName) = 0 then
     Name :=
@@ -575,7 +575,7 @@ begin
                     ))
             + ' '
             + '-'
-            + IntToStr(Cardinal(Id) mod 100 + 1)
+            + IntToStr(Id mod 100 + 1)
             + '-';
   ActiveProgramAppliedTurn := 0;
   RefreshCombatSkills;
@@ -664,7 +664,7 @@ begin
           125 * Galaxy.GetEffectiveDifficultyLevel
               + RemapClamped(Galaxy.CurrentTurn, GalaxyWarmupTurns, 22200, 0, 3000)
       );
-  WarRating := -150 * Galaxy.WarDeltaWin[1];
+  WarRating := -150 * Galaxy.WarDeltaWin[sfDominators];
   DistanceRating := 0;
   for I := 0 to Galaxy.Stars.Count - 1 do
     if (CurrentStar.StarDistances[I].Star.ControlFaction <> sfDominators)
@@ -1127,7 +1127,7 @@ begin
       if Galaxy.BlazerLandingPlanetId > 0 then
       begin
         Stage := 4;
-        OrderLanding(Galaxy.IdToPlanet(Galaxy.BlazerLandingPlanetId), False);
+        OrderLanding(TPlanet(Galaxy.IdToPlanet(Galaxy.BlazerLandingPlanetId)), False);
       end
       else
       begin
@@ -1474,7 +1474,7 @@ begin
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
     IncrementWrapped(Index, 0, Galaxy.Stars.Count - 1);
-    Star := TObject(GetPlayer.CurrentStar.StarDistances[Index].Star) as TStar;
+    Star := GetPlayer.CurrentStar.StarDistances[Index].Star;
     if (Star.Constellation.Id <> 20)
         and ((BlazerShip = nil) or (BlazerShip.CurrentStar <> Star))
         and ((TerronShip = nil) or (TerronShip.CurrentStar <> Star))
@@ -1490,7 +1490,7 @@ begin
           Score := 0;
           for J := 1 to Galaxy.Stars.Count - 1 do
           begin
-            Neighbor := TObject(Star.StarDistances[J].Star) as TStar;
+            Neighbor := Star.StarDistances[J].Star;
             if (Neighbor.ControlFaction = sfCoalition) and (Neighbor.Status.CustomFaction = '') then
               Inc(Score, Star.StarDistances[J].Distance)
             else if Neighbor.Battle <> 0 then
@@ -1649,7 +1649,7 @@ begin
     end;
     Hole := THole.Create;
     Hole.InitializeGraphic('');
-    THoleSE(Hole.Graphic).SetState(1);
+    Hole.Graphic.SetState(1);
     Hole.Star1 := Galaxy.KellerTargetStar;
     Hole.Star2 := Hole.Star1;
     Hole.HoleType := 4;
@@ -1796,26 +1796,6 @@ begin
   CurrentStar.DominatorSeries := Series;
   CurrentStar.DaysSinceLastNpcShipSpawn := SpawnTimer;
 end;
-
-// Native diagnostic literal pool precedes the invasion helpers. These stored
-// strings contain UTF-8 decoded as Windows-1251, then widened to UTF-16.
-// Numeric escapes preserve the native code points; comments show the decoded Russian.
-var
-  DominatorDebugMessages: array[0..6] of WideString = (
-      // Decoded text: Ахтунг! Босс Террон атакован!
-      #1056#1106#1057#8230#1057#8218#1057#1107#1056#1029#1056#1110#33#32#1056#8216#1056#1109#1057#1027#1057#1027#32#1056#1118#1056#181#1057#1026#1057#1026#1056#1109#1056#1029#32#1056#176#1057#8218#1056#176#1056#1108#1056#1109#1056#1030#1056#176#1056#1029#33,
-      // Decoded text: Меняем боевую позицию
-      #1056#1114#1056#181#1056#1029#1057#1039#1056#181#1056#1112#32#1056#177#1056#1109#1056#181#1056#1030#1057#1107#1057#1035#32#1056#1111#1056#1109#1056#183#1056#1105#1057#8224#1056#1105#1057#1035,
-      // Decoded text: Срочно подкрепление!
-      #1056#1038#1057#1026#1056#1109#1057#8225#1056#1029#1056#1109#32#1056#1111#1056#1109#1056#1169#1056#1108#1057#1026#1056#181#1056#1111#1056#187#1056#181#1056#1029#1056#1105#1056#181#33,
-      // Decoded text: Пора потеснить соседей
-      #1056#1119#1056#1109#1057#1026#1056#176#32#1056#1111#1056#1109#1057#8218#1056#181#1057#1027#1056#1029#1056#1105#1057#8218#1057#1034#32#1057#1027#1056#1109#1057#1027#1056#181#1056#1169#1056#181#1056#8470,
-      // Decoded text: Солдаты на фронт
-      #1056#1038#1056#1109#1056#187#1056#1169#1056#176#1057#8218#1057#8249#32#1056#1029#1056#176#32#1057#8222#1057#1026#1056#1109#1056#1029#1057#8218,
-      // Decoded text: Надо расширять границы
-      #1056#1116#1056#176#1056#1169#1056#1109#32#1057#1026#1056#176#1057#1027#1057#8364#1056#1105#1057#1026#1057#1039#1057#8218#1057#1034#32#1056#1110#1057#1026#1056#176#1056#1029#1056#1105#1057#8224#1057#8249,
-      ''
-  );
 
 procedure TKling.CoordinateSeriesInvasions(Series: TDominatorSeries);
 var
@@ -1984,7 +1964,7 @@ begin
       Round(Galaxy.ScaleDifficultyExponentially(Galaxy.GetDominatorAggressionLevel, 10, 2));
   ControlThreshold := Round(5 * Galaxy.GetDominatorAggressionLevel / 8) + 80;
   Chance := Round(RemapClamped(ControlPercent, 1, ControlThreshold, BaseChance, 0));
-  Chance := Round(Chance * RemapClamped(Galaxy.WarDeltaWin[1], 0, 10, 1, 0.3));
+  Chance := Round(Chance * RemapClamped(Galaxy.WarDeltaWin[sfDominators], 0, 10, 1, 0.3));
   if Galaxy.CurrentTurn >= 666 then
     if Galaxy.DominatorModLevel = 1 then
       Chance := 400
@@ -2025,7 +2005,7 @@ begin
           NearbyIndex := NextRandomIntRange(1, NearbyRange, Galaxy.RandomState);
           while (Attempts > 0) and (Action = 0) do
           begin
-            TargetStar := TObject(Origin.StarDistances[NearbyIndex].Star) as TStar;
+            TargetStar := Origin.StarDistances[NearbyIndex].Star;
             NearbyIndex := IncrementWrapped(NearbyIndex, 1, NearbyRange);
             Dec(Attempts);
             if (TargetStar.Constellation.Id <> 20)

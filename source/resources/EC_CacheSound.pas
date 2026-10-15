@@ -6,6 +6,7 @@ interface
 
 uses
   Classes,
+  DirectSound,
   EC_Buf,
   EC_Cache;
 
@@ -14,16 +15,6 @@ type
   TCSoundControlEC = class;
 
   TCSoundEC = class;
-
-  TWaveFormatEx = packed record
-    FormatTag: Word;
-    Channels: Word;
-    SamplesPerSecond: Cardinal;
-    AverageBytesPerSecond: Cardinal;
-    BlockAlign: Word;
-    BitsPerSample: Word;
-    ExtraSize: Word;
-  end;
 
   TWaveFileHeader = packed record
     RiffId: Cardinal;
@@ -48,7 +39,7 @@ type
   end;
 
   TCSoundEC = class(TCacheDataEC)
-    Format: TWaveFormatEx;
+    Format: TSoundWaveFormat;
     SampleData: Pointer;
     SampleDataSize: Cardinal;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
@@ -61,7 +52,6 @@ function AcquireCachedSound(Control: TCacheControlEC): TCSoundEC;
 implementation
 
 uses
-  DirectSound,
   EC_Mem,
   GR_Main,
   GameSystem;

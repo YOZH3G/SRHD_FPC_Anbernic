@@ -63,7 +63,6 @@ uses
 
 procedure TfGameEnd.InitializeLayout;
 var
-  Unused: Integer;
   Control: TObjectGI;
 begin
   inherited;

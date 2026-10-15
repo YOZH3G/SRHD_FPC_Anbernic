@@ -468,7 +468,7 @@ begin
     if Block.CountBlocks(Text) <> 0 then
     begin
       PaletteBlock := Block.GetBlockByPath(Text);
-      for ColorIndex := 0 to 1 do
+      for ColorIndex := Low(TBlasterPalette) to High(TBlasterPalette) do
         if PaletteBlock.CountParams('Color' + IntToStr(ColorIndex)) > 0 then
         begin
           Text := PaletteBlock.GetParam('Color' + IntToStr(ColorIndex));

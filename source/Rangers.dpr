@@ -332,8 +332,6 @@ var
   ApplicationEvents: TAD;
   StartupTime: SysUtils.TSystemTime;
   ArgumentIndex: Integer;
-  HadProtectedStatus: Boolean;
-  StartupTextBC: WideString;
 {$IFDEF MSWINDOWS}
   WineModule: HMODULE;
 {$ENDIF}
@@ -398,71 +396,12 @@ begin
 end;
 
 procedure HandleApplicationDeactivated;
-var
-  WaitResult: Cardinal;
-  Events: array[0..1] of TGameEventHandle;
-  EventPointer: Pointer;
 begin
 {$IFNDEF ANDROID}
   if WindowedModeRequested then
     Exit;
 {$ENDIF}
   RuntimeActive := False;
-  Exit;
-  // Native O- code retains the following disabled snapshot/wait path.
-  if ExitScreenLoop then
-    ;
-  if (NewGameGenerationThread <> nil) and NewGameGenerationThread.IsRunning then
-    NewGameGenerationThread.WaitForIdle(INFINITE);
-  if GetPlayer = nil then
-    Exit;
-  if Galaxy = nil then
-    Exit;
-  if IsTurnCalculationRunning then
-  begin
-    Events[0] := TurnCalculationThread.IdleEvent;
-    Events[1] := ScriptUiRequestEvent;
-    EventPointer := @Events;
-    repeat
-      WaitResult := WaitGameEvents(2, EventPointer, False, INFINITE);
-      if WaitResult = WAIT_OBJECT_0 + 1 then
-      begin
-        SetGameEvent(ScriptUiAbortEvent);
-        SysUtils.Sleep(1);
-      end
-      else
-        Break;
-    until False;
-    if WaitResult = WAIT_OBJECT_0 then
-      ;
-  end;
-  if GetPlayer.InNormalSpace and not PlayerStarDayPrepared then
-  begin
-    StartPlayerStarPreparation;
-    if IsTurnCalculationRunning then
-    begin
-      Events[0] := TurnCalculationThread.IdleEvent;
-      Events[1] := ScriptUiRequestEvent;
-      EventPointer := @Events;
-      repeat
-        WaitResult := WaitGameEvents(2, EventPointer, False, INFINITE);
-        if WaitResult = WAIT_OBJECT_0 + 1 then
-        begin
-          SetGameEvent(ScriptUiAbortEvent);
-          SysUtils.Sleep(1);
-        end
-        else
-          Break;
-      until False;
-      if WaitResult = WAIT_OBJECT_0 then
-        ;
-    end;
-  end;
-  ResetGameEvent(ScriptUiAbortEvent);
-  if (GameLoadScreen.LoadThread <> nil) and GameLoadScreen.LoadThread.IsRunning then
-    GameLoadScreen.LoadThread.WaitForIdle(INFINITE);
-  if not MemorySnapshotActive then
-    SaveGameToMemorySnapshot;
 end;
 
 procedure TAD.ApplicationDeactivated(Sender: TObject);
@@ -727,7 +666,6 @@ begin
             FreeLibrary(WineModule);
           end;
 {$ENDIF}
-          HadProtectedStatus := False;
           DateTimeToSystemTime(LocalTimeToUniversal(Now), StartupTime);
           AppendOptionalDebugLogLine(
               Format(
@@ -767,8 +705,6 @@ begin
               Galaxy.RefreshAllShipDerivedState;
               Galaxy.ReapplyInterfaceOverrides;
               Galaxy.BindScriptImports;
-              if HadProtectedStatus then
-                ; // Native retains this disabled status check.
             end;
             if BuildVersionMismatch then
               Break;
@@ -785,10 +721,9 @@ begin
               TurnCalculationThread.RequestStop;
               TurnCalculationThread.WaitForIdle(INFINITE);
             end;
-            HadProtectedStatus := False;
             if Galaxy <> nil then
             begin
-              HadProtectedStatus := GR_Main.CCInterface.GetProtectedStateXorSeed <> 0;
+              GR_Main.CCInterface.GetProtectedStateXorSeed;
               Galaxy.RestoreProtectedState;
               Galaxy.ClearIntegrityStatus;
             end;

@@ -106,10 +106,11 @@ type
     function OpenEntryByPath(EntryPath: AnsiString; DesiredAccess: Cardinal): Integer;
     function CreateLooseFile(FilePath: WideString): Integer;
     function CloseEntrySlot(SlotIndex: Cardinal): Boolean;
-    function GetChainedBlockStoredSizeAtIndex(
+    function TryGetChainedBlockStoredSizeAtIndex(
         FirstBlockOffset: Cardinal;
-        BlockIndex: Cardinal
-    ): Cardinal;
+        BlockIndex: Cardinal;
+        out StoredSize: Cardinal
+    ): Boolean;
     function ReadEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
     function WriteEntrySlot(SlotIndex: Cardinal; Buffer: Pointer; ByteCount: Cardinal): Boolean;
     function SeekEntrySlot(SlotIndex: Cardinal; Offset: Cardinal; Origin: Integer): Boolean;
@@ -184,11 +185,15 @@ function AnsiAfterFirstDelimiter(Text: AnsiString; Delimiters: AnsiString): Ansi
 
 function MatchLookupKeySuffix(
     var Key: AnsiString;
-    SuffixBytes: Pointer;
+    SuffixBytes: PAnsiChar;
     SuffixLength: Integer
 ): Boolean;
 
-procedure CopyLookupKeySuffix(DestSuffixBytes: Pointer; SuffixLength: Integer; var Key: AnsiString);
+procedure CopyLookupKeySuffix(
+    DestSuffixBytes: PAnsiChar;
+    SuffixLength: Integer;
+    var Key: AnsiString
+);
 
 implementation
 
@@ -602,24 +607,28 @@ begin
   end;
 end;
 
-function TPackFileEC.GetChainedBlockStoredSizeAtIndex(
-    FirstBlockOffset,
-    BlockIndex: Cardinal
-): Cardinal;
+function TPackFileEC.TryGetChainedBlockStoredSizeAtIndex(
+    FirstBlockOffset, BlockIndex: Cardinal;
+    out StoredSize: Cardinal
+): Boolean;
 var
-  BytesRead, StoredSize, Offset: Cardinal;
+  BytesRead, Offset: Cardinal;
 begin
+  Result := False;
   Offset := FirstBlockOffset;
   while True do
   begin
-    FileSeek(PackageHandle, Int64(Offset), fsFromBeginning);
-    ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead);
+    if FileSeek(PackageHandle, Int64(Offset), fsFromBeginning) <> Int64(Offset) then
+      Exit;
+    if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead)
+        or (BytesRead <> SizeOf(StoredSize)) then
+      Exit;
     if BlockIndex = 0 then
       Break;
     Dec(BlockIndex);
     Offset := Offset + StoredSize + SizeOf(StoredSize);
   end;
-  Result := StoredSize;
+  Result := True;
 end;
 
 function TPackFileEC.ReadEntrySlot(
@@ -662,11 +671,12 @@ begin
         // other open entries share the package handle and may have moved it.
         if BlockIndex = OpenSlots[SlotIndex].NextChainedBlockIndex then
         begin
-          FileSeek(
-              PackageHandle,
-              Int64(OpenSlots[SlotIndex].NextChainedBlockOffset),
-              fsFromBeginning
-          );
+          if FileSeek(
+                  PackageHandle,
+                  Int64(OpenSlots[SlotIndex].NextChainedBlockOffset),
+                  fsFromBeginning)
+              <> Int64(OpenSlots[SlotIndex].NextChainedBlockOffset) then
+            Exit;
           if not ReadPackageFile(PackageHandle, StoredSize, SizeOf(StoredSize), BytesRead)
               or (BytesRead <> SizeOf(StoredSize)) then
             Exit;
@@ -674,8 +684,11 @@ begin
         end
         else
         begin
-          StoredSize :=
-              GetChainedBlockStoredSizeAtIndex(OpenSlots[SlotIndex].DataStartOffset, BlockIndex);
+          if not TryGetChainedBlockStoredSizeAtIndex(
+              OpenSlots[SlotIndex].DataStartOffset,
+              BlockIndex,
+              StoredSize) then
+            Exit;
           OpenSlots[SlotIndex].NextChainedBlockOffset :=
               FileSeek(PackageHandle, Int64(0), fsFromCurrent) + StoredSize;
         end;
@@ -1404,7 +1417,7 @@ end;
 
 function MatchLookupKeySuffix(
     var Key: AnsiString;
-    SuffixBytes: Pointer;
+    SuffixBytes: PAnsiChar;
     SuffixLength: Integer
 ): Boolean;
 var
@@ -1419,7 +1432,7 @@ begin
   Result := True;
   for i := First to KeyLength do
   begin
-    if Key[i] <> PAnsiChar(SuffixBytes)[j] then
+    if Key[i] <> SuffixBytes[j] then
     begin
       Result := False;
       Break
@@ -1428,7 +1441,11 @@ begin
   end;
 end;
 
-procedure CopyLookupKeySuffix(DestSuffixBytes: Pointer; SuffixLength: Integer; var Key: AnsiString);
+procedure CopyLookupKeySuffix(
+    DestSuffixBytes: PAnsiChar;
+    SuffixLength: Integer;
+    var Key: AnsiString
+);
 var
   i, j, First, KeyLength: Integer;
 begin
@@ -1440,7 +1457,7 @@ begin
   j := 0;
   for i := First to KeyLength do
   begin
-    PAnsiChar(DestSuffixBytes)[j] := Key[i];
+    DestSuffixBytes[j] := Key[i];
     Inc(j);
   end;
 end;

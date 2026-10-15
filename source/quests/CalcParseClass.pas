@@ -396,15 +396,15 @@ begin
   else if Left.ValueKind = cpvkInteger then
     Minimum := Left.IntValue
   else if Left.ValueKind = cpvkRange then
-    Minimum := TCPDiapazone(Left.Range).GetMinimum;
+    Minimum := Left.Range.GetMinimum;
   if Right.ValueKind = cpvkFloat then
     Maximum := System.Round(Right.FloatValue)
   else if Right.ValueKind = cpvkInteger then
     Maximum := Right.IntValue
   else if Right.ValueKind = cpvkRange then
-    Maximum := TCPDiapazone(Right.Range).GetMaximum;
+    Maximum := Right.Range.GetMaximum;
   OutValue.ValueKind := cpvkRange;
-  TCPDiapazone(OutValue.Range).AddRange(Minimum, Maximum);
+  OutValue.Range.AddRange(Minimum, Maximum);
 end;
 
 procedure TCalcParse.ApplyMembership(var Left, Right, OutValue: TCPVariant);
@@ -420,21 +420,21 @@ begin
   end
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind <> cpvkRange) then
   begin
-    if TCPDiapazone(Left.Range).Contains(Right.AsExtended) then
+    if Left.Range.Contains(Right.AsExtended) then
       OutValue.IntValue := 1
     else
       OutValue.IntValue := 0;
   end
   else if (Left.ValueKind <> cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
-    if TCPDiapazone(Right.Range).Contains(Left.AsExtended) then
+    if Right.Range.Contains(Left.AsExtended) then
       OutValue.IntValue := 1
     else
       OutValue.IntValue := 0;
   end
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
-    if TCPDiapazone(Right.Range).Contains(Left.AsInteger) then
+    if Right.Range.Contains(Left.AsInteger) then
       OutValue.IntValue := 1
     else
       OutValue.IntValue := 0;
@@ -515,23 +515,23 @@ begin
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
     OutValue.Assign(Left, False);
-    TCPDiapazone(OutValue.Range).Append(Right.Range);
+    OutValue.Range.Append(Right.Range);
   end
   else if (Left.ValueKind <> cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
     OutValue.Assign(Right, False);
     if Left.ValueKind = cpvkInteger then
-      TCPDiapazone(OutValue.Range).AddRange(Left.IntValue, Left.IntValue)
+      OutValue.Range.AddRange(Left.IntValue, Left.IntValue)
     else
-      TCPDiapazone(OutValue.Range).AddValue(Left.FloatValue);
+      OutValue.Range.AddValue(Left.FloatValue);
   end
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind <> cpvkRange) then
   begin
     OutValue.Assign(Left, False);
     if Right.ValueKind = cpvkInteger then
-      TCPDiapazone(OutValue.Range).AddRange(Right.IntValue, Right.IntValue)
+      OutValue.Range.AddRange(Right.IntValue, Right.IntValue)
     else
-      TCPDiapazone(OutValue.Range).AddValue(Right.FloatValue);
+      OutValue.Range.AddValue(Right.FloatValue);
   end;
 end;
 
@@ -548,23 +548,23 @@ begin
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
     OutValue.Assign(Left, False);
-    TCPDiapazone(OutValue.Range).Append(Right.Range);
+    OutValue.Range.Append(Right.Range);
   end
   else if (Left.ValueKind <> cpvkRange) and (Right.ValueKind = cpvkRange) then
   begin
     OutValue.Assign(Right, False);
     if Left.ValueKind = cpvkInteger then
-      TCPDiapazone(OutValue.Range).AddRange(Left.IntValue, Left.IntValue)
+      OutValue.Range.AddRange(Left.IntValue, Left.IntValue)
     else
-      TCPDiapazone(OutValue.Range).AddValue(Left.FloatValue);
+      OutValue.Range.AddValue(Left.FloatValue);
   end
   else if (Left.ValueKind = cpvkRange) and (Right.ValueKind <> cpvkRange) then
   begin
     OutValue.Assign(Left, False);
     if Right.ValueKind = cpvkInteger then
-      TCPDiapazone(OutValue.Range).AddRange(Right.IntValue, Right.IntValue)
+      OutValue.Range.AddRange(Right.IntValue, Right.IntValue)
     else
-      TCPDiapazone(OutValue.Range).AddValue(Right.FloatValue);
+      OutValue.Range.AddValue(Right.FloatValue);
   end;
 end;
 
@@ -652,31 +652,28 @@ begin
 end;
 
 function TCalcParse.GetOperatorRank(Token: WideChar): Integer;
-var
-  Rank: Integer;
 begin
-  Rank := -1;
+  Result := -1;
   case Token of
-    '^': Rank := 1;
-    '/': Rank := 1;
-    'f': Rank := 1;
-    'g': Rank := 1;
-    '*': Rank := 2;
-    '%': Rank := 2;
-    '-': Rank := 3;
-    '+': Rank := 4;
-    '$': Rank := 5;
-    '#': Rank := 6;
-    'c': Rank := 7;
-    'b': Rank := 7;
-    'e': Rank := 7;
-    '>': Rank := 7;
-    '<': Rank := 7;
-    '=': Rank := 7;
-    '&': Rank := 8;
-    '|': Rank := 9;
+    '^': Result := 1;
+    '/': Result := 1;
+    'f': Result := 1;
+    'g': Result := 1;
+    '*': Result := 2;
+    '%': Result := 2;
+    '-': Result := 3;
+    '+': Result := 4;
+    '$': Result := 5;
+    '#': Result := 6;
+    'c': Result := 7;
+    'b': Result := 7;
+    'e': Result := 7;
+    '>': Result := 7;
+    '<': Result := 7;
+    '=': Result := 7;
+    '&': Result := 8;
+    '|': Result := 9;
   end;
-  Result := Rank;
 end;
 
 function TCalcParse.CollapseOperatorRun(const Text: WideString): WideString;

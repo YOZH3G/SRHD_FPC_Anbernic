@@ -13,6 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_build_arguments(parser)
     parser.add_argument("--port", type=int, default=8788, help="Browser server port.")
+    parser.add_argument("--bottle", help="CrossOver bottle for a Windows build.")
     parser.add_argument(
         "--simulator", help="iOS simulator name or UDID; defaults to the booted device."
     )
@@ -56,6 +57,16 @@ def main() -> None:
     game_directory = (args.game_dir or ROOT / "game").expanduser().resolve()
     if not game_directory.is_dir():
         parser.error(f"Game asset directory does not exist: {game_directory}")
+    if args.target in ("win32", "win64"):
+        from windows import run_windows
+
+        try:
+            if not config.artifact.is_file():
+                raise FileNotFoundError("Build the matching Windows configuration first.")
+            run_windows(config.artifact, game_directory, game_options, args.bottle)
+        except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+            parser.exit(1, f"{error}\n")
+        return
     if args.target == "switch":
         if game_options:
             parser.error("Switch homebrew does not receive extra emulator command-line arguments.")

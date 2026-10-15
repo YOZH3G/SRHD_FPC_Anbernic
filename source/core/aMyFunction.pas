@@ -66,7 +66,7 @@ type
     Radius: Double;
   end;
 
-  TPolarRadiansPoint = packed record
+  TPolarRadiansPoint = record
     AngleRadians: Double;
     Radius: Double;
   end;
@@ -295,7 +295,7 @@ begin
   for i := Count - 1 downto 0 do
     if List^[i] <> nil then
     begin
-      Item := TObject(List^[i]);
+      Item := List^[i];
       Delete(i);
       Item.Free;
     end;
@@ -359,7 +359,7 @@ begin
   Result := Seed * 7981 + 567;
 end;
 
-function AdvanceRandomSeed(var Seed: Cardinal): Cardinal;
+procedure AdvanceIntegerRandomSeed(var Seed: Cardinal); inline;
 var
   OldSeed: Cardinal;
 begin
@@ -367,21 +367,21 @@ begin
   Seed := Seed * 7981 + 567 + Seed div 7981;
   if Seed = OldSeed then
     Seed := Seed * 7281 + 517 + Seed div 7181;
+end;
+
+function AdvanceRandomSeed(var Seed: Cardinal): Cardinal;
+begin
+  AdvanceIntegerRandomSeed(Seed);
   Result := Seed;
 end;
 
 function NextRandomIntRange(BoundA, BoundB: Integer; var Seed: Cardinal): Integer;
-var
-  OldSeed: Cardinal;
 begin
   if (Galaxy <> nil) and Galaxy.IsChaoticRandomEnabled then
     Result := RandomIntRange(BoundA, BoundB)
   else
   begin
-    OldSeed := Seed;
-    Seed := Seed * 7981 + 567 + Seed div 7981;
-    if Seed = OldSeed then
-      Seed := Seed * 7281 + 517 + Seed div 7181;
+    AdvanceIntegerRandomSeed(Seed);
     if BoundA < BoundB then
       Result := Seed mod Cardinal(BoundB - BoundA + 1) + BoundA
     else

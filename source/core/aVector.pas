@@ -142,12 +142,26 @@ function PointDistanceF(First: TPointF; Last: TPointF): Single;
 
 function PointSegmentDistanceF(First: TPointF; Last: TPointF; Point: TPointF): Single;
 
+const
+  PointRelationLeft = 1;
+  PointRelationRight = 2;
+  PointRelationBeforeFirst = 3;
+  PointRelationAfterLast = 4;
+  PointRelationInterior = 5;
+  PointRelationFirstEndpoint = 6;
+  PointRelationLastEndpoint = 7;
+
 function ClassifyPointToSegment(First: TPointF; Last: TPointF; Point: TPointF): Integer;
 
 implementation
 
 uses
   SysUtils;
+
+const
+  PointEqualityTolerance = 0.1;
+  LineCoefficientTolerance = 0.0001;
+  NoIntersectionCoordinate = 1e20;
 
 function PerpendicularVector(Point: TPointF): TPointF;
 begin
@@ -224,11 +238,11 @@ begin
   GetLineEquation(First1, Last1, A1, B1, C1);
   GetLineEquation(First2, Last2, A2, B2, C2);
   if A2 * B1 - A1 * B2 = 0 then
-    Result.X := 1e20
+    Result.X := NoIntersectionCoordinate
   else
     Result.X := (B2 * C1 - B1 * C2) / (A2 * B1 - A1 * B2);
   if A1 * B2 - A2 * B1 = 0 then
-    Result.Y := 1e20
+    Result.Y := NoIntersectionCoordinate
   else
     Result.Y := (A2 * C1 - A1 * C2) / (A1 * B2 - A2 * B1);
 end;
@@ -244,7 +258,8 @@ var
 begin
   GetLineEquation(First, Last, LineA, LineB, LineC);
   Result := False;
-  if (Abs(LineA - A) < 0.0001) and (Abs(LineB - B) < 0.0001) then
+  if (Abs(LineA - A) < LineCoefficientTolerance)
+      and (Abs(LineB - B) < LineCoefficientTolerance) then
     Exit;
   Point.X := (B * LineC - LineB * C) / (A * LineB - LineA * B);
   Point.Y := (A * LineC - LineA * C) / (LineA * B - A * LineB);
@@ -304,7 +319,8 @@ end;
 
 function PointsNearlyEqualF(First, Last: TPointF): Boolean;
 begin
-  if (Abs(First.X - Last.X) < 0.1) and (Abs(First.Y - Last.Y) < 0.1) then
+  if (Abs(First.X - Last.X) < PointEqualityTolerance)
+      and (Abs(First.Y - Last.Y) < PointEqualityTolerance) then
     Result := True
   else
     Result := False;
@@ -321,7 +337,7 @@ end;
 
 function ScalarsNearlyEqualF(First, Last: Single): Boolean;
 begin
-  if Abs(First - Last) < 0.1 then
+  if Abs(First - Last) < PointEqualityTolerance then
     Result := True
   else
     Result := False;
@@ -365,20 +381,20 @@ begin
   Offset := MakePointF(Point.X - First.X, Point.Y - First.Y);
   Cross := Direction.X * Offset.Y - Direction.Y * Offset.X;
   if Cross > 0 then
-    Result := 1
+    Result := PointRelationLeft
   else if Cross < 0 then
-    Result := 2
+    Result := PointRelationRight
   else if (Direction.X * Offset.X < 0) or (Direction.Y * Offset.Y < 0) then
-    Result := 3
+    Result := PointRelationBeforeFirst
   else if Sqrt(Direction.X * Direction.X + Direction.Y * Direction.Y)
       < Sqrt(Offset.X * Offset.X + Offset.Y * Offset.Y) then
-    Result := 4
+    Result := PointRelationAfterLast
   else if (First.X = Point.X) and (First.Y = Point.Y) then
-    Result := 6
+    Result := PointRelationFirstEndpoint
   else if (Last.X = Point.X) and (Last.Y = Point.Y) then
-    Result := 7
+    Result := PointRelationLastEndpoint
   else
-    Result := 5;
+    Result := PointRelationInterior;
 end;
 
 constructor TPolygon2D.Create;

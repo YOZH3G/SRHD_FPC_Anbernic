@@ -17,6 +17,8 @@ const
 
 type
 
+  PSoundWaveFormat = ^TSoundWaveFormat;
+
   TSoundBuffer = class;
 
   TSoundBufferControl = class;
@@ -66,10 +68,10 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
-    procedure Init(ByteCount: Integer; Format: Pointer);
-    procedure InitStream(ChunkBytes: Integer; Format: Pointer);
+    procedure Init(ByteCount: Integer; Format: PSoundWaveFormat);
+    procedure InitStream(ChunkBytes: Integer; Format: PSoundWaveFormat);
     procedure ClearBuf;
-    procedure Write(Data: Pointer; ByteCount: Cardinal; Format: Pointer);
+    procedure Write(Data: Pointer; ByteCount: Cardinal; Format: PSoundWaveFormat);
     function WriteStream(Chunk: Integer; var Decoder: TOggWorker): Boolean;
     procedure Play(Looping: Boolean);
     function WaitForChunk: Integer;
@@ -353,7 +355,7 @@ begin
   end;
 end;
 
-procedure TSoundBuffer.Init(ByteCount: Integer; Format: Pointer);
+procedure TSoundBuffer.Init(ByteCount: Integer; Format: PSoundWaveFormat);
 var
   Status: Integer;
   Desc: TDSBufferDesc;
@@ -384,7 +386,7 @@ begin
   end;
 end;
 
-procedure TSoundBuffer.InitStream(ChunkBytes: Integer; Format: Pointer);
+procedure TSoundBuffer.InitStream(ChunkBytes: Integer; Format: PSoundWaveFormat);
 var
   Status: Integer;
   Positions, Position: PDSPositionNotify;
@@ -492,7 +494,7 @@ begin
   end;
 end;
 
-procedure TSoundBuffer.Write(Data: Pointer; ByteCount: Cardinal; Format: Pointer);
+procedure TSoundBuffer.Write(Data: Pointer; ByteCount: Cardinal; Format: PSoundWaveFormat);
 var
   Dest: Pointer;
   Bytes: Cardinal;

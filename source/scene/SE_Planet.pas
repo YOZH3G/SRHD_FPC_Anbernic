@@ -620,9 +620,6 @@ begin
           if Choice < 0 then
           begin
             SurfaceAnimationIndex := Index;
-            { Native compares the value just assigned; retain the unreachable assignment. }
-            if SurfaceAnimationIndex <> Index then
-              Attempts := 0;
             Break;
           end;
         end;
@@ -930,11 +927,6 @@ begin
     StartRandomSurfaceAnimation
   else
   begin
-    { Native retains this empty diagnostic branch. }
-    if SurfaceAnimationFrame = 2 then
-      if SurfaceAnimationFrame = 2 then
-      begin
-      end;
     if GiResourceVariant = 1 then
       SurfaceImageControl.SetImagePath(
           PlanetAdvertDefinitions[SurfaceAnimationMask shr 24]

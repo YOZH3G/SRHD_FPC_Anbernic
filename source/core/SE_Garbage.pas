@@ -28,7 +28,6 @@ procedure CheckMemoryUsage;
 var
   Usage: Int64;
   Changed: Boolean;
-  Reserved: array[0..6] of Byte; // Native local storage between the flag and the status record.
   Status: TMemoryStatusEx;
 
   procedure ShowLowMemoryWarning(

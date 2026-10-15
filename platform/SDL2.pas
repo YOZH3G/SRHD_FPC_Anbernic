@@ -211,6 +211,8 @@ function SDL_GetPerformanceCounter: QWord; cdecl; external SDL2Library;
 function SDL_GetCPUCount: Integer; cdecl; external SDL2Library;
 function SDL_GetSystemRAM: Integer; cdecl; external SDL2Library;
 procedure SDL_free(Data: Pointer); cdecl; external SDL2Library;
+function SDL_pow(Base, Exponent: Double): Double; cdecl; external SDL2Library;
+function SDL_atan2(Y, X: Double): Double; cdecl; external SDL2Library;
 function SDL_CreateMutex: PSDL_Mutex; cdecl; external SDL2Library;
 procedure SDL_DestroyMutex(Mutex: PSDL_Mutex); cdecl; external SDL2Library;
 function SDL_LockMutex(Mutex: PSDL_Mutex): Integer; cdecl; external SDL2Library;

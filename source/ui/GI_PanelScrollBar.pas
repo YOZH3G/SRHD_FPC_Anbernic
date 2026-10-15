@@ -80,10 +80,10 @@ begin
   HorizontalScrollBar.DestroyNotify := ScrollbarDestroyed;
   VerticalScrollBar.DestroyNotify := ScrollbarDestroyed;
   HorizontalScrollBar.SetActive(False);
-  HorizontalScrollBar.SetOrientation(1);
+  HorizontalScrollBar.SetOrientation(soHorizontal);
   HorizontalScrollBar.SetKindCalcMode(1);
   VerticalScrollBar.SetActive(False);
-  VerticalScrollBar.SetOrientation(2);
+  VerticalScrollBar.SetOrientation(soVertical);
   VerticalScrollBar.SetKindCalcMode(1);
   HorizontalScrollBar.SetDepth(-1E30);
   VerticalScrollBar.SetDepth(-1E30);

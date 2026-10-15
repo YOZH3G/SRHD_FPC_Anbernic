@@ -8,6 +8,12 @@ It is not affiliated with the game's developers or publisher.
 - Publisher: Fulqrum Publishing.
 - Original game notices: © 2013 Fulqrum Publishing Ltd.; © 2024 СНК-Games.
 - Decompilation: [SpaceRangersHD_decomp](https://github.com/pakompom/SpaceRangersHD_decomp).
+- Utility Functions Pack compatibility: KIaxons' [Utility-Functions-Pack](https://github.com/KIaxons/Utility-Functions-Pack),
+  version 2.2.1, reference revision `b24d0fd`. The native Pascal implementation
+  follows the reference source and the distributed DLL's script interface.
+- AutoSearch compatibility: ExpAutoSearch by uhanich, 100kg, and Klaxons.
+  The native Pascal implementation follows the distributed AutoSearch.dll's
+  behavior and script interface.
 - Software renderer: [OKGF](https://github.com/pakompom/okgf), under its
   [MIT license](vendor/okgf/LICENSE); bundled SoftFloat has its own
   [BSD 3-Clause license](vendor/okgf/vendor/softfloat/COPYING.txt).

@@ -1,8 +1,11 @@
 """FPC game/package compilation, including its unit invalidation rules."""
 
 import json
-import resource
+import os
 from pathlib import Path
+
+if os.name != "nt":
+    import resource
 
 from build_support import (
     BuildStamp,
@@ -10,6 +13,7 @@ from build_support import (
     file_state,
     require_tool,
     run_step,
+    tool_identity_files,
 )
 from targets import ROOT
 
@@ -97,7 +101,7 @@ def compile_pascal(
     directory = next((str(arg)[3:] for arg in reversed(command) if str(arg).startswith("-FD")), "")
     prefix = next((str(arg)[3:] for arg in reversed(command) if str(arg).startswith("-XP")), "")
     clang = require_tool(str(Path(directory) / (prefix + "clang")))
-    signature = json.dumps([command_signature(command), file_state([clang])])
+    signature = json.dumps([command_signature(command), file_state(tool_identity_files(clang))])
     state = pascal_state(command, dependencies)
     same_command = stamp.matches(signature)
     previous_inputs = inputs.read_text() if inputs.is_file() else ""
@@ -117,9 +121,10 @@ def compile_pascal(
         build_command = command
     # FPC keeps dependency PPUs open while loading the UI/game unit graph.
     # Apply this to imported builders and standalone probes too, not only CLI builds.
-    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    desired = 4096 if hard == resource.RLIM_INFINITY else min(4096, hard)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (max(soft, desired), hard))
+    if os.name != "nt":
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        desired = 4096 if hard == resource.RLIM_INFINITY else min(4096, hard)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (max(soft, desired), hard))
     # A failed build must not leave units compiled with a mixture of settings.
     with stamp.recording(signature):
         run_step(work, "pascal", build_command)

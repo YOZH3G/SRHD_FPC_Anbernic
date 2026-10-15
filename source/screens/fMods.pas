@@ -108,13 +108,10 @@ var
   Weight,
   CandidateWeight,
   BestWeight,
-  Reserved28,
   BestIndex,
-  Reserved30,
   GroupCount,
   AvailableTabs: Integer;
   GroupName, SectionName: WideString;
-  Reserved44: Integer;
   Button: TGraphButtonGI;
   ScrollPanel: TPanelScrollBarGI;
   Info, Dependency: TModInfo;
@@ -179,7 +176,7 @@ var
     Switch.UserIndex := Ord(Info.Selected);
     Switch.SetSize(Switch.GetContentSize);
     ButtonWidth := Switch.ClientSize.X;
-    Switch.SetPosition(Point(TabPanels[Tab].ClientSize.X - ButtonWidth - 0, TabHeights[Tab] + 10));
+    Switch.SetPosition(Point(TabPanels[Tab].ClientSize.X - ButtonWidth, TabHeights[Tab] + 10));
     Switch.SetImageKindY(ikyCenter);
     Switch.LeftButtonDownCallback := SwitchMouseDown;
     Switch.MouseEnterCallback := SwitchMouseEnter;
@@ -191,8 +188,7 @@ var
     InfoButton.SetImageDownPath('GI,Bm.MsgPlayer.2UserD');
     InfoButton.SetSize(InfoButton.GetMaxStateImageSize);
     Inc(ButtonWidth, InfoButton.ClientSize.X);
-    InfoButton
-        .SetPosition(Point(TabPanels[Tab].ClientSize.X - ButtonWidth - 0, TabHeights[Tab] + 9));
+    InfoButton.SetPosition(Point(TabPanels[Tab].ClientSize.X - ButtonWidth, TabHeights[Tab] + 9));
     InfoButton.UpCallback := ShowInfoClick;
     InfoButton.UserValue := PtrInt(Info);
     Switch.UserData := PtrInt(TGraphButtonGI.Create(TabPanels[Tab]));
@@ -252,7 +248,7 @@ var
   begin
     for I := 0 to List.Count - 1 do
     begin
-      Info := TModInfo(List[I]);
+      Info := List[I];
       AddModRow(Info, Tab);
     end;
   end;
@@ -334,7 +330,7 @@ begin
   GroupIndices := TBlockParEC.Create;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if Info.MissingFolder then
       Missing.Add(Info)
     else if (Info.Name = '') and (Info.Section = '') then
@@ -354,7 +350,7 @@ begin
   Dependents := TBlockParEC.Create;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if not Info.MissingFolder then
       for J := 0 to Info.DependencyCount - 1 do
       begin
@@ -383,7 +379,7 @@ begin
     Weights.Add(Pointer(TList(Groups[I]).Count));
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if Info.MissingFolder or (Info.Name = '') or (Dependents.CountBlocks(Info.Name) <= 0) then
       Continue;
     if not Info.DuplicateName then
@@ -491,7 +487,7 @@ begin
     end;
     GroupIndex := ExtractDigitsToIntW(GroupIndices.GetParamValue(BestIndex));
     Weights[GroupIndex] := nil;
-    Group := TList(Groups[GroupIndex]);
+    Group := Groups[GroupIndex];
     GroupName := GroupIndices.GetParamName(BestIndex);
     if GroupName = '{}' then
       GroupName := LocalizedText('FormMods.GroupNameForMisc');
@@ -517,7 +513,7 @@ begin
       end;
       GroupIndex := ExtractDigitsToIntW(GroupIndices.GetParamValue(BestIndex));
       Weights[GroupIndex] := nil;
-      Group := TList(Groups[GroupIndex]);
+      Group := Groups[GroupIndex];
       GroupName := GroupIndices.GetParamName(BestIndex);
       if GroupName = '{}' then
         GroupName := LocalizedText('FormMods.GroupNameForMisc');
@@ -557,7 +553,7 @@ begin
   end;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     Info.SwitchImage.UserIndex := Ord(Info.Selected);
     if (Info.ConflictCount = 0) and (Info.DependencyCount = 0) then
       UpdateModSwitch(Info.SwitchImage);
@@ -661,7 +657,7 @@ begin
     InvalidSelections[I] := False;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if (Info.ConflictCount <> 0) or (Info.DependencyCount <> 0) then
     begin
       Switch := Info.SwitchImage;
@@ -753,7 +749,7 @@ begin
     Changed := False;
     for I := 0 to ModInfos.Count - 1 do
     begin
-      Info := TModInfo(ModInfos[I]);
+      Info := ModInfos[I];
       if not Info.MissingFolder and not Info.MissingDependency then
       begin
         Switch := Info.SwitchImage;
@@ -813,7 +809,7 @@ begin
               if Info.ReferencedAsConflict then
                 for J := 0 to ModInfos.Count - 1 do
                 begin
-                  Related := TModInfo(ModInfos[J]);
+                  Related := ModInfos[J];
                   if Related.SwitchImage.UserIndex <> 0 then
                   begin
                     for K := 0 to Related.ConflictCount - 1 do
@@ -855,7 +851,7 @@ begin
     Changed := False;
     for I := 0 to ModInfos.Count - 1 do
     begin
-      Info := TModInfo(ModInfos[I]);
+      Info := ModInfos[I];
       Switch := Info.SwitchImage;
       if (Switch.UserIndex <> 0) and (Switch.Parent.UserValue = SelectedTab) then
       begin
@@ -864,7 +860,7 @@ begin
         if Info.ReferencedAsDependency then
           for J := 0 to ModInfos.Count - 1 do
           begin
-            Related := TModInfo(ModInfos[J]);
+            Related := ModInfos[J];
             if Related.SwitchImage.UserIndex <> 0 then
             begin
               for K := 0 to Related.DependencyCount - 1 do
@@ -935,7 +931,7 @@ begin
   Unchanged := True;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if (Info.SwitchImage.UserIndex = 1) <> Info.Selected then
     begin
       Unchanged := False;
@@ -968,7 +964,7 @@ begin
   List := TList.Create;
   for I := 0 to ModInfos.Count - 1 do
   begin
-    Info := TModInfo(ModInfos[I]);
+    Info := ModInfos[I];
     if Info.SwitchImage.UserIndex = 1 then
       List.Add(Info);
   end;
@@ -979,7 +975,7 @@ begin
       for J := 0 to List.Count - 1 - I do
         if TModInfo(List[J]).Priority > TModInfo(List[J + 1]).Priority then
         begin
-          Info := TModInfo(List[J]);
+          Info := List[J];
           List[J] := List[J + 1];
           List[J + 1] := Info;
         end;
@@ -1167,7 +1163,7 @@ begin
         PassChanged := False;
         for I := 0 to ModInfos.Count - 1 do
         begin
-          Related := TModInfo(ModInfos[I]);
+          Related := ModInfos[I];
           if Related.SwitchImage.UserIndex <> 0 then
             if Related.DependencyCount <> 0 then
               if DisableIndices.CountParams(IntToWideString(I)) <= 0 then
@@ -1255,7 +1251,7 @@ begin
         Exit;
       for I := 0 to EnableIndices.GetParamCount - 1 do
       begin
-        Related := TModInfo(ModInfos[ExtractDigitsToIntW(EnableIndices.GetParamName(I))]);
+        Related := ModInfos[ExtractDigitsToIntW(EnableIndices.GetParamName(I))];
         for J := 0 to Related.ConflictCount - 1 do
         begin
           Dependency := Related.Conflicts[J];
@@ -1284,7 +1280,7 @@ begin
       end;
       for I := 0 to ModInfos.Count - 1 do
       begin
-        Related := TModInfo(ModInfos[I]);
+        Related := ModInfos[I];
         if Related.ConflictCount <> 0 then
         begin
           Text := IntToWideString(I);
@@ -1314,7 +1310,7 @@ begin
         PassChanged := False;
         for I := 0 to ModInfos.Count - 1 do
         begin
-          Related := TModInfo(ModInfos[I]);
+          Related := ModInfos[I];
           if Related.DependencyCount <> 0 then
           begin
             Value := IntToWideString(I);
@@ -1595,7 +1591,7 @@ begin
       Value := '';
       for I := 0 to ModInfos.Count - 1 do
       begin
-        Related := TModInfo(ModInfos[I]);
+        Related := ModInfos[I];
         if Related.DuplicateName and (Related.Name = Info.Name) and (Related <> Info) then
           if Value = '' then
             Value := Related.Folder

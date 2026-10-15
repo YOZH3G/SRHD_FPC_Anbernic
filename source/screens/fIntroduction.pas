@@ -239,6 +239,12 @@ begin
   IntroductionPulseBlue := 50;
   BackgroundScrollOffset := 0;
   ScrollBackground(nil, 0);
+  if (NewGameGenerationThread <> nil) and NewGameGenerationThread.StartOnIntroduction then
+  begin
+    // Consume the pending start once; reopening must not restart generation.
+    NewGameGenerationThread.StartOnIntroduction := False;
+    NewGameGenerationThread.Start;
+  end;
 end;
 
 procedure TfIntroduction.OnClose;
@@ -298,9 +304,9 @@ begin
     if DisplayedGenerationStage < NewGameGenerationStage then
     begin
       Inc(DisplayedGenerationStage);
-      if (DisplayedGenerationStage + 0 >= 1) and (DisplayedGenerationStage + 0 <= 8) then
+      if (DisplayedGenerationStage >= 1) and (DisplayedGenerationStage <= 8) then
         GetByName(AnsiString('ICW') + IntToStr(DisplayedGenerationStage)).SetActive(True);
-      if (DisplayedGenerationStage + 0 >= 1) and (DisplayedGenerationStage + 0 <= 8) then
+      if (DisplayedGenerationStage >= 1) and (DisplayedGenerationStage <= 8) then
         (GetByName(AnsiString('MCW') + IntToStr(DisplayedGenerationStage)) as TLabelGI)
             .SetTextColor(IntroductionBlinkColorA);
     end;

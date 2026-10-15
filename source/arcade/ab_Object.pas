@@ -275,7 +275,7 @@ var
   TravelBearing, ArcDistance, HeadingDelta, ReflectedSpeed: Double;
   Factor, Limit: Single;
   Zone: PabZone;
-  Bearing, Distance, UnusedResult: Double;
+  Bearing, Distance: Double;
 begin
   Force := MakePointF(0, 0);
   if Thrust <> 0 then
@@ -392,13 +392,13 @@ begin
           State,
           AdvanceSphericalStateAlongBearing(State, TravelBearing, ArcDistance),
           HeadingDelta,
-          ReflectedSpeed,
-          UnusedResult) then
+          ReflectedSpeed) then
       begin
         ArcDistance := ReflectedSpeed;
         TravelBearing := WrapHeadingDegrees(TravelBearing + HeadingDelta);
       end;
-      State.BearingDegrees := WrapHeadingDegrees(State.BearingDegrees + UnusedResult);
+      // Native $54F150 added an always-zero output (unwritten with no stop lines).
+      State.BearingDegrees := WrapHeadingDegrees(State.BearingDegrees);
     end;
     if ArcDistance > 0 then
     begin

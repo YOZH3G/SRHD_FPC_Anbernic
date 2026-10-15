@@ -302,8 +302,8 @@ var
   Cursor: PByte;
   i: Integer;
 begin
-  // Same CRC recurrence as the x86 code. Its PUSHA/POPA register corruption is
-  // an ABI defect, not part of the checksum; Pascal preserves the host registers.
+  // Same CRC recurrence as the x86 code. Pascal's ABI handling also avoids
+  // the register corruption in the August implementation.
   Cursor := BufferPtr;
   for i := 1 to ByteCount do
   begin

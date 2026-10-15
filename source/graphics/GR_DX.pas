@@ -558,7 +558,7 @@ begin
   Direct3DDevice.DrawPrimitiveUP(
       D3DPT_POINTLIST,
       PendingPointCount,
-      Pointer(PendingPoints),
+      @PendingPoints[0],
       SizeOf(TScreenVertexGR)
   );
   PendingPointCount := 0;

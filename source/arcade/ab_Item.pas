@@ -8,7 +8,8 @@ uses
   aItem,
   ab_Object,
   ab_Zone,
-  SE_Space;
+  SE_Space,
+  SE_Container;
 
 type
 
@@ -18,7 +19,7 @@ type
     Item: TItem;
     BonusKind: Integer;
     HiddenBonus: Boolean;
-    Visual: TObjectSE;
+    Visual: TContainerSE;
     SpawnZone: PabZone;
     procedure UpdateState; override;
     procedure Advance; override;

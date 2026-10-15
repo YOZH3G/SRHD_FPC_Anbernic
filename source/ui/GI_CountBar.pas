@@ -11,6 +11,9 @@ uses
   GI_MessageLoop,
   Types;
 
+const
+  cbHorizontal = 1;
+
 type
 
   TCountBarGI = class;
@@ -63,7 +66,7 @@ constructor TCountBarGI.Create(Owner: TObjectGI);
 begin
   inherited Create(Owner);
   TouchInteraction := tiDrag;
-  Orientation := 1;
+  Orientation := cbHorizontal;
   Minimum := 0;
   Maximum := 100;
   Position := 0;
@@ -184,7 +187,7 @@ var
   TrackWidth, ThumbLeft, ThumbRight: Integer;
   ThumbSize, IncreaseSize, DecreaseSize: TPoint;
 begin
-  if Orientation = 1 then
+  if Orientation = cbHorizontal then
   begin
     ThumbSize := ThumbButton.GetMaxStateImageSize;
     DecreaseSize := DecreaseButton.GetMaxStateImageSize;
@@ -269,7 +272,7 @@ var
 begin
   inherited ProcessMouseMove(KeyState, Point);
   Point := ToLocalPoint(Point);
-  if ThumbButton.Down and (Orientation = 1) then
+  if ThumbButton.Down and (Orientation = cbHorizontal) then
   begin
     TrackStart := DecreaseButton.GetMaxStateImageSize.X + ThumbButton.GetMaxStateImageSize.X div 2;
     TrackEnd :=
@@ -304,7 +307,7 @@ begin
   if Active then
     MessageLoop.SetFocusedControl(Self);
   Point := ToLocalPoint(Point);
-  if Orientation = 1 then
+  if Orientation = cbHorizontal then
   begin
     TrackStart := DecreaseButton.GetMaxStateImageSize.X + ThumbButton.GetMaxStateImageSize.X div 2;
     TrackEnd :=

@@ -14,6 +14,7 @@ uses
   GI_Label;
 
 type
+  TGateState = (gsClosed, gsOpening, gsOpen, gsClosing);
 
   TGateEffectSE = class;
 
@@ -21,7 +22,7 @@ type
 
   TGateSE = class(TObjectSE)
     Angle: Byte;
-    State: Integer;
+    State: TGateState;
     StateStep: Integer;
     LabelText: WideString;
     Image: TRotateImageGaiGI;
@@ -45,7 +46,7 @@ type
     destructor Destroy; override;
     procedure Open;
     procedure Close;
-    procedure SetState(Value: Integer);
+    procedure SetState(Value: TGateState);
     procedure RebuildStateGraphics;
     procedure AdvanceAnimation(UnusedTimer: Pointer; UnusedData: Integer);
   end;
@@ -82,7 +83,7 @@ uses
 constructor TGateSE.Create(GraphKey: WideString; UnusedPosition: TPoint);
 begin
   inherited Create(GraphKey, UnusedPosition);
-  State := 0;
+  State := gsClosed;
   TextRed := 1;
   TextGreen := 1;
   TextBlue := 1;
@@ -184,9 +185,9 @@ end;
 
 procedure TGateSE.Open;
 begin
-  if State = 0 then
+  if State = gsClosed then
   begin
-    State := 1;
+    State := gsOpening;
     StateStep := 0;
     if IsAttachedToSpace then
       RebuildStateGraphics;
@@ -195,16 +196,16 @@ end;
 
 procedure TGateSE.Close;
 begin
-  if State = 2 then
+  if State = gsOpen then
   begin
-    State := 3;
+    State := gsClosing;
     StateStep := 0;
     if IsAttachedToSpace then
       RebuildStateGraphics;
   end;
 end;
 
-procedure TGateSE.SetState(Value: Integer);
+procedure TGateSE.SetState(Value: TGateState);
 begin
   State := Value;
   StateStep := 0;
@@ -214,13 +215,13 @@ end;
 
 procedure TGateSE.RebuildStateGraphics;
 begin
-  if State = 0 then
+  if State = gsClosed then
   begin
     Image.SetActive(False);
     if TextLabel <> nil then
       TextLabel.SetActive(False);
   end
-  else if State = 1 then
+  else if State = gsOpening then
   begin
     Image.AnimationIndex := 0;
     Image.UpdateAutoGeometry;
@@ -238,7 +239,7 @@ begin
         TextLabel.SetActive(False);
     end;
   end
-  else if State = 2 then
+  else if State = gsOpen then
   begin
     Image.AnimationIndex := 1;
     Image.UpdateAutoGeometry;
@@ -259,7 +260,7 @@ begin
         TextLabel.SetActive(False);
     end;
   end
-  else if State = 3 then
+  else if State = gsClosing then
   begin
     Image.AnimationIndex := 2;
     Image.UpdateAutoGeometry;
@@ -282,20 +283,20 @@ end;
 procedure TGateSE.AdvanceAnimation(UnusedTimer: Pointer; UnusedData: Integer);
 begin
   Inc(StateStep);
-  if State = 0 then
+  if State = gsClosed then
     Exit
-  else if State = 1 then
+  else if State = gsOpening then
   begin
     if Image.FrameCount <= StateStep then
     begin
-      State := 2;
+      State := gsOpen;
       StateStep := 0;
       RebuildStateGraphics;
     end
     else
       Image.SetFrame(StateStep);
   end
-  else if State = 2 then
+  else if State = gsOpen then
   begin
     if Image.FrameCount <= StateStep then
     begin
@@ -305,11 +306,11 @@ begin
     else
       Image.SetFrame(StateStep);
   end
-  else if State = 3 then
+  else if State = gsClosing then
   begin
     if Image.FrameCount <= StateStep then
     begin
-      State := 0;
+      State := gsClosed;
       StateStep := 0;
       RebuildStateGraphics;
     end

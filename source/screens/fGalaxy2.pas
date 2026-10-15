@@ -245,11 +245,8 @@ var
   HoleImage: TImageGI;
   BufferOffset: TPoint;
   Hole, SelectedHole: THole;
-  { No native accesses remain to these stack slots. }
-  Reserved84, Reserved88, Reserved8C, Reserved90: Integer;
   ForceText, BossText: WideString;
   CoalitionCount, BlazerCount, KellerCount, TerronCount: Integer;
-  ReservedAC: Integer;
   PirateCount, CustomCount, OtherCount: Integer;
   Strength: Extended;
   CoalitionPresent, DominatorsPresent, PiratesPresent, CustomPresent, PlayerPartyPresent: Boolean;
@@ -293,7 +290,7 @@ begin
   Maximum := MakePointF(-1.0e20, -1.0e20);
   for I := 0 to Galaxy.Constellations.Count - 1 do
   begin
-    Constellation := TConstellation(Galaxy.Constellations[I]);
+    Constellation := Galaxy.Constellations[I];
     for J := 0 to Constellation.OutlinePolygons.CountChain - 1 do
     begin
       Polygon := Constellation.OutlinePolygons.GetChainItem(J);
@@ -317,7 +314,7 @@ begin
     Block := nil;
   for I := 0 to Galaxy.Constellations.Count - 1 do
   begin
-    Constellation := TConstellation(Galaxy.Constellations[I]);
+    Constellation := Galaxy.Constellations[I];
     if Constellation.Visible then
       for J := 0 to Constellation.OutlinePolygons.CountChain - 1 do
       begin
@@ -369,7 +366,7 @@ begin
   end;
   for I := 0 to Galaxy.Constellations.Count - 1 do
   begin
-    Constellation := TConstellation(Galaxy.Constellations[I]);
+    Constellation := Galaxy.Constellations[I];
     if Constellation.Visible then
       for J := 0 to Constellation.OutlineSegments.Count - 1 do
       begin
@@ -391,7 +388,7 @@ begin
   end;
   for I := 0 to Galaxy.Constellations.Count - 1 do
   begin
-    Constellation := TConstellation(Galaxy.Constellations[I]);
+    Constellation := Galaxy.Constellations[I];
     if (Constellation.OutlineSegments <> nil) and (Constellation.OutlineSegments.Count <> 0) then
     begin
       if not Constellation.Visible then
@@ -685,18 +682,17 @@ begin
       SelectedHole := nil;
       for J := 0 to Galaxy.Holes.Count - 1 do
       begin
-        Hole := THole(Galaxy.Holes[J]);
+        Hole := Galaxy.Holes[J];
         if (Hole.ArcadeMapName <> 'NoEntry')
             and (Hole.Star1 = Star)
             and ((SelectedHole = nil)
-                or (THoleSE(SelectedHole.Graphic).GalaxyPriority
-                    < THoleSE(Hole.Graphic).GalaxyPriority)) then
+                or (SelectedHole.Graphic.GalaxyPriority < Hole.Graphic.GalaxyPriority)) then
           SelectedHole := Hole;
       end;
       if SelectedHole <> nil then
       begin
         HoleImage := TImageGI.Create(MapPanel);
-        HoleImage.SetImagePath(THoleSE(SelectedHole.Graphic).GalaxyImagePath);
+        HoleImage.SetImagePath(SelectedHole.Graphic.GalaxyImagePath);
         HoleImage.SetSize(HoleImage.GetContentSize);
         HoleImage
             .SetOrigin(Classes.Point(HoleImage.ClientSize.X div 2, HoleImage.ClientSize.Y div 2));
@@ -1484,7 +1480,7 @@ begin
     Galaxy.CheckIntegrityChecksum(153);
     Hole := THole.Create;
     Hole.InitializeGraphic('');
-    THoleSE(Hole.Graphic).SetState(1);
+    Hole.Graphic.SetState(1);
     Hole.Star1 := GetPlayer.CurrentStar;
     Angle := ArcTan2(GetPlayer.Position.X, -GetPlayer.Position.Y);
     Radius :=
@@ -1563,7 +1559,6 @@ end;
 procedure TfGalaxy2.ShowStarInfo(Star: TStar);
 var
   InfoPanel: TWindowGI;
-  UnusedControl: TObjectGI; // Native O- frame retains this unused slot at -$10.
   Owner: TPanelGI;
   Objects: TList;
   I, J, RowHeight, IconX: Integer;
@@ -1652,7 +1647,7 @@ begin
         end;
   for I := 0 to Star.CustomSystemInfos.Count - 1 do
   begin
-    CustomInfo := TCustomSystemInfo(Star.CustomSystemInfos[I]);
+    CustomInfo := Star.CustomSystemInfos[I];
     ObjectDistance := Sqr(CustomInfo.Distance);
     J := 0;
     while J < Objects.Count do
@@ -1822,7 +1817,7 @@ begin
     end
     else if TObject(Objects[I]) is TCustomSystemInfo then
     begin
-      CustomInfo := TCustomSystemInfo(Objects[I]);
+      CustomInfo := Objects[I];
       if (CountDelimitedPartsW(CustomInfo.Info, ':') > 1)
           and (ExtractDelimitedPartW(CustomInfo.Info, 0, ':') = 'Image') then
       begin
@@ -1918,7 +1913,7 @@ begin
         end;
     if TObject(Objects[I]) is TPlanet then
     begin
-      Planet := TPlanet(Objects[I]);
+      Planet := Objects[I];
       if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate])
           and not Planet.IsMainPiratePlanet
           and (Planet.CurrentStar.Status.CustomFaction = '') then
@@ -2347,7 +2342,7 @@ begin
     Planet := Star.Planets[I];
     for J := 0 to Planet.Warriors.Count - 1 do
     begin
-      Ship := TShip(Planet.Warriors[J]);
+      Ship := Planet.Warriors[J];
       if (Ship.CurrentStar = Star) and (Star.Ships.IndexOf(Ship) < 0) then
         AccumulateShip;
     end;
@@ -2661,7 +2656,6 @@ end;
 
 function RunGalaxyMap(ParentLoop: TMessageLoopGI): Boolean;
 var
-  CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
   ParentLoop.RootUiObject.OnModalSuspend;

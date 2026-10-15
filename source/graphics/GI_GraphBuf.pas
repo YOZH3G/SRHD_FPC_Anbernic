@@ -376,6 +376,10 @@ var
   Width, Height, Left, Right, X, Top, Bottom, Y, Count: Integer;
   SavedBounds, Clip: TRect;
 begin
+  Result := Classes.Point(0, 0);
+  // Draw also skips CenterFill. Reject it before allocating or changing bounds.
+  if (ImageKindX = ikxCenterFill) or (ImageKindY = ikyCenterFill) then
+    Exit;
   SavedBounds := HitTestBounds;
   Dec(HitTestBounds.Right, HitTestBounds.Left);
   Dec(HitTestBounds.Bottom, HitTestBounds.Top);

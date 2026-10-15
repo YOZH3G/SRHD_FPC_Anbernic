@@ -3,6 +3,13 @@
 Key differences from the recovered Delphi source, compatibility behavior retained by the
 port, and the source files that implement them.
 
+The October source sync removes redundant casts and includes semantic enums, typed tables
+and object references, equipment-cache records, script properties and compiler error
+results. The port retains its captain-health enum, stronger galaxy/weapon parameters,
+pointer-sized handles, signed display geometry and explicit loop outcomes. Binary-matching
+declaration order, opaque property aliases and compiler-specific control-flow scaffolding
+are omitted.
+
 ## Compiler and Delphi semantics
 
 - **Compiler settings.** `source/GameOptions.inc` centralizes wrapping arithmetic,
@@ -100,7 +107,8 @@ port, and the source files that implement them.
   `DiskPackEntrySize` at 158 bytes while allowing native pointers in memory. Read-only
   packages are supported; WASI uses its descriptor-close API. Per-entry next-block
   offsets avoid rescanning compressed chains during sequential reads; random/interleaved
-  access still seeks correctly. This cache does not alter package or save formats.
+  access still seeks correctly. Failed seeks and incomplete block headers return a read
+  failure. This cache does not alter package or save formats.
 - **Compression formats.** `source/graphics/EC_OKGF.pas` implements ZL01 buffer
   compression and ZL02 package-block decoding with Pascal zlib. Original headers,
   compression levels, size limits, decoded-length checks and the header-only size query
@@ -146,6 +154,12 @@ port, and the source files that implement them.
 
 ## Worker lifetime and error reporting
 
+- **Modded new-game startup.** `source/screens/fGameSettings2.pas` prepares generation
+  but starts the worker only when `source/screens/fIntroduction.pas` opens, after the
+  settings screen's deferred button and closing scripts finish. The recovered Delphi
+  source starts it inside the button callback, allowing `TGalaxy.Create` to rebuild
+  `SharedScriptVariables` while those scripts link variables such as `UICheckElement`.
+  Deferring the start removes that race and the resulting access violation.
 - **Common worker contract.** `source/core/EC_Thread.pas` uses FPC threads and
   `platform/GameEvents.pas` uses SDL conditions for multi-event waits.
   `TThreadEC.CheckFailure` transfers failures with worker backtraces before completion
@@ -208,9 +222,31 @@ Applying the setting reloads the interface.
 
 ## Preserved gameplay quirks and targeted corrections
 
+- **October prerelease fixes.** Script planet-list sorts release their score cells,
+  dialog-rule cleanup finalizes managed strings, and Ether calls reject unsupported
+  objects and missing custom text. Script integer parsing uses digit arithmetic with
+  the same accepted inputs and wrapping behavior. The original CRC register and script
+  library stack fixes are already covered by the port's Pascal CRC and native-call backend.
+- **Custom weapon levels.** `SF_CreateCustomWeapon` explicitly keeps the low seven bits
+  of the script level, matching the October executable. This avoids depending on Delphi's
+  optimized subrange conversion; it is not a clamp to the usual eight equipment levels.
+- **Native correctness fixes.** Surface-loot clearing stays within its arrays while
+  explicitly retaining the original eight occupancy resets that affect duplicate
+  placement. Captain portraits retain native zero initialization and player exclusion;
+  government portraits keep the original selection when multiple candidates exist and
+  fall back to the first written face (or zero) for incomplete configurations. Satellite
+  markers wrap exact trajectory endpoints. Empty planet filters accept all planets, and named
+  state changes reject empty state lists. See `aPlanet.pas`, `aShip.pas`, `fPlanetNO.pas`
+  and `aScriptFun.pas`.
+- **Undefined UI and arcade values.** Buttons without normal artwork start sizing at
+  zero. Unsupported CenterFill visual-center queries return zero before allocating or
+  changing bounds, matching the drawing path's lack of CenterFill support. Arcade
+  reflection no longer passes an always-zero heading output that was unwritten with no
+  stop lines; ordinary bearing wrapping remains. Unreferenced native stack placeholders
+  in the touched routines were removed.
 - **Shop quotas.** `LegacyPlanetShopQuota` in `source/game/aPlanet.pas` replaces reads
-  past the race table with explicit next-race/station accesses. Weapon-subtype counting,
-  offer selection and RNG consumption remain unchanged.
+  past the race table with explicit next-race/station accesses. All weapon subtypes
+  share one stock bucket, following the October prerelease correction.
 - **Address-dependent item size.** `GetAverageItemSize` in `source/game/aConst.pas`
   explicitly takes the cached food trade-name pointer's low 32 bits as a signed value
   for custom weapons. Treasure hints in `source/game/aPlanet.pas` retain 32-bit
@@ -233,6 +269,10 @@ Applying the setting reloads the interface.
 
 ## Removed and restricted legacy code
 
+- Decompiler frame padding, unreferenced locals and strings, dead counters and
+  unreachable statements were removed. Integer expressions used only for byte
+  matching were simplified. RNG calls and their order, floating-point rounding
+  operations, observable getter calls, callback signatures and saved layouts remain.
 - Empty placeholder units, unused registry/Direct3D helpers, the inactive Delphi
   exception hook and VFW import were removed. Redundant nonvirtual hooks and dead
   statements were trimmed while retaining required overrides and RNG calls.
@@ -241,6 +281,22 @@ Applying the setting reloads the interface.
   `TGalaxy.ComputeIntegrityChecksum` in `source/game/aGalaxy.pas` still returns zero.
   Active protected state, resource CRC checks/snapshot refresh, the daily shared RNG
   draw, save layouts, local scores and score-file export remain.
-- Script DLL calls and the original Steam/MatrixGame wrappers remain limited to 32-bit
-  Windows. See `platform/GameScriptLibrary.pas`, `source/SimpleSteamApi.pas` and
-  `source/game/Robot.pas`.
+- External script DLLs are not loaded: FPC objects do not share the original game's
+  layout and VMT ABI, including on Win32. See `platform/GameScriptLibrary.pas`.
+  The original Steam/MatrixGame wrappers remain limited to 32-bit Windows; see
+  `source/SimpleSteamApi.pas` and `source/game/Robot.pas`.
+
+## Optional native mods
+
+- **Utility Functions Pack.** The original mod's script functions work across
+  platforms through `source/mods/UtilityFunctionsPack.pas`, retaining DLL behavior
+  and saved import names. String results preserve Unicode beyond the original
+  game's ANSI codepage. Its configuration and script resources are still required.
+- **AutoSearch.** `source/mods/AutoSearch.pas` provides the original mod's equipment
+  search across platforms, preserving filter behavior and result order. Its
+  configuration and script resources are still required.
+- **Build switches.** Both replacements are enabled by default in
+  `source/mods/NativeMods.inc`. Uncomment `DISABLE_UTILITY_FUNCTIONS_PACK` or
+  `DISABLE_AUTOSEARCH` there, or pass the same symbols with FPC's `-d` option, to
+  omit either integration. Disabled or unsupported imports report an unavailable
+  library; they never fall back to the original DLL.

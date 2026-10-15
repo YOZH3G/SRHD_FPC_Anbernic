@@ -580,7 +580,6 @@ var
   Block, PaletteBlock: TBlockParEC;
   Index, BlockCount, Count: Integer;
   Text: WideString;
-  UnusedNativeFrame: Integer; // Native retains one unreferenced four-byte slot.
 begin
   Block := GameDataConfig.FindBlockByPath('SE.Weapon.Eyes.Palettes');
   Count := 0;

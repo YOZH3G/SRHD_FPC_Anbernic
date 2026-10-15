@@ -201,7 +201,7 @@ var
           Break;
         IncrementWrapped(Index, FirstIndex, LastIndex);
         if Attempt = LastIndex then
-          Name := Name + ' ' + '-' + IntToStr(Cardinal(Id) mod 100 + 1) + '-';
+          Name := Name + ' ' + '-' + IntToStr(Id mod 100 + 1) + '-';
       end;
     end;
   end;
@@ -716,7 +716,7 @@ function TPirate.SelectServicePlanet: TPlanet;
 begin
   if PlanetQueue.Count > 0 then
   begin
-    Result := TList(PtrInt(PlanetQueue) + 0)[0];
+    Result := PlanetQueue[0];
     if (GetFuelTanks.Fuel < GetFuelTanks.Capacity)
         or HasHullDamageOrBrokenEquippedItems
         or (NextRandomUnitFloat(RandomState) < 0.1) then
@@ -750,7 +750,7 @@ begin
   else
     for I := 0 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+      Star := CurrentStar.StarDistances[I].Star;
       if (I > 0) and (CurrentStar.StarDistances[I].Distance > JumpRange) then
         Break;
       if Star.Constellation.Id <> 20 then
@@ -786,7 +786,7 @@ begin
   begin
     if CurrentStar.StarDistances[I].Distance > JumpRange then
       Break;
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if (Star.Battle <> 0)
         and ((Star.ControlFaction = sfCoalition)
             or (GetFuelTanks.Fuel div 2 > CurrentStar.StarDistances[I].Distance))
@@ -925,7 +925,7 @@ begin
     begin
       if CurrentStar.StarDistances[I].Distance > JumpRange then
         Break;
-      Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+      Star := CurrentStar.StarDistances[I].Star;
       if (Star.ControlFaction <> sfDominators) and (Star.Status.CustomFaction = '') then
       begin
         CandidateTurns := EstimateTravelTurnsToObject(Star);
@@ -1104,7 +1104,8 @@ begin
     if (OwnerId = oiPirate) and (PirateType <> 0) then
     begin
       ProgressFactor := Ord(Galaxy.DifficultyLevels[0]) * 0.2 + 0.6;
-      ProgressFactor := RemapClamped(Galaxy.WarDeltaWin[2], -10, 10, 1.3, 0.7) * ProgressFactor;
+      ProgressFactor :=
+          RemapClamped(Galaxy.WarDeltaWin[sfPirates], -10, 10, 1.3, 0.7) * ProgressFactor;
       StrengthFactor := Ord(Galaxy.DifficultyLevels[0]) * 0.1 + 0.6;
       if (0.1 * ProgressFactor > NextRandomUnitFloat(RandomState))
           and ((0.4 * StrengthFactor > StrengthInBestRanger)
@@ -1556,6 +1557,9 @@ begin
 end;
 
 procedure TPirate.AssignWeaponTargetsInStar;
+const
+  MissileShotTypes = [wstTorpedo..wstRocket];
+  AreaOrMissileShotTypes = [wstAreaDamage..wstRocket];
 var
   I, J, Assigned: Integer;
   Ship: TShip;
@@ -1579,7 +1583,7 @@ begin
         for J := 1 to WeaponCount do
         begin
           Weapon := Weapons[J];
-          if (not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+          if (not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
               and (Weapon.Target = nil)
               and IsEquipmentUsable(Weapon) then
             if PointDistanceSquared(Position, Ship.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1595,7 +1599,7 @@ begin
     for J := 1 to WeaponCount do
     begin
       Weapon := Weapons[J];
-      if (not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+      if (not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
           and (Weapon.Target = nil)
           and IsEquipmentUsable(Weapon) then
         if PointDistanceSquared(Position, EnemyShip.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1619,7 +1623,7 @@ begin
       begin
         Weapon := Weapons[J];
         // Native hostile-ship pass can replace an earlier weapon target.
-        if (not (Weapon.GetWeaponInfo.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+        if (not (Weapon.GetWeaponInfo.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
             and IsEquipmentUsable(Weapon) then
           if PointDistanceSquared(Position, Ship.Position) <= Sqr(GetWeaponRange(Weapon)) then
           begin
@@ -1637,7 +1641,7 @@ begin
       for J := 1 to WeaponCount do
       begin
         Weapon := Weapons[J];
-        if not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket])
+        if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes)
             and (Weapon.Target = nil)
             and IsEquipmentUsable(Weapon) then
           if PointDistanceSquared(Position, Missile.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1662,7 +1666,7 @@ begin
         begin
           Weapon := Weapons[J];
           // Native asteroid targeting can overwrite an existing assignment.
-          if not (Weapon.GetWeaponInfo^.ShotType in [wstAreaDamage..wstRocket])
+          if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
               and IsEquipmentUsable(Weapon) then
             if Sqr(GetWeaponRange(Weapon)) >= Distance then
             begin
@@ -1691,7 +1695,7 @@ begin
             for J := 1 to WeaponCount do
             begin
               Weapon := Weapons[J];
-              if not (Weapon.GetWeaponInfo^.ShotType in [wstAreaDamage..wstRocket])
+              if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
                   and (Weapon.Target = nil)
                   and IsEquipmentUsable(Weapon) then
                 if PointDistanceSquared(Position, Item.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1943,14 +1947,12 @@ begin
         and (EnemyShip.GetHullIntegrityPercent > 70) then
       if EnemyShip.CurrentPlanet <> nil then
       begin
-        if (EnemyShip is TRanger)
-            and (Cardinal((EnemyShip as TRanger).PrisonTermRemaining) > 0) then
+        if (EnemyShip is TRanger) and ((EnemyShip as TRanger).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
         end
-        else if (EnemyShip is TPirate)
-            and (Cardinal((EnemyShip as TPirate).PrisonTermRemaining) > 0) then
+        else if (EnemyShip is TPirate) and ((EnemyShip as TPirate).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
@@ -2253,8 +2255,6 @@ function TPirate.BuildAttackRequestResponse(
   end;
 
   function FriendsPreferred: Boolean; { Nested helper with caller-popped static link. }
-  var
-    UnusedLocal: Integer; // Native gap before the floating-point temporaries.
   begin
     Result :=
         Cardinal(RelationToShip(Target))
@@ -2793,37 +2793,22 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * PirateSkillBonusWeights[BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
             Result
                 + (PirateSkillBonusWeights[BonusKind] * 0.05)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6);
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
         Result :=
-            Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -PirateSkillBonusWeights[BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
             Result
                 + (PirateSkillBonusWeights[BonusKind] * 0.03)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -2845,9 +2830,7 @@ begin
         Result
             * 0.01
             * (100 + SeededRandomIntRange(-75, 75, Seed + 131 * Ord(BonusKind)))
-            * RaceSkillEvaluationFactors[
-                PilotRace,
-                EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]]
+            * RaceSkillEvaluationFactors[PilotRace, EquipmentBonusSkills[BonusKind]]
   else
     Result := Result * 0.01 * (100 + SeededRandomIntRange(-25, 25, Seed + 131 * Ord(BonusKind)));
 end;
@@ -2915,7 +2898,7 @@ begin
     DisruptionFactor :=
         DisruptionFactor
             + CountActiveArtefacts(t_ArtDecelerate)
-                * ((Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) * 1) + 1);
+                * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
   TotalDisruption := DisruptionFactor;
   for I := 1 to CountEquippedWeapons do
   begin
@@ -2927,7 +2910,7 @@ begin
       TotalDisruption :=
           TotalDisruption
               + CountActiveArtefacts(t_ArtDecelerate)
-                  * ((Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) * 1) + 1);
+                  * (Ord(CanBoostArtefact(t_ArtDecelerate, Weapon, False)) + 1);
   end;
   DisruptionFactor :=
       DisruptionFactor / Max(TotalDisruption, 1) * RemapClamped(TotalDisruption, 1, 3, 1, 2);

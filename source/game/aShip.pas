@@ -30,16 +30,22 @@ type
 
   PointerToTCustomShipInfo = ^TCustomShipInfo;
 
-  PointerToTShipEquipmentCacheView = ^TShipEquipmentCacheView;
-
   PointerToTShipStatBonusEntry = ^TShipStatBonusEntry;
 
-  TShipEquipmentCacheView = packed record
-    // Overlay the contiguous Hull..DefGenerator fields, not a fixed Win32 offset.
-    Slots: array[t_Hull..t_DefGenerator] of TEquipment;
+  TShipEquipmentCache = record
+  case Boolean of
+    False: (Slots: array[t_Hull..t_DefGenerator] of TEquipment;);
+    True: (
+      Hull: THull;
+      FuelTanks: TFuelTanks;
+      Engine: TEngine;
+      Radar: TRadar;
+      Scanner: TScaner;
+      RepairRobot: TRepairRobot;
+      CargoHook: TCargoHook;
+      DefGenerator: TDefGenerator;
+    );
   end;
-
-  PShipEquipmentCacheView = PointerToTShipEquipmentCacheView;
 
   TCustomShipInfo = record
     TypeName: WideString;
@@ -81,21 +87,10 @@ type
   {$Z1}
   TItemDegradationKind = (idkBattle = 0, idkUse = 1, idkForce = 2, idkAfterburner = 3);
 
-  {$Z1}
-  TCombatStatusEffectType = (
-      cseShock = 0,
-      cseAcid = 1,
-      cseMagnetic = 2,
-      cseWeaponBlock = 3,
-      cseDroidBlock = 4,
-      cseBWBuff = 5,
-      cseBWRepairDebuff = 6
-  );
-
   TCombatStatusEffect = record
     EffectType: TCombatStatusEffectType;
     Strength: Single;
-    SourceShipId: Integer;
+    SourceShipId: Cardinal;
   end;
 
   PCombatStatusEffect = PointerToTCombatStatusEffect;
@@ -118,8 +113,8 @@ type
     ApplicationCount: Integer;
   end;
 
-  TShip = class(TObjectEx)
-    Id: Integer;
+  TShip = class(TRegisteredGameObject)
+    Id: Cardinal;
     Name: WideString;
     TypeNameOverrideKey: WideString;
     TypeId: TShipType;
@@ -147,18 +142,11 @@ type
     LastProcessedTurn: Integer;
     Money: Integer;
     UnknownF4: Integer;
-    Hull: THull;
-    FuelTanks: TFuelTanks;
-    Engine: TEngine;
-    Radar: TRadar;
-    Scanner: TScaner;
-    RepairRobot: TRepairRobot;
-    CargoHook: TCargoHook;
-    DefGenerator: TDefGenerator;
+    EquipmentCache: TShipEquipmentCache;
     Weapons: array[1..5] of TWeapon;
-    WeaponCount: Byte;
+    WeaponCount: TWeaponCount;
     UsableWeaponCount: Byte;
-    BaseSkills: array[TPilotSkill] of Byte;
+    BaseSkills: array[TPilotSkill] of TPilotSkillLevel;
     CaptainHealth: array[TCaptainHealthEffect] of TCaptainHealthState;
     RadiationHealth: array[1..1] of TCaptainHealthState;
     CustomShipInfos: TList;
@@ -244,6 +232,16 @@ type
     SmoothedMoneyFraction: Single;
     SmoothedFreeCapacityFraction: Single;
     EquipmentPriceSensitivity: Single;
+    property Hull: THull read EquipmentCache.Hull write EquipmentCache.Hull;
+    property FuelTanks: TFuelTanks read EquipmentCache.FuelTanks write EquipmentCache.FuelTanks;
+    property Engine: TEngine read EquipmentCache.Engine write EquipmentCache.Engine;
+    property Radar: TRadar read EquipmentCache.Radar write EquipmentCache.Radar;
+    property Scanner: TScaner read EquipmentCache.Scanner write EquipmentCache.Scanner;
+    property RepairRobot: TRepairRobot
+        read EquipmentCache.RepairRobot write EquipmentCache.RepairRobot;
+    property CargoHook: TCargoHook read EquipmentCache.CargoHook write EquipmentCache.CargoHook;
+    property DefGenerator: TDefGenerator
+        read EquipmentCache.DefGenerator write EquipmentCache.DefGenerator;
     procedure SaveToBuffer(Buffer: TBufEC); virtual;
     procedure LoadFromBuffer(Buffer: TBufEC; Galaxy: TGalaxy); virtual;
     procedure ResolveLoadedReferences(Galaxy: TGalaxy); virtual;
@@ -462,7 +460,7 @@ type
     function GetLocationGoodsEntry(Good: Byte): PGoodsTradePriceEntry;
     function ShopGoodsPurchasePrice(Good: Byte; Location: TObject): Integer;
     function ShopGoodsSellPrice(Good: Byte; Location: TObject): Integer;
-    function GetAverageCargoCost(Good: Byte): Double;
+    function GetAverageCargoCost(Good: TGoodsIndex): Double;
     procedure ConsumeCargoGoods(Good: Byte; Count: Integer);
     function IsCargoGoodIllegalOnCurrentPlanet(Good: Byte): Boolean;
     procedure SellGoodsToLocation(Good: Byte; Count: Integer);
@@ -537,7 +535,7 @@ type
     function RetrieveStoredItems(Location: TObject): Boolean;
     procedure AutoEquipArtefacts;
     function CalculateItemEffectiveness(Item: TItem): Single;
-    function EstimateWeaponDamageAgainstTypicalDefense(Item: TItem): Single;
+    function EstimateWeaponDamageAgainstTypicalDefense(Item: TWeapon): Single;
     function GetWeaponRange(Weapon: TWeapon): Integer;
     function CalculateHullArmor(Hull: THull): Integer;
     function GetItemFuelTankCapacity(Item: TItem): Integer;
@@ -789,7 +787,7 @@ type
     function GetBWRepairDebuffStatusDecay(Strength: Single): Single;
     procedure ClearCombatStatusSourceReferences(Source: TShip);
     function GetCombatStatusStrength(EffectType: TCombatStatusEffectType): Single;
-    function GetCombatStatusSourceId(EffectType: TCombatStatusEffectType): Integer;
+    function GetCombatStatusSourceId(EffectType: TCombatStatusEffectType): Cardinal;
     function GetCombatStatusDescription(out Count: Integer; ShowStrength: Boolean): WideString;
     function HasScriptStateText: Boolean;
     function HasIndependentScriptFaction: Boolean;
@@ -959,10 +957,8 @@ begin
     CargoGoods[Ord(Kind)].Count := 0;
     CargoGoods[Ord(Kind)].TotalCost := 0;
   end;
-  // The contiguous Hull..DefGenerator fields are indexed by native item type.
-  for Kind := Low(PShipEquipmentCacheView(@Hull).Slots)
-      to High(PShipEquipmentCacheView(@Hull).Slots) do
-    PShipEquipmentCacheView(@Hull).Slots[Kind] := nil;
+  for Kind := Low(EquipmentCache.Slots) to High(EquipmentCache.Slots) do
+    EquipmentCache.Slots[Kind] := nil;
   for I := 1 to 5 do
     Weapons[I] := nil;
   WeaponCount := 0;
@@ -996,7 +992,7 @@ begin
     CaptainHealth[TCaptainHealthEffect(I)].ExpireTurn := 0;
     CaptainHealth[TCaptainHealthEffect(I)].ApplicationCount := 0;
   end;
-  for I := 1 to 1 do
+  for I := Low(RadiationHealth) to High(RadiationHealth) do
   begin
     RadiationHealth[I].Progress := 0;
     RadiationHealth[I].AppliedTurn := 0;
@@ -1178,7 +1174,6 @@ var
   Series: TDominatorSeries;
   SourceId: Cardinal;
   Info: PCustomShipInfo;
-  Reserved: array[0..3] of Byte; // Native unreferenced slot before managed cleanup temporaries.
 begin
   Buffer.AddDWord(Id);
   Buffer.AddWideStringZ(Name);
@@ -1338,7 +1333,7 @@ begin
     begin
       Buffer.AddDWord(0);
       AppendDebugLogLine(
-          'Error [t_JumpHole]: Hole not found, id = ' + IntToStr(Cardinal(Id)) + ', Name = ' + Name
+          'Error [t_JumpHole]: Hole not found, id = ' + IntToStr(Id) + ', Name = ' + Name
       );
     end;
   end
@@ -1408,7 +1403,7 @@ begin
     Buffer.AddBoolean(ChameleonDetected[Series]);
     Buffer.AddIntegerValue(ChameleonCharges[Series]);
   end;
-  for I := 1 to 1 do
+  for I := Low(RadiationHealth) to High(RadiationHealth) do
   begin
     Buffer.AddSingle(RadiationHealth[I].Progress);
     Buffer.AddIntegerValue(RadiationHealth[I].AppliedTurn);
@@ -1459,7 +1454,7 @@ var
   Block: TBlockParEC;
 begin
   Id := Buffer.GetUInt32;
-  if Cardinal(Id) >= Cardinal(Galaxy.NextShipId) then
+  if Id >= Galaxy.NextShipId then
     Galaxy.NextShipId := Id + 1;
   Name := Buffer.ReadWideString;
   if LoadedSaveVersion >= 97 then
@@ -1725,7 +1720,7 @@ begin
     ChameleonDetected[Series] := Buffer.GetBoolean;
     ChameleonCharges[Series] := Buffer.GetInt32;
   end;
-  for I := 1 to 1 do
+  for I := Low(RadiationHealth) to High(RadiationHealth) do
   begin
     RadiationHealth[I].Progress := Buffer.GetSingle;
     RadiationHealth[I].AppliedTurn := Buffer.GetInt32;
@@ -1851,7 +1846,7 @@ begin
     Block.AddParam(DecodeTextW('ImRyuWirnas'), ''); // 'IRuins'
   Text := IntToStr(CargoGoods[Ord(t_Food)].Count);
   for I := 1 to 7 do
-    Text := Text + ',' + IntToStr(CargoGoods[Byte(I)].Count);
+    Text := Text + ',' + IntToStr(CargoGoods[TGoodsIndex(I)].Count);
   Block.AddParam(DecodeTextW('Gronordos'), Text); // 'Goods'
   Text := IntToStr(BaseSkills[psAccuracy]);
   for I := 1 to 5 do
@@ -1881,7 +1876,7 @@ begin
     for I := 0 to Inventory.Count - 1 do
     begin
       Item := Inventory[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.SaveToBlock(AddBlockByPath(Text));
     end;
     AddParam(DecodeTextW('AodEdrIstaelma'), ''); // 'AddItem'
@@ -1891,7 +1886,7 @@ begin
     for I := 0 to Artefacts.Count - 1 do
     begin
       Item := Artefacts[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.SaveToBlock(AddBlockByPath(Text));
     end;
     AddParam(DecodeTextW('AsdediAmrot'), ''); // 'AddArt'
@@ -1901,7 +1896,7 @@ begin
     for I := 0 to GuaranteedDeathDropItems.Count - 1 do
     begin
       Item := GuaranteedDeathDropItems[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.SaveToBlock(AddBlockByPath(Text));
     end;
     AddParam(DecodeTextW('AodEdrIstaelma'), ''); // 'AddItem'
@@ -1913,7 +1908,7 @@ begin
     ); // 'RelationToPlayer'
   Text := DecodeTextW('CrolnatariaOcitaeAddTrogSaheiOppIld'); // 'ContractedToShipId'
   if PartnerShip <> nil then
-    Block.AddParam(Text, IntToStr(Cardinal(PartnerShip.Id)))
+    Block.AddParam(Text, IntToStr(PartnerShip.Id))
   else
     Block.AddParam(Text, '0');
   Block.AddParam(
@@ -1950,7 +1945,7 @@ begin
   PortraitFaceId := StrToInt(Block.GetParam(DecodeTextW('Fiascoee'))); // 'Face'
   Text := Block.GetParam(DecodeTextW('Gronordos')); // 'Goods'
   for I := 0 to 7 do
-    CargoGoods[Byte(I)].Count := StrToInt(ExtractDelimitedPartW(Text, I, ','));
+    CargoGoods[TGoodsIndex(I)].Count := StrToInt(ExtractDelimitedPartW(Text, I, ','));
   Text := Block.GetParam(DecodeTextW('SekaiAlalas')); // 'Skills'
   for I := 0 to 5 do
     BaseSkills[TPilotSkill(I)] := StrToInt(ExtractDelimitedPartW(Text, I, ','));
@@ -2004,7 +1999,7 @@ begin
     for I := 0 to Inventory.Count - 1 do
     begin
       Item := Inventory[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.LoadFromBlock(GetBlockByPath(Text));
     end;
     Text := GetParam(DecodeTextW('AodEdrIstaelma')); // 'AddItem'
@@ -2029,7 +2024,7 @@ begin
     for I := 0 to Artefacts.Count - 1 do
     begin
       Item := Artefacts[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.LoadFromBlock(GetBlockByPath(Text));
     end;
     Text := GetParam(DecodeTextW('AsdediAmrot')); // 'AddArt'
@@ -2051,7 +2046,7 @@ begin
     for I := 0 to GuaranteedDeathDropItems.Count - 1 do
     begin
       Item := GuaranteedDeathDropItems[I];
-      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Cardinal(Item.Id)); // 'ItemId'
+      Text := DecodeTextW('ImtreamrIodo') + IntToStr(Item.Id); // 'ItemId'
       Item.LoadFromBlock(GetBlockByPath(Text));
     end;
     Text := GetParam(DecodeTextW('AodEdrIstaelma')); // 'AddItem'
@@ -2085,7 +2080,7 @@ begin
   if StrToInt(Text) = 0 then
     PartnerShip := nil
   else
-    PartnerShip := Galaxy.IdToShip(StrToInt(Text), True);
+    PartnerShip := TShip(Galaxy.IdToShip(StrToInt(Text), True));
   PartnershipDaysRemaining :=
       StrToInt(
           Block.GetParam(DecodeTextW('CrolnatariaOcitaDiaOyeseLaeAfoto'))
@@ -2159,13 +2154,13 @@ var
   Item: TItem;
 begin
   Galaxy.LoadedShips.Add(Self);
-  TransitOriginStar := TObject(Galaxy.IdToStar(Cardinal(TransitOriginStar))) as TStar;
-  CurrentPlanet := TObject(Galaxy.IdToPlanet(Cardinal(CurrentPlanet))) as TPlanet;
+  TransitOriginStar := Galaxy.IdToStar(Cardinal(TransitOriginStar));
+  CurrentPlanet := Galaxy.IdToPlanet(Cardinal(CurrentPlanet)) as TPlanet;
   if (Self is TPlayer) and ((Self as TPlayer).RuinsMode > 0) then
     DockedTo := (Self as TPlayer).RuinsProxy
   else
-    DockedTo := TObject(Galaxy.IdToShip(Cardinal(DockedTo), True)) as TShip;
-  HomePlanet := TObject(Galaxy.IdToPlanet(Cardinal(HomePlanet))) as TPlanet;
+    DockedTo := Galaxy.IdToShip(Cardinal(DockedTo), True) as TShip;
+  HomePlanet := Galaxy.IdToPlanet(Cardinal(HomePlanet)) as TPlanet;
   if (LoadedSaveVersion < 146) and (HomePlanet <> nil) then
     TechKnowledge := Max(TechKnowledge, HomePlanet.InventionLevels[piMainTech]);
   if PickupTargets <> nil then
@@ -2174,27 +2169,25 @@ begin
     for I := 0 to Count - 1 do
       PickupTargets[I] := TObject(Galaxy.IdToItem(Cardinal(PickupTargets[I]), True)) as TItem;
   end;
-  EnemyShip := TObject(Galaxy.IdToShip(Cardinal(EnemyShip), False)) as TShip;
-  TruceShip := TObject(Galaxy.IdToShip(Cardinal(TruceShip), False)) as TShip;
-  PartnerShip := TObject(Galaxy.IdToShip(Cardinal(PartnerShip), False)) as TShip;
-  InterceptorSourceShip :=
-      TObject(Galaxy.IdToShip(Cardinal(InterceptorSourceShip), False)) as TShip;
+  EnemyShip := Galaxy.IdToShip(Cardinal(EnemyShip), False) as TShip;
+  TruceShip := Galaxy.IdToShip(Cardinal(TruceShip), False) as TShip;
+  PartnerShip := Galaxy.IdToShip(Cardinal(PartnerShip), False) as TShip;
+  InterceptorSourceShip := Galaxy.IdToShip(Cardinal(InterceptorSourceShip), False) as TShip;
   if Order = soJump then
-    OrderTarget := TObject(Galaxy.IdToStar(Cardinal(OrderTarget))) as TStar
+    OrderTarget := Galaxy.IdToStar(Cardinal(OrderTarget))
   else if Order = soJumpHole then
-    OrderTarget := TObject(Galaxy.IdToHole(Cardinal(OrderTarget))) as THole
+    OrderTarget := Galaxy.IdToHole(Cardinal(OrderTarget))
   else if Order = soTeleport then
-    OrderTarget := TObject(Galaxy.IdToStar(Cardinal(OrderTarget))) as TStar
+    OrderTarget := Galaxy.IdToStar(Cardinal(OrderTarget))
   else if Order = soLand then
   begin
     if (Cardinal(OrderTarget) and OrderTargetShipFlag) = OrderTargetShipFlag then
-      OrderTarget :=
-          TObject(Galaxy.IdToShip(Cardinal(OrderTarget) and TaggedObjectIdMask, True)) as TShip
+      OrderTarget := Galaxy.IdToShip(Cardinal(OrderTarget) and TaggedObjectIdMask, True) as TShip
     else
-      OrderTarget := TObject(Galaxy.IdToPlanet(Cardinal(OrderTarget))) as TPlanet;
+      OrderTarget := Galaxy.IdToPlanet(Cardinal(OrderTarget)) as TPlanet;
   end
   else if Order = soFollowShip then
-    OrderTarget := TObject(Galaxy.IdToShip(Cardinal(OrderTarget), True)) as TShip;
+    OrderTarget := Galaxy.IdToShip(Cardinal(OrderTarget), True) as TShip;
   Count := Inventory.Count;
   for I := 0 to Count - 1 do
   begin
@@ -2980,12 +2973,12 @@ begin
   Capital := Money;
   for I := 0 to Inventory.Count - 1 do
   begin
-    Item := TItem(Inventory[I]);
+    Item := Inventory[I];
     Inc(Capital, Item.Cost);
   end;
   for I := 0 to Artefacts.Count - 1 do
   begin
-    Item := TItem(Artefacts[I]);
+    Item := Artefacts[I];
     Inc(Capital, Item.Cost);
   end;
   for Good := Low(TGoodsIndex) to High(TGoodsIndex) do
@@ -3164,6 +3157,9 @@ begin
   Owner := RaceToOwner(PilotRace);
   if PortraitFaceId < 0 then
   begin
+    // Native $750A43 zeroed both arrays, including the no-candidate case.
+    FillChar(Faces, SizeOf(Faces), 0);
+    FillChar(Usage, SizeOf(Usage), 0);
     if TypeId = stRanger then
       Role := 'R'
     else if TypeId = stWarrior then
@@ -3543,7 +3539,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     Item := Inventory[I];
-    if Cardinal(Item.Id) = Id then
+    if Item.Id = Id then
     begin
       Result := Item;
       Exit;
@@ -3553,7 +3549,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     Item := Artefacts[I];
-    if Cardinal(Item.Id) = Id then
+    if Item.Id = Id then
     begin
       Result := Item;
       Exit;
@@ -3569,7 +3565,7 @@ begin
   for I := 0 to Count - 1 do
   begin
     Item := GuaranteedDeathDropItems[I];
-    if Cardinal(Item.Id) = Id then
+    if Item.Id = Id then
     begin
       Result := Item;
       Exit;
@@ -3588,7 +3584,7 @@ begin
     for I := 0 to Count - 1 do
     begin
       Item := Station.EquipmentShop[I];
-      if Cardinal(Item.Id) = Id then
+      if Item.Id = Id then
       begin
         Result := Item;
         Exit;
@@ -3807,7 +3803,7 @@ begin
   BestDistance := 0;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship.TypeId in [rstRangerCenter..rstCustomStation])
         and ((StandingMask = []) or (Ship.CurrentStanding in StandingMask))
         and Ship.CanDock(Self) then
@@ -3826,11 +3822,11 @@ function TShip.FindFirstInhabitedPlanetInStar: TPlanet;
 var
   I: Integer;
 begin
-  Result := TPlanet(CurrentStar.Planets[0]);
+  Result := CurrentStar.Planets[0];
   if Result.OwnerId = oiUninhabited then
     for I := 1 to CurrentStar.Planets.Count - 1 do
     begin
-      Result := TPlanet(CurrentStar.Planets[I]);
+      Result := CurrentStar.Planets[I];
       if Result.OwnerId <> oiUninhabited then
         Break;
     end;
@@ -3891,7 +3887,7 @@ function TShip.TryMirrorPartnerTravelOrders: Boolean;
 var
   Star: TStar;
 begin
-  if Cardinal((PartnerShip as TRanger).PrisonTermRemaining) > 0 then
+  if (PartnerShip as TRanger).PrisonTermRemaining > 0 then
   begin
     Result := False;
     Exit;
@@ -4100,7 +4096,7 @@ var
 begin
   for I := 0 to Star.Planets.Count - 1 do
   begin
-    Planet := TPlanet(Star.Planets[I]);
+    Planet := Star.Planets[I];
     if (Planet.OwnerId <> oiUninhabited) and CanQueueReachablePlanet(Planet) then
     begin
       Result := True;
@@ -4132,12 +4128,12 @@ begin
   CapacitySquared := GetFuelTanks.Capacity * GetFuelTanks.Capacity;
   for I := 0 to Galaxy.Stars.Count - 2 do
   begin
-    Origin := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Origin := CurrentStar.StarDistances[I].Star;
     if (Origin.Constellation.Id = 20) or (Integer(Predecessors[I]) = -1) then
       Continue;
     for J := 1 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TObject(Origin.StarDistances[J].Star) as TStar;
+      Star := Origin.StarDistances[J].Star;
       if Star.Constellation.Id = 20 then
         Continue;
       if (RangeSquared < PointDistanceSquared(Origin.Position, Star.Position))
@@ -4150,7 +4146,7 @@ begin
         Result := Origin;
         while Previous > 1 do
         begin
-          Result := TObject(CurrentStar.StarDistances[Previous - 1].Star) as TStar;
+          Result := CurrentStar.StarDistances[Previous - 1].Star;
           Previous := Integer(Predecessors[Previous - 1]);
         end;
         Predecessors.Free;
@@ -4160,7 +4156,7 @@ begin
           and (Star.CountShipsByTypeMask(CoalitionShips) <= 20)
           and (Star.ShipTypeCounts[stRanger] <= 9) then
         for K := 1 to Galaxy.Stars.Count - 1 do
-          if (TObject(CurrentStar.StarDistances[K].Star) as TStar) = Star then
+          if CurrentStar.StarDistances[K].Star = Star then
           begin
             if Integer(Predecessors[K]) = -1 then
               Predecessors[K] := Pointer(I + 1);
@@ -4181,7 +4177,7 @@ begin
   BestDistance := 1000000000;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship.TypeId in ShipTypeMask) and (Ship <> Self) then
     begin
       Distance := PointDistanceSquared(Position, Ship.Position);
@@ -4286,13 +4282,11 @@ const
   NoDamageFlags = [];
 var
   I, J: Integer;
-  Reserved: Integer; { Native keeps an unused scalar between the loop indices and damage local. }
   AdjustedDamage, EngineLoss, DropCount, MinimumPriority, MaximumPriority: Integer;
   DamageValue, Wear, DropRoll: Single;
   Nodes: TProtoplasm;
   Debris: TUselessItem;
   Item: TItem;
-  UnusedText: WideString; { Native initializes/finalizes this otherwise unused managed local. }
   Module: TMicroModule;
   Cistern: TCistern;
   Event: TGalaxyEvent;
@@ -4384,12 +4378,12 @@ begin
               >= PointDistanceSquared(Position, Attacker.Position));
   if ScannerEffects then
   begin
-    if Dword(DamageFlags) and (1 shl Ord(dkScanBonus)) <> 0 then
+    if dkScanBonus in DamageFlags then
       DamageValue := DamageValue * 1.15;
-    if Dword(DamageFlags) and (1 shl Ord(dkBonusToDamaged)) <> 0 then
+    if dkBonusToDamaged in DamageFlags then
       DamageValue := (1 + (1 - GetHull.HullPoints / GetHull.Weight) * 0.33) * DamageValue;
   end;
-  if Dword(DamageFlags) and (1 shl Ord(dkEnergy)) <> 0 then
+  if dkEnergy in DamageFlags then
     for J := 1 to CountActiveArtefacts(t_ArtEnergyDef) do
       if NextRandomUnitFloat(RandomState)
           < 0.3 * (Ord(CanBoostArtefact(t_ArtEnergyDef, nil, False)) + 1) then
@@ -4397,7 +4391,7 @@ begin
         DamageValue := 0;
         Break;
       end;
-  if Dword(DamageFlags) and (1 shl Ord(dkMissile)) <> 0 then
+  if dkMissile in DamageFlags then
     for J := 1 to CountActiveArtefacts(t_ArtMissileDef) do
       DamageValue :=
           DamageValue
@@ -4469,7 +4463,7 @@ begin
   if (Order = soTeleport) and (OrderTarget <> nil) and (OrderTarget <> CurrentStar) then
     AdjustedDamage := 0;
   if GetHull.ImpulseShieldsEnabled
-      and (Dword(DamageFlags) and (1 shl Ord(dkUndefendable)) = 0)
+      and not (dkUndefendable in DamageFlags)
       and (NextRandomIntRange(0, 100, RandomState) > GetDefenseDamageFactor * 100) then
   begin
     Result := -AdjustedDamage;
@@ -4494,7 +4488,7 @@ begin
   ExpectedHullPoints := 0;
   if (GetHull.HullPoints - AdjustedDamage <= 0)
       and (KellerShip <> Self)
-      and (Dword(DamageFlags) and (1 shl Ord(dkNonLethal)) = 0) then
+      and not (dkNonLethal in DamageFlags) then
   begin
     if Attacker <> nil then
     begin
@@ -4600,12 +4594,12 @@ begin
                           * 0.2
                           * (Ord(Attacker.CanBoostArtefact(t_ArtefactMiniExpl, nil, False)) + 1))
               or (ScannerEffects
-                  and (Dword(DamageFlags) and (1 shl Ord(dkMoreDrop)) <> 0)
+                  and (dkMoreDrop in DamageFlags)
                   and (NextRandomUnitFloat(RandomState) > 0.9)) then
             DropRandomValuableItemsOnDestruction(1);
         end;
         if ScannerEffects
-            and (Dword(DamageFlags) and (1 shl Ord(dkMoreDrop)) <> 0)
+            and (dkMoreDrop in DamageFlags)
             and (NextRandomUnitFloat(RandomState) > 0.6) then
           Inc(DropCount);
         DropRandomCheapItemsOnDestruction(DropCount);
@@ -4714,8 +4708,7 @@ begin
     Dec(GetHull.HullPoints, AdjustedDamage);
     if GetHull.HullPoints <> ExpectedHullPoints - AdjustedDamage then
       GR_Main.CCInterface.SetTamperDetected(True);
-    if ((KellerShip = Self) or (Dword(DamageFlags) and (1 shl Ord(dkNonLethal)) <> 0))
-        and (GetHull.HullPoints < 1) then
+    if ((KellerShip = Self) or (dkNonLethal in DamageFlags)) and (GetHull.HullPoints < 1) then
       GetHull.HullPoints := 1;
     ExpectedHullPoints := GetHull.HullPoints;
     if (AdjustedDamage = 1) and (GetPlayer = Attacker) and (Attacker <> nil) then
@@ -4724,11 +4717,11 @@ begin
       GetPlayer.AchievementStats.CheckScratchDamageAchievement(PlayerScratchHitsReceived);
     end;
     EngineLoss := NextRandomIntRange(0, 2, RandomState);
-    if Dword(DamageFlags) and (1 shl Ord(dkDecelerate)) <> 0 then
+    if dkDecelerate in DamageFlags then
       Inc(EngineLoss, NextRandomIntRange(5, 15, RandomState));
-    if Dword(DamageFlags) and (1 shl Ord(dkDecelerateA)) <> 0 then
+    if dkDecelerateA in DamageFlags then
       Inc(EngineLoss, NextRandomIntRange(5, 15, RandomState));
-    if Dword(DamageFlags) and (1 shl Ord(dkDecelerateAEx)) <> 0 then
+    if dkDecelerateAEx in DamageFlags then
       Inc(EngineLoss, NextRandomIntRange(5, 15, RandomState));
     if (EngineLoss > 0) and (GetEngine <> nil) then
       if GetEngine.OutputPercent > EngineLoss then
@@ -4754,7 +4747,7 @@ begin
             Wear := Wear * 0.6;
         end;
         if ScannerEffects
-            and (Dword(DamageFlags) and (1 shl Ord(dkReduceEngine)) <> 0)
+            and (dkReduceEngine in DamageFlags)
             and (GetEngine <> nil)
             and (GetEngine.BrokenFlag = 0) then
         begin
@@ -4763,7 +4756,7 @@ begin
         end
         else
           ApplyCombatItemDegradation(Wear);
-        if Dword(DamageFlags) and (1 shl Ord(dkDestruct)) <> 0 then
+        if dkDestruct in DamageFlags then
         begin
           Wear := NextRandomFloatRange(5, 15, RandomState);
           if Self is TWarrior then
@@ -4777,7 +4770,7 @@ begin
           end;
           Wear := Wear * 0.1;
           if ScannerEffects
-              and (Dword(DamageFlags) and (1 shl Ord(dkReduceEngine)) <> 0)
+              and (dkReduceEngine in DamageFlags)
               and (GetEngine <> nil)
               and (GetEngine.BrokenFlag = 0) then
           begin
@@ -4800,7 +4793,7 @@ begin
           DropCarriedItemAsMovingLoot(Nodes);
         end;
         if ScannerEffects
-            and (Dword(DamageFlags) and (1 shl Ord(dkDropCargo)) <> 0)
+            and (dkDropCargo in DamageFlags)
             and (NextRandomUnitFloat(RandomState) > 0.95) then
         begin
           Nodes := TProtoplasm.Create;
@@ -4812,25 +4805,24 @@ begin
       end;
     end;
     if ScannerEffects
-        and (Dword(DamageFlags) and (1 shl Ord(dkDropCargo)) <> 0)
+        and (dkDropCargo in DamageFlags)
         and (NextRandomUnitFloat(RandomState) > 0.95) then
       JettisonCargoGoodsTowardTargetValue(Galaxy.ComputeScaledMiniMoney(oiHuman));
-    if ScannerEffects and (Dword(DamageFlags) and (1 shl Ord(dkBlockWeapon)) <> 0) then
+    if ScannerEffects and (dkBlockWeapon in DamageFlags) then
       AddCombatStatusStrength(cseWeaponBlock, 0.1, Attacker);
-    if ScannerEffects and (Dword(DamageFlags) and (1 shl Ord(dkDroidBlock)) <> 0) then
+    if ScannerEffects and (dkDroidBlock in DamageFlags) then
       AddCombatStatusStrength(cseDroidBlock, 0.1, Attacker);
-    if Dword(DamageFlags) and (1 shl Ord(dkShock)) <> 0 then
+    if dkShock in DamageFlags then
       if Self is TKling then
         AddCombatStatusStrength(cseShock, AdjustedDamage * 0.12, Attacker)
       else
         AddCombatStatusStrength(cseShock, AdjustedDamage * 0.2, Attacker);
-    if (Dword(DamageFlags) and (1 shl Ord(dkAcid)) <> 0)
-        and (GetHull.Armor > GetCombatStatusStrength(cseAcid)) then
+    if (dkAcid in DamageFlags) and (GetHull.Armor > GetCombatStatusStrength(cseAcid)) then
       if Self is TKling then
         AddCombatStatusStrength(cseAcid, 0.66, Attacker)
       else
         AddCombatStatusStrength(cseAcid, 1, Attacker);
-    if Dword(DamageFlags) and (1 shl Ord(dkMagnetic)) <> 0 then
+    if dkMagnetic in DamageFlags then
       if Self is TKling then
         AddCombatStatusStrength(cseMagnetic, 0.07 + Max(0, Damage + GetArmor) * 0.075, Attacker)
       else
@@ -4846,7 +4838,7 @@ begin
     DamageColor := 0;
   RefreshDerivedStats(True);
   Result := AdjustedDamage;
-  if (Dword(DamageFlags) and (1 shl Ord(dkDrain)) <> 0) and (Attacker <> nil) then
+  if (dkDrain in DamageFlags) and (Attacker <> nil) then
   begin
     if (GetPlayer = Attacker)
         and (AdjustedDamage > 0)
@@ -6190,7 +6182,7 @@ begin
   for I := 0 to Inventory.Count - 1 do
   begin
     Item := Inventory[I];
-    if (Item.EquippedFlag <> 0) and (Item.ItemType in [t_IndustrialLaser..t_CustomWeapon]) then
+    if (Item.EquippedFlag <> 0) and (Item.ItemType in WeaponItemTypes) then
       Inc(Count);
   end;
   Result := Count;
@@ -6331,7 +6323,7 @@ var
   Extra: PExtraSpecial;
 begin
   Result := Max(Weapon.MaxDamage, Weapon.MinDamage);
-  if Weapon.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  if Weapon.ItemType in WeaponItemTypes then
   begin
     BonusKind :=
         WeaponDamageClasses[ClassifyWeaponDamageFlags(Weapon.GetWeaponInfo.DamageFlags)].BonusKind;
@@ -6621,9 +6613,9 @@ begin
       (Self as TRanger).AddPirateCareerActivity(2);
     if (GetPlayer = Target) and not PlayerAutomaticControl then
     begin
-      if Cardinal(ReservedMessageCounter) < 7 then
+      if TurnsSinceLastRequestToPlayer < 7 then
         Exit;
-      ReservedMessageCounter := 0;
+      TurnsSinceLastRequestToPlayer := 0;
       Inc(PlayerDialogueRequestCount);
       if PlayerDialogueRequestCount > 1 then
         Exit;
@@ -6791,9 +6783,9 @@ begin
         begin
           if (GetPlayer = Other) and not PlayerAutomaticControl then
           begin
-            if Cardinal(ReservedMessageCounter) < 7 then
+            if TurnsSinceLastRequestToPlayer < 7 then
               Continue;
-            ReservedMessageCounter := 0;
+            TurnsSinceLastRequestToPlayer := 0;
             Inc(PlayerDialogueRequestCount);
             if PlayerDialogueRequestCount > 1 then
               Continue;
@@ -6823,13 +6815,13 @@ begin
   end;
   case TypeId of
     stRanger:
-      if Cardinal((Self as TRanger).PrisonTermRemaining) > 0 then
+      if (Self as TRanger).PrisonTermRemaining > 0 then
       begin
         Result := True;
         Exit;
       end;
     stPirate:
-      if Cardinal((Self as TPirate).PrisonTermRemaining) > 0 then
+      if (Self as TPirate).PrisonTermRemaining > 0 then
       begin
         Result := True;
         Exit;
@@ -6953,7 +6945,7 @@ begin
       );
 end;
 
-function TShip.GetAverageCargoCost(Good: Byte): Double;
+function TShip.GetAverageCargoCost(Good: TGoodsIndex): Double;
 begin
   if CargoGoods[Good].Count > 0 then
     Result := CargoGoods[Good].TotalCost / CargoGoods[Good].Count
@@ -7290,9 +7282,7 @@ end;
 
 procedure TShip.LeaveLiberationGroup;
 begin
-  (TObject(LiberationGroup) as TGroup)
-      .Ships
-      .Delete((TObject(LiberationGroup) as TGroup).Ships.IndexOf(Self));
+  (LiberationGroup as TGroup).Ships.Delete((LiberationGroup as TGroup).Ships.IndexOf(Self));
   LiberationGroup := nil;
   LiberationGroupRouteIndex := 0;
 end;
@@ -7308,11 +7298,11 @@ begin
   Result := 0;
   for I := 0 to ShipCount - 1 do
   begin
-    Ship := TShip(Ships[I]);
+    Ship := Ships[I];
     Sum := 0;
     for J := 0 to Count - 1 do
     begin
-      Target := TShip(Opponents[J]);
+      Target := Opponents[J];
       Chance := Ship.ChanceToWin(Target);
       Sum := Sum + Chance;
     end;
@@ -7455,11 +7445,11 @@ procedure TShip.EquipItem(Item: TEquipment);
 begin
   if Item.ItemType in [t_Hull..t_DefGenerator] then
   begin
-    if PShipEquipmentCacheView(@Hull).Slots[Item.ItemType] <> nil then
-      PShipEquipmentCacheView(@Hull).Slots[Item.ItemType].Unequip;
-    PShipEquipmentCacheView(@Hull).Slots[Item.ItemType] := Item;
+    if EquipmentCache.Slots[Item.ItemType] <> nil then
+      EquipmentCache.Slots[Item.ItemType].Unequip;
+    EquipmentCache.Slots[Item.ItemType] := Item;
   end
-  else if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if Item.ItemType in WeaponItemTypes then
   begin
     if WeaponCount < 5 then
       Inc(WeaponCount);
@@ -7476,10 +7466,10 @@ var
 begin
   if ItemType in [t_Hull..t_DefGenerator] then
   begin
-    PShipEquipmentCacheView(@Hull).Slots[ItemType].Unequip;
-    PShipEquipmentCacheView(@Hull).Slots[ItemType] := nil;
+    EquipmentCache.Slots[ItemType].Unequip;
+    EquipmentCache.Slots[ItemType] := nil;
   end
-  else if ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if ItemType in WeaponItemTypes then
   begin
     Weapons[WeaponIndex].Unequip;
     Weapons[WeaponIndex] := nil;
@@ -7507,7 +7497,7 @@ begin
       end;
   end
   else if (Item.ItemType in [t_Hull..t_DefGenerator])
-      and (PShipEquipmentCacheView(@Hull).Slots[Item.ItemType] = Item) then
+      and (EquipmentCache.Slots[Item.ItemType] = Item) then
     UnequipSlot(Item.ItemType, 0);
 end;
 
@@ -7543,13 +7533,13 @@ begin
   Mass := GetHull.CalculateMass;
   for I := 1 to Inventory.Count - 1 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if Item.EquippedFlag <> 0 then
       Mass := Mass + Item.Weight;
   end;
   for I := 0 to Artefacts.Count - 1 do
   begin
-    Item := TEquipment(Artefacts[I]);
+    Item := Artefacts[I];
     if Item.EquippedFlag <> 0 then
       Mass := Mass + Item.Weight;
   end;
@@ -7864,7 +7854,7 @@ begin
     Repair :=
         CountActiveArtefacts(t_ArtefactDroid)
             * (DroidArtefactRepair
-                + DroidArtefactBoostRepair * Byte(CanBoostArtefact(t_ArtefactDroid, nil, False)))
+                + DroidArtefactBoostRepair * Ord(CanBoostArtefact(t_ArtefactDroid, nil, False)))
   else
     Exit;
   if Repair > 0 then
@@ -7882,7 +7872,7 @@ begin
                 + CountActiveArtefacts(t_ArtefactHook)
                     * (CargoHookArtefactSpeed
                         + CargoHookArtefactBoostSpeed
-                            * Byte(CanBoostArtefact(t_ArtefactHook, nil, False)))
+                            * Ord(CanBoostArtefact(t_ArtefactHook, nil, False)))
                 + GetTotalStatBonus(bonHookMinSpeed)
         );
 end;
@@ -7898,7 +7888,7 @@ begin
                 + CountActiveArtefacts(t_ArtefactHook)
                     * (CargoHookArtefactSpeed
                         + CargoHookArtefactBoostSpeed
-                            * Byte(CanBoostArtefact(t_ArtefactHook, nil, False)))
+                            * Ord(CanBoostArtefact(t_ArtefactHook, nil, False)))
                 + GetTotalStatBonus(bonHookMaxSpeed)
         );
 end;
@@ -7912,7 +7902,7 @@ begin
             + CountActiveArtefacts(t_ArtefactHook)
                 * (CargoHookArtefactRange
                     + CargoHookArtefactBoostRange
-                        * Byte(CanBoostArtefact(t_ArtefactHook, nil, False)))
+                        * Ord(CanBoostArtefact(t_ArtefactHook, nil, False)))
             + GetTotalStatBonus(bonHookRadius);
 end;
 
@@ -8111,9 +8101,9 @@ var
   Item: TEquipment;
   Kind: TItemType;
 begin
-  Hull := THull(Inventory[0]);
+  Hull := Inventory[0];
   for Kind := t_FuelTanks to t_DefGenerator do
-    PShipEquipmentCacheView(@Hull).Slots[Kind] := nil;
+    EquipmentCache.Slots[Kind] := nil;
   for I := 1 to 5 do
     Weapons[I] := nil;
   WeaponCount := 0;
@@ -8121,7 +8111,7 @@ begin
   HasInactiveDirectEquipment := 0;
   for I := 1 to Inventory.Count - 1 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if (Item.EquippedFlag <> 0)
         and not (Item.ItemType in [t_FuelTanks..t_Engine])
         and (GetSlotCountForItemType(Item.ItemType) <= 0)
@@ -8130,8 +8120,8 @@ begin
     if Item.EquippedFlag <> 0 then
     begin
       if Item.ItemType in [t_Hull..t_DefGenerator] then
-        PShipEquipmentCacheView(@Hull).Slots[Item.ItemType] := Item
-      else if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+        EquipmentCache.Slots[Item.ItemType] := Item
+      else if Item.ItemType in WeaponItemTypes then
       begin
         Inc(WeaponCount);
         Weapons[WeaponCount] := Item as TWeapon;
@@ -8253,7 +8243,7 @@ function TShip.NeedsEquipmentType(ItemType: TItemType): Boolean;
 begin
   Result := False;
   if ((ItemType in [t_FuelTanks, t_Engine, t_RepairRobot, t_DefGenerator])
-          or (ItemType in [t_IndustrialLaser..t_CustomWeapon]))
+          or (ItemType in WeaponItemTypes))
       and (CountCarriedEquipmentByType(ItemType) <= 0) then
     Result := True;
 end;
@@ -8267,13 +8257,13 @@ begin
   Result := 0;
   for I := 1 to Inventory.Count - 1 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if Item.EquippedFlag <> 0 then
       Inc(Result, Item.Cost);
   end;
   for I := 0 to Artefacts.Count - 1 do
   begin
-    Artefact := TArtefact(Artefacts[I]);
+    Artefact := Artefacts[I];
     if Artefact.EquippedFlag <> 0 then
       Inc(Result, Artefact.Cost);
   end;
@@ -8290,8 +8280,7 @@ begin
     begin
       Item := Inventory[I];
       if (Item.ItemType = ItemType)
-          or ((ItemType in [t_IndustrialLaser..t_CustomWeapon])
-              and (Item.ItemType in [t_IndustrialLaser..t_CustomWeapon])) then
+          or ((ItemType in WeaponItemTypes) and (Item.ItemType in WeaponItemTypes)) then
         Inc(Result);
     end;
 end;
@@ -8312,8 +8301,7 @@ begin
   for Index := 1 to Inventory.Count - 1 do
   begin
     Candidate := Inventory[Index];
-    if (Candidate.ItemType in [t_IndustrialLaser..t_CustomWeapon])
-        and (Candidate.EquippedFlag = 0) then
+    if (Candidate.ItemType in WeaponItemTypes) and (Candidate.EquippedFlag = 0) then
       if Result = nil then
         Result := Candidate as TWeapon
       else
@@ -8795,10 +8783,7 @@ begin
   if not (Item.ItemType in [t_Hull..t_CustomWeapon]) then
   begin
     if Item is TArtefact then
-      Result :=
-          5000
-              / Max(1, Item.Weight)
-              / Max(0.25, TEquipment(Item).GetFragilityFactor(EmptyDamageFlags))
+      Result := 5000 / Max(1, Item.Weight) / Max(0.25, TEquipment(Item).GetFragilityFactor([]))
     else
       Result := Item.Cost / Max(1, Item.Weight);
     Exit;
@@ -8809,7 +8794,7 @@ begin
     SavedWeapons[I] := nil;
   SavedTarget := nil;
   TemporarilyUnequipped :=
-      (Equipment.EquippedFlag <> 0) and (Equipment.ItemType in [t_IndustrialLaser..t_CustomWeapon]);
+      (Equipment.EquippedFlag <> 0) and (Equipment.ItemType in WeaponItemTypes);
   if TemporarilyUnequipped then
   begin
     TemporarilyUnequipped := False;
@@ -8897,7 +8882,7 @@ begin
             );
     end;
   end
-  else if Equipment.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+  else if Equipment.ItemType in WeaponItemTypes then
   begin
     Weapon := TWeapon(Equipment);
     WeaponRange := GetWeaponRange(Weapon);
@@ -8952,20 +8937,20 @@ begin
   end;
 end;
 
-function TShip.EstimateWeaponDamageAgainstTypicalDefense(Item: TItem): Single;
+function TShip.EstimateWeaponDamageAgainstTypicalDefense(Item: TWeapon): Single;
 var
   MinimumDamage, MaximumDamage, Level: Integer;
-  ItemKind: Byte;
+  ItemKind: TItemType;
   DefenseFactor, Armor: Single;
 begin
   Result := 1;
-  ItemKind := Byte(Item.ItemType);
-  if ItemKind in [Ord(t_IndustrialLaser)..Ord(t_CustomWeapon)] then
+  ItemKind := Item.ItemType;
+  if ItemKind in WeaponItemTypes then
   begin
-    if (Cardinal(TWeapon(Item).GetDamageFlags) and (1 shl Ord(dkUndefendable))) <> 0 then
+    if dkUndefendable in Item.GetDamageFlags then
     begin
-      MinimumDamage := GetWeaponMinDamage(TWeapon(Item));
-      MaximumDamage := GetWeaponMaxDamage(TWeapon(Item));
+      MinimumDamage := GetWeaponMinDamage(Item);
+      MaximumDamage := GetWeaponMaxDamage(Item);
     end
     else
     begin
@@ -8973,8 +8958,8 @@ begin
       DefenseFactor := 1 - DefGeneratorLevelFactors[Level];
       DefenseFactor := 1 - RemapClamped(Galaxy.TechLevel, 1, 8, 0.5, 1.2) * DefenseFactor;
       Armor := RemapClamped(Galaxy.TechLevel, 1, 8, 0.5, 1.5) * HullLevelStats[Level].Armor;
-      MinimumDamage := Round(GetWeaponMinDamage(TWeapon(Item)) * DefenseFactor - Armor);
-      MaximumDamage := Round(GetWeaponMaxDamage(TWeapon(Item)) * DefenseFactor - Armor);
+      MinimumDamage := Round(GetWeaponMinDamage(Item) * DefenseFactor - Armor);
+      MaximumDamage := Round(GetWeaponMaxDamage(Item) * DefenseFactor - Armor);
     end;
     MinimumDamage := Max(1, MinimumDamage);
     MaximumDamage := Max(1, MaximumDamage);
@@ -8994,7 +8979,7 @@ var
   Range, I, TemplateRange: Integer;
   Extra: PExtraSpecial;
 begin
-  if not (Weapon.ItemType in [t_IndustrialLaser..t_CustomWeapon]) then
+  if not (Weapon.ItemType in WeaponItemTypes) then
   begin
     Result := 0;
     Exit;
@@ -9044,7 +9029,7 @@ begin
       Value
           + CountActiveArtefacts(t_ArtefactHull)
               * (HullArtefactArmor
-                  + HullArtefactBoostArmor * Byte(CanBoostArtefact(t_ArtefactHull, Hull, False)));
+                  + HullArtefactBoostArmor * Ord(CanBoostArtefact(t_ArtefactHull, Hull, False)));
   Result := Max(0, Value);
 end;
 
@@ -9076,7 +9061,7 @@ begin
           + CountActiveArtefacts(t_ArtWeaponToSpeed)
               * (WeaponToSpeedArtefactBonus
                   + WeaponToSpeedArtefactBoost
-                      * Byte(CanBoostArtefact(t_ArtWeaponToSpeed, Engine, False)));
+                      * Ord(CanBoostArtefact(t_ArtWeaponToSpeed, Engine, False)));
   Value := Max(Min(200, Engine.Speed), Value + Bonus);
   for I := 1 to CountActiveArtefacts(t_ArtefactSpeed) do
     Value :=
@@ -9135,8 +9120,7 @@ begin
       Value
           + CountActiveArtefacts(t_ArtefactRadar)
               * (RadarArtefactRange
-                  + RadarArtefactBoostRange
-                      * Byte(CanBoostArtefact(t_ArtefactRadar, Radar, False)));
+                  + RadarArtefactBoostRange * Ord(CanBoostArtefact(t_ArtefactRadar, Radar, False)));
   Result := Max(0, Value + Bonus);
 end;
 
@@ -9158,7 +9142,7 @@ begin
           + CountActiveArtefacts(t_ArtefactScaner)
               * (ScannerArtefactPower
                   + ScannerArtefactBoostPower
-                      * Byte(CanBoostArtefact(t_ArtefactScaner, Scanner, False)));
+                      * Ord(CanBoostArtefact(t_ArtefactScaner, Scanner, False)));
   Result := Max(0, Value + Bonus);
 end;
 
@@ -9180,7 +9164,7 @@ begin
           + CountActiveArtefacts(t_ArtefactDroid)
               * (DroidArtefactRepair
                   + DroidArtefactBoostRepair
-                      * Byte(CanBoostArtefact(t_ArtefactDroid, RepairRobot, False)));
+                      * Ord(CanBoostArtefact(t_ArtefactDroid, RepairRobot, False)));
   Result := Max(0, Value + Bonus);
 end;
 
@@ -9202,7 +9186,7 @@ begin
           + CountActiveArtefacts(t_ArtefactHook)
               * (CargoHookArtefactPower
                   + CargoHookArtefactBoostPower
-                      * Byte(CanBoostArtefact(t_ArtefactHook, CargoHook, False)));
+                      * Ord(CanBoostArtefact(t_ArtefactHook, CargoHook, False)));
   Result := Max(0, Value + Bonus);
 end;
 
@@ -9314,7 +9298,7 @@ begin
         AccumulateEquipmentBonus(
             EvaluateStatBonus(bonWRadius, Module.StatBonuses[bonWRadius]) * CountEquippedWeapons
         );
-        if not (ItemType in [t_IndustrialLaser..t_CustomWeapon]) then
+        if not (ItemType in WeaponItemTypes) then
           for I := 1 to CountEquippedWeapons do
           begin
             DamageBonus := 0;
@@ -9379,7 +9363,7 @@ begin
         AccumulateEquipmentBonus(
             EvaluateStatBonus(bonWRadius, Item.GetStatBonus(bonWRadius)) * CountEquippedWeapons
         );
-        if not (ItemType in [t_IndustrialLaser..t_CustomWeapon]) then
+        if not (ItemType in WeaponItemTypes) then
           for I := 1 to CountEquippedWeapons do
           begin
             DamageBonus := 0;
@@ -9514,18 +9498,18 @@ begin
   FreeCapacity := Self.GetHull.Weight;
   for I := 0 to Self.Inventory.Count - 1 do
   begin
-    Item := TEquipment(Self.Inventory[I]);
+    Item := Self.Inventory[I];
     if (Item.ItemType <> t_Hull) and (Item.EquippedFlag <> 0) then
     begin
       Inc(EquippedCount);
-      Effectiveness := Effectiveness + Self.CalculateItemEffectiveness(TItem(Item));
+      Effectiveness := Effectiveness + Self.CalculateItemEffectiveness(Item);
       Dec(FreeCapacity, Item.Weight);
     end;
   end;
   Effectiveness := Effectiveness / Max(1, EquippedCount);
   for I := 0 to Self.Artefacts.Count - 1 do
   begin
-    Item := TEquipment(Self.Artefacts[I]);
+    Item := Self.Artefacts[I];
     if Item.EquippedFlag <> 0 then
       Dec(FreeCapacity, Item.Weight);
   end;
@@ -9700,37 +9684,22 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * SkillBonusEvaluationWeights[BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
             Result
                 + (SkillBonusEvaluationWeights[BonusKind] * 0.05)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6);
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
         Result :=
-            Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -SkillBonusEvaluationWeights[BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
             Result
                 + (SkillBonusEvaluationWeights[BonusKind] * 0.03)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -9799,7 +9768,7 @@ begin
                   * Ord(
                       CanBoostArtefact(t_ArtDecelerate, Weapon, False)
                           or (CountActiveArtefacts(t_ArtDecelerate) > 1));
-    Result := Result + Integer(CountWeaponsByDamageFlags(AcidFlags)) * Weapon.GetShotCount;
+    Result := Result + CountWeaponsByDamageFlags(AcidFlags) * Weapon.GetShotCount;
     if dkAcid in Flags then
     begin
       ShotTotal := 1;
@@ -9993,8 +9962,8 @@ begin
     Item := Inventory[I];
     if Item is TWeapon then
       Item.Unequip
-    else if (Item.ItemType in [t_FuelTanks..t_DefGenerator])
-        and (PShipEquipmentCacheView(@Hull).Slots[Item.ItemType] <> Item) then
+    else if (Item.ItemType in UtilityEquipmentTypes)
+        and (EquipmentCache.Slots[Item.ItemType] <> Item) then
       Item.Unequip;
   end;
   for I := 1 to 5 do
@@ -10005,7 +9974,7 @@ begin
     for I := 1 to Inventory.Count - 1 do
     begin
       Item := Inventory[I];
-      if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+      if Item.ItemType in WeaponItemTypes then
         EquipItem(Item as TWeapon);
     end;
   end
@@ -10014,11 +9983,11 @@ begin
       EquipItem(SelectBestUnequippedWeapon);
   for Kind := t_FuelTanks to t_DefGenerator do
   begin
-    if PShipEquipmentCacheView(@Hull).Slots[Kind] <> nil then
-      PShipEquipmentCacheView(@Hull).Slots[Kind].Unequip;
+    if EquipmentCache.Slots[Kind] <> nil then
+      EquipmentCache.Slots[Kind].Unequip;
     if GetSlotCountForItemType(Kind) > 0 then
     begin
-      PShipEquipmentCacheView(@Hull).Slots[Kind] := nil;
+      EquipmentCache.Slots[Kind] := nil;
       Best := nil;
       BestScore := 0;
       for I := 1 to Inventory.Count - 1 do
@@ -10200,7 +10169,7 @@ begin
           Candidate := Inventory[I];
           if Candidate.NoDropFlag > 0 then
             Continue;
-          if (Candidate.ItemType in [t_IndustrialLaser..t_CustomWeapon])
+          if (Candidate.ItemType in WeaponItemTypes)
               and (Candidate.Weight > GetHull.Weight * 0.2) then
           begin
             Item := TEquipment(Candidate);
@@ -10213,8 +10182,7 @@ begin
           end;
         end;
         if (Item <> nil)
-            and ((Item.ItemType in [t_IndustrialLaser..t_CustomWeapon])
-                or (Item.ItemType = t_CargoHook)) then
+            and ((Item.ItemType in WeaponItemTypes) or (Item.ItemType = t_CargoHook)) then
         begin
           if CanDrop then
             DropCarriedItemAsMovingLoot(Item)
@@ -10349,7 +10317,7 @@ begin
       Continue;
     if Item.ItemType in [t_Hull..t_Engine] then
       Continue;
-    if (Item.ItemType in [t_IndustrialLaser..t_CustomWeapon])
+    if (Item.ItemType in WeaponItemTypes)
         and ((WeaponCount <= 1) or (TWeapon(Item).GetWeaponInfo^.ShotType = wstAreaDamage)) then
       Continue;
     Value :=
@@ -10462,7 +10430,7 @@ begin
   for I := 0 to Last do
   begin
     IncrementWrapped(Index, 0, Last);
-    Star := TObject(CurrentStar.StarDistances[Index].Star) as TStar;
+    Star := CurrentStar.StarDistances[Index].Star;
     if Star.Constellation.Id = 20 then
       Continue;
     for J := 0 to Star.Planets.Count - 1 do
@@ -11051,8 +11019,6 @@ begin
 end;
 
 procedure TShip.ApplyCombatItemDegradation(BaseDurabilityDamage: Double);
-const
-  WearableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   I: Integer;
   Item, Artefact: TEquipment;
@@ -11060,12 +11026,12 @@ begin
   for I := 1 to Inventory.Count - 1 do
   begin
     Item := Inventory[I];
-    if (Item.BrokenFlag = 0) and (Byte(Item.ItemType) in WearableTypes) then
+    if (Item.BrokenFlag = 0) and (Item.ItemType in RepairableItemTypes) then
       if GetDefGenerator = Item then
         ApplyItemDegradation(Item, idkBattle, BaseDurabilityDamage * 1.3)
       else if GetRepairRobot = Item then
         ApplyItemDegradation(Item, idkBattle, BaseDurabilityDamage * 1.25)
-      else if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+      else if Item.ItemType in WeaponItemTypes then
         ApplyItemDegradation(Item, idkBattle, BaseDurabilityDamage * 1.15)
       else
         ApplyItemDegradation(Item, idkBattle, BaseDurabilityDamage);
@@ -11073,7 +11039,7 @@ begin
   for I := 0 to Artefacts.Count - 1 do
   begin
     Artefact := Artefacts[I];
-    if (Artefact.BrokenFlag = 0) and (Byte(Artefact.ItemType) in WearableTypes) then
+    if (Artefact.BrokenFlag = 0) and (Artefact.ItemType in RepairableItemTypes) then
       case NextRandomIntRange(1, 10, RandomState) of
         1..6: Continue;
         7: ApplyItemDegradation(Artefact, idkBattle, BaseDurabilityDamage * 0.3);
@@ -11085,8 +11051,6 @@ begin
 end;
 
 procedure TShip.ApplyArtefactUseDegradation(BaseDurabilityDamage: Double);
-const
-  WearableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   I: Integer;
   Item: TEquipment;
@@ -11105,7 +11069,7 @@ begin
       Item.Repair;
     if (Item.BrokenFlag = 0)
         and (Item.EquippedFlag <> 0)
-        and (Byte(Item.ItemType) in WearableTypes) then
+        and (Item.ItemType in RepairableItemTypes) then
       ApplyItemDegradation(Item, idkUse, BaseDurabilityDamage);
   end;
 end;
@@ -11169,7 +11133,7 @@ begin
   end;
   if CanUseEquipmentTech(Item) and (GetEffectiveSkillLevel(psTechnical) > 0) then
     DurabilityDamage := DurabilityDamage / (1 + GetEffectiveSkillLevel(psTechnical) * 0.2);
-  DurabilityDamage := DurabilityDamage * Item.GetFragilityFactor(EmptyDamageFlags);
+  DurabilityDamage := DurabilityDamage * Item.GetFragilityFactor([]);
   BeforeScript := Round(DurabilityDamage * 1000);
   case Kind of
     idkBattle: AfterScript := ScriptItemsAct(satOnReduceEqBattle, Item, nil, BeforeScript);
@@ -11269,7 +11233,7 @@ begin
   Specials := 0;
   for I := 0 to Inventory.Count - 1 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if (not (Item is THull)) and (Item.EquippedFlag <> 0) then
     begin
       Inc(Equipped);
@@ -11493,7 +11457,7 @@ begin
   Result := 0;
   for I := 1 to Inventory.Count - 1 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if (Item.OwnerId = oiDominator) and (Item.EquippedFlag = 0) then
       Inc(Result);
   end;
@@ -11522,7 +11486,7 @@ begin
   Result := True;
   if Item.ItemType in [t_Hull..t_Engine] then
     Exit;
-  if (Item.ItemType in [t_IndustrialLaser..t_CustomWeapon]) and (WeaponCount <= 1) then
+  if (Item.ItemType in WeaponItemTypes) and (WeaponCount <= 1) then
     Exit;
   if (Item.ItemType = t_CargoHook)
       and (TypeId in [stRanger, stPirate])
@@ -11589,9 +11553,6 @@ var
   RestoreStock, GeneratedBatch, DifferentHullGraph, UseMoney: Boolean;
   SavedNextItemId: Cardinal;
   Bought: Boolean;
-  UnusedNativeFrame:
-      array[0..7] of
-          Byte; // EBP-$74..-$6D are never accessed in the native frame; original local types are unknown.
 
   function SelectReplacedWeapon: TWeapon; { Caller-popped static link; ship -4. Selects the lowest evaluated weapon when all slots are occupied. }
   var
@@ -11719,7 +11680,7 @@ begin
     while I > 0 do
     begin
       Dec(I);
-      OldItem := TEquipment(Inventory[I]);
+      OldItem := Inventory[I];
       if (OldItem.ItemType <> t_Hull)
           and (OldItem.EquippedFlag <> 0)
           and not IsEssentialInventoryItem(OldItem)
@@ -11741,7 +11702,7 @@ begin
   BestItem := nil;
   for I := 0 to Offers.Count - 1 do
   begin
-    OfferItem := TEquipment(Offers[I]);
+    OfferItem := Offers[I];
     if not (OfferItem.ItemType in [t_Hull..t_CustomWeapon])
         or ((OfferItem.ScriptItem <> nil) and (TScriptItem(OfferItem.ScriptItem).Name <> ''))
         or (OfferItem.NoDropFlag > 0)
@@ -11769,7 +11730,7 @@ begin
     if OfferItem is TWeapon then
       OldItem := ReplacementWeapon
     else
-      OldItem := PShipEquipmentCacheView(@Hull).Slots[OfferItem.ItemType];
+      OldItem := EquipmentCache.Slots[OfferItem.ItemType];
     if (OfferItem.ItemType in [t_FuelTanks..t_Engine])
         and (OldItem = nil)
         and (not UseMoney or (Money >= OfferItem.Cost)) then
@@ -11841,7 +11802,7 @@ begin
     if BestItem is TWeapon then
       OldItem := ReplacementWeapon
     else
-      OldItem := PShipEquipmentCacheView(@Hull).Slots[BestItem.ItemType];
+      OldItem := EquipmentCache.Slots[BestItem.ItemType];
     Offers.Delete(Offers.IndexOf(BestItem));
     Bought := True;
     if OldItem <> nil then
@@ -12137,7 +12098,7 @@ begin
   if PickupTargets <> nil then
     for I := 0 to PickupTargets.Count - 1 do
     begin
-      Item := TItem(PickupTargets[I]);
+      Item := PickupTargets[I];
       Inc(Result, Item.Weight);
     end;
 end;
@@ -12188,15 +12149,14 @@ begin
         end;
     end;
   end
-  else if (Item.ItemType in [t_IndustrialLaser..t_CustomWeapon])
-      and IsEquipmentUsable(Item as TEquipment) then
+  else if (Item.ItemType in WeaponItemTypes) and IsEquipmentUsable(Item as TEquipment) then
   begin
     EquippedWeight := 0;
     EquippedValue := 0;
     for I := 1 to Inventory.Count - 1 do
     begin
       Other := Inventory[I];
-      if (Other.ItemType in [t_IndustrialLaser..t_CustomWeapon]) and (Other.EquippedFlag <> 0) then
+      if (Other.ItemType in WeaponItemTypes) and (Other.EquippedFlag <> 0) then
       begin
         EquippedValue := EquippedValue + EvaluateItem(Other, 1);
         Inc(EquippedWeight, Other.Weight);
@@ -12315,7 +12275,7 @@ begin
   Added := False;
   for I := 0 to CurrentStar.Items.Count - 1 do
   begin
-    Item := TItem(CurrentStar.Items[I]);
+    Item := CurrentStar.Items[I];
     if AcceptPickupTarget(Item) and not HasPickupTarget(Item) then
     begin
       AddPickupTarget(Item, False);
@@ -12325,7 +12285,7 @@ begin
   if not Added then
     for I := 0 to CurrentStar.Items.Count - 1 do
     begin
-      Item := TItem(CurrentStar.Items[I]);
+      Item := CurrentStar.Items[I];
       if AcceptPickupTarget(Item) then
         RemovePickupTarget(Item);
     end;
@@ -12347,7 +12307,7 @@ begin
   Count := 0;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship <> Self)
         and (Ship.PickupTargets <> nil)
         and (Ship.PickupTargets.IndexOf(Item) >= 0) then
@@ -12406,7 +12366,7 @@ begin
   Result := nil;
   for I := 0 to CurrentStar.Items.Count - 1 do
   begin
-    Item := TItem(CurrentStar.Items[I]);
+    Item := CurrentStar.Items[I];
     if (PickupTargets <> nil) and (PickupTargets.IndexOf(Item) >= 0) then
     begin
       Result := Item;
@@ -12633,7 +12593,7 @@ begin
       Count := CurrentStar.Ships.Count;
       for I := 0 to Count - 1 do
       begin
-        Ship := TShip(CurrentStar.Ships[I]);
+        Ship := CurrentStar.Ships[I];
         if (Ship <> Self)
             and (Ship.Order = soTakeoff)
             and (Ship.CurrentPlanet = CurrentPlanet)
@@ -12708,25 +12668,24 @@ var
 
   procedure InitializeFilm(Alpha: Byte); { Caller-popped static link; step index -4, ship -8. }
   begin
-    TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, FilmObject, Position);
-    TEFilm(PrimaryFilm)
-        .SetObjectAngle(StartStepIndex, FilmObject, HeadingDegreesToByte(MovementDirection));
-    TEFilm(PrimaryFilm).SetObjectAlpha(StartStepIndex, FilmObject, Alpha);
-    TEFilm(PrimaryFilm).AttachObject(StartStepIndex, FilmObject);
+    PrimaryFilm.SetObjectPosition(StartStepIndex, FilmObject, Position);
+    PrimaryFilm.SetObjectAngle(StartStepIndex, FilmObject, HeadingDegreesToByte(MovementDirection));
+    PrimaryFilm.SetObjectAlpha(StartStepIndex, FilmObject, Alpha);
+    PrimaryFilm.AttachObject(StartStepIndex, FilmObject);
     if AuxiliaryFilmObject <> nil then
     begin
-      TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, AuxiliaryFilmObject, Position);
-      TEFilm(PrimaryFilm)
-          .SetObjectAngle(
-              StartStepIndex,
-              AuxiliaryFilmObject,
-              HeadingDegreesToByte(MovementDirection));
-      TEFilm(PrimaryFilm)
-          .SetObjectAlpha(
-              StartStepIndex,
-              AuxiliaryFilmObject,
-              AuxiliaryFilmObject.SceneObject.GetAlpha);
-      TEFilm(PrimaryFilm).AttachObject(StartStepIndex, AuxiliaryFilmObject);
+      PrimaryFilm.SetObjectPosition(StartStepIndex, AuxiliaryFilmObject, Position);
+      PrimaryFilm.SetObjectAngle(
+          StartStepIndex,
+          AuxiliaryFilmObject,
+          HeadingDegreesToByte(MovementDirection)
+      );
+      PrimaryFilm.SetObjectAlpha(
+          StartStepIndex,
+          AuxiliaryFilmObject,
+          AuxiliaryFilmObject.SceneObject.GetAlpha
+      );
+      PrimaryFilm.AttachObject(StartStepIndex, AuxiliaryFilmObject);
     end;
   end;
 begin
@@ -12779,18 +12738,18 @@ begin
       and ((Order <> soNone) or not IsOnPlanet)
       and ((Order <> soNone) or not IsDockedToShip) then
   begin
-    FilmObject := TEFilm(PrimaryFilm).AddObject(Id, Graphic);
+    FilmObject := PrimaryFilm.AddObject(Id, Graphic);
     if Graphic is TShip2SE then
     begin
       if AfterburnerActive then
-        TEFilm(PrimaryFilm).SetShipSizeAndTailMode(StartStepIndex, FilmObject, Graphic.Size, 2)
+        PrimaryFilm.SetShipSizeAndTailMode(StartStepIndex, FilmObject, Graphic.Size, 2)
       else
-        TEFilm(PrimaryFilm).SetShipSizeAndTailMode(StartStepIndex, FilmObject, Graphic.Size, 1);
+        PrimaryFilm.SetShipSizeAndTailMode(StartStepIndex, FilmObject, Graphic.Size, 1);
     end
     else if (Graphic is TRuinsSE) and (Graphic as TRuinsSE).HasTransitionImages then
-      TEFilm(PrimaryFilm).SetRuinsState(StartStepIndex, FilmObject, 1);
+      PrimaryFilm.SetRuinsState(StartStepIndex, FilmObject, 1);
     if InterceptorGraphic <> nil then
-      AuxiliaryFilmObject := TEFilm(PrimaryFilm).AddObject(Id, InterceptorGraphic);
+      AuxiliaryFilmObject := PrimaryFilm.AddObject(Id, InterceptorGraphic);
   end;
   if Order = soNone then
   begin
@@ -12799,7 +12758,7 @@ begin
       begin
         InitializeFilm(255);
         if GetPlayer = Self then
-          TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+          PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
       end;
   end
   else if Order = soMove then
@@ -12810,7 +12769,7 @@ begin
     begin
       InitializeFilm(255);
       if GetPlayer = Self then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, OrderDestination, True);
+        PrimaryFilm.SetCameraAnchor(StartStepIndex, OrderDestination, True);
     end;
   end
   else if Order = soLand then
@@ -12851,9 +12810,9 @@ begin
         if RecordFilm then
         begin
           FilmAlphaStep := -(FilmAlpha / MovementPath.NodeCount);
-          TEFilm(PrimaryFilm).SetObjectAlpha(StartStepIndex, FilmObject, 255);
+          PrimaryFilm.SetObjectAlpha(StartStepIndex, FilmObject, 255);
           if GetPlayer = Self then
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
         end
         else
           FilmAlpha := 0;
@@ -12863,9 +12822,9 @@ begin
     end
     else if RecordFilm then
     begin
-      TEFilm(PrimaryFilm).SetObjectAlpha(StartStepIndex, FilmObject, 255);
+      PrimaryFilm.SetObjectAlpha(StartStepIndex, FilmObject, 255);
       if GetPlayer = Self then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, TargetPosition, True);
+        PrimaryFilm.SetCameraAnchor(StartStepIndex, TargetPosition, True);
     end;
   end
   else if Order = soTeleport then
@@ -12875,32 +12834,32 @@ begin
       if RecordFilm then
       begin
         if GetPlayer = Self then
-          TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+          PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
         if (FilmObject.SceneObject is TRuinsSE)
             and TRuinsSE(FilmObject.SceneObject).HasTransitionImages then
-          TEFilm(PrimaryFilm).SetRuinsState(StartStepIndex, FilmObject, 2)
+          PrimaryFilm.SetRuinsState(StartStepIndex, FilmObject, 2)
         else
         begin
           Effect := TGAIEffectSE.Create('Effect.TeleportOut', Classes.Point(0, 0));
-          EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Effect);
-          TEFilm(PrimaryFilm)
-              .SetEffectImagePosition(
-                  StartStepIndex,
-                  EffectFilm,
-                  Classes.Point(Round(Position.X), Round(Position.Y)));
+          EffectFilm := PrimaryFilm.AddObject(0, Effect);
+          PrimaryFilm.SetEffectImagePosition(
+              StartStepIndex,
+              EffectFilm,
+              Classes.Point(Round(Position.X), Round(Position.Y))
+          );
           FilmAlpha := 510;
           if (OrderStateData <= 0) and (OrderTarget = CurrentStar) then
           begin
-            TEFilm(PrimaryFilm).SetEffectDurationScale(StartStepIndex, EffectFilm, 0.5);
+            PrimaryFilm.SetEffectDurationScale(StartStepIndex, EffectFilm, 0.5);
             FilmAlphaStep := -7.65;
           end
           else
           begin
-            TEFilm(PrimaryFilm).SetEffectDurationScale(StartStepIndex, EffectFilm, 1);
+            PrimaryFilm.SetEffectDurationScale(StartStepIndex, EffectFilm, 1);
             FilmAlphaStep := -3.825;
           end;
-          TEFilm(PrimaryFilm).AttachObject(StartStepIndex + 1, EffectFilm);
-          TEFilm(PrimaryFilm).PlayObjectSound(StartStepIndex + 1, FilmObject, 'Sound.TeleportOut');
+          PrimaryFilm.AttachObject(StartStepIndex + 1, EffectFilm);
+          PrimaryFilm.PlayObjectSound(StartStepIndex + 1, FilmObject, 'Sound.TeleportOut');
         end;
         InitializeFilm(255);
       end;
@@ -12931,27 +12890,27 @@ begin
           if (FilmObject.SceneObject is TRuinsSE)
               and TRuinsSE(FilmObject.SceneObject).HasTransitionImages then
           begin
-            TEFilm(PrimaryFilm).SetRuinsState(StartStepIndex, FilmObject, 3);
+            PrimaryFilm.SetRuinsState(StartStepIndex, FilmObject, 3);
             InitializeFilm(255);
           end
           else
           begin
             Effect := TGAIEffectSE.Create('Effect.TeleportIn', Classes.Point(0, 0));
-            EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Effect);
-            TEFilm(PrimaryFilm)
-                .SetEffectImagePosition(
-                    StartStepIndex,
-                    EffectFilm,
-                    Classes.Point(Round(Position.X), Round(Position.Y)));
-            TEFilm(PrimaryFilm).SetEffectDurationScale(StartStepIndex, EffectFilm, 1);
-            TEFilm(PrimaryFilm).AttachObject(StartStepIndex + 1, EffectFilm);
-            TEFilm(PrimaryFilm).PlayObjectSound(StartStepIndex + 1, FilmObject, 'Sound.TeleportIn');
+            EffectFilm := PrimaryFilm.AddObject(0, Effect);
+            PrimaryFilm.SetEffectImagePosition(
+                StartStepIndex,
+                EffectFilm,
+                Classes.Point(Round(Position.X), Round(Position.Y))
+            );
+            PrimaryFilm.SetEffectDurationScale(StartStepIndex, EffectFilm, 1);
+            PrimaryFilm.AttachObject(StartStepIndex + 1, EffectFilm);
+            PrimaryFilm.PlayObjectSound(StartStepIndex + 1, FilmObject, 'Sound.TeleportIn');
             FilmAlpha := -255;
             FilmAlphaStep := 3.825;
             InitializeFilm(0);
           end;
           if GetPlayer = Self then
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, True);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, True);
           if (Self is TRuins) and (TypeId = rstDominion) and (TransitOriginStar = CurrentStar) then
             TRuins(Self).ReportAbductionOutcome;
         end
@@ -12993,7 +12952,7 @@ begin
         if RecordFilm then
         begin
           if GetPlayer = Self then
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
           FilmAlphaStep := -(510 / MovementPath.NodeCount);
           if PlayerStar = CurrentStar then
           begin
@@ -13027,12 +12986,12 @@ begin
                 )
             );
             Gate.Gate.SetAngle(HeadingDegreesToByte(Angle) + 127);
-            EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Gate);
-            TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
-            TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
-            TEFilm(PrimaryFilm).SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
-            TEFilm(PrimaryFilm).SetGateState(StartStepIndex, EffectFilm, 0);
-            TEFilm(PrimaryFilm).OpenGate(StartStepIndex, EffectFilm);
+            EffectFilm := PrimaryFilm.AddObject(0, Gate.Gate);
+            PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
+            PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
+            PrimaryFilm.SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
+            PrimaryFilm.SetGateState(StartStepIndex, EffectFilm, 0);
+            PrimaryFilm.OpenGate(StartStepIndex, EffectFilm);
 
             if not (Self is TKling) and not AbductedByPirateClan then
               if GetJumpRange
@@ -13040,14 +12999,14 @@ begin
                       PointDistance((OrderTarget as TStar).Position, CurrentStar.Position)) then
                 if ((OrderTarget as TStar).Constellation.Id <> 20)
                     or (OrderTarget as TStar).IsConstellationVisible then
-                  TEFilm(PrimaryFilm)
+                  PrimaryFilm
                       .SetObjectText(StartStepIndex, EffectFilm, (OrderTarget as TStar).Name);
-            TEFilm(PrimaryFilm).AttachObject(StartStepIndex, EffectFilm);
+            PrimaryFilm.AttachObject(StartStepIndex, EffectFilm);
             if Gate.Effect = nil then
-              TEFilm(PrimaryFilm).PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump')
+              PrimaryFilm.PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump')
             else
             begin
-              TEFilm(PrimaryFilm)
+              PrimaryFilm
                   .PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJumpAbducted');
               if GiResourceVariant = 2 then
                 Gate.Effect.SetSize(
@@ -13067,20 +13026,19 @@ begin
                   )
               );
               Gate.Effect.SetAngle(HeadingDegreesToByte(Angle) + 127);
-              EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Effect);
-              TEFilm(PrimaryFilm)
-                  .SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
-              TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
-              TEFilm(PrimaryFilm).SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
+              EffectFilm := PrimaryFilm.AddObject(0, Gate.Effect);
+              PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
+              PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
+              PrimaryFilm.SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
 
-              TEFilm(PrimaryFilm).AttachObject(StartStepIndex, EffectFilm);
+              PrimaryFilm.AttachObject(StartStepIndex, EffectFilm);
             end;
 
           end;
         end;
       end
       else if RecordFilm and (GetPlayer = Self) then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, OrderDestination, False);
+        PrimaryFilm.SetCameraAnchor(StartStepIndex, OrderDestination, False);
     end
     else
     begin
@@ -13128,14 +13086,14 @@ begin
           if RecordFilm and (SimulationContext = 0) then
           begin
             Effect := TGAIEffectSE.Create('Effect.CBAbductEffect', Classes.Point(0, 0));
-            EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Effect);
-            TEFilm(PrimaryFilm)
-                .SetEffectImagePosition(
-                    StartStepIndex,
-                    EffectFilm,
-                    Classes.Point(Round(Position.X), Round(Position.Y)));
-            TEFilm(PrimaryFilm).SetEffectDurationScale(StartStepIndex, EffectFilm, 0.5);
-            TEFilm(PrimaryFilm).AttachObject(StartStepIndex + 1, EffectFilm);
+            EffectFilm := PrimaryFilm.AddObject(0, Effect);
+            PrimaryFilm.SetEffectImagePosition(
+                StartStepIndex,
+                EffectFilm,
+                Classes.Point(Round(Position.X), Round(Position.Y))
+            );
+            PrimaryFilm.SetEffectDurationScale(StartStepIndex, EffectFilm, 0.5);
+            PrimaryFilm.AttachObject(StartStepIndex + 1, EffectFilm);
             SimulationContext := 1;
           end;
         end
@@ -13162,7 +13120,7 @@ begin
           FilmAlphaStep := 510 / MovementPath.NodeCount;
           InitializeFilm(0);
           if GetPlayer = Self then
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, True);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, True);
           if PlayerStar = CurrentStar then
           begin
             Distance := PointDistance(Position, OrderDestination);
@@ -13189,12 +13147,12 @@ begin
                 )
             );
             Gate.Gate.SetAngle(HeadingDegreesToByte(MovementDirection));
-            EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Gate);
-            TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
-            TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
-            TEFilm(PrimaryFilm).SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
-            TEFilm(PrimaryFilm).SetGateState(StartStepIndex, EffectFilm, 0);
-            TEFilm(PrimaryFilm).OpenGate(StartStepIndex, EffectFilm);
+            EffectFilm := PrimaryFilm.AddObject(0, Gate.Gate);
+            PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
+            PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
+            PrimaryFilm.SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
+            PrimaryFilm.SetGateState(StartStepIndex, EffectFilm, 0);
+            PrimaryFilm.OpenGate(StartStepIndex, EffectFilm);
 
             if TransitOriginStar <> nil then
               if not AbductedByPirateClan and not (Self is TKling) then
@@ -13202,10 +13160,9 @@ begin
                         >= Round(PointDistance(TransitOriginStar.Position, CurrentStar.Position)))
                     and ((TransitOriginStar.Constellation.Id <> 20)
                         or TransitOriginStar.IsConstellationVisible) then
-                  TEFilm(PrimaryFilm)
-                      .SetObjectText(StartStepIndex, EffectFilm, TransitOriginStar.Name);
-            TEFilm(PrimaryFilm).AttachObject(StartStepIndex, EffectFilm);
-            TEFilm(PrimaryFilm).PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump');
+                  PrimaryFilm.SetObjectText(StartStepIndex, EffectFilm, TransitOriginStar.Name);
+            PrimaryFilm.AttachObject(StartStepIndex, EffectFilm);
+            PrimaryFilm.PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump');
             if Gate.Effect <> nil then
             begin
               if GiResourceVariant = 2 then
@@ -13226,19 +13183,18 @@ begin
                   )
               );
               Gate.Effect.SetAngle(HeadingDegreesToByte(MovementDirection));
-              EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Effect);
-              TEFilm(PrimaryFilm)
-                  .SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
-              TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
-              TEFilm(PrimaryFilm).SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
+              EffectFilm := PrimaryFilm.AddObject(0, Gate.Effect);
+              PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
+              PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
+              PrimaryFilm.SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
 
-              TEFilm(PrimaryFilm).AttachObject(StartStepIndex, EffectFilm);
+              PrimaryFilm.AttachObject(StartStepIndex, EffectFilm);
             end;
           end;
           if GetPlayer = Self then
           begin
-            TEFilm(PrimaryFilm).SetViewCenter(StartStepIndex, OrderDestination);
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, OrderDestination, False);
+            PrimaryFilm.SetViewCenter(StartStepIndex, OrderDestination);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, OrderDestination, False);
             for K := Low(TDominatorSeries) to High(TDominatorSeries) do
               GetPlayer.ChameleonDetected[K] := False;
             GetPlayer.ReportIdleSatellites(GetPlayer.CurrentStar);
@@ -13266,9 +13222,9 @@ begin
           if RecordFilm then
           begin
             FilmAlphaStep := -(FilmAlpha / MovementPath.NodeCount);
-            TEFilm(PrimaryFilm).SetObjectAlpha(StartStepIndex, FilmObject, 255);
+            PrimaryFilm.SetObjectAlpha(StartStepIndex, FilmObject, 255);
             if GetPlayer = Self then
-              TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+              PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
           end
           else
             FilmAlpha := 0;
@@ -13276,9 +13232,9 @@ begin
       end
       else if RecordFilm then
       begin
-        TEFilm(PrimaryFilm).SetObjectAlpha(StartStepIndex, FilmObject, 255);
+        PrimaryFilm.SetObjectAlpha(StartStepIndex, FilmObject, 255);
         if GetPlayer = Self then
-          TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, OrderDestination, True);
+          PrimaryFilm.SetCameraAnchor(StartStepIndex, OrderDestination, True);
       end;
     end
     else
@@ -13331,8 +13287,8 @@ begin
           InitializeFilm(0);
           if GetPlayer = Self then
           begin
-            TEFilm(PrimaryFilm).SetViewCenter(StartStepIndex, Position);
-            TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+            PrimaryFilm.SetViewCenter(StartStepIndex, Position);
+            PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
             for K := Low(TDominatorSeries) to High(TDominatorSeries) do
               GetPlayer.ChameleonDetected[K] := False;
             GetPlayer.ReportIdleSatellites(GetPlayer.CurrentStar);
@@ -13352,8 +13308,8 @@ begin
       InitializeFilm(0);
       if GetPlayer = Self then
       begin
-        TEFilm(PrimaryFilm).SetViewCenter(StartStepIndex, Position);
-        TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, Position, False);
+        PrimaryFilm.SetViewCenter(StartStepIndex, Position);
+        PrimaryFilm.SetCameraAnchor(StartStepIndex, Position, False);
       end;
     end;
     if (GetPlayer = Self) and (GetPlayer.QueuedTravelTarget <> nil) then
@@ -13381,7 +13337,7 @@ begin
       Graphic.SetPosition(Position);
       Graphic.SetAngle(HeadingDegreesToByte(MovementDirection));
       if RecordFilm then
-        TEFilm(PrimaryFilm)
+        PrimaryFilm
             .SetObjectAngle(StartStepIndex, FilmObject, HeadingDegreesToByte(MovementDirection));
       Gate := Galaxy.CreateJumpGate(True);
       if GiResourceVariant = 2 then
@@ -13400,15 +13356,15 @@ begin
           )
       );
       Gate.Gate.SetAngle(HeadingDegreesToByte(MovementDirection) + 127);
-      EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Gate);
-      TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
-      TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
-      TEFilm(PrimaryFilm).SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
-      TEFilm(PrimaryFilm).SetGateState(StartStepIndex, EffectFilm, 0);
-      TEFilm(PrimaryFilm).OpenGate(StartStepIndex, EffectFilm);
+      EffectFilm := PrimaryFilm.AddObject(0, Gate.Gate);
+      PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Gate.Position);
+      PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Gate.GetAngle);
+      PrimaryFilm.SetGateSize(StartStepIndex, EffectFilm, Gate.Gate.Size.X);
+      PrimaryFilm.SetGateState(StartStepIndex, EffectFilm, 0);
+      PrimaryFilm.OpenGate(StartStepIndex, EffectFilm);
 
-      TEFilm(PrimaryFilm).AttachObject(StartStepIndex + 1, EffectFilm);
-      TEFilm(PrimaryFilm).PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump');
+      PrimaryFilm.AttachObject(StartStepIndex + 1, EffectFilm);
+      PrimaryFilm.PlayObjectSound(StartStepIndex + 1, EffectFilm, 'Sound.HyperJump');
       if Gate.Effect <> nil then
       begin
         if GiResourceVariant = 2 then
@@ -13429,12 +13385,12 @@ begin
             )
         );
         Gate.Effect.SetAngle(HeadingDegreesToByte(MovementDirection) + 127);
-        EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Gate.Effect);
-        TEFilm(PrimaryFilm).SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
-        TEFilm(PrimaryFilm).SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
-        TEFilm(PrimaryFilm).SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
+        EffectFilm := PrimaryFilm.AddObject(0, Gate.Effect);
+        PrimaryFilm.SetObjectPosition(StartStepIndex, EffectFilm, Gate.Effect.Position);
+        PrimaryFilm.SetObjectAngle(StartStepIndex, EffectFilm, Gate.Effect.GetAngle);
+        PrimaryFilm.SetGateEffectSize(StartStepIndex, EffectFilm, Gate.Effect.Size.X);
 
-        TEFilm(PrimaryFilm).AttachObject(StartStepIndex + 1, EffectFilm);
+        PrimaryFilm.AttachObject(StartStepIndex + 1, EffectFilm);
       end;
     end;
   end
@@ -13446,7 +13402,7 @@ begin
     begin
       InitializeFilm(255);
       if GetPlayer = Self then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StartStepIndex, (OrderTarget as TShip).Position, True);
+        PrimaryFilm.SetCameraAnchor(StartStepIndex, (OrderTarget as TShip).Position, True);
     end;
     if Self is TTranclucator then
       if (Self as TTranclucator).CanFollowOwnerInCurrentStar then
@@ -13484,7 +13440,7 @@ begin
   else
     raise Exception.Create('Error in TShip.StepDayStart');
   if RecordFilm and (GetPlayer = Self) then
-    TEFilm(PrimaryFilm).SetRadarCenter(StartStepIndex, Position);
+    PrimaryFilm.SetRadarCenter(StartStepIndex, Position);
 end;
 
 function TShip.ProcessMovementStep(StepIndex: Integer; RecordFilm: Boolean): Boolean;
@@ -13507,7 +13463,7 @@ var
       begin
         Angle := HeadingDegreesToByte(Node.Heading);
         if HeadingDegreesToByte(MovementDirection) <> Angle then
-          TEFilm(PrimaryFilm).SetObjectAngle(StepIndex, FilmObject, Angle);
+          PrimaryFilm.SetObjectAngle(StepIndex, FilmObject, Angle);
       end;
       Position := Node.Position;
       MovementDirection := Node.Heading;
@@ -13515,20 +13471,20 @@ var
     end;
     if RecordFilm then
     begin
-      TEFilm(PrimaryFilm).SetObjectPosition(StepIndex, FilmObject, Position);
+      PrimaryFilm.SetObjectPosition(StepIndex, FilmObject, Position);
       if AuxiliaryFilmObject <> nil then
-        TEFilm(PrimaryFilm).SetObjectPosition(StepIndex, AuxiliaryFilmObject, Position);
+        PrimaryFilm.SetObjectPosition(StepIndex, AuxiliaryFilmObject, Position);
       if GetPlayer = Self then
-        TEFilm(PrimaryFilm).SetRadarCenter(StepIndex, Position);
+        PrimaryFilm.SetRadarCenter(StepIndex, Position);
       if FilmAlphaStep <> 0 then
       begin
         FilmAlpha := FilmAlpha + FilmAlphaStep;
         if FilmAlpha <= 0 then
-          TEFilm(PrimaryFilm).SetObjectAlpha(StepIndex, FilmObject, 0)
+          PrimaryFilm.SetObjectAlpha(StepIndex, FilmObject, 0)
         else if FilmAlpha >= 255 then
-          TEFilm(PrimaryFilm).SetObjectAlpha(StepIndex, FilmObject, 255)
+          PrimaryFilm.SetObjectAlpha(StepIndex, FilmObject, 255)
         else
-          TEFilm(PrimaryFilm).SetObjectAlpha(StepIndex, FilmObject, Round(FilmAlpha));
+          PrimaryFilm.SetObjectAlpha(StepIndex, FilmObject, Round(FilmAlpha));
       end;
     end;
   end;
@@ -13584,10 +13540,9 @@ begin
       if RecordFilm and (GetPlayer = Self) and (OrderStateData = 0) then
       begin
         if OrderTarget is TShip then
-          TEFilm(PrimaryFilm).SetCameraAnchor(StepIndex, (OrderTarget as TShip).Position, True)
+          PrimaryFilm.SetCameraAnchor(StepIndex, (OrderTarget as TShip).Position, True)
         else
-          TEFilm(PrimaryFilm)
-              .SetCameraAnchor(StepIndex, (OrderTarget as TPlanet).GetPosition, True);
+          PrimaryFilm.SetCameraAnchor(StepIndex, (OrderTarget as TPlanet).GetPosition, True);
       end;
       if ((MovementPath.ActiveHead = nil) or (MovementPath.ActiveHead.Next = nil))
           and (OrderStateData = 1) then
@@ -13626,9 +13581,9 @@ begin
         end;
         if RecordFilm then
         begin
-          TEFilm(PrimaryFilm).DetachObject(StepIndex, FilmObject);
+          PrimaryFilm.DetachObject(StepIndex, FilmObject);
           if AuxiliaryFilmObject <> nil then
-            TEFilm(PrimaryFilm).DetachObject(StepIndex, AuxiliaryFilmObject);
+            PrimaryFilm.DetachObject(StepIndex, AuxiliaryFilmObject);
         end;
       end;
     end;
@@ -13642,9 +13597,9 @@ begin
           and (FilmAlpha <= 0)
           and ((OrderStateData > 0) or (OrderTarget <> CurrentStar)) then
       begin
-        TEFilm(PrimaryFilm).DetachObject(StepIndex, FilmObject);
+        PrimaryFilm.DetachObject(StepIndex, FilmObject);
         if AuxiliaryFilmObject <> nil then
-          TEFilm(PrimaryFilm).DetachObject(StepIndex, AuxiliaryFilmObject);
+          PrimaryFilm.DetachObject(StepIndex, AuxiliaryFilmObject);
       end;
     end;
     HalfTurn := CurrentStar.MovementStepCount div 2;
@@ -13656,15 +13611,15 @@ begin
         FilmAlpha := -255;
         FilmAlphaStep := 7.65;
         Effect := TGAIEffectSE.Create('Effect.TeleportIn', Classes.Point(0, 0));
-        EffectFilm := TEFilm(PrimaryFilm).AddObject(0, Effect);
-        TEFilm(PrimaryFilm)
-            .SetEffectImagePosition(
-                StepIndex,
-                EffectFilm,
-                Classes.Point(Round(Position.X), Round(Position.Y)));
-        TEFilm(PrimaryFilm).SetEffectDurationScale(StepIndex, EffectFilm, 0.5);
-        TEFilm(PrimaryFilm).AttachObject(StepIndex, EffectFilm);
-        TEFilm(PrimaryFilm).PlayObjectSound(StepIndex + 1, FilmObject, 'Sound.TeleportIn');
+        EffectFilm := PrimaryFilm.AddObject(0, Effect);
+        PrimaryFilm.SetEffectImagePosition(
+            StepIndex,
+            EffectFilm,
+            Classes.Point(Round(Position.X), Round(Position.Y))
+        );
+        PrimaryFilm.SetEffectDurationScale(StepIndex, EffectFilm, 0.5);
+        PrimaryFilm.AttachObject(StepIndex, EffectFilm);
+        PrimaryFilm.PlayObjectSound(StepIndex + 1, FilmObject, 'Sound.TeleportIn');
       end
       else
       begin
@@ -13688,9 +13643,9 @@ begin
         InHyperspace := True;
         if RecordFilm then
         begin
-          TEFilm(PrimaryFilm).DetachObject(StepIndex, FilmObject);
+          PrimaryFilm.DetachObject(StepIndex, FilmObject);
           if AuxiliaryFilmObject <> nil then
-            TEFilm(PrimaryFilm).DetachObject(StepIndex, AuxiliaryFilmObject);
+            PrimaryFilm.DetachObject(StepIndex, AuxiliaryFilmObject);
         end;
         ClearMovementPath;
         if ((GetPlayer = Self)
@@ -13729,7 +13684,7 @@ begin
     begin
       AdvancePath;
       if RecordFilm and (FilmAlphaStep = 0) and (GetPlayer = Self) then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StepIndex, OrderDestination, True);
+        PrimaryFilm.SetCameraAnchor(StepIndex, OrderDestination, True);
       if (Position.X = OrderDestination.X) and (Position.Y = OrderDestination.Y) then
       begin
         if THole(OrderTarget).HoleType in [1] then
@@ -13743,9 +13698,9 @@ begin
         AbductedByPirateClan := False;
         if RecordFilm then
         begin
-          TEFilm(PrimaryFilm).DetachObject(StepIndex, FilmObject);
+          PrimaryFilm.DetachObject(StepIndex, FilmObject);
           if AuxiliaryFilmObject <> nil then
-            TEFilm(PrimaryFilm).DetachObject(StepIndex, AuxiliaryFilmObject);
+            PrimaryFilm.DetachObject(StepIndex, AuxiliaryFilmObject);
         end;
         ClearMovementPath;
         Galaxy.ShipsInTransit.Add(Self);
@@ -13764,7 +13719,7 @@ begin
     begin
       AdvancePath;
       if RecordFilm and (GetPlayer = Self) then
-        TEFilm(PrimaryFilm).SetCameraAnchor(StepIndex, (OrderTarget as TShip).Position, True);
+        PrimaryFilm.SetCameraAnchor(StepIndex, (OrderTarget as TShip).Position, True);
     end;
   end
   else
@@ -13785,7 +13740,7 @@ begin
       AuxiliaryFilmObject.SceneObject.SetAlpha(
           Min(255, Max(0, Round(Integer(AuxiliaryFilmObject.SceneObject.GetAlpha) + 2.55)))
       );
-    TEFilm(PrimaryFilm)
+    PrimaryFilm
         .SetObjectAlpha(StepIndex, AuxiliaryFilmObject, AuxiliaryFilmObject.SceneObject.GetAlpha);
   end;
 end;
@@ -14905,7 +14860,7 @@ begin
   begin
     for I := 0 to Inventory.Count - 1 do
     begin
-      Item := TEquipment(Inventory[I]);
+      Item := Inventory[I];
       if (Item.EquippedFlag <> 0)
           and (ItemTypeToSlotKind(Item.ItemType) = Kind)
           and (Integer(Item.AssignedSlotData) and EquipmentSlotIndexMask = SlotIndex) then
@@ -14918,7 +14873,7 @@ begin
   else
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Item := TEquipment(Artefacts[I]);
+      Item := Artefacts[I];
       if (Item.EquippedFlag <> 0)
           and (Integer(Item.AssignedSlotData) and EquipmentSlotIndexMask = SlotIndex) then
       begin
@@ -15243,7 +15198,7 @@ begin
     if (CurrentStar.Id <> 71) and (CurrentStar.Id <> 72) then
       for I := 1 to Galaxy.Stars.Count - 1 do
       begin
-        Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+        Star := CurrentStar.StarDistances[I].Star;
         if (Star.ControlFaction = sfDominators)
             and (Star.Battle = 0)
             and (Star.Status.CustomFaction = '')
@@ -15317,7 +15272,7 @@ begin
   begin
     for I := 0 to Inventory.Count - 1 do
     begin
-      Other := TEquipment(Inventory[I]);
+      Other := Inventory[I];
       if (Other.ItemType = t_UselessItem)
           and (Other.ConfigBlockName = TEquipment(Item).ConfigBlockName) then
       begin
@@ -15329,7 +15284,7 @@ begin
   else
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Other := TEquipment(Artefacts[I]);
+      Other := Artefacts[I];
       if (Item.ItemType = Other.ItemType)
           and (not (Other.ItemType in [t_Artefact, t_Artefact2])
               or (Other.ConfigBlockName = TEquipment(Item).ConfigBlockName)) then
@@ -15356,7 +15311,7 @@ begin
                 or (CountActiveArtefacts(t_ArtArtefactor) > 1));
   for I := 0 to Artefacts.Count - 1 do
   begin
-    Item := TArtefact(Artefacts[I]);
+    Item := Artefacts[I];
     if (Item.GetEffectiveType = ArtefactType)
         and (Item.BrokenFlag = 0)
         and ((Item.EquippedFlag or Byte(AllActive)) <> 0) then
@@ -15380,7 +15335,7 @@ begin
   begin
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Artefact := TArtefact(Artefacts[I]);
+      Artefact := Artefacts[I];
       if Artefact.EquippedFlag <> 0 then
       begin
         if Artefact.ItemType = Kind then
@@ -15402,7 +15357,7 @@ begin
   begin
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Artefact := TArtefact(Artefacts[I]);
+      Artefact := Artefacts[I];
       if (Artefact.EquippedFlag <> 0)
           and (Artefact.ItemType in [t_Artefact..t_Artefact2])
           and (Artefact.ConfigBlockName = TEquipment(Item).ConfigBlockName) then
@@ -15634,8 +15589,6 @@ var
       Count: Integer;
       Equipped: Boolean
   ); { Caller-popped static link; ship -4, selected-item output -8. At most 30 deterministic selections. }
-  const
-    RepairableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
   var
     Attempt: Integer;
   begin
@@ -15655,7 +15608,7 @@ var
       );
       if Item = nil then
         Exit;
-    until (Byte(Item.ItemType) in RepairableTypes)
+    until (Item.ItemType in RepairableItemTypes)
         and (Item.ConditionPercent <= 60)
         and not ((Item is TWeapon)
             and (TWeapon(Item).GetWeaponInfo.Availability = waNotSoldAndNodeRepair))
@@ -15798,7 +15751,7 @@ begin
     Result := False;
     Exit;
   end;
-  if ((Byte(RespectChameleon) and Byte(GetPlayer.ChameleonActive)) <> 0)
+  if (RespectChameleon and GetPlayer.ChameleonActive)
       and IsPlayerChameleonEffectiveAgainstSelf
       and ((ScriptShip = nil) or not HasScriptControl) then
   begin
@@ -16472,12 +16425,12 @@ begin
       Result := (Self as TNormalShip).SelectSituationalMessage(False);
       if Result <> '' then
         Exit;
-      case Ord(GetRelationLevelToShip(GetPlayer)) of
-        0: Key := 'ShipGreetings.Standart.FemaleWar';
-        1: Key := 'ShipGreetings.Standart.FemaleBad';
-        2: Key := 'ShipGreetings.Standart.FemaleNormal';
-        3: Key := 'ShipGreetings.Standart.FemaleGood';
-        4: Key := 'ShipGreetings.Standart.FemaleBest';
+      case GetRelationLevelToShip(GetPlayer) of
+        rlHostile: Key := 'ShipGreetings.Standart.FemaleWar';
+        rlBad: Key := 'ShipGreetings.Standart.FemaleBad';
+        rlNormal: Key := 'ShipGreetings.Standart.FemaleNormal';
+        rlGood: Key := 'ShipGreetings.Standart.FemaleGood';
+        rlExcellent: Key := 'ShipGreetings.Standart.FemaleBest';
       end;
     end;
   end
@@ -16498,19 +16451,19 @@ begin
     begin
       if (LiberationGroup <> nil) and (GetRelationLevelToShip(GetPlayer) > rlHostile) then
       begin
-        Result := (TObject(LiberationGroup) as TGroup).GetShipGreeting(Self);
+        Result := (LiberationGroup as TGroup).GetShipGreeting(Self);
         if Result <> '' then
           Exit;
       end;
       Result := (Self as TNormalShip).SelectSituationalMessage(False);
       if Result <> '' then
         Exit;
-      case Ord(GetRelationLevelToShip(GetPlayer)) of
-        0: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'War';
-        1: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Bad';
-        2: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Normal';
-        3: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Good';
-        4: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Best';
+      case GetRelationLevelToShip(GetPlayer) of
+        rlHostile: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'War';
+        rlBad: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Bad';
+        rlNormal: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Normal';
+        rlGood: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Good';
+        rlExcellent: Key := 'ShipGreetings.Standart.' + GetTypeNameKey + 'Best';
       end;
     end;
   end
@@ -16884,7 +16837,7 @@ var
 begin
   for I := Inventory.Count - 1 downto 1 do
   begin
-    Item := TItem(Inventory[I]);
+    Item := Inventory[I];
     if Item.ItemType = t_Protoplasm then
     begin
       Inc(NodeReserve, Item.Weight);
@@ -17130,7 +17083,7 @@ end;
 
 function TShip.GetRelativeStrengthCategory: Byte;
 var
-  Percent: Byte;
+  Percent: TPercent;
 begin
   Result := 0;
   if StrengthInBestRanger < 1 then
@@ -17438,7 +17391,7 @@ begin
                   + CountActiveArtefacts(t_ArtWeaponToSpeed)
                       * (WeaponToSpeedArtefactBonus
                           + WeaponToSpeedArtefactBoost
-                              * Byte(CanBoostArtefact(t_ArtWeaponToSpeed, GetEngine, False)));
+                              * Ord(CanBoostArtefact(t_ArtWeaponToSpeed, GetEngine, False)));
       end;
     end;
     OldSpeed := Max(167.0, OldSpeed + GetTotalStatBonus(bonSpeed));
@@ -17498,7 +17451,7 @@ begin
   Result :=
       (TypeId = stRanger)
           and (PilotRace = oiHuman)
-          and (Cardinal(Id) mod 6 = 0)
+          and (Id mod 6 = 0)
           and (CreationTurn < 666)
           and (GetPlayer <> Self)
           and (GetPlayer <> nil)
@@ -17561,7 +17514,7 @@ begin
   end;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship <> Self)
         and Ship.InNormalSpace
         and ((GetPlayer = Self) or (GetRelationLevelToShip(Ship) <= rlHostile))
@@ -17626,7 +17579,7 @@ begin
   Count := 0;
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
       if TShip(Star.Ships[J]).InterceptorSourceShip = Self then
         Inc(Count);
@@ -17782,8 +17735,8 @@ begin
             + Strength
                 / (1
                     + (GetHull.Weight / (HullBaseSize * EquipmentSizeFactors[1]) - 1)
-                        * (CombatStatusHullFactors[Ord(EffectType)] * 0.5))
-                / (1 + CombatStatusAccumulationFactors[Ord(EffectType)] * Entry.Strength);
+                        * (CombatStatusHullFactors[EffectType] * 0.5))
+                / (1 + CombatStatusAccumulationFactors[EffectType] * Entry.Strength);
     if Source <> nil then
       Entry.SourceShipId := Source.Id
     else
@@ -17797,7 +17750,7 @@ begin
         Strength
             / (1
                 + (GetHull.Weight / (HullBaseSize * EquipmentSizeFactors[1]) - 1)
-                    * (CombatStatusHullFactors[Ord(EffectType)] * 0.5));
+                    * (CombatStatusHullFactors[EffectType] * 0.5));
     if Source <> nil then
       Entry.SourceShipId := Source.Id
     else
@@ -17956,7 +17909,7 @@ begin
     Result := PCombatStatusEffect(CombatStatusEffects[I]).Strength;
 end;
 
-function TShip.GetCombatStatusSourceId(EffectType: TCombatStatusEffectType): Integer;
+function TShip.GetCombatStatusSourceId(EffectType: TCombatStatusEffectType): Cardinal;
 var
   I: Integer;
 begin
@@ -18088,8 +18041,6 @@ var
   Binding: TScriptShip;
   SavedScript: TScript;
   Stage: Integer;
-  Reserved:
-      array[0..7] of Byte; // Native keeps eight unused bytes before backend string temporaries.
 begin
   Stage := 0;
   if (ActionType = satOnLeavingForm) and (TalkScreen.ParentLoop = nil) then
@@ -18189,7 +18140,7 @@ begin
       Stage := 14;
       if Item.ScriptItem <> nil then
       begin
-        if Item.ItemType in [t_IndustrialLaser..t_CustomWeapon] then
+        if Item.ItemType in WeaponItemTypes then
         begin
           if (ActionType in [satOnWeaponShot, satOnMissileShot, satOnWeaponShot2])
               and (Object2 <> Item) then

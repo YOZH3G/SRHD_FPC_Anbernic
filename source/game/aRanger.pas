@@ -28,7 +28,9 @@ type
   TRelationChangeMode =
       (rcmCapAt = 0, rcmRaiseTo = 1, rcmIncrease = 2, rcmDecrease = 3, rcmDecreaseWithFloor20 = 4);
 
-  TRangerCareerValues = array[TRangerCareer] of Byte;
+  TRangerCareerValues = array[TRangerCareer] of TPercent;
+
+  TRangerCareerCounters = array[TRangerCareer] of Byte;
 
   TRangerProgramMask = set of TProgramIndex;
 
@@ -65,12 +67,12 @@ type
     PlaceInRating: Word;
     ExcludedFromRating: Boolean;
     CareerStatus: TRangerCareerValues;
-    EminentProgress: TRangerCareerValues;
-    PendingCareerActivity: TRangerCareerValues;
+    EminentProgress: TRangerCareerCounters;
+    PendingCareerActivity: TRangerCareerCounters;
     PreferredCareer: TRangerCareer;
     Aggression: Byte;
     Quests: TList;
-    PrisonTermRemaining: Integer;
+    PrisonTermRemaining: Cardinal;
     LastDockedNonPlanetLocation: TShip;
     BaseNodes: Integer;
     ProgramCounts: array[TProgramIndex] of Integer;
@@ -300,7 +302,7 @@ begin
   if Quests <> nil then
     for I := Quests.Count - 1 downto 0 do
     begin
-      Quest := PQuest(Quests[I]);
+      Quest := Quests[I];
       Quests.Delete(I);
       Dispose(Quest);
     end;
@@ -308,7 +310,7 @@ begin
   begin
     for I := PlayerOldQuests.Count - 1 downto 0 do
     begin
-      OldQuest := PPlayerOldQuest(PlayerOldQuests[I]);
+      OldQuest := PlayerOldQuests[I];
       PlayerOldQuests.Delete(I);
       Dispose(OldQuest);
     end;
@@ -317,10 +319,10 @@ begin
   RangerIndex := Galaxy.Rangers.IndexOf(Self);
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
     begin
-      Ship := TShip(Star.Ships[J]);
+      Ship := Star.Ships[J];
       if (Ship.TypeId in [stRanger..stPirate, rstRangerCenter..rstCustomStation])
           and (Ship <> Self) then
         Ship.RangerRelations.Delete(RangerIndex);
@@ -328,7 +330,7 @@ begin
   end;
   for I := 0 to Galaxy.Planets.Count - 1 do
   begin
-    Planet := TPlanet(Galaxy.Planets[I]);
+    Planet := Galaxy.Planets[I];
     Planet.RangerRelations.Delete(RangerIndex);
   end;
   if Galaxy.PlayerRangerIndex = RangerIndex then
@@ -386,7 +388,7 @@ var
         Used := False;
         for J := 0 to Galaxy.Rangers.Count - 1 do
         begin
-          Other := TRanger(Galaxy.Rangers[J]);
+          Other := Galaxy.Rangers[J];
           if (Self <> Other) and (Other.Name = Name) then
           begin
             Used := True;
@@ -397,7 +399,7 @@ var
           Break;
         IncrementWrapped(Index, FirstIndex, LastIndex);
         if I = LastIndex then
-          Name := Name + ' ' + '-' + IntToStr(Cardinal(Id) mod 100 + 1) + '-';
+          Name := Name + ' ' + '-' + IntToStr(Id mod 100 + 1) + '-';
       end;
     end;
   end;
@@ -532,7 +534,7 @@ begin
   BuyEquipmentAtLocation(True);
   for I := 0 to Galaxy.Planets.Count - 1 do
   begin
-    OtherPlanet := TPlanet(Galaxy.Planets[I]);
+    OtherPlanet := Galaxy.Planets[I];
     OtherPlanet.RangerRelations.Add(
         Pointer(OwnerRelations[RaceToOwner(OtherPlanet.RaceId), RaceToOwner(PilotRace)])
     );
@@ -540,10 +542,10 @@ begin
   Galaxy.Rangers.Add(Self);
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
     begin
-      Ship := TShip(Star.Ships[J]);
+      Ship := Star.Ships[J];
       if (Ship.TypeId in [stRanger..stPirate, rstRangerCenter..rstCustomStation])
           and (Ship <> Self) then
         Ship.RangerRelations.Add(
@@ -553,7 +555,7 @@ begin
   end;
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
-    Ranger := TRanger(Galaxy.Rangers[I]);
+    Ranger := Galaxy.Rangers[I];
     RangerRelations
         .Add(Pointer(OwnerRelations[RaceToOwner(PilotRace), RaceToOwner(Ranger.PilotRace)]));
   end;
@@ -572,16 +574,16 @@ var
 begin
   for I := 0 to Galaxy.Planets.Count - 1 do
   begin
-    Planet := TPlanet(Galaxy.Planets[I]);
+    Planet := Galaxy.Planets[I];
     Planet.RangerRelations.Add(Pointer(OwnerRelations[RaceToOwner(Planet.RaceId), OwnerId]));
   end;
   Galaxy.Rangers.Add(Self);
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
     begin
-      Ship := TShip(Star.Ships[J]);
+      Ship := Star.Ships[J];
       if (Ship.TypeId in [stRanger..stPirate, rstRangerCenter..rstCustomStation])
           and (Ship <> Self) then
         Ship.RangerRelations.Add(Pointer(OwnerRelations[Ship.OwnerId, OwnerId]));
@@ -589,7 +591,7 @@ begin
   end;
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
-    Ranger := TRanger(Galaxy.Rangers[I]);
+    Ranger := Galaxy.Rangers[I];
     RangerRelations.Add(Pointer(OwnerRelations[OwnerId, Ranger.OwnerId]));
   end;
 end;
@@ -613,7 +615,7 @@ begin
   Buffer.AddWideChar(WideChar(Count));
   for I := 0 to Count - 1 do
   begin
-    Quest := PQuest(Quests[I]);
+    Quest := Quests[I];
     Buffer.AddAnsiChar(AnsiChar(Quest.QuestType));
     Buffer.AddWideChar(WideChar(Quest.QuestNumber));
     Buffer.AddIntegerValue(Quest.DeadlineTurn);
@@ -722,27 +724,23 @@ begin
   Count := Quests.Count;
   for I := 0 to Count - 1 do
   begin
-    Quest := PQuest(Quests[I]);
-    Quest.Planet := TObject(Galaxy.IdToPlanet(Cardinal(Quest.Planet))) as TPlanet;
+    Quest := Quests[I];
+    Quest.Planet := Galaxy.IdToPlanet(Cardinal(Quest.Planet)) as TPlanet;
     case Quest.QuestType of
       qtSendLetter:
-        Quest.ObjectiveTarget :=
-            TObject(Galaxy.IdToPlanet(Cardinal(Quest.ObjectiveTarget))) as TPlanet;
+        Quest.ObjectiveTarget := Galaxy.IdToPlanet(Cardinal(Quest.ObjectiveTarget)) as TPlanet;
       qtKillShip:
-        Quest.ObjectiveTarget :=
-            TObject(Galaxy.IdToShip(Cardinal(Quest.ObjectiveTarget), True)) as TShip;
+        Quest.ObjectiveTarget := Galaxy.IdToShip(Cardinal(Quest.ObjectiveTarget), True) as TShip;
       qtPlanetQuest:
-        Quest.ObjectiveTarget :=
-            TObject(Galaxy.IdToPlanet(Cardinal(Quest.ObjectiveTarget))) as TPlanet;
+        Quest.ObjectiveTarget := Galaxy.IdToPlanet(Cardinal(Quest.ObjectiveTarget)) as TPlanet;
       qtDefendSystem:
         Quest.ObjectiveTarget := TObject(Galaxy.IdToStar(Cardinal(Quest.ObjectiveTarget))) as TStar;
       qtDefendShip:
-        Quest.ObjectiveTarget :=
-            TObject(Galaxy.IdToShip(Cardinal(Quest.ObjectiveTarget), True)) as TShip;
+        Quest.ObjectiveTarget := Galaxy.IdToShip(Cardinal(Quest.ObjectiveTarget), True) as TShip;
     end;
   end;
   LastDockedNonPlanetLocation :=
-      TObject(Galaxy.IdToShip(Cardinal(LastDockedNonPlanetLocation), False)) as TShip;
+      Galaxy.IdToShip(Cardinal(LastDockedNonPlanetLocation), False) as TShip;
 end;
 
 procedure TRanger.ClearObjectReferences;
@@ -753,7 +751,7 @@ begin
   inherited ClearObjectReferences;
   for I := Quests.Count - 1 downto 0 do
   begin
-    Quest := PQuest(Quests[I]);
+    Quest := Quests[I];
     Quests.Delete(I);
     Dispose(Quest);
   end;
@@ -780,7 +778,7 @@ begin
       ScriptNextDay;
       if ScriptShip <> nil then
       begin
-        if Cardinal(PrisonTermRemaining) > 0 then
+        if PrisonTermRemaining > 0 then
           ProcessPrisonAndHostileCheck;
         Exit;
       end;
@@ -1282,10 +1280,10 @@ begin
   Result := 0;
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
     begin
-      Ship := TShip(Star.Ships[J]);
+      Ship := Star.Ships[J];
       if Ship.PartnerShip = Self then
         Inc(Result);
     end;
@@ -1531,7 +1529,7 @@ var
   Amount: Integer;
 
   procedure IncreaseRangerCareerAxis(
-      var Selected, OtherA, OtherB: Byte;
+      var Selected, OtherA, OtherB: TPercent;
       Amount: Integer
   ); { Raises Selected up to 100 and proportionally reduces the other axes when needed. }
   var
@@ -1780,7 +1778,7 @@ var
 begin
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
-    Ranger := TRanger(Galaxy.Rangers[I]);
+    Ranger := Galaxy.Rangers[I];
     Ranger.EminentProgress[Career] := Round(Ranger.EminentProgress[Career] * 0.5);
   end;
 end;
@@ -1813,7 +1811,7 @@ begin
   BestPlanet := nil;
   for I := 0 to PlanetQueue.Count - 1 do
   begin
-    Planet := TPlanet(PlanetQueue[I]);
+    Planet := PlanetQueue[I];
     if Planet.OwnerId in [oiMaloc..oiGaal, oiPirate] then
     begin
       Profit := 0;
@@ -1854,7 +1852,7 @@ end;
 function TRanger.SelectRandomPlanetFromQueue: TPlanet;
 begin
   if PlanetQueue.Count > 0 then
-    Result := TPlanet(PlanetQueue[NextRandomIntRange(0, PlanetQueue.Count - 1, RandomState)])
+    Result := PlanetQueue[NextRandomIntRange(0, PlanetQueue.Count - 1, RandomState)]
   else
     Result := nil;
 end;
@@ -1873,7 +1871,7 @@ begin
     Exit;
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if (I > 0) and (CurrentStar.StarDistances[I].Distance > JumpRange) then
       Break;
     if Star.Constellation.Id = 20 then
@@ -1882,7 +1880,7 @@ begin
       Exit;
     for J := 0 to Star.Planets.Count - 1 do
     begin
-      Planet := TPlanet(Star.Planets[J]);
+      Planet := Star.Planets[J];
       if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate])
           and CanQueueReachablePlanet(Planet)
           and (Planet <> LastDockedPlanet) then
@@ -1922,13 +1920,10 @@ begin
   else
     CareerThreshold := 0;
   end;
-  { Native retains this comparison although neither branch does anything. }
-  if UnusedMode = 0 then
-    ;
   NextStar := nil;
   for I := 1 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if Star.Constellation.Id = 20 then
       Continue;
     if CurrentStar.StarDistances[I].Distance > JumpRange then
@@ -1988,7 +1983,7 @@ begin
   if NextStar = nil then
     for I := 1 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+      Star := CurrentStar.StarDistances[I].Star;
       if (Star.Constellation.Id <> 20)
           and (Star.ControlFaction <> sfCoalition)
           and (Star.CountShipsByTypeMask(CoalitionShipTypes) <= 12)
@@ -2014,7 +2009,7 @@ begin
   if CurrentStar.ShipTypeCounts[ShipType] > 0 then
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if (Ship.TypeId = ShipType) and Ship.InNormalSpace and Ship.CanDock(Self) then
       begin
         OrderLanding(Ship, True);
@@ -2024,7 +2019,7 @@ begin
     end;
   for I := 1 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if (Star.ShipTypeCounts[ShipType] <> 0) and (Star.ShipTypeCounts[stRanger] <= 13) then
     begin
       if GetEngine.JumpRange < CurrentStar.StarDistances[I].Distance then
@@ -2034,7 +2029,7 @@ begin
       { Native scans the current system here, even though Star is a remote candidate. }
       for J := 0 to CurrentStar.Ships.Count - 1 do
       begin
-        Ship := TShip(CurrentStar.Ships[J]);
+        Ship := CurrentStar.Ships[J];
         if (Ship.TypeId = ShipType) and Ship.InNormalSpace then
         begin
           OrderJump(Star, True);
@@ -2115,7 +2110,7 @@ begin
   end;
   for I := 0 to CurrentStar.Planets.Count - 1 do
   begin
-    Planet := TPlanet(CurrentStar.Planets[I]);
+    Planet := CurrentStar.Planets[I];
     if CanQueueReachablePlanet(Planet) and (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate]) then
     begin
       Turns := EstimateTravelTurnsToObject(Planet);
@@ -2128,7 +2123,7 @@ begin
   end;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship.TypeId in [rstRangerCenter..rstCustomStation]) and Ship.CanDock(Self) then
     begin
       Turns := EstimateTravelTurnsToObject(Ship);
@@ -2144,7 +2139,7 @@ begin
     begin
       if CurrentStar.StarDistances[I].Distance > JumpRange then
         Break;
-      Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+      Star := CurrentStar.StarDistances[I].Star;
       if (Star.ControlFaction <> sfDominators)
           and (Star.Constellation.Id <> 20)
           and (Star.Status.CustomFaction = '') then
@@ -2192,7 +2187,7 @@ begin
   end;
   for I := 0 to CurrentStar.Planets.Count - 1 do
   begin
-    Planet := TPlanet(CurrentStar.Planets[I]);
+    Planet := CurrentStar.Planets[I];
     if (Planet <> LastDockedPlanet)
         and CanQueueReachablePlanet(Planet)
         and (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate]) then
@@ -2207,7 +2202,7 @@ begin
   end;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if (Ship <> LastDockedNonPlanetLocation)
         and (Ship.TypeId in [rstRangerCenter..rstCustomStation])
         and Ship.CanDock(Self) then
@@ -2230,7 +2225,7 @@ begin
   begin
     if CurrentStar.StarDistances[I].Distance > JumpRange then
       Break;
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if (Star.ControlFaction <> sfDominators)
         and (Star.Constellation.Id <> 20)
         and (Star.Status.CustomFaction = '') then
@@ -2329,7 +2324,7 @@ begin
   Result := 0;
   for I := 1 to PlanetQueue.Count - 1 do
   begin
-    Planet := TPlanet(PlanetQueue[I]);
+    Planet := PlanetQueue[I];
     if Planet.CurrentStar = CurrentStar then
       Score := RemapClamped(ShopGoodsSellPrice(Good, Planet) / UnitCost, 1, 1.4, 0, 100)
     else
@@ -2372,7 +2367,7 @@ var
 begin
   for I := Inventory.Count - 1 downto 0 do
   begin
-    Equipment := TEquipment(Inventory[I]);
+    Equipment := Inventory[I];
     if (not (Equipment is TWeapon)
             or (TWeapon(Equipment).GetWeaponInfo.Availability <> waNotSoldAndNodeRepair))
         and CanRepairEquipmentTech(Equipment)
@@ -2389,7 +2384,7 @@ begin
   if CanRepairArtefactsAtLocation then
     for I := 0 to Artefacts.Count - 1 do
     begin
-      Artefact := TEquipment(Artefacts[I]);
+      Artefact := Artefacts[I];
       if ((Artefact.BrokenFlag <> 0) or (Artefact.ConditionPercent < 50))
           and (Artefact.EquippedFlag <> 0) then
       begin
@@ -2553,7 +2548,7 @@ begin
     HullThreshold := RemapClamped(GetHull.HullPoints, 50, GetHull.Weight, 0, 3);
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if Ship.InNormalSpace and (Ship <> Self) then
       begin
         if Ship = EnemyShip then
@@ -2688,7 +2683,7 @@ begin
     LastStar := Galaxy.Stars.Count div 3;
   for I := 0 to LastStar do
   begin
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if (Star.ControlFaction <> sfDominators) or (Star.Battle <> 0) then
     begin
       Effect := RemapClamped(I, 0, LastStar, 0.5, 0.05) * Severity;
@@ -2702,7 +2697,7 @@ begin
         Effect := Effect * 2;
       for J := 0 to Star.Ships.Count - 1 do
       begin
-        Ship := TShip(Star.Ships[J]);
+        Ship := Star.Ships[J];
         if (Ship <> Victim)
             and not Ship.IsHullDestroyed
             and (Ship.TypeId in [stRanger..stPirate]) then
@@ -2711,7 +2706,7 @@ begin
       if Star.Status.CustomFaction = '' then
         for J := 0 to Star.Planets.Count - 1 do
         begin
-          Planet := TPlanet(Star.Planets[J]);
+          Planet := Star.Planets[J];
           if Planet.IsCoalitionOwned then
             Planet
                 .ChangeRelationToRanger(Self, Round((50 - Planet.RelationToShip(Victim)) * Effect));
@@ -2758,7 +2753,7 @@ begin
   LastStar := Galaxy.Stars.Count div 3;
   for I := 0 to LastStar do
   begin
-    Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+    Star := CurrentStar.StarDistances[I].Star;
     if ((Star.ControlFaction = sfCoalition) or (Star.Battle <> 0))
         and ((Star.Status.CustomFaction = '') or (Star.Battle <> 0)) then
     begin
@@ -2767,14 +2762,14 @@ begin
         Effect := 0.1 * Effect;
       for J := 0 to Star.Ships.Count - 1 do
       begin
-        Ship := TShip(Star.Ships[J]);
+        Ship := Star.Ships[J];
         if (Ship.TypeId in [stRanger..stPirate])
             and ((I <> 0) or ((Ship <> Self) and (Ship <> Victim))) then
           Ship.ChangeRelationToRanger(Self, Round((50 - Ship.RelationToShip(Victim)) * Effect));
       end;
       for J := 0 to Star.Planets.Count - 1 do
       begin
-        Planet := TPlanet(Star.Planets[J]);
+        Planet := Star.Planets[J];
         if Planet.IsCoalitionOwned then
           Planet.ChangeRelationToRanger(Self, Round((50 - Planet.RelationToShip(Victim)) * Effect));
       end;
@@ -2802,7 +2797,7 @@ begin
     Offers := 0;
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if (Ship.TypeId = stRanger)
           and Ship.InNormalSpace
           and ((Ship.OwnerId = oiPirate) = (OwnerId = oiPirate))
@@ -2940,7 +2935,7 @@ var
     Result := True;
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if (Ship.TypeId = stWarrior) and (Self = Ship.EnemyShip) then
       begin
         Ship.EnemyShip := nil;
@@ -2962,7 +2957,7 @@ var
       ReplaceTextToken(
           Text,
           '<Month>',
-          IntToStr(Cardinal(PrisonTermRemaining) div 30),
+          IntToStr(PrisonTermRemaining div 30),
           TextHighlightColorTag
       );
       ReplaceTextToken(Text, '<Name>', GetName, TextHighlightColorTag);
@@ -2980,7 +2975,7 @@ begin
   Result := False;
   if CurrentPlanet <> nil then
   begin
-    if Cardinal(PrisonTermRemaining) > 0 then
+    if PrisonTermRemaining > 0 then
     begin
       if (CurrentStar.Battle <> 0)
           and (Galaxy.CurrentTurn - CurrentStar.LastDominatorPresenceTurn <= 1) then
@@ -3009,7 +3004,7 @@ begin
     else
       for I := 0 to CurrentPlanet.Warriors.Count - 1 do
       begin
-        Warrior := TShip(CurrentPlanet.Warriors[I]);
+        Warrior := CurrentPlanet.Warriors[I];
         if Warrior.EnemyShip = Self then
         begin
           Imprison;
@@ -3118,7 +3113,7 @@ begin
   RangerIndex := Galaxy.Rangers.IndexOf(Self);
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     if Scope is TConstellation then
       if (Scope as TConstellation) <> Star.Constellation then
         Continue;
@@ -3127,7 +3122,7 @@ begin
         Continue;
     for J := 0 to Star.Planets.Count - 1 do
     begin
-      Planet := TPlanet(Star.Planets[J]);
+      Planet := Star.Planets[J];
       if (Planet.OwnerId in OwnerMask) and Planet.IsCoalitionOwned then
       begin
         if Scope is TPlanet then
@@ -3265,7 +3260,7 @@ begin
   if CurrentStar.Battle <> 0 then
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if (Ship.OwnerId = oiDominator) and Ship.InNormalSpace then
       begin
         for J := 1 to WeaponCount do
@@ -3305,7 +3300,7 @@ begin
   end;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if not Ship.IsOutsideStarSpace
         and (Ship <> Self)
         and ((RelationToShip(Ship) < RelationBadMin)
@@ -3334,7 +3329,7 @@ begin
   end;
   for I := 0 to CurrentStar.Missiles.Count - 1 do
   begin
-    Missile := TMissile(CurrentStar.Missiles[I]);
+    Missile := CurrentStar.Missiles[I];
     if (Missile.Target = Self) and (Missile.OwnerShip <> Self) then
     begin
       for J := 1 to WeaponCount do
@@ -3357,7 +3352,7 @@ begin
   if IsEquipmentUsable(GetCargoHook) and not OrderAbsolute then
     for I := 0 to CurrentStar.Asteroids.Count - 1 do
     begin
-      Asteroid := TAsteroid(CurrentStar.Asteroids[I]);
+      Asteroid := CurrentStar.Asteroids[I];
       if Asteroid.MineralCount <= CargoFreeSpace then
       begin
         Distance := PointDistanceSquared(Position, Asteroid.Position);
@@ -3442,7 +3437,7 @@ begin
   HasPriorityTarget := False;
   for I := 0 to CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(CurrentStar.Ships[I]);
+    Ship := CurrentStar.Ships[I];
     if HasPriorityTarget and (Ship.TargetingRestriction <> 6) then
       Continue;
     if (Ship = Self)
@@ -3523,15 +3518,13 @@ begin
     begin
       if EnemyShip.CurrentPlanet <> nil then
       begin
-        if (EnemyShip is TRanger)
-            and (Cardinal((EnemyShip as TRanger).PrisonTermRemaining) > 0) then
+        if (EnemyShip is TRanger) and ((EnemyShip as TRanger).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
           Exit;
         end;
-        if (EnemyShip is TPirate)
-            and (Cardinal((EnemyShip as TPirate).PrisonTermRemaining) > 0) then
+        if (EnemyShip is TPirate) and ((EnemyShip as TPirate).PrisonTermRemaining > 0) then
         begin
           EnemyShip := nil;
           OrderNone(False);
@@ -3834,7 +3827,7 @@ begin
     (OtherShip as TRanger).AddTraderCareerActivity(1);
   if (GetPlayer = Self) and not PlayerAutomaticControl then
   begin
-    if Cardinal(ReservedMessageCounter) < 7 then
+    if TurnsSinceLastRequestToPlayer < 7 then
       Exit;
     Text := OtherShip.LookupTalkText('Talk.Truce.' + OtherShip.GetTypeNameKey + 'Send');
     if OtherShip.ShowPlayerDialogue(
@@ -4302,37 +4295,22 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * RangerSkillBonusEvaluationWeights[PreferredCareer, BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
             Result
                 + (RangerSkillBonusEvaluationWeights[PreferredCareer, BonusKind] * 0.05)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6);
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
         Result :=
-            Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -RangerSkillBonusEvaluationWeights[PreferredCareer, BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
             Result
                 + (RangerSkillBonusEvaluationWeights[PreferredCareer, BonusKind] * 0.03)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -4350,9 +4328,7 @@ begin
         Result
             * 0.01
             * (100 + SeededRandomIntRange(-60, 60, Ord(BonusKind) * 131 + Seed))
-            * RaceSkillEvaluationFactors[
-                PilotRace,
-                EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]]
+            * RaceSkillEvaluationFactors[PilotRace, EquipmentBonusSkills[BonusKind]]
   else
     Result := Result * 0.01 * (100 + SeededRandomIntRange(-15, 15, Ord(BonusKind) * 131 + Seed));
 end;
@@ -4587,7 +4563,7 @@ var
 begin
   for I := Quests.Count - 1 downto 0 do
   begin
-    Quest := PQuest(Quests[I]);
+    Quest := Quests[I];
     if Galaxy.CurrentTurn >= Quest.DeadlineTurn then
     begin
       if (Quest.QuestType in [qtSendLetter, qtKillShip, qtPlanetQuest])
@@ -4711,7 +4687,7 @@ begin
   Result := 0;
   for I := 0 to PlayerOldQuests.Count - 1 do
   begin
-    Quest := PPlayerOldQuest(PlayerOldQuests[I]);
+    Quest := PlayerOldQuests[I];
     if not Quest.Successful
         and not Quest.Declined
         and (Quest.Planet.OwnerId = OwnerId)
@@ -4781,7 +4757,7 @@ var
   OldQuest: PPlayerOldQuest;
   Quest: PQuest;
 begin
-  Quest := PQuest(Quests[Index]);
+  Quest := Quests[Index];
   if GetPlayer = Self then
   begin
     New(OldQuest);
@@ -5613,7 +5589,7 @@ var
   Control: TCacheControlEC;
   Buffer: TCBufEC;
   Found: Boolean;
-  ShipTypes, UnusedText, FromFactions, ToFactions: WideString;
+  ShipTypes, FromFactions, ToFactions: WideString;
 begin
   Result := False;
   ResponseText := '';
@@ -5675,7 +5651,7 @@ begin
                   Galaxy.Stars.Count div 3,
                   (Attempts + Galaxy.CurrentTurn) div Interval
               );
-          Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+          Star := CurrentStar.StarDistances[I].Star;
           if (Star.ShipTypeCounts[stKling] <= 0)
               and (Star.Constellation.Id <> 20)
               and Star.IsConstellationVisible then
@@ -5699,7 +5675,6 @@ begin
                         (Integer(CurrentPlanet.GenerationSeed) + Galaxy.CurrentTurn) div Interval
                     );
                 Found := False;
-                UnusedText := '';
                 for K := 0 to MaximumQuest do
                 begin
                   FromFactions :=
@@ -5807,7 +5782,7 @@ begin
               .QuestOfferProbabilities[qtKillShip] then
         for I := Min(20, Galaxy.Stars.Count - 1) downto 1 do
         begin
-          Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+          Star := CurrentStar.StarDistances[I].Star;
           if (Star.Constellation.Id <> 20)
               and Star.IsConstellationVisible
               and (Star.ControlFaction <> sfDominators)
@@ -6029,7 +6004,7 @@ begin
                   .QuestOfferProbabilities[qtPlanetQuest]) then
         for I := FirstStar to Galaxy.Stars.Count - 1 do
         begin
-          Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+          Star := CurrentStar.StarDistances[I].Star;
           if (Star.ShipTypeCounts[stKling] <= 0)
               and (Star.Battle = 0)
               and (Star.ControlFaction <> sfDominators)
@@ -6288,7 +6263,7 @@ begin
               .QuestOfferProbabilities[qtDefendShip] then
         for I := 0 to Min(20, Galaxy.Stars.Count - 1) do
         begin
-          Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+          Star := CurrentStar.StarDistances[I].Star;
           if (Star.ShipTypeCounts[stKling] <= 0)
               and (Star.ShipTypeCounts[stPirate] >= 1)
               and (Star.Constellation.Id <> 20)
@@ -6815,7 +6790,7 @@ begin
               pmQuestActive,
               Galaxy.CurrentTurn,
               Text,
-              'ZP_' + IntToStr(Cardinal(Quest.Planet.Id)) + '_' + IntToStr(Quest.QuestNumber)
+              'ZP_' + IntToStr(Quest.Planet.Id) + '_' + IntToStr(Quest.QuestNumber)
           );
       if Quest.ObjectiveTarget <> nil then
         if Quest.ObjectiveTarget is TShip then
@@ -6833,7 +6808,7 @@ begin
           pmQuestSucceeded,
           Galaxy.CurrentTurn,
           Text,
-          'ZP_' + IntToStr(Cardinal(Quest.Planet.Id)) + '_' + IntToStr(Quest.QuestNumber)
+          'ZP_' + IntToStr(Quest.Planet.Id) + '_' + IntToStr(Quest.QuestNumber)
       );
   end
   else if Quest.Planet <> nil then
@@ -6841,7 +6816,7 @@ begin
         pmQuestCancelled,
         Galaxy.CurrentTurn,
         Text,
-        'ZP_' + IntToStr(Cardinal(Quest.Planet.Id)) + '_' + IntToStr(Quest.QuestNumber)
+        'ZP_' + IntToStr(Quest.Planet.Id) + '_' + IntToStr(Quest.QuestNumber)
     );
 end;
 
@@ -6854,7 +6829,7 @@ var
 begin
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
-    Ranger := TRanger(Galaxy.Rangers[I]);
+    Ranger := Galaxy.Rangers[I];
     for J := Ranger.Quests.Count - 1 downto 0 do
     begin
       Quest := PQuest(Ranger.Quests[J]);
@@ -6991,7 +6966,7 @@ var
 begin
   for I := 0 to Quests.Count - 1 do
   begin
-    Quest := PQuest(Quests[I]);
+    Quest := Quests[I];
     if Quest.QuestType = QuestType then
     begin
       Result := True;
@@ -7014,7 +6989,7 @@ begin
   Player := GetPlayer;
   for I := 0 to Player.Quests.Count - 1 do
   begin
-    Quest := PQuest(Player.Quests[I]);
+    Quest := Player.Quests[I];
     case Quest.QuestType of
       qtKillShip: Result := (Quest.ObjectiveTarget as TShip) = Ship;
       qtDefendShip: Result := (Quest.ObjectiveTarget as TShip) = Ship;
@@ -7024,7 +6999,7 @@ begin
   end;
   if PlayerOldQuests.Count > 0 then
   begin
-    OldQuest := PPlayerOldQuest(PlayerOldQuests[PlayerOldQuests.Count - 1]);
+    OldQuest := PlayerOldQuests[PlayerOldQuests.Count - 1];
     if Pos(Ship.Name, OldQuest.Description) > 0 then
       Result := True;
   end;
@@ -7044,7 +7019,7 @@ begin
   Player.QuestTargetDefendStar := nil;
   for I := 0 to Player.Quests.Count - 1 do
   begin
-    Quest := PQuest(Player.Quests[I]);
+    Quest := Player.Quests[I];
     if not Quest.Successful then
       case Quest.QuestType of
         qtKillShip: Player.QuestTargetKillShip := Quest.ObjectiveTarget as TShip;

@@ -411,7 +411,7 @@ var
 begin
   Result.X := 0;
   Result.Y := 0;
-  // Native comparisons are unconditional, including before Size is initialized.
+  Size := Result;
   if ImageNormal <> nil then
     Size := ImageNormal.GetContentSize;
   Result.X := Max(Result.X, Size.X);

@@ -13,6 +13,7 @@ uses
   Types;
 
 type
+  TTextButtonKindGI = (tbMomentary, tbToggle);
 
   TTextButtonGI = class;
 
@@ -22,7 +23,7 @@ type
   public
     FontCache: TCFontControlEC;
     ImageCache: TCBitmapControlEC;
-    Kind: Integer;
+    Kind: TTextButtonKindGI;
     Caption: WideString;
     CaptionColor: Cardinal;
     CaptionActiveColor: Cardinal;
@@ -70,7 +71,7 @@ begin
   CaptionActiveColor := CurrentPixelFormat.PackRgbBytes(255, 0, 0);
   BorderLightColor := CurrentPixelFormat.PackRgbBytes(255, 255, 255);
   BorderDarkColor := CurrentPixelFormat.PackRgbBytes(55, 55, 55);
-  Kind := 0;
+  Kind := tbMomentary;
 end;
 
 destructor TTextButtonGI.Destroy;
@@ -101,7 +102,7 @@ begin
     Hover := True
   else
     Hover := False;
-  if Kind = 0 then
+  if Kind = tbMomentary then
     Down := False;
   Invalidate;
 end;
@@ -121,7 +122,7 @@ begin
   inherited CancelPointerInput;
   // Only normal buttons have a transient press. A latched button's Down state
   // is its value; keep it, and never dispatch release callbacks on cancellation.
-  if (Kind = 0) and Down then
+  if (Kind = tbMomentary) and Down then
   begin
     Down := False;
     Invalidate;
@@ -159,12 +160,12 @@ end;
 procedure TTextButtonGI.OnMouseLeave;
 begin
   inherited OnMouseLeave;
-  if Kind = 0 then
+  if Kind = tbMomentary then
   begin
     if Down then
     begin
       Down := False;
-      DispatchNamedEvent(2, 0, 0);
+      DispatchNamedEvent(nceButtonUp, 0, 0);
       if Assigned(UpCallback) then
         UpCallback(Self);
     end;
@@ -180,10 +181,10 @@ begin
   inherited ProcessLeftButtonDown(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
-  if Kind = 0 then
+  if Kind = tbMomentary then
   begin
     Down := True;
-    DispatchNamedEvent(1, Point.X, Point.Y);
+    DispatchNamedEvent(nceButtonDown, Point.X, Point.Y);
     if Assigned(DownCallback) then
       DownCallback(Self);
   end
@@ -192,14 +193,14 @@ begin
     if Down then
     begin
       Down := False;
-      DispatchNamedEvent(2, Point.X, Point.Y);
+      DispatchNamedEvent(nceButtonUp, Point.X, Point.Y);
       if Assigned(UpCallback) then
         UpCallback(Self);
     end
     else
     begin
       Down := True;
-      DispatchNamedEvent(1, Point.X, Point.Y);
+      DispatchNamedEvent(nceButtonDown, Point.X, Point.Y);
       if Assigned(DownCallback) then
         DownCallback(Self);
     end;
@@ -214,11 +215,11 @@ begin
   inherited ProcessLeftButtonUp(KeyState, Point);
   if IsOccludedAtPoint(Point) then
     Exit;
-  if Kind = 0 then
+  if Kind = tbMomentary then
   begin
     Down := False;
     Invalidate;
-    DispatchNamedEvent(2, Point.X, Point.Y);
+    DispatchNamedEvent(nceButtonUp, Point.X, Point.Y);
     if Assigned(UpCallback) then
       if MessageLoop.ConsumeTimerTickChange then
         UpCallback(Self);
@@ -278,9 +279,9 @@ begin
   if Block.CountParams('Kind') > 0 then
   begin
     if Block.GetParam('Kind') = 'Normal' then
-      Kind := 0
+      Kind := tbMomentary
     else
-      Kind := 1;
+      Kind := tbToggle;
   end;
 end;
 
@@ -335,9 +336,9 @@ begin
   if Block.CountParams('Kind') > 0 then
   begin
     if Block.GetParam('Kind') = 'Normal' then
-      Kind := 0
+      Kind := tbMomentary
     else
-      Kind := 1;
+      Kind := tbToggle;
   end;
 end;
 

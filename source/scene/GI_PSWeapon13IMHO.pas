@@ -280,7 +280,7 @@ begin
     if Block.CountBlocks(Text) <> 0 then
     begin
       PaletteBlock := Block.GetBlockByPath(Text);
-      for ColorIndex := 0 to 7 do
+      for ColorIndex := Low(TIMHOPalette) to High(TIMHOPalette) do
         if PaletteBlock.CountParams('Color' + IntToStr(ColorIndex)) > 0 then
         begin
           Text := PaletteBlock.GetParam('Color' + IntToStr(ColorIndex));

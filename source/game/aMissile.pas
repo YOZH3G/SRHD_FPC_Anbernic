@@ -27,7 +27,7 @@ type
   TMissile = class(TObjectEx)
     Graphic: TObjectSE;
     Id: Cardinal;
-    WeaponId: Integer;
+    WeaponId: Cardinal;
     ItemType: TItemType;
     TechLevel: Byte;
     MinDamage: Integer;
@@ -530,9 +530,9 @@ end;
 procedure TMissile.ResolveLoadedReferences(World: TGalaxy);
 begin
   CurrentStar := TObject(World.IdToStar(Cardinal(CurrentStar))) as TStar;
-  OwnerShip := TObject(World.IdToShip(Cardinal(OwnerShip), True)) as TShip;
+  OwnerShip := World.IdToShip(Cardinal(OwnerShip), True) as TShip;
   if SavedTargetKind = mtkShip then
-    Target := TObject(World.IdToShip(Cardinal(Target), True)) as TShip
+    Target := World.IdToShip(Cardinal(Target), True) as TShip
   else if SavedTargetKind = mtkItem then
     Target := TObject(World.IdToItem(Cardinal(Target), True)) as TItem
   else if SavedTargetKind = mtkAsteroid then
@@ -540,7 +540,7 @@ begin
   else if SavedTargetKind = mtkMissile then
     Target := TObject(World.IdToMissile(Cardinal(Target))) as TMissile;
   if SavedPreviousTargetKind = mtkShip then
-    PreviousTarget := TObject(World.IdToShip(Cardinal(PreviousTarget), True)) as TShip
+    PreviousTarget := World.IdToShip(Cardinal(PreviousTarget), True) as TShip
   else if SavedPreviousTargetKind = mtkItem then
     PreviousTarget := TObject(World.IdToItem(Cardinal(PreviousTarget), True)) as TItem
   else if SavedPreviousTargetKind = mtkAsteroid then
@@ -819,7 +819,7 @@ begin
     for I := 0 to CurrentStar.Missiles.Count - 1 do
     begin
       Stage := 18;
-      OtherMissile := TMissile(CurrentStar.Missiles[I]);
+      OtherMissile := CurrentStar.Missiles[I];
       if (OtherMissile <> Self)
           and ((Target = OtherMissile) or (OtherMissile.Target = Self))
           and SegmentIntersectsCircle(PreviousPosition, Position, OtherMissile.Position, 10) then
@@ -846,7 +846,7 @@ begin
     for I := 0 to CurrentStar.Items.Count - 1 do
     begin
       Stage := 21;
-      Item := TItem(CurrentStar.Items[I]);
+      Item := CurrentStar.Items[I];
       Stage := 22;
       if ((GetWeaponInfo.ShotType <> wstTorpedo) or (Target = Item))
           and SegmentIntersectsCircle(PreviousPosition, Position, Item.Position, 10) then
@@ -871,7 +871,7 @@ begin
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
       Stage := 25;
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if not Ship.IsHullDestroyed and Ship.InNormalSpace then
       begin
         if TryReturnToOwner(StepIndex, RecordFilm, PreviousPosition, Ship) then
@@ -893,7 +893,7 @@ begin
     Stage := 27;
     for I := 0 to CurrentStar.Asteroids.Count - 1 do
     begin
-      Asteroid := TAsteroid(CurrentStar.Asteroids[I]);
+      Asteroid := CurrentStar.Asteroids[I];
       Stage := 28;
       if SegmentIntersectsCircle(PreviousPosition, Position, Asteroid.Position, 10) then
       begin
@@ -1023,7 +1023,7 @@ begin
     BestShip := nil;
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if not Ship.IsOutsideStarSpace
           and (Ship <> PreviousTarget)
           and (Ship.GetRelationLevelToShip(OwnerShip) <= rlHostile)

@@ -67,6 +67,9 @@ uses
   EC_Str,
   Math;
 
+type
+  TQuestLocationKind = (qlkOrdinary, qlkStart, qlkEmpty, qlkSuccess, qlkFailure, qlkDeath);
+
 constructor TLocation.Create;
 begin
   inherited Create;
@@ -237,7 +240,7 @@ procedure TLocation.LoadFromReader(Reader: TBufEC);
 var
   i, ParameterIndex, Count: Integer;
   Change: TParameterDelta;
-  LocationType: Byte;
+  LocationType: TQuestLocationKind;
 begin
   Reset;
   Days := Reader.GetInt32;
@@ -245,12 +248,12 @@ begin
   EditorY := Reader.GetInt32;
   Id := Reader.GetInt32;
   VisitLimit := Reader.GetInt32;
-  LocationType := Reader.GetByte;
-  IsStart := LocationType = 1;
-  IsEmpty := LocationType = 2;
-  IsSuccess := LocationType = 3;
-  IsFailure := (LocationType = 4) or (LocationType = 5);
-  IsDeath := LocationType = 5;
+  LocationType := TQuestLocationKind(Reader.GetByte);
+  IsStart := LocationType = qlkStart;
+  IsEmpty := LocationType = qlkEmpty;
+  IsSuccess := LocationType = qlkSuccess;
+  IsFailure := (LocationType = qlkFailure) or (LocationType = qlkDeath);
+  IsDeath := LocationType = qlkDeath;
   Count := Reader.GetInt32;
   for i := 1 to Count do
   begin
@@ -284,7 +287,7 @@ procedure TLocation.LoadLegacyV8FromReader(Reader: TBufEC);
 var
   i, ParameterIndex, Count: Integer;
   Change: TParameterDelta;
-  LocationType: Byte;
+  LocationType: TQuestLocationKind;
 begin
   Reset;
   Days := Reader.GetInt32;
@@ -292,12 +295,12 @@ begin
   EditorY := Reader.GetInt32;
   Id := Reader.GetInt32;
   VisitLimit := 0;
-  LocationType := Reader.GetByte;
-  IsStart := LocationType = 1;
-  IsEmpty := LocationType = 2;
-  IsSuccess := LocationType = 3;
-  IsFailure := (LocationType = 4) or (LocationType = 5);
-  IsDeath := LocationType = 5;
+  LocationType := TQuestLocationKind(Reader.GetByte);
+  IsStart := LocationType = qlkStart;
+  IsEmpty := LocationType = qlkEmpty;
+  IsSuccess := LocationType = qlkSuccess;
+  IsFailure := (LocationType = qlkFailure) or (LocationType = qlkDeath);
+  IsDeath := LocationType = qlkDeath;
   Count := Reader.GetInt32;
   for i := 1 to Count do
   begin

@@ -207,7 +207,7 @@ begin
   ClearData;
   DataSize := SourceBuffer.DataSize;
   Data := AllocEC(DataSize);
-  System.Move(Pointer(SourceBuffer.Data)^, Pointer(Data)^, DataSize);
+  System.Move(SourceBuffer.Data^, Data^, DataSize);
   UsesExternalData := False;
   Header := Data;
 end;
@@ -519,10 +519,8 @@ begin
         if Keep16BitPixels then
           for Y := 0 to Cardinal(GraphBuf.Height) - 1 do
             System.Move(
-                Pointer(
-                    AddPointerOffset(Data, Plane.DataOffset + Y * GraphBuf.Width * SizeOf(Word))
-                )^,
-                Pointer(AddPointerOffset(GraphBuf.GetPixels, GraphBuf.PitchBytes * Y))^,
+                AddPointerOffset(Data, Plane.DataOffset + Y * GraphBuf.Width * SizeOf(Word))^,
+                AddPointerOffset(GraphBuf.GetPixels, GraphBuf.PitchBytes * Y)^,
                 GraphBuf.Width * SizeOf(Word)
             )
         else
@@ -537,8 +535,8 @@ begin
       end
       else
         System.Move(
-            Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
-            Pointer(GraphBuf.GetPixels)^,
+            AddPointerOffset(Data, Plane.DataOffset)^,
+            GraphBuf.GetPixels^,
             GraphBuf.Width * SizeOf(TColorRGBA) * GraphBuf.Height
         );
     end;
@@ -706,13 +704,11 @@ begin
         if Keep16BitPixels then
           for Y := 0 to Height - 1 do
             System.Move(
-                Pointer(
-                    AddPointerOffset(
-                        Data,
-                        (SourceY + Y) * SourcePitch + SourceX * SizeOf(Word) + Plane.DataOffset
-                    )
+                AddPointerOffset(
+                    Data,
+                    (SourceY + Y) * SourcePitch + SourceX * SizeOf(Word) + Plane.DataOffset
                 )^,
-                Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
+                AddPointerOffset(Destination, PitchBytes * Y)^,
                 Width * SizeOf(Word)
             )
         else
@@ -733,13 +729,11 @@ begin
         SourcePitch := (Header.Bounds.Right - Header.Bounds.Left) * SizeOf(TColorRGBA);
         for Y := 0 to Height - 1 do
           System.Move(
-              Pointer(
-                  AddPointerOffset(
-                      Data,
-                      (Y + SourceY) * SourcePitch + SourceX * SizeOf(TColorRGBA) + Plane.DataOffset
-                  )
+              AddPointerOffset(
+                  Data,
+                  (Y + SourceY) * SourcePitch + SourceX * SizeOf(TColorRGBA) + Plane.DataOffset
               )^,
-              Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
+              AddPointerOffset(Destination, PitchBytes * Y)^,
               Width * SizeOf(TColorRGBA)
           );
       end;
@@ -770,8 +764,8 @@ begin
         if Keep16BitPixels then
           for Y := 0 to Height - 1 do
             System.Move(
-                Pointer(AddPointerOffset(Data, Y * Width * SizeOf(Word) + Plane.DataOffset))^,
-                Pointer(AddPointerOffset(Destination, PitchBytes * Y))^,
+                AddPointerOffset(Data, Y * Width * SizeOf(Word) + Plane.DataOffset)^,
+                AddPointerOffset(Destination, PitchBytes * Y)^,
                 Width * SizeOf(Word)
             )
         else
@@ -785,11 +779,7 @@ begin
           );
       end
       else
-        System.Move(
-            Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
-            Pointer(Destination)^,
-            PitchBytes * Height
-        );
+        System.Move(AddPointerOffset(Data, Plane.DataOffset)^, Destination^, PitchBytes * Height);
     end;
   end
   else if Header.Format = 1 then
@@ -942,11 +932,7 @@ begin
       Header.GreenMask := $FF00;
       Header.BlueMask := $FF;
       Header.AlphaMask := $FF000000;
-      System.Move(
-          Pointer(GraphBuf.GetPixels)^,
-          Pointer(AddPointerOffset(Data, Plane.DataOffset))^,
-          ByteCount
-      );
+      System.Move(GraphBuf.GetPixels^, AddPointerOffset(Data, Plane.DataOffset)^, ByteCount);
     end;
     1:
     begin

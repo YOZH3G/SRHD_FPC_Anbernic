@@ -232,13 +232,10 @@ end;
 
 function TfLoadAB.AppendEntry(IgnoredAccess: Integer): Integer;
 var
-  Index, I: Integer;
+  Index: Integer;
 begin
   Index := High(Entries) + 1;
   SetLength(Entries, High(Entries) + 2);
-  { Retained native insertion loop; appending makes its range empty. }
-  for I := High(Entries) downto Index + 1 do
-    Entries[I] := Entries[I - 1];
   Result := Index;
 end;
 
@@ -249,7 +246,6 @@ var
   Panel: TPanelScrollBarGI;
   Row: TPanelGI;
   List: TBlockParEC;
-  Name: WideString;
 
   function ReadArcadeDescription(const Path: WideString): WideString;
   var
@@ -273,7 +269,7 @@ begin
   Count := List.GetBlockCount;
   for I := 0 to Count - 1 do
   begin
-    Name := List.GetBlockNameByIndex(I);
+    List.GetBlockNameByIndex(I);
     Entry := List.GetBlockByIndex(I);
     if Entry.CountParamsByPath('Group') > 0 then
       EntryCategory := ExtractDigitsToIntW(Entry.GetParam('Group'))

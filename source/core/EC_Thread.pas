@@ -13,6 +13,16 @@ uses
 
 type
 
+  TThreadPriorityEC = (
+      ThreadPriorityIdle,
+      ThreadPriorityLowest,
+      ThreadPriorityBelowNormal,
+      ThreadPriorityNormal,
+      ThreadPriorityAboveNormal,
+      ThreadPriorityHighest,
+      ThreadPriorityTimeCritical
+  );
+
   EWorkerFailure = class(Exception)
     WorkerBacktrace: string;
   end;
@@ -28,7 +38,7 @@ type
     Lock: TCriticalSection;
     ThreadHandle: TThreadID;
     ThreadId: TThreadID;
-    Priority: Byte;
+    Priority: TThreadPriorityEC;
     StopRequested: Boolean;
     StopEvent: TGameEventHandle;
     Flag18: Boolean;
@@ -40,7 +50,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure ProcessRequests;
-    procedure SetPriority(Value: Byte);
+    procedure SetPriority(Value: TThreadPriorityEC);
     procedure SetFlag18;
     procedure ClearFlag18;
     procedure RequestStop;
@@ -51,12 +61,6 @@ type
     function WaitForIdle(TimeoutMs: Cardinal): Boolean;
     procedure CheckFailure;
   end;
-
-const
-
-  ThreadPriorityLowest = 1;
-
-  ThreadPriorityAboveNormal = 4;
 
 implementation
 
@@ -181,7 +185,7 @@ begin
     SysUtils.Sleep(100);
 end;
 
-procedure TThreadEC.SetPriority(Value: Byte);
+procedure TThreadEC.SetPriority(Value: TThreadPriorityEC);
 begin
   Priority := Value;
   if Worker <> nil then

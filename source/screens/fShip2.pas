@@ -43,7 +43,7 @@ type
   TPlayerHoldUnit = class(TObject)
     Kind: TPlayerHoldKind;
     GoodsIndex: Byte;
-    ItemId: Integer;
+    ItemId: Cardinal;
     DisplayOrder: Integer;
     Item: TItem;
     Retained: Boolean;
@@ -532,7 +532,7 @@ begin
   end;
   for J := 0 to Ship.Inventory.Count - 1 do
   begin
-    Item := TEquipment(Ship.Inventory[J]);
+    Item := Ship.Inventory[J];
     if (Item.EquippedFlag = 0) and (Ship.GetHull <> Item) then
     begin
       if IncludeFilteredItems or GetPlayer.CanAccessStoredItem(Item) then
@@ -563,7 +563,7 @@ begin
   end;
   for J := 0 to Ship.Artefacts.Count - 1 do
   begin
-    Item := TEquipment(Ship.Artefacts[J]);
+    Item := Ship.Artefacts[J];
     if Item.EquippedFlag = 0 then
     begin
       if IncludeFilteredItems or GetPlayer.CanAccessStoredItem(Item) then
@@ -932,11 +932,8 @@ end;
 
 procedure TfShip2.InitializeLayout;
 var
-  Unused7C: Integer; // Native unused local at EBP-$7C, allocated after the live locals.
   I: Integer;
-  Unused0C: Integer; // Native unused local at EBP-$0C; original type and name are unknown.
   Column, Row: Integer;
-  Unused18: Integer;
   Panel: TPanelGI;
   Button: TGraphButtonGI;
 begin
@@ -1215,8 +1212,8 @@ end;
 
 procedure TfShip2.OnOpen;
 var
-  Reserved08, SlotCount: Integer;
-  PortraitPath, ReservedText: WideString;
+  SlotCount: Integer;
+  PortraitPath: WideString;
   I, J: Integer;
   Item: TItem;
   SavedFlag, ScriptChangedFlag: Boolean;
@@ -1262,7 +1259,7 @@ begin
     MainPanel.Show;
   for I := 0 to PlayerHoldShip.Inventory.Count - 1 do
   begin
-    Item := TItem(PlayerHoldShip.Inventory[I]);
+    Item := PlayerHoldShip.Inventory[I];
     if (Item is TWeapon) and ((Item as TWeapon).Target <> nil) then
       if (Item as TWeapon).EquippedFlag = 0 then
         (Item as TWeapon).Target := nil
@@ -2566,7 +2563,6 @@ var
   I, Slot, SlotCount, DuplicateSlot, Column, Row: Integer;
   Item: TEquipment;
   Entry: TPlayerHoldUnit;
-  ReservedPoint: TPoint;
   Highlight, Boost: Boolean;
   SelectedType, InstalledType: TItemType;
   Artefact: TArtefact;
@@ -2840,7 +2836,7 @@ begin
         SelectedType := TArtefactCustom(SelectedHoldItem).CountsAsItemType;
       for I := 0 to PlayerHoldShip.Artefacts.Count - 1 do
       begin
-        Item := TEquipment(PlayerHoldShip.Artefacts[I]);
+        Item := PlayerHoldShip.Artefacts[I];
         if Item.EquippedFlag <> 0 then
         begin
           InstalledType := Item.ItemType;
@@ -2927,7 +2923,7 @@ begin
     if HoldFirstIndex + I >= PlayerHoldEntries.Count then
       Entry := nil
     else
-      Entry := TPlayerHoldUnit(PlayerHoldEntries[HoldFirstIndex + I]);
+      Entry := PlayerHoldEntries[HoldFirstIndex + I];
     with GetByName('S_' + IntToStr(I) + 'i') as TImageGI do
     begin
       if (Entry = nil) or (Entry.Kind = phkEmpty) then
@@ -2969,7 +2965,7 @@ begin
       if I < 0 then
         Entry := nil
       else
-        Entry := TPlayerHoldUnit(PlayerHoldEntries[I]);
+        Entry := PlayerHoldEntries[I];
       with RemoteHoldImages[Row * RemoteHoldColumns + Column] do
       begin
         if (Entry = nil) or (Entry.Kind = phkEmpty) then
@@ -3139,7 +3135,6 @@ var
   I, TotalRepair: Integer;
   Equipment: TEquipment;
   OrdinaryShip: Boolean;
-  Unused60, Unused64: Integer; { Two native unused stack slots before managed temporaries. }
 
   procedure Skill(Index, BaseLevel, EffectiveLevel: Integer; CanTrain: Boolean);
   var
@@ -3465,20 +3460,14 @@ begin
       SetCursorByName('Main');
   end
   else if SelectedHoldKind = phkEquipment then
-    SetCursorImage(
-        'GI,' + GetShopItemIconName(TItem(SelectedHoldItem)) + 's',
-        Classes.Point(16, 16)
-    )
+    SetCursorImage('GI,' + GetShopItemIconName(SelectedHoldItem) + 's', Classes.Point(16, 16))
   else if SelectedHoldKind = phkGoods then
     SetCursorImage(
         'GI,' + GetItemTypeBitmapPath(TItemType(SelectedGoodsIndex)),
         Classes.Point(16, 16)
     )
   else if SelectedHoldKind = phkArtefact then
-    SetCursorImage(
-        'GI,' + GetShopItemIconName(TItem(SelectedHoldItem)) + 's',
-        Classes.Point(16, 16)
-    );
+    SetCursorImage('GI,' + GetShopItemIconName(SelectedHoldItem) + 's', Classes.Point(16, 16));
 end;
 
 procedure TfShip2.TrainSkillClicked(Sender: TObjectGI);
@@ -3950,7 +3939,6 @@ var
   Equipment: TEquipment;
   Entry, Swap: TPlayerHoldUnit;
   Stack: TCountableItem;
-  ReservedCisternFrom, ReservedCisternTo: TCistern;
   FuelFrom, FuelTo: TFuelTanks;
   Expanded, NeedsRefresh: Boolean;
   ActionResult: Integer;
@@ -3985,7 +3973,7 @@ begin
     if (Index < 0) or (PlayerHoldEntries.Count <= Index) then
       Entry := nil
     else
-      Entry := TPlayerHoldUnit(PlayerHoldEntries[Index]);
+      Entry := PlayerHoldEntries[Index];
   end
   else
   begin
@@ -3994,7 +3982,7 @@ begin
     if J < 0 then
       Entry := nil
     else
-      Entry := TPlayerHoldUnit(PlayerHoldEntries[J]);
+      Entry := PlayerHoldEntries[J];
   end;
   if (SelectedHoldKind = phkEmpty) and (Entry = nil) then
     Exit;
@@ -4112,7 +4100,7 @@ begin
           PlayerHoldEntries.Add(Entry);
           Entry.Kind := phkEmpty;
         end;
-        Entry := TPlayerHoldUnit(PlayerHoldEntries[PlayerHoldEntries.Count - 1]);
+        Entry := PlayerHoldEntries[PlayerHoldEntries.Count - 1];
       end
       else
       begin
@@ -4173,7 +4161,7 @@ begin
     end;
     for J := PlayerHoldEntries.Count - 1 downto 0 do
     begin
-      Swap := TPlayerHoldUnit(PlayerHoldEntries[J]);
+      Swap := PlayerHoldEntries[J];
       if (Swap.Kind = phkGoods) and (SelectedGoodsIndex = Swap.GoodsIndex) and (Entry <> Swap) then
       begin
         if not Expanded then
@@ -4320,7 +4308,7 @@ begin
             PlayerHoldEntries.Add(Entry);
             Entry.Kind := phkEmpty;
           end;
-          Entry := TPlayerHoldUnit(PlayerHoldEntries[PlayerHoldEntries.Count - 1]);
+          Entry := PlayerHoldEntries[PlayerHoldEntries.Count - 1];
         end
         else
         begin
@@ -4372,7 +4360,7 @@ begin
       end;
       for J := 0 to PlayerHoldEntries.Count - 1 do
       begin
-        Swap := TPlayerHoldUnit(PlayerHoldEntries[J]);
+        Swap := PlayerHoldEntries[J];
         if (Swap.Kind = phkEquipment) and (Entry.Item as TCountableItem).Merge(Swap.Item) then
         begin
           PlayerHoldShip.Inventory.Delete(PlayerHoldShip.Inventory.IndexOf(Swap.Item));
@@ -4592,7 +4580,7 @@ begin
           PlayerHoldEntries.Add(Entry);
           Entry.Kind := phkEmpty;
         end;
-        Entry := TPlayerHoldUnit(PlayerHoldEntries[PlayerHoldEntries.Count - 1]);
+        Entry := PlayerHoldEntries[PlayerHoldEntries.Count - 1];
       end
       else
       begin
@@ -4710,8 +4698,7 @@ begin
     PlayerHoldShip.Artefacts.Add(SelectedHoldItem);
     (SelectedHoldItem as TEquipment).EquippedFlag := 0;
     if SelectedHoldItem is TArtefactTranclucator then
-      (TObject((SelectedHoldItem as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip :=
-          GetPlayer;
+      ((SelectedHoldItem as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := GetPlayer;
     SoundManager.PlaySound('Sound.SlotPut');
     if not Expanded then
     begin
@@ -4724,7 +4711,7 @@ begin
           PlayerHoldEntries.Add(Entry);
           Entry.Kind := phkEmpty;
         end;
-        Entry := TPlayerHoldUnit(PlayerHoldEntries[PlayerHoldEntries.Count - 1]);
+        Entry := PlayerHoldEntries[PlayerHoldEntries.Count - 1];
       end
       else
       begin
@@ -4959,7 +4946,7 @@ begin
       SelectedHoldOrigin := 0;
       SelectedHoldSlot := 0;
       SelectedHoldUsesDisplayOrder := False;
-      SelectedHoldItem := TItem(PlayerHoldShip.Inventory[0]);
+      SelectedHoldItem := PlayerHoldShip.Inventory[0];
       PlayerHoldShip.RefreshDerivedStats(True);
       Galaxy.PrimeIntegrityChecksum1(465);
       UpdateActionCursor(True);
@@ -5057,7 +5044,7 @@ begin
         PlayerHoldShip.ChameleonActive := False;
         for I := 0 to PlayerHoldShip.CurrentStar.Ships.Count - 1 do
         begin
-          Ship := TShip(PlayerHoldShip.CurrentStar.Ships[I]);
+          Ship := PlayerHoldShip.CurrentStar.Ships[I];
           if (Ship <> PlayerHoldShip)
               and Ship.InNormalSpace
               and not Ship.HasScriptControl
@@ -6271,7 +6258,7 @@ begin
   else if (SelectedHoldKind = phkEquipment) or (SelectedHoldKind = phkArtefact) then
   begin
     if SelectedHoldItem is TArtefactTranclucator then
-      (TObject((SelectedHoldItem as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip := nil;
+      ((SelectedHoldItem as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := nil;
     if PlayerHoldShip is TRuins then
     begin
       if PlayerHoldShip.NeedsEquipmentType(SelectedHoldItem.ItemType) then
@@ -6566,7 +6553,7 @@ begin
   else if (SelectedHoldKind = phkEquipment) or (SelectedHoldKind = phkArtefact) then
   begin
     if SelectedHoldItem is TArtefactTranclucator then
-      (TObject((SelectedHoldItem as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip := nil;
+      ((SelectedHoldItem as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := nil;
     if SelectedHoldItem.ItemType = t_FuelTanks then
     begin
       if PlayerHoldShip.GetFuelTanks = nil then
@@ -7867,8 +7854,6 @@ var
   CenterX, CenterY: Boolean;
   InfoWindow: TWindowGI;
   Position, CellSize: TPoint;
-  Reserved70:
-      Int64; { Native frame retains an unused eight-byte slot before expression temporaries. }
 begin
   if KeepMobileTooltipVisible(ItemInfoWindow, ItemInfoHideTimer) then
     Exit;
@@ -8244,7 +8229,7 @@ procedure TfShip2.LayoutObjectInfo(
 var
   TargetRatio, Ratio: Single;
   TextSize, WindowSize, TargetSize: TPoint;
-  Attempts, Reserved: Integer; { Native frame retains one unused local. }
+  Attempts: Integer;
   Borders: Types.TRect;
   LeftWidth, RightWidth, TotalHeight, EmblemMargin, CenterX, CenterY, RowY: Integer;
 
@@ -8366,15 +8351,12 @@ begin
 end;
 
 procedure TfShip2.ShowEquipmentInfo(Item: TItem; FromStorage: Boolean);
-const
-  DurableTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   Equipment: TEquipment;
   Origin: Integer;
   Text: WideString;
   SpecialHull: Boolean;
   BarWidth, CapWidth, MinimumWidth: Integer;
-  Reserved9C, ReservedA0, ReservedA4: Integer;
 begin
   Equipment := Item as TEquipment;
   if Equipment = nil then
@@ -8589,7 +8571,7 @@ begin
         SetImageKindX(ikxCenter);
         SetImageKindY(ikyCenter);
       end;
-      if not (Byte(Equipment.ItemType) in DurableTypes) and (Equipment.ItemType <> t_Hull) then
+      if not (Equipment.ItemType in RepairableItemTypes) and (Equipment.ItemType <> t_Hull) then
       begin
         with GetByName('InfoDurable') as TImageGI do
           Parent.Parent.SetActive(False);
@@ -8916,7 +8898,7 @@ end;
 
 procedure TfShip2.GateMouseEnter(Sender: TObjectGI);
 begin
-  if (SelectedHoldKind = phkEquipment) and (TObject(SelectedHoldItem) is THull) then
+  if (SelectedHoldKind = phkEquipment) and (SelectedHoldItem is THull) then
     CloseGate
   else if SelectedHoldKind <> phkEmpty then
     OpenGate
@@ -9569,7 +9551,7 @@ begin
       Exit;
     end;
     if SelectedHoldItem is TArtefactTranclucator then
-      (TObject((SelectedHoldItem as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip := nil;
+      ((SelectedHoldItem as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := nil;
     SoundManager.PlaySound('Sound.SlotPut');
     SelectedHoldKind := phkEmpty;
     GetPlayer.AddItemToPlayerStorage(SelectedHoldItem, GetLocalStorageOwner, Slot);
@@ -10205,9 +10187,6 @@ end;
 
 function RunShipEquipment(ParentLoop: TMessageLoopGI): Boolean;
 var
-  CursorAlignment:
-      array[0..2] of
-          Byte; // Native three unused bytes between the Boolean result and packed cursor record.
   State: TCursorStateGI;
 begin
   ParentLoop.RootUiObject.OnModalSuspend;

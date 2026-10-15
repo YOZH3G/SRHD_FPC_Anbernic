@@ -120,7 +120,7 @@ type
     PrisonersBailedOut: Integer;
     DrainedHullPoints: Integer;
     StarFuelCollected: Cardinal;
-    StarFuelTankId: Integer;
+    StarFuelTankId: Cardinal;
     UninhabitedPlanetsVisited: Integer;
     constructor Create;
     destructor Destroy; override;
@@ -217,7 +217,7 @@ begin
     else if Key = 'PIRATE' then
       Result := Stats.SystemsCapturedForPirates
     else if Key = 'SCIENCE' then
-      Result := Integer(Stats.CompletedResearchPrograms)
+      Result := Stats.CompletedResearchPrograms
     else if Key = 'HACKER' then
       Result := Stats.SuccessfulDominatorHacks
     else if Key = 'PRISONBAIL' then
@@ -324,7 +324,7 @@ var
   I, LastAward: Integer;
   AllPresent: Boolean;
   AwardId: Byte;
-  Present: array[0..255] of Boolean;
+  Present: array[Byte] of Boolean;
 begin
   { Native argument order is reversed: count zero leaves this buffer uninitialized. }
   FillChar(Present, 0, SizeOf(Present));
@@ -446,7 +446,7 @@ begin
   if (GetPlayer <> nil) and (Galaxy <> nil) then
   begin
     for Skill := Low(TPilotSkill) to High(TPilotSkill) do
-      if GetPlayer.GetBaseSkillLevel(Skill) < 6 then
+      if GetPlayer.GetBaseSkillLevel(Skill) < High(TPilotSkillLevel) then
         Complete := False;
     if Complete then
       TryUnlockAchievement('SKILL');
@@ -479,13 +479,13 @@ end;
 
 procedure TAchievementStats.CheckBaronAchievement;
 begin
-  if (GetPlayer <> nil) and (Galaxy <> nil) and (GetPlayer.PirateRank = 7) then
+  if (GetPlayer <> nil) and (Galaxy <> nil) and (GetPlayer.PirateRank = High(TShipRank)) then
     TryUnlockAchievement('BARON');
 end;
 
 procedure TAchievementStats.CheckCommanderAchievement;
 begin
-  if (GetPlayer <> nil) and (Galaxy <> nil) and (GetPlayer.Rank = 7) then
+  if (GetPlayer <> nil) and (Galaxy <> nil) and (GetPlayer.Rank = High(TShipRank)) then
     TryUnlockAchievement('COMMANDOR');
 end;
 
@@ -541,7 +541,7 @@ begin
     Exit;
   if GetPlayer.CountEquippedWeapons < 5 then
     Exit;
-  for I := 1 to 5 do
+  for I := Low(GetPlayer.Weapons) to High(GetPlayer.Weapons) do
     if GetPlayer.Weapons[I].HasStandardStats then
       Exit;
   TryUnlockAchievement('BEST');
@@ -600,7 +600,7 @@ begin
       Exit;
     for I := 0 to Galaxy.Constellations.Count - 1 do
     begin
-      Constellation := TConstellation(Galaxy.Constellations[I]);
+      Constellation := Galaxy.Constellations[I];
       if (not Constellation.Visible) and (Constellation.Id <> 20) then
         Exit;
     end;
@@ -646,7 +646,7 @@ var
 begin
   AchievementDefinitions := TBlockParEC.Create;
   // Entry zero is the native NONE sentinel and is not registered.
-  for Index := 1 to 82 do
+  for Index := 1 to High(AchievementDefinitionTable) do
   begin
     Block :=
         AchievementDefinitions.AddChildBlock(WideString(AchievementDefinitionTable[Index].Key));
@@ -675,8 +675,8 @@ end;
 function GetAvailableAchievementCount: Integer;
 begin
   case GetAchievementBackend of
-    achSteam: Result := Min(82, SteamAchievementsCount);
-    achLocal: Result := 82;
+    achSteam: Result := Min(High(AchievementDefinitionTable), SteamAchievementsCount);
+    achLocal: Result := High(AchievementDefinitionTable);
     achSteamWithoutAchievements: Result := 0;
   else
     Result := 0;

@@ -83,7 +83,7 @@ type
     procedure DifficultyPresetClicked(Sender: TObjectGI);
     procedure CustomDifficultyClicked(Sender: TObjectGI);
     procedure CustomDifficultyMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
-    procedure StartNewGameGeneration;
+    procedure PrepareNewGameGeneration;
     procedure ApplyClicked(Sender: TObjectGI);
     procedure CancelClicked(Sender: TObjectGI);
     procedure MainPanelKeyDown(Sender: TObjectGI; Key: Cardinal);
@@ -171,7 +171,6 @@ var
   Compact: Boolean;
   Text: WideString;
   Race: TOwnerId;
-  Unused: Integer; // Native O- stack reserves this unused local.
 begin
   inherited InitializeLayout;
   Compact := GameCompactLayoutEnabled and HardwareRenderingEnabled
@@ -363,9 +362,9 @@ begin
       DownCallback := StartingItemClicked;
       UpCallback := StartingItemClicked;
     end;
-  for I := 0 to 11 do
+  for I := Low(ItemTypeByChoice) to High(ItemTypeByChoice) do
     ItemTypeByChoice[I] := I + 43;
-  for I := 0 to 11 do
+  for I := Low(ItemTypeByChoice) to High(ItemTypeByChoice) do
     if ItemTypeByChoice[I] in [Ord(t_IndustrialLaser)..Ord(t_Lirecron)] then
       (GetByName('ItemI' + IntToStr(I + 1)) as TImageGI)
           .SetImagePath(
@@ -382,7 +381,7 @@ begin
                   + IntToStr(1)
                   + 's');
   for I := 1 to 4 do
-    for J := 0 to 7 do
+    for J := Low(DifficultyLevels) to High(DifficultyLevels) do
       with GetByName('Level' + IntToStr(I) + '_' + IntToStr(J)) as TGraphButtonGI do
       begin
         UpCallback := DifficultyComponentClicked;
@@ -591,7 +590,7 @@ begin
   end;
   RefreshStartingItems;
   DifficultyPreset := 1;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     if NewGameSettingsConfig.CountParamsByPath('Level' + IntToStr(I)) > 0 then
     begin
       ValueText := NewGameSettingsConfig.GetParamByPathOrMarker('Level' + IntToStr(I));
@@ -1503,7 +1502,7 @@ begin
     end;
   RefreshDifficulty;
   for Level := 1 to 4 do
-    for I := 0 to 7 do
+    for I := Low(DifficultyLevels) to High(DifficultyLevels) do
       with GetByName('Level' + IntToStr(Level) + '_' + IntToStr(I)) as TGraphButtonGI do
         if not Down then
         begin
@@ -1693,7 +1692,7 @@ var
   Color: WideString;
 begin
   Custom := 0;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
   begin
     for Level := 1 to 4 do
       with FindControlByPath('Level' + IntToStr(Level) + '_' + IntToStr(I)) as TGraphButtonGI do
@@ -1712,7 +1711,7 @@ begin
   (GetByName('Level3') as TGraphButtonGI).SetDown((DifficultyPreset = 2) and (Custom = 0));
   (GetByName('Level4') as TGraphButtonGI).SetDown((DifficultyPreset = 3) and (Custom = 0));
   Average := 0;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     Average := Average + 50 + DifficultyLevels[I] * 50;
   Average := Average div 8;
   if Average = 50 then
@@ -1743,14 +1742,14 @@ begin
       and IsVirtualKeyDown(VK_SHIFT)
       and (MaximumNewGameDifficulty > Value) then
   begin
-    for I := 0 to 7 do
+    for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     begin
       Saved[I] := DifficultyLevels[I];
       DifficultyLevels[I] := (GetByName('Level4_' + IntToStr(I)) as TGraphButtonGI).UserIndex;
     end;
     Inc(DifficultyLevels[Component]);
     RefreshDifficultyHelp;
-    for I := 0 to 7 do
+    for I := Low(DifficultyLevels) to High(DifficultyLevels) do
       DifficultyLevels[I] := Saved[I];
   end;
   if (Sender.ControlName = 'Level1_' + IntToStr(Component))
@@ -1758,20 +1757,20 @@ begin
       and IsVirtualKeyDown(VK_SHIFT)
       and (Value > 0) then
   begin
-    for I := 0 to 7 do
+    for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     begin
       Saved[I] := DifficultyLevels[I];
       DifficultyLevels[I] := (GetByName('Level4_' + IntToStr(I)) as TGraphButtonGI).UserIndex;
     end;
     Dec(DifficultyLevels[Component]);
     RefreshDifficultyHelp;
-    for I := 0 to 7 do
+    for I := Low(DifficultyLevels) to High(DifficultyLevels) do
       DifficultyLevels[I] := Saved[I];
   end;
   Value := Sender.UserIndex;
   DifficultyLevels[Component] := Value;
   Custom := False;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     if DifficultyLevels[I] <> Value then
       Custom := True;
   if not Custom then
@@ -1785,7 +1784,7 @@ var
   CaptionLabel: TLabelGI;
 begin
   DifficultyPreset := ExtractDigitsToIntW(Sender.ControlName) - 1;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     DifficultyLevels[I] := DifficultyPreset;
   First := Max(DifficultyPreset - 3, 0);
   for I := 1 to 8 do
@@ -1884,7 +1883,7 @@ begin
   ToggleLevelPanel(Sender);
 end;
 
-procedure TfGameSettings2.StartNewGameGeneration;
+procedure TfGameSettings2.PrepareNewGameGeneration;
 var
   I: Integer;
 begin
@@ -1892,15 +1891,19 @@ begin
   NewGameGenerationThread.IronWill := IronWill;
   NewGameGenerationThread.PlayerRace := PlayerRace;
   NewGameGenerationThread.CharacterPreset := CharacterPreset;
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     NewGameGenerationThread.DifficultyLevels[I] := DifficultyLevels[I];
-  NewGameGenerationThread.SetPriority(2);
+  NewGameGenerationThread.SetPriority(ThreadPriorityBelowNormal);
   NewGameGenerationThread.CaptainPortraitIndex := CaptainPortraitIndex;
   for I := 0 to 1 do
     NewGameGenerationThread.StartingItemTypes[I] := ItemTypeByChoice[StartingItemChoices[I] - 1];
   for I := 0 to 1 do
     NewGameGenerationThread.StartingSkills[I] := StartingSkills[I];
-  NewGameGenerationThread.Start;
+  // The original starts the worker here, before the button's deferred
+  // OnPressCode and closing UI scripts run. TGalaxy.Create rebuilds
+  // SharedScriptVariables concurrently with their lookups (e.g. UICheckElement).
+  // Start only after the settings loop finishes and the introduction opens.
+  NewGameGenerationThread.StartOnIntroduction := True;
 end;
 
 procedure TfGameSettings2.ApplyClicked(Sender: TObjectGI);
@@ -1941,7 +1944,7 @@ begin
       NewGameSettingsConfig.SetOrAddParam('Skill2', IntToStr(Ord(StartingSkills[1])));
       NewGameSettingsConfig.SetOrAddParam('Item1', IntToStr(StartingItemChoices[0]));
       NewGameSettingsConfig.SetOrAddParam('Item2', IntToStr(StartingItemChoices[1]));
-      for I := 0 to 7 do
+      for I := Low(DifficultyLevels) to High(DifficultyLevels) do
         NewGameSettingsConfig.SetOrAddParam('Level' + IntToStr(I), IntToStr(DifficultyLevels[I]));
       FileName := GetGameUserDirectory + 'newgame.txt';
       if NewGameSettingsConfig.CountBlocks('CustomRules') = 0 then
@@ -2034,7 +2037,7 @@ begin
       NewGameGenerationThread := TThreadCreateNewGame.Create;
       NewGameGenerationThread.PlayerName :=
           TrimWideString((GetByName('PlayerName') as TEditGI).Text);
-      StartNewGameGeneration;
+      PrepareNewGameGeneration;
       RequestedScreenId := screenIntroduction;
       RequestClose(1);
     end;
@@ -2616,7 +2619,7 @@ var
   I: Integer;
   Button: TObjectGI;
 begin
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     if MaximumNewGameDifficulty > DifficultyLevels[I] then
       Inc(DifficultyLevels[I]);
   Button := FindControlByPath('KeyArrowRight');
@@ -2631,7 +2634,7 @@ var
   I: Integer;
   Button: TObjectGI;
 begin
-  for I := 0 to 7 do
+  for I := Low(DifficultyLevels) to High(DifficultyLevels) do
     if DifficultyLevels[I] > 0 then
       Dec(DifficultyLevels[I]);
   Button := FindControlByPath('KeyArrowLeft');

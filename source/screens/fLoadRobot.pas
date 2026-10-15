@@ -481,7 +481,6 @@ var
   EntryPanel: TPanelGI;
   Alternate: Boolean;
   Path: WideString;
-  FindHandle: Cardinal;
   FindData: TSearchRec;
 begin
   Panel := GetByName('PanelSlot') as TPanelScrollBarGI;

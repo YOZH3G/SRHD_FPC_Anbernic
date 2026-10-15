@@ -319,7 +319,7 @@ var
 
   FilmCameraLookAheadSteps: Integer = 30;
 
-function GetTurnFilmFrameInterval(Activity: Integer): Integer;
+function GetTurnFilmFrameInterval(Activity: Cardinal): Integer;
 
 implementation
 
@@ -1323,7 +1323,7 @@ begin
             else
               Graphic.SetPosition(Position2);
             Graphic.DetachFromSpace;
-            THoleSE(Graphic).SetState(1);
+            Graphic.SetState(1);
             Graphic.AttachToSpace(SpaceProcess.Space);
           end;
         Break;
@@ -1900,7 +1900,7 @@ begin
       Index := 0;
       while Index < Ship.CurrentStar.Ships.Count do
       begin
-        OtherShip := TShip(Ship.CurrentStar.Ships[Index]);
+        OtherShip := Ship.CurrentStar.Ships[Index];
         if OtherShip.InNormalSpace and (PointDistanceSquared(Point, OtherShip.Position) < 900) then
           Break;
         Inc(Index);
@@ -2315,20 +2315,20 @@ begin
     PartnerCount := 0;
     for StarIndex := 0 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TStar(Galaxy.Stars[StarIndex]);
+      Star := Galaxy.Stars[StarIndex];
       for ShipIndex := 0 to Star.Ships.Count - 1 do
       begin
-        Ship := TShip(Star.Ships[ShipIndex]);
+        Ship := Star.Ships[ShipIndex];
         if Ship.PartnerShip = GetPlayer then
           Inc(PartnerCount);
       end;
     end;
     for StarIndex := 0 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TStar(Galaxy.Stars[StarIndex]);
+      Star := Galaxy.Stars[StarIndex];
       for ShipIndex := 0 to Star.Ships.Count - 1 do
       begin
-        Ship := TShip(Star.Ships[ShipIndex]);
+        Ship := Star.Ships[ShipIndex];
         if Ship.PartnerShip = GetPlayer then
         begin
           with TGraphButtonGI.Create(SecondaryPartnerPanel) do
@@ -2582,7 +2582,7 @@ begin
   Count := PlayerStar.Missiles.Count;
   for Index := 0 to Count - 1 do
   begin
-    Missile := TMissile(PlayerStar.Missiles[Index]);
+    Missile := PlayerStar.Missiles[Index];
     if (Missile <> nil)
         and (Missile.GetGraphObject <> nil)
         and Missile.GetGraphObject.HitTestCursor then
@@ -2600,7 +2600,7 @@ begin
   Count := PlayerStar.Ships.Count;
   for Index := 0 to Count - 1 do
   begin
-    Ship := TShip(PlayerStar.Ships[Index]);
+    Ship := PlayerStar.Ships[Index];
     if not (Ship is TRuins)
         and (Ship <> nil)
         and (Ship.Graphic <> nil)
@@ -2619,7 +2619,7 @@ begin
   Count := PlayerStar.Items.Count;
   for Index := 0 to Count - 1 do
   begin
-    Item := TItem(PlayerStar.Items[Index]);
+    Item := PlayerStar.Items[Index];
     if (Item <> nil) and (Item.GetGraphObject <> nil) and Item.GetGraphObject.HitTestCursor then
     begin
       HitObjectPosition :=
@@ -2635,7 +2635,7 @@ begin
   Count := PlayerStar.Ships.Count;
   for Index := 0 to Count - 1 do
   begin
-    Ship := TShip(PlayerStar.Ships[Index]);
+    Ship := PlayerStar.Ships[Index];
     if (Ship is TRuins)
         and (Ship <> nil)
         and (Ship.Graphic <> nil)
@@ -2654,7 +2654,7 @@ begin
   Count := PlayerStar.Asteroids.Count;
   for Index := 0 to Count - 1 do
   begin
-    Asteroid := TAsteroid(PlayerStar.Asteroids[Index]);
+    Asteroid := PlayerStar.Asteroids[Index];
     if (Asteroid <> nil)
         and (Asteroid.GraphObject <> nil)
         and Asteroid.GraphObject.HitTestCursor then
@@ -2672,7 +2672,7 @@ begin
   Count := PlayerStar.Planets.Count;
   for Index := 0 to Count - 1 do
   begin
-    Planet := TPlanet(PlayerStar.Planets[Index]);
+    Planet := PlayerStar.Planets[Index];
     if Planet.Graphic.IsRuins then
     begin
       if Planet.Graphic.HitTestCursor then
@@ -2713,11 +2713,11 @@ begin
   end;
   for Index := 0 to Galaxy.Holes.Count - 1 do
   begin
-    Hole := THole(Galaxy.Holes[Index]);
+    Hole := Galaxy.Holes[Index];
     if ((Hole.Star1 = PlayerStar) or (Hole.Star2 = PlayerStar)) and (Hole.Graphic <> nil) then
     begin
       if PointDistanceSquared(Hole.Graphic.Position, PointToPointF(Point))
-          < Sqr(THoleSE(Hole.Graphic).HitRadius) then
+          < Sqr(Hole.Graphic.HitRadius) then
       begin
         HitObjectPosition :=
             Classes.Point(
@@ -3074,7 +3074,7 @@ begin
   MinimapFrameCounter := 0;
   ScannerSelectionActive := False;
   TalkSelectionActive := False;
-  for Index := 0 to 4 do
+  for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
     SelectedWeapons[Index] := False;
   InterceptorSelectionActive := False;
   CustomSelectionActive := False;
@@ -3206,7 +3206,7 @@ begin
   TalkSelectionActive := False;
   InterceptorSelectionActive := False;
   CustomSelectionActive := False;
-  for Index := 0 to 4 do
+  for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
     SelectedWeapons[Index] := False;
   RefreshActionRanges;
   HideActionRanges;
@@ -4241,7 +4241,7 @@ begin
     TalkSelectionActive := False;
     InterceptorSelectionActive := False;
     CustomSelectionActive := False;
-    for Index := 0 to 4 do
+    for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
       SelectedWeapons[Index] := False;
     CursorObject := FindObjectAtCursor;
     if CursorObject = GetPlayer then
@@ -4606,7 +4606,7 @@ begin
               Index := GetPlayer.ScriptShipBindings.Count - 1
             else
             begin
-              Binding := TScriptShip(GetPlayer.ScriptShipBindings[Index]);
+              Binding := GetPlayer.ScriptShipBindings[Index];
               if Binding.Script <> nil then
                 Binding.Script.RunShipState(Binding);
               Dec(Index);
@@ -4634,7 +4634,7 @@ begin
               Index := GetPlayer.ScriptShipBindings.Count - 1
             else
             begin
-              Binding := TScriptShip(GetPlayer.ScriptShipBindings[Index]);
+              Binding := GetPlayer.ScriptShipBindings[Index];
               if Binding.Script <> nil then
                 Binding.Script.RunShipState(Binding);
               Dec(Index);
@@ -4697,8 +4697,6 @@ begin
 end;
 
 procedure TfStarMap.ShowObjectInfo(Obj: TObject);
-const
-  WearableItemTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   Panel: TPanelGI;
   Objects: TList;
@@ -4922,11 +4920,7 @@ begin
         begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
-          LoadGaiFrameToGraphBuf(
-              TAsteroidSE(TAsteroid(Obj).GraphObject).ImagePath,
-              GraphBuf,
-              TAsteroid(Obj).Id
-          );
+          LoadGaiFrameToGraphBuf(TAsteroid(Obj).GraphObject.ImagePath, GraphBuf, TAsteroid(Obj).Id);
 
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
@@ -4989,7 +4983,7 @@ begin
         begin
           SetActive(True);
           SourceHasPerPixelAlpha := True;
-          LoadGaiFrameToGraphBuf(THoleSE(THole(Obj).Graphic).ImagePath, GraphBuf, 32);
+          LoadGaiFrameToGraphBuf(THole(Obj).Graphic.ImagePath, GraphBuf, 32);
 
           if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
           begin
@@ -5010,12 +5004,9 @@ begin
         end;
         (GetByName('InfoStdName') as TLabelGI)
             .SetText(
-                WrapTextInColor(
-                    LocalizedText(THoleSE(THole(Obj).Graphic).NameTextPath),
-                    InfoNameColorTag
-                ));
+                WrapTextInColor(LocalizedText(THole(Obj).Graphic.NameTextPath), InfoNameColorTag));
         (GetByName('InfoStdText') as TLabelGI)
-            .SetText(LocalizedText(THoleSE(THole(Obj).Graphic).InfoTextPath));
+            .SetText(LocalizedText(THole(Obj).Graphic.InfoTextPath));
         ShipScreen.LayoutItemInfo(
             StandardInfoPanel as TWindowGI,
             GetByName('InfoStdName') as TLabelGI,
@@ -5053,7 +5044,7 @@ begin
           with GetByName('InfoPlanetImage') as TGraphBufGI do
           begin
             SourceHasPerPixelAlpha := True;
-            TPlanetSE((Obj as TPlanet).Graphic).RenderToBuffer(Self, GraphBuf, False);
+            (Obj as TPlanet).Graphic.RenderToBuffer(Self, GraphBuf, False);
 
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
@@ -5114,7 +5105,7 @@ begin
           begin
             SetActive(True);
             SourceHasPerPixelAlpha := True;
-            TPlanetSE((Obj as TPlanet).Graphic).RenderToBuffer(Self, GraphBuf, False);
+            (Obj as TPlanet).Graphic.RenderToBuffer(Self, GraphBuf, False);
 
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
@@ -5203,7 +5194,7 @@ begin
         SetImageKindX(ikxCenter);
         SetImageKindY(ikyCenter);
       end;
-      if not ((Byte((Obj as TItem).ItemType) in WearableItemTypes)
+      if not (((Obj as TItem).ItemType in RepairableItemTypes)
           or ((Obj as TItem).ItemType = t_Hull)) then
       begin
         with GetByName('InfoDurable') as TImageGI do
@@ -5772,7 +5763,7 @@ begin
           SetSize(Classes.Point(RowHeight - 2 - IconInset, RowHeight - 2 - IconInset));
           if TObject(Objects[I]) is TPlanet then
           begin
-            TPlanetSE(TPlanet(Objects[I]).Graphic).RenderToBuffer(Self, GraphBuf, True);
+            TPlanet(Objects[I]).Graphic.RenderToBuffer(Self, GraphBuf, True);
             if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
             begin
               if Cardinal(GraphBuf.Width) >= Cardinal(GraphBuf.Height) then
@@ -6112,11 +6103,7 @@ begin
       begin
         SetActive(True);
         SourceHasPerPixelAlpha := True;
-        LoadGaiFrameToGraphBuf(
-            TAsteroidSE(TAsteroid(Obj).GraphObject).ImagePath,
-            GraphBuf,
-            TAsteroid(Obj).Id
-        );
+        LoadGaiFrameToGraphBuf(TAsteroid(Obj).GraphObject.ImagePath, GraphBuf, TAsteroid(Obj).Id);
 
         if (ClientSize.X < GraphBuf.Width) or (ClientSize.Y < GraphBuf.Height) then
         begin
@@ -6203,9 +6190,8 @@ begin
       TouchPoint := MapControls.ToAbsolutePoint(TruncatePointF(TouchItem.Position));
       TouchBounds :=
           Classes.Rect(TouchPoint.X - 19, TouchPoint.Y - 19, TouchPoint.X + 19, TouchPoint.Y + 19);
-      if (TouchItem.GraphObject is TContainerSE)
-          and (TContainerSE(TouchItem.GraphObject).Animation <> nil) then
-        with TContainerSE(TouchItem.GraphObject).Animation do
+      if (TouchItem.GraphObject <> nil) and (TouchItem.GraphObject.Animation <> nil) then
+        with TouchItem.GraphObject.Animation do
         begin
           TouchBounds.TopLeft := LogicalToScreenPoint(HitTestBounds.TopLeft);
           TouchBounds.BottomRight := LogicalToScreenPoint(HitTestBounds.BottomRight);
@@ -6306,7 +6292,7 @@ begin
   Added := False;
   for Index := 0 to GetPlayer.CurrentStar.Planets.Count - 1 do
   begin
-    Planet := TPlanet(GetPlayer.CurrentStar.Planets[Index]);
+    Planet := GetPlayer.CurrentStar.Planets[Index];
     if Planet.OwnerId in [oiMaloc..oiGaal, oiPirate] then
       if PointDistance(GetPlayer.Position, Planet.GetPosition) <= GetPlayer.GetRadarRange then
       begin
@@ -6321,7 +6307,7 @@ begin
   end;
   for Index := 0 to GetPlayer.CurrentStar.Ships.Count - 1 do
   begin
-    Ship := TShip(GetPlayer.CurrentStar.Ships[Index]);
+    Ship := GetPlayer.CurrentStar.Ships[Index];
     if Ship is TRuins then
       if (Ship as TRuins).CanDock(GetPlayer) and not Ship.NoTalk then
         if PointDistance(GetPlayer.Position, Ship.Position) <= GetPlayer.GetRadarRange then
@@ -6429,7 +6415,7 @@ begin
   if Mode = smmOrders then
   begin
     TalkSelectionActive := False;
-    for Index := 0 to 4 do
+    for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
       SelectedWeapons[Index] := False;
     InterceptorSelectionActive := False;
     CustomSelectionActive := False;
@@ -6454,7 +6440,7 @@ begin
   if Mode = smmOrders then
   begin
     ScannerSelectionActive := False;
-    for Index := 0 to 4 do
+    for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
       SelectedWeapons[Index] := False;
     InterceptorSelectionActive := False;
     CustomSelectionActive := False;
@@ -6479,7 +6465,7 @@ begin
   begin
     TalkSelectionActive := False;
     ScannerSelectionActive := False;
-    for Index := 0 to 4 do
+    for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
       SelectedWeapons[Index] := False;
     CustomSelectionActive := False;
     InterceptorSelectionActive := True;
@@ -6498,7 +6484,7 @@ begin
   begin
     TalkSelectionActive := False;
     ScannerSelectionActive := False;
-    for Index := 0 to 4 do
+    for Index := Low(SelectedWeapons) to High(SelectedWeapons) do
       SelectedWeapons[Index] := False;
     InterceptorSelectionActive := False;
     CustomSelectionActive := True;
@@ -6675,13 +6661,8 @@ var
   MainCircle, InnerCircle, ExtraCircle: TSpaceCircleGI;
   SimpleCircle: TCircleGI;
   RangeValue, RangeMaximum: Integer;
-  Reserved: array[0..2] of Integer;
 begin
   CursorObject := FindObjectAtCursor;
-  // These three assignments are retained from the native routine; their values are unused.
-  Reserved[0] := 1;
-  Reserved[1] := 1;
-  Reserved[2] := 1;
   AnyWeapon := False;
   for Slot := 0 to 4 do
     if SelectedWeapons[Slot] then
@@ -6967,7 +6948,7 @@ begin
   end;
   if GetPlayer.GetHull.InterceptorsEnabled then
   begin
-    Target := GetPlayer.GetHull.InterceptorTarget;
+    Target := TShip(GetPlayer.GetHull.InterceptorTarget);
     if Target = nil then
       Target := GetPlayer.SelectInterceptorTarget;
     if Target <> nil then
@@ -7494,7 +7475,7 @@ begin
   end;
 end;
 
-function GetTurnFilmFrameInterval(Activity: Integer): Integer;
+function GetTurnFilmFrameInterval(Activity: Cardinal): Integer;
 begin
   if Activity = 0 then
     Result := 18
@@ -8344,9 +8325,6 @@ end;
 
 procedure TfStarMap.ShowFilmObjectInfo(Obj: TObjectSE; ObjectId: Cardinal);
 
-const
-  WearableItemTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
-
 var
   I, J, RowHeight, RowX: Integer;
   IconInset: Cardinal;
@@ -8876,7 +8854,7 @@ begin
         SetImageKindX(ikxCenter);
         SetImageKindY(ikyCenter);
       end;
-      if not ((Byte(Item^.ItemType) in WearableItemTypes) or (Item^.ItemType = t_Hull)) then
+      if not ((Item^.ItemType in RepairableItemTypes) or (Item^.ItemType = t_Hull)) then
       begin
         with GetByName('InfoDurable') as TImageGI do
           Parent.Parent.SetActive(False);

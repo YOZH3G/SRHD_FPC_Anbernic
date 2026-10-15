@@ -14,6 +14,7 @@ directory=build/release
 assets=(
   "$directory/SpaceRangersHD-Linux-x86_64.tar.gz"
   "$directory/SpaceRangersHD-Android-arm64.apk"
+  "$directory/SpaceRangersHD-Windows-x86_64.zip"
 )
 for asset in "${assets[@]}"; do
   test -s "$asset"

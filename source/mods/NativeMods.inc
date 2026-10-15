@@ -1,0 +1,14 @@
+// Native DLL replacements are enabled by default. Uncomment either switch
+// below to omit that integration, or pass the same symbol with FPC's -d option.
+// {$DEFINE DISABLE_UTILITY_FUNCTIONS_PACK}
+// {$DEFINE DISABLE_AUTOSEARCH}
+
+{$IFNDEF DISABLE_UTILITY_FUNCTIONS_PACK}
+  {$DEFINE NATIVE_UTILITY_FUNCTIONS_PACK}
+{$ENDIF}
+{$IFNDEF DISABLE_AUTOSEARCH}
+  {$DEFINE NATIVE_AUTOSEARCH}
+{$ENDIF}
+{$IF Defined(NATIVE_UTILITY_FUNCTIONS_PACK) or Defined(NATIVE_AUTOSEARCH)}
+  {$DEFINE NATIVE_SCRIPT_MODS}
+{$ENDIF}

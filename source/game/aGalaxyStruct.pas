@@ -475,51 +475,55 @@ type
   TCargoHookLevelStatsTable = array[1..8] of TCargoHookLevelStats;
 
   {$Z1}
-  TDamageKind = (dkEnergy = 0, dkSplinter = 1, dkMissile = 2, dkDroidBlock = 19);
+  TDamageKind = (
+      dkEnergy = 0,
+      dkSplinter = 1,
+      dkMissile = 2,
+      dkDecelerate = 3,
+      dkDestruct = 4,
+      dkDrain = 5,
+      dkShock = 6,
+      dkAcid = 7,
+      dkMagnetic = 8,
+      dkDecelerateA = 9,
+      dkDecelerateAEx = 10,
+      dkUndefendable = 11,
+      dkNonLethal = 12,
+      dkScanBonus = 13,
+      dkBonusToDamaged = 14,
+      dkMoreDrop = 15,
+      dkDropCargo = 16,
+      dkReduceEngine = 17,
+      dkBlockWeapon = 18,
+      dkDroidBlock = 19
+  );
 
   TDamageFlagSet = set of TDamageKind;
 
 const
 
-  dkDecelerate = TDamageKind(3);
-
-  dkDestruct = TDamageKind(4);
-
-  dkDrain = TDamageKind(5);
-
-  dkShock = TDamageKind(6);
-
-  dkAcid = TDamageKind(7);
-
-  dkMagnetic = TDamageKind(8);
-
-  dkDecelerateA = TDamageKind(9);
-
-  dkDecelerateAEx = TDamageKind(10);
-
-  dkUndefendable = TDamageKind(11);
-
-  dkNonLethal = TDamageKind(12);
-
-  dkScanBonus = TDamageKind(13);
-
-  dkBonusToDamaged = TDamageKind(14);
-
-  dkMoreDrop = TDamageKind(15);
-
-  dkDropCargo = TDamageKind(16);
-
-  dkReduceEngine = TDamageKind(17);
-
-  dkBlockWeapon = TDamageKind(18);
-
   DamageNoDeltaMask = 1 shl 20;
-
-  EmptyDamageFlags = [dkEnergy..dkDroidBlock] - [dkEnergy..dkDroidBlock];
 
 type
 
   TItemTypeMask = set of 0..79;
+
+  {$Z1}
+  TItemLootPool = (ilpArcadeBattle = 0, ilpTreasure = 1, ilpReward = 2, ilpAnyAvailable = 3);
+
+  {$Z1}
+  TTransportType = (ttTransport = 0, ttLiner = 1, ttDiplomat = 2);
+
+  {$Z1}
+  TCombatStatusEffectType = (
+      cseShock = 0,
+      cseAcid = 1,
+      cseMagnetic = 2,
+      cseWeaponBlock = 3,
+      cseDroidBlock = 4,
+      cseBWBuff = 5,
+      cseBWRepairDebuff = 6
+  );
 
   {$Z1}
   TOwnerId = (
@@ -561,9 +565,9 @@ type
   TDominatorSeriesMask = set of TDominatorSeries;
 
   TPlanetOwnerMasks = packed record
-    Coalition: TOwnerMask;
-    Dominators: TOwnerMask;
-    PirateClan: TOwnerMask;
+  case Boolean of
+    False: (Coalition: TOwnerMask; Dominators: TOwnerMask; PirateClan: TOwnerMask;);
+    True: (ByFaction: array[TStarFaction] of TOwnerMask;);
   end;
 
   TOwnerRelationRow = array[TOwnerId] of Byte;

@@ -120,7 +120,7 @@ begin
     else if Order.Kind = soLand then
     begin
       if Order.Target is TShip then
-        Buffer.AddDWord(Cardinal((Order.Target as TShip).Id) or OrderTargetShipFlag)
+        Buffer.AddDWord((Order.Target as TShip).Id or OrderTargetShipFlag)
       else
         Buffer.AddDWord((Order.Target as TPlanet).Id);
     end
@@ -173,7 +173,7 @@ var
 begin
   for I := 0 to Ships.Count - 1 do
   begin
-    Ships[I] := TObject(Galaxy.IdToShip(Cardinal(Ships[I]), True)) as TShip;
+    Ships[I] := Galaxy.IdToShip(Cardinal(Ships[I]), True) as TShip;
     Ship := Ships[I];
     Ship.LiberationGroup := Self;
   end;
@@ -187,13 +187,12 @@ begin
     begin
       if Cardinal(Route[I].Target) and OrderTargetShipFlag = OrderTargetShipFlag then
         Route[I].Target :=
-            TObject(Galaxy.IdToShip(Cardinal(Route[I].Target) and TaggedObjectIdMask, True))
-                as TShip
+            Galaxy.IdToShip(Cardinal(Route[I].Target) and TaggedObjectIdMask, True) as TShip
       else
-        Route[I].Target := TObject(Galaxy.IdToPlanet(Cardinal(Route[I].Target))) as TPlanet;
+        Route[I].Target := Galaxy.IdToPlanet(Cardinal(Route[I].Target)) as TPlanet;
     end
     else if Route[I].Kind = soFollowShip then
-      Route[I].Target := TObject(Galaxy.IdToShip(Cardinal(Route[I].Target), True)) as TShip
+      Route[I].Target := Galaxy.IdToShip(Cardinal(Route[I].Target), True) as TShip
     else
       Route[I].Target := nil;
   end;
@@ -270,7 +269,7 @@ var
   Text: WideString;
 begin
   Result := True;
-  if not (((TargetStar <> nil) and (AssemblyStar <> nil)) or SelectLiberationTarget) then
+  if ((TargetStar = nil) or (AssemblyStar = nil)) and not SelectLiberationTarget then
     Exit;
   SetLength(Route, 4);
   with Route[0] do

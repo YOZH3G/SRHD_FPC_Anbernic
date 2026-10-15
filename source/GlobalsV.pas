@@ -398,15 +398,14 @@ function FormToId(Screen: TObject): TGameScreenId;
 var
   Id: TGameScreenId;
 begin
-  Id := screenNone;
-  repeat
+  for Id := Low(RegisteredScreens) to High(RegisteredScreens) do
+  begin
     if RegisteredScreens[Id] = Screen then
     begin
       Result := Id;
       Exit;
     end;
-    Inc(Id);
-  until Id = TGameScreenId(42);
+  end;
   raise Exception.Create('FormToId');
 end;
 

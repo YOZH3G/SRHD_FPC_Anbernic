@@ -344,9 +344,6 @@ end;
 
 function RunSelectFaceDialog(Parent: TMessageLoopGI): Boolean;
 var
-  CursorAlignment:
-      array[0..2] of
-          Byte; // Native gap between the Boolean result and packed cursor record at EBP-$20.
   State: TCursorStateGI;
 begin
   Result := False;

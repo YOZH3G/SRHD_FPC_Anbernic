@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = ("linux", "macos", "wasm", "android", "ios", "ios-simulator", "switch")
+TARGETS = ("linux", "macos", "win32", "win64", "wasm", "android", "ios", "ios-simulator", "switch")
 # Installed Android identity, independent of the Java/JNI class namespace.
 ANDROID_APPLICATION_ID = "io.github.pakompom.spacerangershd"
 # Package versions change for releases, not local rebuilds.
@@ -32,9 +32,14 @@ def add_build_arguments(parser: argparse.ArgumentParser) -> None:
 
 def desktop_target() -> str:
     system = platform.system()
-    if system not in ("Linux", "Darwin"):
+    targets = {"Linux": "linux", "Darwin": "macos", "Windows": "win64"}
+    if system not in targets:
         raise RuntimeError(f"Unsupported desktop host: {system}")
-    return "linux" if system == "Linux" else "macos"
+    return targets[system]
+
+
+def windows_triple(cpu: str) -> str:
+    return {"i386": "i686-w64-mingw32", "x86_64": "x86_64-w64-mingw32"}[cpu]
 
 
 def host_cpu() -> str:
@@ -69,6 +74,8 @@ class BuildConfig:
 
     @property
     def cpu(self) -> str:
+        if self.target in ("win32", "win64"):
+            return "i386" if self.target == "win32" else "x86_64"
         if self.target == "wasm":
             return "wasm32"
         if self.target in ("android", "ios", "switch"):
@@ -90,6 +97,8 @@ class BuildConfig:
         directory = self.root / ".local"
         if self.target == "linux":
             directory /= f"linux-{self.cpu}"
+        elif self.target in ("win32", "win64"):
+            directory /= f"{self.target}-{self.cpu}"
         elif self.target == "wasm":
             directory /= "wasm"
         elif self.target == "android":
@@ -114,6 +123,8 @@ class BuildConfig:
 
     @property
     def artifact(self) -> Path:
+        if self.target in ("win32", "win64"):
+            return self.binary_directory / "Rangers.exe"
         if self.target == "macos":
             return self.work / "Space Rangers HD.app"
         if self.target == "wasm":

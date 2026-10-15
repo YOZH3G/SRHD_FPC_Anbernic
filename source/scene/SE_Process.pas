@@ -353,7 +353,7 @@ end;
 procedure TProcessSE.UpdateViewRect;
 begin
   PreviousViewRect := ViewRect;
-  ViewRect := TSpaceSE(Space).MapPanel.GetVisibleContentRect;
+  ViewRect := Space.MapPanel.GetVisibleContentRect;
 end;
 
 function TProcessSE.SelectBackgroundAnimation: WideString;

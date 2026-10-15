@@ -232,7 +232,7 @@ begin
     Loader := nil;
   end;
   Loader := TfFilmLoader.Create;
-  Loader.SetPriority(1);
+  Loader.SetPriority(ThreadPriorityLowest);
   PanTimer := ScheduleCallbackTimer(ScrollTime, ScrollTime, PanView);
   ContentPanel.KeyDownCallback := KeyDown;
   ContentPanel.KeyUpCallback := KeyUp;
@@ -430,7 +430,7 @@ begin
   Count := PlayerStar.Planets.Count;
   for Index := 0 to Count - 1 do
   begin
-    Planet := TPlanet(PlayerStar.Planets[Index]);
+    Planet := PlayerStar.Planets[Index];
     Obj :=
         CurrentFilm.FindObject(ClassSEtoName(Planet.Graphic), Planet.Graphic.GraphKey, Planet.Id);
     if (Obj <> nil) and (Obj.SceneObject <> nil) then
@@ -443,7 +443,7 @@ begin
     SatelliteCount := Planet.Satellites.Count;
     for SatelliteIndex := 0 to SatelliteCount - 1 do
     begin
-      Satellite := TSputnik(Planet.Satellites[SatelliteIndex]);
+      Satellite := Planet.Satellites[SatelliteIndex];
       Obj :=
           CurrentFilm.FindObject(
               ClassSEtoName(Satellite.Graphic),
@@ -460,7 +460,7 @@ begin
   Count := PlayerStar.Asteroids.Count;
   for Index := 0 to Count - 1 do
   begin
-    Asteroid := TAsteroid(PlayerStar.Asteroids[Index]);
+    Asteroid := PlayerStar.Asteroids[Index];
     Obj :=
         CurrentFilm.FindObject(
             ClassSEtoName(Asteroid.GraphObject),
@@ -493,7 +493,7 @@ begin
   Count := PlayerStar.Planets.Count;
   for Index := 0 to Count - 1 do
   begin
-    Planet := TPlanet(PlayerStar.Planets[Index]);
+    Planet := PlayerStar.Planets[Index];
     Obj :=
         CurrentFilm.FindObject(ClassSEtoName(Planet.Graphic), Planet.Graphic.GraphKey, Planet.Id);
     if (Obj <> nil) and (Obj.SceneObject <> nil) then
@@ -506,7 +506,7 @@ begin
     SatelliteCount := Planet.Satellites.Count;
     for SatelliteIndex := 0 to SatelliteCount - 1 do
     begin
-      Satellite := TSputnik(Planet.Satellites[SatelliteIndex]);
+      Satellite := Planet.Satellites[SatelliteIndex];
       Obj :=
           CurrentFilm.FindObject(
               ClassSEtoName(Satellite.Graphic),
@@ -523,7 +523,7 @@ begin
   Count := PlayerStar.Asteroids.Count;
   for Index := 0 to Count - 1 do
   begin
-    Asteroid := TAsteroid(PlayerStar.Asteroids[Index]);
+    Asteroid := PlayerStar.Asteroids[Index];
     Obj :=
         CurrentFilm.FindObject(
             ClassSEtoName(Asteroid.GraphObject),

@@ -245,10 +245,7 @@ begin
         ReadDWordEC(
             AddPointerOffset(
                 RawGaiData,
-                Integer(
-                    @PGaiFrameEntry(FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
-                        .DataSize
-                )
+                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)
             )
         )
     );
@@ -261,10 +258,7 @@ begin
         ReadDWordEC(
             AddPointerOffset(
                 RawGaiData,
-                Integer(
-                    @PGaiFrameEntry(FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader))
-                        .DataSize
-                )
+                FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)
             )
         )
     );
@@ -354,11 +348,8 @@ begin
           AddPointerOffset(
               SequenceTableData,
               ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
-                  + Integer(
-                      @PGaiSequenceFrameEntry(
-                              FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
-                                  + SizeOf(TGaiSequenceDataBlock))
-                          .SourceFrameIndex)
+                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
+                      + SizeOf(TGaiSequenceDataBlock))
           )
       );
 end;
@@ -370,11 +361,9 @@ begin
           AddPointerOffset(
               SequenceTableData,
               ReadGaiSequenceOffset(SequenceTableData, SequenceIndex)
-                  + Integer(
-                      @PGaiSequenceFrameEntry(
-                              FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
-                                  + SizeOf(TGaiSequenceDataBlock))
-                          .FrameDelay)
+                  + (FrameInSequence * SizeOf(TGaiSequenceFrameEntry)
+                      + SizeOf(TGaiSequenceDataBlock)
+                      + SizeOf(Integer))
           )
       );
 end;
@@ -389,7 +378,7 @@ begin
   ApplyAB2BackgroundFixup(SourceBuffer, CacheKey);
   try
     RawGaiData := AllocEC(SourceBuffer.DataSize);
-    System.Move(Pointer(SourceBuffer.Data)^, Pointer(RawGaiData)^, SourceBuffer.DataSize);
+    System.Move(SourceBuffer.Data^, RawGaiData^, SourceBuffer.DataSize);
     ResidentBytes := SourceBuffer.DataSize;
   except
     RawGaiData := nil;
@@ -435,7 +424,7 @@ begin
   if FindTextOffsetW(ResourceKey, 'Bm.FormAB2.2bg') = 0 then
   begin
     LogGaiRescaleStart;
-    System.Move(Pointer(SourceBuffer.Data)^, Pointer(@OldHeader)^, SizeOf(TGaiHeader));
+    System.Move(SourceBuffer.Data^, Pointer(@OldHeader)^, SizeOf(TGaiHeader));
     if OldHeader.FrameCount <> 1 then
       Exit;
     Offset := ReadDWordEC(AddPointerOffset(SourceBuffer.Data, SizeOf(TGaiHeader)));

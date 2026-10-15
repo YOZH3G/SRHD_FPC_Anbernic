@@ -31,6 +31,17 @@ type
     destructor Destroy; override;
   end;
 
+  // Only object families inspected by native mods need lifetime tracking.
+  // Keep this base fieldless to preserve their instance layouts.
+{$IFDEF NATIVE_SCRIPT_MODS}
+  TRegisteredGameObject = class(TObjectEx)
+    class function NewInstance: TObject; override;
+    procedure FreeInstance; override;
+  end;
+{$ELSE}
+  TRegisteredGameObject = TObjectEx;
+{$ENDIF}
+
 var
 
   StartupCleanupObject: TObject;
@@ -62,6 +73,28 @@ function SubtractPointsF(Left: TPointF; Right: TPointF): TPointF;
 function IntersectRects(out Intersection: TRect; const First: TRect; const Second: TRect): Boolean;
 
 implementation
+
+{$IFDEF NATIVE_SCRIPT_MODS}
+uses
+  GameObjectRegistry;
+
+class function TRegisteredGameObject.NewInstance: TObject;
+begin
+  Result := inherited NewInstance;
+  try
+    RegisterGameObject(Pointer(Result));
+  except
+    Result.FreeInstance;
+    raise;
+  end;
+end;
+
+procedure TRegisteredGameObject.FreeInstance;
+begin
+  UnregisterGameObject(Pointer(Self));
+  inherited FreeInstance;
+end;
+{$ENDIF}
 
 function SquaredDistanceToPoint(const Point: TPoint; X, Y: Integer): Integer; inline;
 begin

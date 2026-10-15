@@ -142,9 +142,9 @@ type
     function ContainsMapPoint(Point: TPointF): Boolean;
   end;
 
-procedure RetainSpaceObject(var Dest: TObjectSE; Source: TObjectSE);
+procedure RetainSpaceObject(var Dest; Source: TObjectSE);
 
-procedure ReleaseSpaceObject(var Obj: TObjectSE);
+procedure ReleaseSpaceObject(var Obj);
 
 implementation
 
@@ -210,19 +210,19 @@ begin
   inherited Destroy;
 end;
 
-procedure RetainSpaceObject(var Dest: TObjectSE; Source: TObjectSE);
+procedure RetainSpaceObject(var Dest; Source: TObjectSE);
 begin
-  Dest := Source;
+  TObjectSE(Dest) := Source;
   if Source <> nil then
     Inc(Source.RefCount);
 end;
 
-procedure ReleaseSpaceObject(var Obj: TObjectSE);
+procedure ReleaseSpaceObject(var Obj);
 var
   Previous: TObjectSE;
 begin
-  Previous := Obj;
-  Obj := nil;
+  Previous := TObjectSE(Obj);
+  TObjectSE(Obj) := nil;
   if Previous <> nil then
   begin
     Dec(Previous.RefCount);
@@ -689,15 +689,15 @@ begin
     CenterY := RenderScratchBuffer.Height shr 1;
     Coordinate := Pointer(PathPoints);
     X1 := CenterX + Round(Coordinate^ * MinimapScale);
-    Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
+    Inc(Coordinate);
     Y1 := CenterY + Round(Coordinate^ * MinimapScale);
-    Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
+    Inc(Coordinate);
     for Index := 1 to PathPointCount - 1 do
     begin
       X2 := CenterX + Round(Coordinate^ * MinimapScale);
-      Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
+      Inc(Coordinate);
       Y2 := CenterY + Round(Coordinate^ * MinimapScale);
-      Coordinate := Pointer(PAnsiChar(Coordinate) + SizeOf(Single));
+      Inc(Coordinate);
       if not Odd(Index div 199) then
         Color := CurrentPixelFormat.PackRgbBytes($C3, $31, 0)
       else

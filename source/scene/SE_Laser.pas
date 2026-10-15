@@ -99,7 +99,6 @@ begin
   Distance := SegmentSize / 2;
   BeamLength := Sqrt(Sqr(TargetPosition.X - Position.X) + Sqr(TargetPosition.Y - Position.Y));
   Segments := TList.Create;
-  Segment := nil;
   while Distance < BeamLength do
   begin
     Segment := TRotateImage2GI.Create(Space.MapPanel);
@@ -116,10 +115,6 @@ begin
     );
     Segments.Add(Segment);
     Distance := Distance + SegmentSize - 4;
-  end;
-  { Native code retains this empty check of the final segment. }
-  if Segment <> nil then
-  begin
   end;
   EndPosition :=
       MakePointF(

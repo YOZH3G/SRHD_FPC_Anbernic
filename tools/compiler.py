@@ -7,15 +7,18 @@ import platform
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from build_support import (
     BuildStamp,
     build_jobs,
     content_state,
+    copy_if_changed,
     output,
     require_tool,
     run_step,
+    tool_identity_files,
 )
 from sync_fpc import record_build_source, sync_build_source, sync_fpc
 from targets import (
@@ -25,10 +28,45 @@ from targets import (
     BuildConfig,
     desktop_target,
     host_cpu,
+    windows_triple,
 )
 
 VENDOR = ROOT / "vendor/fpc"
 WORK = ROOT / ".local/fpc"
+FPC_SYSTEMS = {
+    "linux": "linux",
+    "macos": "darwin",
+    "wasm": "wasip1threads",
+    "android": "android",
+    "ios": "ios",
+    "ios-simulator": "iphonesim",
+    "switch": "switch",
+    "win32": "win32",
+    "win64": "win64",
+}
+
+
+@dataclass(frozen=True)
+class CompilerPlan:
+    config: BuildConfig
+    toolchain: Path | None
+    host_system: str
+    native_cpu: str
+    make: str
+    bootstrap: str
+    bootstrap_sdk: str | None
+
+    @property
+    def windows_host(self) -> bool:
+        return self.host_system == "Windows"
+
+    @property
+    def system(self) -> str:
+        return FPC_SYSTEMS[self.config.target]
+
+    @property
+    def work(self) -> Path:
+        return WORK / f"{self.config.cpu}-{self.system}"
 
 
 def llvm_options(clang: str | Path = "clang") -> tuple[str, ...]:
@@ -109,93 +147,148 @@ def source_revision(*, runtime: bool = True, compiler: bool = True) -> str:
     return digest.hexdigest()
 
 
-def recipe_revision(source: str, command: list[str | Path], tools: tuple[str | Path, ...]) -> str:
-    identities = content_state(require_tool(str(tool)) for tool in tools)
+def recipe_revision(
+    source: str,
+    command: list[str | Path],
+    tools: tuple[str | Path, ...],
+    *,
+    inputs: tuple[Path, ...] = (),
+) -> str:
+    identities = content_state(
+        [
+            *(path for tool in tools for path in tool_identity_files(require_tool(str(tool)))),
+            *inputs,
+        ]
+    )
     return hashlib.sha256(
         json.dumps([source, list(map(str, command)), identities]).encode()
     ).hexdigest()
 
 
-def prepare_compiler(
-    config: BuildConfig,
-    toolchain: Path | None = None,
-) -> tuple[Path, list[str]]:
-    """Build the LLVM compiler and the game's Delphi-compatible runtime."""
-    if local_source := os.environ.get("FPC_SOURCE"):
-        sync_fpc(Path(local_source))
-    target, lto = config.target, config.lto
-    apple_mobile = target in ("ios", "ios-simulator")
-    if apple_mobile and platform.system() != "Darwin":
+def make_command(*arguments: str | Path) -> list[str]:
+    """Use forward slashes in native Windows make paths and assignments."""
+    command = list(map(str, arguments))
+    if platform.system() == "Windows":
+        command = [arg.replace("\\", "/") for arg in command]
+    return command
+
+
+def windows_library_options(toolchain: Path, cpu: str) -> list[str]:
+    triple = windows_triple(cpu)
+    driver = require_tool(str(toolchain / f"{triple}-clang"))
+    builtins = Path(output(str(driver), "-print-libgcc-file-name"))
+    if not builtins.is_file():
+        raise FileNotFoundError(f"LLVM-MinGW compiler runtime is missing: {builtins}")
+    return [f"-Fl{toolchain.parent / triple / 'lib'}", f"-Fl{builtins.parent}"]
+
+
+def compiler_plan(config: BuildConfig, toolchain: Path | None) -> CompilerPlan:
+    """Validate the host and bootstrap before syncing sources or probing SDKs."""
+    target = config.target
+    host_system = platform.system()
+    native_cpu = host_cpu()
+    if target in ("ios", "ios-simulator") and host_system != "Darwin":
         raise RuntimeError("iOS compilation requires macOS with Xcode installed.")
     if (
-        target not in ("wasm", "android", "ios", "ios-simulator", "switch")
+        target not in ("win32", "win64", "wasm", "android", "ios", "ios-simulator", "switch")
         and target != desktop_target()
     ):
         raise RuntimeError("Desktop builds require a host with the target OS.")
-    if not (VENDOR / "compiler/pp.pas").is_file():
-        raise FileNotFoundError(
-            "Initialize dependencies with: git submodule update --init --recursive"
-        )
-    native_cpu = host_cpu()
-    cpu = config.cpu
-    system = {
-        "linux": "linux",
-        "macos": "darwin",
-        "wasm": "wasip1threads",
-        "android": "android",
-        "ios": "ios",
-        "ios-simulator": "iphonesim",
-        "switch": "switch",
-    }[target]
-    work = WORK / f"{cpu}-{system}"
-    source = work / "source"
-    if target == "wasm" and toolchain is None:
-        raise RuntimeError("WebAssembly compilation requires Emscripten's LLVM tools.")
-    if target == "android" and toolchain is None:
-        raise RuntimeError("Android compilation requires the NDK LLVM tools.")
-    jobs = f"-j{build_jobs()}"
-    bootstrap_flags = (*llvm_options(), jobs)
-    llvm_flags = (*llvm_options(toolchain / "clang"), jobs) if toolchain else bootstrap_flags
-    if target in ("linux", "android", "switch"):
-        llvm_flags += ("-Aclang-llvm",)
-    if cpu == "x86_64":
-        llvm_flags += ("-CpX86-64-V2", "-CfX86-64-V2")
-    sdk = None
-    bootstrap_sdk = None
-    if platform.system() == "Darwin":
-        bootstrap_sdk = output("xcrun", "--sdk", "macosx", "--show-sdk-path")
-        sdk = bootstrap_sdk
-        if apple_mobile:
-            sdk_name = "iphoneos" if target == "ios" else "iphonesimulator"
-            sdk = output("xcrun", "--sdk", sdk_name, "--show-sdk-path")
-    make = shutil.which("gmake") or shutil.which("make")
+    if host_system == "Windows" and (native_cpu != "x86_64" or target not in ("win32", "win64")):
+        raise RuntimeError("Native Windows builds require an x64 host and win32 or win64 target.")
+    required_sdk = {
+        "wasm": "WebAssembly compilation requires Emscripten's LLVM tools.",
+        "android": "Android compilation requires the NDK LLVM tools.",
+        "win32": "Windows compilation requires the LLVM-MinGW tools.",
+        "win64": "Windows compilation requires the LLVM-MinGW tools.",
+    }.get(target)
+    if required_sdk and toolchain is None:
+        raise RuntimeError(required_sdk)
+    make = shutil.which("gmake") or shutil.which("make") or shutil.which("mingw32-make")
     if make is None:
         raise FileNotFoundError("Install GNU Make to build the vendored compiler.")
-    work.mkdir(parents=True, exist_ok=True)
-    compiler_name = "ppcx64" if cpu == "x86_64" else "ppca64"
-    cross_flags = []
-    if target == "wasm":
-        compiler_name = "ppcrosswasm32"
-        # Build a host executable; compile the target runtime separately.
-        cross_flags = [f"CPU_TARGET={cpu}", "CROSSINSTALL=1"]
-        cross_flags.append("OS_TARGET=wasip1threads")
-    elif target == "android" and native_cpu != cpu:
-        compiler_name = "ppcrossa64"
-        cross_flags = ["CPU_TARGET=aarch64", "CROSSINSTALL=1", "OS_TARGET=android"]
-    elif target == "switch" and native_cpu != cpu:
-        compiler_name = "ppcrossa64"
-        cross_flags = ["CPU_TARGET=aarch64", "CROSSINSTALL=1", "OS_TARGET=linux"]
-    elif apple_mobile and native_cpu != cpu:
-        compiler_name = "ppcrossa64" if cpu == "aarch64" else "ppcrossx64"
-        # The compiler runs on the host. Select iOS only when compiling the RTL/game.
-        cross_flags = [f"CPU_TARGET={cpu}", "CROSSINSTALL=1", "OS_TARGET=darwin"]
-    # An ARM host needs software Extended arithmetic to emit Intel constants.
-    soft_fpu = " -dFPC_SOFT_FPUX80" if cpu == "x86_64" and native_cpu == "aarch64" else ""
-    compiler = source / "compiler" / compiler_name
     bootstrap = shutil.which(os.environ.get("FPC_BOOTSTRAP", "fpc"))
     if bootstrap is None:
         raise FileNotFoundError("Install FPC 3.2.2 to bootstrap the vendored compiler.")
-    compiler_command = [
+    if host_system == "Windows":
+        if any(
+            character.isspace()
+            for path in (WORK, bootstrap, toolchain, make)
+            for character in str(path)
+        ):
+            raise RuntimeError(
+                "Windows FPC builds require checkout and toolchain paths without spaces."
+            )
+        identity = tuple(output(bootstrap, option) for option in ("-iV", "-iSP", "-iSO"))
+        if identity != ("3.2.2", "x86_64", "win64"):
+            raise RuntimeError("Set FPC_BOOTSTRAP to native Win64 FPC 3.2.2 (ppcx64.exe).")
+    bootstrap_sdk = (
+        output("xcrun", "--sdk", "macosx", "--show-sdk-path") if host_system == "Darwin" else None
+    )
+    return CompilerPlan(config, toolchain, host_system, native_cpu, make, bootstrap, bootstrap_sdk)
+
+
+def compiler_target(plan: CompilerPlan) -> tuple[str, list[str]]:
+    """Select a host executable and the cycle's target overrides."""
+    target, cpu = plan.config.target, plan.config.cpu
+    system = plan.system
+    native = "ppcx64" if cpu == "x86_64" else "ppca64"
+    cross = {
+        "i386": "ppcross386",
+        "x86_64": "ppcrossx64",
+        "aarch64": "ppcrossa64",
+        "wasm32": "ppcrosswasm32",
+    }[cpu]
+    if plan.windows_host:
+        flags = [f"CPU_TARGET={cpu}", f"OS_TARGET={system}"]
+        if cpu != plan.native_cpu:
+            flags.append("CROSSINSTALL=1")
+        return (native if cpu == plan.native_cpu else cross) + ".exe", flags
+    if target in ("win32", "win64", "wasm"):
+        return cross, [f"CPU_TARGET={cpu}", "CROSSINSTALL=1", f"OS_TARGET={system}"]
+    if cpu != plan.native_cpu:
+        if target == "switch":
+            system = "linux"
+        elif target in ("ios", "ios-simulator"):
+            # The compiler runs on macOS; only the runtime/game target iOS.
+            system = "darwin"
+        return cross, [f"CPU_TARGET={cpu}", "CROSSINSTALL=1", f"OS_TARGET={system}"]
+    return native, []
+
+
+def bootstrap_compiler(plan: CompilerPlan) -> tuple[Path, Path, str]:
+    """Build/cache the host compiler, independently of target RTL profiles."""
+    config, toolchain = plan.config, plan.toolchain
+    target, cpu = config.target, config.cpu
+    native_cpu, windows_host = plan.native_cpu, plan.windows_host
+    make, bootstrap, bootstrap_sdk = plan.make, plan.bootstrap, plan.bootstrap_sdk
+    work = plan.work
+    source = work / "source"
+    bootstrap_clang = toolchain / "clang" if windows_host else "clang"
+    bootstrap_flags = (*llvm_options(bootstrap_clang), f"-j{build_jobs()}")
+    host_unwinder = None
+    if windows_host:
+        # Both compiler backends run on Win64, including the i386 cross compiler.
+        bootstrap_flags += (
+            "-Aclang-llvm",
+            "-XP",
+            f"-FD{toolchain}",
+            "-XLL",
+            *windows_library_options(toolchain, native_cpu),
+        )
+        host_unwinder = toolchain.parent / windows_triple(native_cpu) / "bin/libunwind.dll"
+        if not host_unwinder.is_file():
+            raise FileNotFoundError(f"LLVM-MinGW host unwinder is missing: {host_unwinder}")
+    compiler_name, cross_flags = compiler_target(plan)
+    # ARM and Win64 hosts lack binary80 Extended for Intel constant folding.
+    soft_fpu = (
+        " -dFPC_SOFT_FPUX80"
+        if (cpu in ("i386", "x86_64") and native_cpu == "aarch64")
+        or (windows_host and cpu == "i386")
+        else ""
+    )
+    compiler = source / "compiler" / compiler_name
+    compiler_command = make_command(
         make,
         "-C",
         source,
@@ -206,28 +299,45 @@ def prepare_compiler(
         "LLVM=1",
         "OPTNEW=" + " ".join(bootstrap_flags) + soft_fpu,
         *cross_flags,
-    ]
-    tools = (make, bootstrap, "clang")
-    revision = recipe_revision(source_revision(runtime=False), compiler_command, tools)
+    )
+    tools = (make, bootstrap, bootstrap_clang)
+    inputs = (host_unwinder,) if host_unwinder else ()
+    revision = recipe_revision(
+        source_revision(runtime=False), compiler_command, tools, inputs=inputs
+    )
     host_revision = recipe_revision(
-        source_revision(runtime=False, compiler=False), compiler_command, tools
+        source_revision(runtime=False, compiler=False), compiler_command, tools, inputs=inputs
     )
     host_stamp = BuildStamp(work / "host-runtime.stamp")
     # Local compiler development uses a single incremental compiler build after
     # the first bootstrap. Keep a separate executable as the build compiler.
     development = bool(os.environ.get("FPC_SOURCE"))
     development_bootstrap = work / "build-compiler"
+    # Cross cycles leave `ppc`, the native compiler that built ppcross<cpu>.
+    # Retaining it permits a single host compilation when the target changes.
+    build_compiler = compiler if native_cpu == cpu else source / "compiler/ppc"
     incremental = (
         development
-        # A cross-CPU compiler cannot rebuild its own host executable.
-        and native_cpu == cpu
+        and not windows_host
         and host_stamp.matches(host_revision)
-        and (compiler.is_file() or development_bootstrap.is_file())
+        and (build_compiler.is_file() or development_bootstrap.is_file())
     )
     if incremental:
         if not development_bootstrap.is_file():
-            shutil.copy2(compiler, development_bootstrap)
-        compiler_command = [
+            shutil.copy2(build_compiler, development_bootstrap)
+        incremental_flags = cross_flags
+        if native_cpu != cpu:
+            host_os = "darwin" if plan.host_system == "Darwin" else "linux"
+            incremental_flags = [
+                f"CPU_TARGET={native_cpu}",
+                f"OS_TARGET={host_os}",
+                f"PPC_TARGET={cpu}",
+                f"EXENAME={compiler_name}",
+                "CROSSCYCLEBOOTSTRAP=1",
+                "CROSSBINDIR=",
+                "BINUTILSPREFIX=",
+            ]
+        compiler_command = make_command(
             make,
             "-C",
             source / "compiler",
@@ -238,10 +348,21 @@ def prepare_compiler(
             + " ".join(bootstrap_flags)
             + (f" -XR{bootstrap_sdk}" if bootstrap_sdk else "")
             + soft_fpu,
-            *cross_flags,
-        ]
+            *incremental_flags,
+        )
+    work.mkdir(parents=True, exist_ok=True)
     stamp = BuildStamp(work / "compiler.stamp")
-    if not stamp.matches(revision, compiler):
+    unwinder_copy = compiler.with_name("libunwind.dll") if host_unwinder else None
+    external_compiler = os.environ.get("FPC_COMPILER")
+    if external_compiler:
+        # Compiler development and regression probes share the same executable.
+        # Its content participates in the RTL and game cache signatures below.
+        compiler = require_tool(str(Path(external_compiler).expanduser()))
+        actual = output(str(compiler), "-iTP")
+        if actual != cpu:
+            raise RuntimeError(f"FPC_COMPILER targets {actual}; {target} requires {cpu}.")
+        source = VENDOR
+    elif not stamp.matches(revision, compiler, *([unwinder_copy] if host_unwinder else [])):
         with stamp.recording(revision):
             if incremental:
                 # Preserve build outputs and unchanged mtimes for FPC's unit cache.
@@ -257,19 +378,43 @@ def prepare_compiler(
                 # Record new source files from the very first bootstrap, so
                 # deleting one before the first incremental build removes it.
                 record_build_source(VENDOR, source)
+            if windows_host:
+                # The Win64 RTL builds fpcmemdll before creating its unit directory.
+                (source / "rtl/units/x86_64-win64").mkdir(parents=True, exist_ok=True)
+                # LLVM-generated compiler stages need the host unwinder when run.
+                copy_if_changed(host_unwinder, unwinder_copy)
             run_step(work, "compiler", compiler_command)
-            if not incremental:
+            if not incremental and not windows_host:
                 # The build compiler and its host RTL must agree after a full
                 # bootstrap. Shared/host RTL edits require another full cycle.
-                shutil.copy2(compiler, development_bootstrap)
+                shutil.copy2(build_compiler, development_bootstrap)
                 with host_stamp.recording(host_revision):
                     pass
 
-    if target == "switch":
-        from switch import prepare_runtime
+    return compiler, source, revision
 
-        return prepare_runtime(compiler, toolchain, source_revision())
 
+def prepare_target_runtime(
+    plan: CompilerPlan, compiler: Path, source: Path, revision: str
+) -> list[str]:
+    """Build/cache isolated RTL units and return target/package search options."""
+    config, toolchain = plan.config, plan.toolchain
+    target, cpu, lto = config.target, config.cpu, config.lto
+    system, work = plan.system, plan.work
+    apple_mobile = target in ("ios", "ios-simulator")
+    windows_host = plan.windows_host
+    llvm_flags = (*llvm_options(toolchain / "clang" if toolchain else "clang"), f"-j{build_jobs()}")
+    if target in ("linux", "android", "switch", "win32", "win64"):
+        llvm_flags += ("-Aclang-llvm",)
+    if cpu == "x86_64":
+        llvm_flags += ("-CpX86-64-V2", "-CfX86-64-V2")
+    windows_libraries = (
+        windows_library_options(toolchain, cpu) if target in ("win32", "win64") else []
+    )
+    sdk = plan.bootstrap_sdk
+    if apple_mobile:
+        sdk_name = "iphoneos" if target == "ios" else "iphonesimulator"
+        sdk = output("xcrun", "--sdk", sdk_name, "--show-sdk-path")
     runtime = work / ("runtime-lto" if lto else "runtime")
     runtime_source = runtime / "src"
     units = runtime_source / "rtl/units" / f"{cpu}-{system}"
@@ -298,6 +443,14 @@ def prepare_compiler(
             "BINUTILSPREFIX=",
             f"CROSSBINDIR={toolchain}",
         ]
+    elif target in ("win32", "win64"):
+        options += ["-XP", f"-FD{toolchain}", "-XLL", *windows_libraries]
+        target_flags = [
+            f"CPU_TARGET={cpu}",
+            f"OS_TARGET={system}",
+            "BINUTILSPREFIX=",
+            f"CROSSBINDIR={toolchain}",
+        ]
     elif target == "android":
         options += ["-Cg", "-XP", f"-FD{toolchain}"]
         target_flags = [
@@ -318,15 +471,15 @@ def prepare_compiler(
     if lto:
         options.append("-Clflto")
     stamp = BuildStamp(runtime / "runtime.stamp")
-    runtime_command = [
-        make,
+    runtime_command = make_command(
+        plan.make,
         "-C",
         runtime_source / "rtl",
         "all",
         *target_flags,
         f"FPC={compiler}",
         "OPT=" + " ".join(options),
-    ]
+    )
     runtime_revision = recipe_revision(
         # The startup assembly below also depends on the Android API level.
         f"{revision}:{ANDROID_MIN_API}" if target == "android" else revision,
@@ -347,8 +500,13 @@ def prepare_compiler(
                 runtime_source / "rtl",
                 ignore=shutil.ignore_patterns("units"),
             )
-            for name in ("compiler", "packages"):
-                (runtime_source / name).symlink_to(source / name, target_is_directory=True)
+            # Cross RTL Makefiles discover FPCFPMAKE via ../compiler/ppc;
+            # Linux also queries it when selecting host GCC library paths.
+            # Windows RTL all uses only the explicit FPC= and needs no symlink.
+            if not windows_host:
+                (runtime_source / "compiler").symlink_to(
+                    source / "compiler", target_is_directory=True
+                )
             units.mkdir(parents=True, exist_ok=True)
             if target == "android":
                 # NDK clang replaces GNU as for these tiny startup objects.
@@ -377,18 +535,40 @@ def prepare_compiler(
         packages / "fcl-base/src",
         packages / "pthreads/src",
         packages / "fcl-process/src",
+        *([packages / "fcl-registry/src"] if target in ("win32", "win64") else []),
         *(
             [packages / "rtl-unicode/src/inc"]
             if target in ("wasm", "android", "ios", "ios-simulator")
             else []
         ),
     ]
-    return compiler, [
+    return [
         "-n", *llvm_flags, *(["-Clflto"] if lto else []),
         *(["-XLL"] if target in ("linux", "android") else []),
+        *([f"-T{system}", "-XP", f"-FD{toolchain}", "-XLL", *windows_libraries] if target in ("win32", "win64") else []),
         *(["-Tandroid", "-Cg", "-XP", f"-FD{toolchain}"] if target == "android" else []),
         *([f"-T{system}", f"-XR{sdk}", f"-WP{IOS_MIN_VERSION}", "-Aclang-llvm-darwin"] if apple_mobile else []),
         *(["-Twasip1threads", "-dFPC_WASM_EMSCRIPTEN", "-Aclang-llvm", "-XP", f"-FD{toolchain}"] if target == "wasm" else []),
         *(f"-Fu{path}" for path in paths),
-        f"-Fi{packages}/fcl-process/src/unix",
+        f"-Fi{packages}/fcl-process/src/" + ("win" if target in ("win32", "win64") else "unix"),
     ]  # fmt: skip
+
+
+def prepare_compiler(
+    config: BuildConfig,
+    toolchain: Path | None = None,
+) -> tuple[Path, list[str]]:
+    """Build the LLVM compiler and the game's Delphi-compatible runtime."""
+    plan = compiler_plan(config, toolchain)
+    if local_source := os.environ.get("FPC_SOURCE"):
+        sync_fpc(Path(local_source))
+    if not (VENDOR / "compiler/pp.pas").is_file():
+        raise FileNotFoundError(
+            "Initialize dependencies with: git submodule update --init --recursive"
+        )
+    compiler, source, revision = bootstrap_compiler(plan)
+    if config.target == "switch":
+        from switch import prepare_runtime
+
+        return prepare_runtime(compiler, toolchain, source_revision())
+    return compiler, prepare_target_runtime(plan, compiler, source, revision)

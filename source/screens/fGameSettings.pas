@@ -17,6 +17,7 @@ type
   protected
     procedure WaitForCalculation;
   public
+    StartOnIntroduction: Boolean;
     PlayerRace: TOwnerId;
     DifficultyLevels: TGalaxyDifficultyLevels;
     CaptainPortraitIndex: Integer;
@@ -558,7 +559,7 @@ begin
     Stage := 9;
     if IsStopRequested then
       Exit;
-    Star := TObject(GetPlayer.CurrentStar.StarDistances[Galaxy.Stars.Count - 1].Star) as TStar;
+    Star := GetPlayer.CurrentStar.StarDistances[Galaxy.Stars.Count - 1].Star;
     Galaxy.CreateDominatorSpawnProxy(Star);
     I := 0;
     while I < Galaxy.Stars.Count do
@@ -608,7 +609,7 @@ begin
       N := Galaxy.Stars.Count - 1;
     for I := 0 to N do
     begin
-      Star := TObject(BlazerShip.CurrentStar.StarDistances[I].Star) as TStar;
+      Star := BlazerShip.CurrentStar.StarDistances[I].Star;
       if (GetPlayer.CurrentStar.Constellation <> Star.Constellation)
           and (GetPlayer.CurrentStar.StarDistances[1].Star <> Star)
           and (Star.Constellation.Id <> 20) then
@@ -634,7 +635,7 @@ begin
     for I := 0 to N do
     begin
       Star := Galaxy.Stars[70];
-      Star := TObject(Star.StarDistances[I].Star) as TStar;
+      Star := Star.StarDistances[I].Star;
       if (GetPlayer.CurrentStar.Constellation <> Star.Constellation)
           and (GetPlayer.CurrentStar.StarDistances[1].Star <> Star)
           and (Star.Constellation.Id <> 20)
@@ -713,15 +714,9 @@ begin
     TRuins.Create.Init(rstRangerCenter, GetPlayer.CurrentStar, '');
     TRuins.Create.Init(rstScienceBase, GetPlayer.CurrentStar, '');
     TRuins.Create.Init(rstMedicalBase, GetPlayer.CurrentStar, '');
-    TRuins
-        .Create
-        .Init(rstPirateBase, TObject(GetPlayer.CurrentStar.StarDistances[3].Star) as TStar, '');
-    TRuins
-        .Create
-        .Init(rstBusinessCenter, TObject(GetPlayer.CurrentStar.StarDistances[1].Star) as TStar, '');
-    TRuins
-        .Create
-        .Init(rstMilitaryBase, TObject(GetPlayer.CurrentStar.StarDistances[2].Star) as TStar, '');
+    TRuins.Create.Init(rstPirateBase, GetPlayer.CurrentStar.StarDistances[3].Star, '');
+    TRuins.Create.Init(rstBusinessCenter, GetPlayer.CurrentStar.StarDistances[1].Star, '');
+    TRuins.Create.Init(rstMilitaryBase, GetPlayer.CurrentStar.StarDistances[2].Star, '');
     Galaxy.UpdateConstellationMilitaryStats;
     Stage := 15;
     if IsStopRequested then

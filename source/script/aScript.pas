@@ -51,6 +51,16 @@ const
 
   sskNormalAI = 5;
 
+  sidEquipment = 0;
+  sidWeapon = 1;
+  sidGoods = 2;
+  sidArtefact = 3;
+  sidCustomItem = 4;
+
+  AllScriptStepTypes = [0..11];
+  ScriptSpawnPlaceKinds =
+      [spkPolar, spkPlanetPosition, spkStarDirection, spkGroupCentroid, spkCoordinates];
+
 type
 
   TLibraryCache = class;
@@ -215,7 +225,7 @@ type
     destructor Destroy; override;
   end;
 
-  TScriptShip = class(TObjectEx)
+  TScriptShip = class(TRegisteredGameObject)
     Script: TScript;
     GroupIndex: Integer;
     Ship: TShip;
@@ -325,7 +335,7 @@ type
     destructor Destroy; override;
   end;
 
-  TScriptState = class(TObjectEx)
+  TScriptState = class(TRegisteredGameObject)
     Name: WideString;
     StateKind: Integer;
     TargetVarName: WideString;
@@ -369,7 +379,7 @@ type
     destructor Destroy; override;
   end;
 
-  TScript = class(TObjectEx)
+  TScript = class(TRegisteredGameObject)
     ClassId: Integer;
     ScriptFileName: WideString;
     Constellations: TList;
@@ -734,6 +744,9 @@ function GetScriptContextDescription: WideString;
 implementation
 
 uses
+{$IFDEF NATIVE_SCRIPT_MODS}
+  NativeScriptLibrary,
+{$ENDIF}
   GI_MessageLoop,
   GI_MessageBox,
   GI_XviD,
@@ -767,7 +780,7 @@ begin
   Count := ScriptCallTraceCount;
   Position := (ScriptCallTracePosition - 1 + 20) mod 20;
   Cell := ScriptCallTrace[Position];
-  while (Cell <> nil) and (Cell.RealVType = vkFunction) do
+  while (Cell <> nil) and (Cell.ValueKind = vkFunction) do
   begin
     Dec(Count);
     if Count <= 0 then
@@ -843,7 +856,7 @@ begin
   Result := False;
   if QueuedArcadeBattles.Count > 0 then
   begin
-    Request := PScriptABRequest(QueuedArcadeBattles[0]);
+    Request := QueuedArcadeBattles[0];
     ArcadeBattleScreen.SelectedMapName := Request.MapName;
     case CurrentScreenId of
       screenEquipmentShop, screenGovernment, screenInfo, screenGoodsShop:
@@ -891,7 +904,7 @@ begin
   if QueuedPlanetaryBattles.Count > 0 then
   begin
     Status := 0;
-    Request := PScriptPBRequest(QueuedPlanetaryBattles[0]);
+    Request := QueuedPlanetaryBattles[0];
     try
       Failed := False;
       Status :=
@@ -947,8 +960,8 @@ begin
   Result := False;
   if QueuedVideos.Count > 0 then
   begin
-    Request := PScriptVDRequest(QueuedVideos[0]);
-    if not SkipVideo and (TMessageLoopGI(RegisteredScreens[CurrentScreenId]) = RuinsTalkScreen) then
+    Request := QueuedVideos[0];
+    if not SkipVideo and (RegisteredScreens[CurrentScreenId] = RuinsTalkScreen) then
     begin
       Video := TMessageLoopGI(RegisteredScreens[CurrentScreenId]).GetByName('Film') as TxvidGI;
       Video.SetActive(True);
@@ -1012,19 +1025,13 @@ begin
   begin
     ScriptEndTurnRequested := False;
     if CurrentScreenId = screenRuinsTalk then
-      TMessageLoopGIWithMainPanel(TMessageLoopGI(RegisteredScreens[CurrentScreenId]))
-          .MainPanel
-          .EndTurnClicked(nil)
+      TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel.EndTurnClicked(nil)
     else if CurrentScreenId = screenPlanet then
-      TMessageLoopGIWithMainPanel(TMessageLoopGI(RegisteredScreens[CurrentScreenId]))
-          .MainPanel
-          .EndTurnClicked(nil)
+      TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel.EndTurnClicked(nil)
     else if CurrentScreenId = screenPlanetNO then
-      TMessageLoopGIWithMainPanel(TMessageLoopGI(RegisteredScreens[CurrentScreenId]))
-          .MainPanel
-          .EndTurnClicked(nil)
+      TMessageLoopGIWithMainPanel(RegisteredScreens[CurrentScreenId]).MainPanel.EndTurnClicked(nil)
     else if CurrentScreenId = screenStarMap then
-      TfStarMap(TMessageLoopGI(RegisteredScreens[CurrentScreenId])).EndTurnAfterOpen := True;
+      TfStarMap(RegisteredScreens[CurrentScreenId]).EndTurnAfterOpen := True;
     Result := True;
   end;
 end;
@@ -1042,63 +1049,59 @@ begin
   // for video requests it even reads beyond their declared $0C allocation.
   for I := 0 to QueuedVideos.Count - 1 do
   begin
-    Video := PQueuedTextQuest(QueuedVideos[I]);
-    if Video.Script = ResumingScript then
+    Video := QueuedVideos[I];
+    if Video.Script <> ResumingScript then
+      Continue;
+    if I > 0 then
     begin
-      if I > 0 then
-      begin
-        QueuedVideos.Delete(I);
-        QueuedVideos.Insert(0, Video);
-      end;
-      TryShowQueuedVideo;
-      Result := True;
-      Exit;
+      QueuedVideos.Delete(I);
+      QueuedVideos.Insert(0, Video);
     end;
+    TryShowQueuedVideo;
+    Result := True;
+    Exit;
   end;
   for I := 0 to QueuedTextQuests.Count - 1 do
   begin
-    Quest := PQueuedTextQuest(QueuedTextQuests[I]);
-    if Quest.Script = ResumingScript then
+    Quest := QueuedTextQuests[I];
+    if Quest.Script <> ResumingScript then
+      Continue;
+    if I > 0 then
     begin
-      if I > 0 then
-      begin
-        QueuedTextQuests.Delete(I);
-        QueuedTextQuests.Insert(0, Quest);
-      end;
-      TryShowQueuedTextQuest;
-      Result := True;
-      Exit;
+      QueuedTextQuests.Delete(I);
+      QueuedTextQuests.Insert(0, Quest);
     end;
+    TryShowQueuedTextQuest;
+    Result := True;
+    Exit;
   end;
   for I := 0 to QueuedArcadeBattles.Count - 1 do
   begin
-    Arcade := PQueuedTextQuest(QueuedArcadeBattles[I]);
-    if Arcade.Script = ResumingScript then
+    Arcade := QueuedArcadeBattles[I];
+    if Arcade.Script <> ResumingScript then
+      Continue;
+    if I > 0 then
     begin
-      if I > 0 then
-      begin
-        QueuedArcadeBattles.Delete(I);
-        QueuedArcadeBattles.Insert(0, Arcade);
-      end;
-      TryShowQueuedArcadeBattle;
-      Result := True;
-      Exit;
+      QueuedArcadeBattles.Delete(I);
+      QueuedArcadeBattles.Insert(0, Arcade);
     end;
+    TryShowQueuedArcadeBattle;
+    Result := True;
+    Exit;
   end;
   for I := 0 to QueuedPlanetaryBattles.Count - 1 do
   begin
-    Planetary := PQueuedTextQuest(QueuedPlanetaryBattles[I]);
-    if Planetary.Script = ResumingScript then
+    Planetary := QueuedPlanetaryBattles[I];
+    if Planetary.Script <> ResumingScript then
+      Continue;
+    if I > 0 then
     begin
-      if I > 0 then
-      begin
-        QueuedPlanetaryBattles.Delete(I);
-        QueuedPlanetaryBattles.Insert(0, Planetary);
-      end;
-      TryRunQueuedPlanetaryBattle;
-      Result := True;
-      Exit;
+      QueuedPlanetaryBattles.Delete(I);
+      QueuedPlanetaryBattles.Insert(0, Planetary);
     end;
+    TryRunQueuedPlanetaryBattle;
+    Result := True;
+    Exit;
   end;
 end;
 
@@ -1168,7 +1171,7 @@ begin
     if CurrentScreenId = screenShip then
     begin
       ShipReturnScreenId := screenStarMap;
-      TfShip2(TMessageLoopGI(RegisteredScreens[CurrentScreenId])).CloseClicked(nil);
+      TfShip2(RegisteredScreens[CurrentScreenId]).CloseClicked(nil);
       Exit;
     end;
     if GetPlayer.DockedTo <> nil then
@@ -1190,15 +1193,15 @@ procedure CompleteQueuedArcadeBattle(Status: Integer);
 var
   Request: PScriptABRequest;
 begin
-  Request := PScriptABRequest(QueuedArcadeBattles[0]);
+  Request := QueuedArcadeBattles[0];
   QueuedArcadeBattles.Delete(0);
   ResumingScript := Request.Script;
   if Request.Script <> nil then
   begin
-    Request.Script.InitCode.LocalVar.GetVar('GABStatus').SetInt(Status);
+    Request.Script.InitCode.LocalVar.NamedItems['GABStatus'].AsInteger := Status;
     Request.Script.RunTurnCode;
-    if Request.Script.InitCode.LocalVar.GetVar('GABStatus').GetInt = Status then
-      Request.Script.InitCode.LocalVar.GetVar('GABStatus').SetInt(0);
+    if Request.Script.InitCode.LocalVar.NamedItems['GABStatus'].AsInteger = Status then
+      Request.Script.InitCode.LocalVar.NamedItems['GABStatus'].AsInteger := 0;
   end;
   Request.Ships.Clear;
   Request.Ships.Free;
@@ -1211,15 +1214,16 @@ procedure CompleteQueuedTextQuest(Status: TScriptQuestStatus);
 var
   Request: PQueuedTextQuest;
 begin
-  Request := PQueuedTextQuest(QueuedTextQuests[0]);
+  Request := QueuedTextQuests[0];
   QueuedTextQuests.Delete(0);
   ResumingScript := Request.Script;
   if Request.Script <> nil then
   begin
-    Request.Script.InitCode.LocalVar.GetVar('GQuestStatus').SetInt(Integer(Status));
+    Request.Script.InitCode.LocalVar.NamedItems['GQuestStatus'].AsInteger := Integer(Status);
     Request.Script.RunTurnCode;
-    if Request.Script.InitCode.LocalVar.GetVar('GQuestStatus').GetInt = Integer(Status) then
-      Request.Script.InitCode.LocalVar.GetVar('GQuestStatus').SetInt(0);
+    if TScriptQuestStatus(Request.Script.InitCode.LocalVar.NamedItems['GQuestStatus'].AsInteger)
+        = Status then
+      Request.Script.InitCode.LocalVar.NamedItems['GQuestStatus'].AsInteger := Ord(sqsNone);
   end;
   Dispose(Request);
   if not HasPendingScriptRequests then
@@ -1230,15 +1234,15 @@ procedure CompleteQueuedPlanetaryBattle(Status: Integer);
 var
   Request: PScriptPBRequest;
 begin
-  Request := PScriptPBRequest(QueuedPlanetaryBattles[0]);
+  Request := QueuedPlanetaryBattles[0];
   QueuedPlanetaryBattles.Delete(0);
   ResumingScript := Request.Script;
   if Request.Script <> nil then
   begin
-    Request.Script.InitCode.LocalVar.GetVar('GRobotStatus').SetInt(Status);
+    Request.Script.InitCode.LocalVar.NamedItems['GRobotStatus'].AsInteger := Status;
     Request.Script.RunTurnCode;
-    if Request.Script.InitCode.LocalVar.GetVar('GRobotStatus').GetInt = Status then
-      Request.Script.InitCode.LocalVar.GetVar('GRobotStatus').SetInt(0);
+    if Request.Script.InitCode.LocalVar.NamedItems['GRobotStatus'].AsInteger = Status then
+      Request.Script.InitCode.LocalVar.NamedItems['GRobotStatus'].AsInteger := 0;
   end;
   Dispose(Request);
   if not HasPendingScriptRequests then
@@ -1251,15 +1255,15 @@ var
 begin
   if GetPlayer = nil then
     Exit;
-  Request := PScriptVDRequest(QueuedVideos[0]);
+  Request := QueuedVideos[0];
   QueuedVideos.Delete(0);
   ResumingScript := Request.Script;
   if Request.Script <> nil then
   begin
-    Request.Script.InitCode.LocalVar.GetVar('GVideoStatus').SetInt(Status);
+    Request.Script.InitCode.LocalVar.NamedItems['GVideoStatus'].AsInteger := Status;
     Request.Script.RunTurnCode;
-    if Request.Script.InitCode.LocalVar.GetVar('GVideoStatus').GetInt = Status then
-      Request.Script.InitCode.LocalVar.GetVar('GVideoStatus').SetInt(0);
+    if Request.Script.InitCode.LocalVar.NamedItems['GVideoStatus'].AsInteger = Status then
+      Request.Script.InitCode.LocalVar.NamedItems['GVideoStatus'].AsInteger := 0;
   end;
   Dispose(Request);
   if not HasPendingScriptRequests then
@@ -1309,13 +1313,13 @@ var
   Candidates: TList;
   I: Integer;
 begin
-  SharedScriptVariables.GetVar('GRunFrom').SetInt(RunFrom);
-  SharedScriptVariables.GetVar('GRunStar').SetDword(PtrUInt(Star));
+  SharedScriptVariables.NamedItems['GRunFrom'].AsInteger := RunFrom;
+  SharedScriptVariables.NamedItems['GRunStar'].AsDword := PtrUInt(Star);
   Candidates := TList.Create;
   CollectInactiveScriptTemplates(Candidates);
   for I := 0 to Candidates.Count - 1 do
   begin
-    Template := TScriptTemplUnit(Candidates[I]);
+    Template := Candidates[I];
     ScriptTemplateStartRequested := False;
     try
       Template.ConditionCode.Run(ScriptProcess);
@@ -1356,7 +1360,7 @@ var
   Script: TScript;
   Index: Integer;
 begin
-  Template := TScriptTemplUnit(ScriptTemplates[TemplateIndex]);
+  Template := ScriptTemplates[TemplateIndex];
   Script := TScript.Create;
   Galaxy.Scripts.Add(Script);
   Template.ActiveScriptIndex := Galaxy.Scripts.Count - 1;
@@ -1393,7 +1397,7 @@ begin
   Index := FindScriptTemplateIndex(Script.ScriptFileName);
   if Index < 0 then
     Exit;
-  Template := TScriptTemplUnit(ScriptTemplates[Index]);
+  Template := ScriptTemplates[Index];
   I := Galaxy.Scripts.IndexOf(Script);
   NewScript := TScript.Create;
   Galaxy.Scripts[I] := NewScript;
@@ -1431,7 +1435,7 @@ var
   ErrorText: WideString;
   Version: Cardinal;
 begin
-  Template := TScriptTemplUnit(ScriptTemplates[TemplateIndex]);
+  Template := ScriptTemplates[TemplateIndex];
   Control := nil;
   try
     Control := TCBufControlEC.Create;
@@ -1453,11 +1457,11 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    Template.ConditionCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := Template.ConditionCode.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage('ScriptFirstLoad.Compiler. Error=' + ErrorText);
-    Template.ConditionCode.LocalVar.Add('GScriptName', vkString).SetString(Template.Name);
+    Template.ConditionCode.LocalVar.Add('GScriptName', vkString).AsString := Template.Name;
   finally
     if Control <> nil then
     begin
@@ -1480,10 +1484,10 @@ begin
   end;
   for I := 0 to Galaxy.Scripts.Count - 1 do
   begin
-    Script := TScript(Galaxy.Scripts[I]);
+    Script := Galaxy.Scripts[I];
     for J := 0 to Script.Stars.Count - 1 do
     begin
-      Binding := TScriptStar(Script.Stars[J]);
+      Binding := Script.Stars[J];
       if Binding.ProtectStar and (Binding.Star = Star) then
       begin
         Result := True;
@@ -1791,7 +1795,7 @@ begin
   ShipCount := Star.Ships.Count;
   for I := 0 to ShipCount - 1 do
   begin
-    Ship := TShip(Star.Ships[I]);
+    Ship := Star.Ships[I];
     if Ship.LiberationGroup <> nil then
       Continue;
     Strict :=
@@ -1826,7 +1830,7 @@ begin
       J := 0;
       while J < ShipCount do
       begin
-        OtherShip := TShip(Star.Ships[J]);
+        OtherShip := Star.Ships[J];
         if (OtherShip <> Ship)
             and ((OtherShip.EnemyShip = Ship) or (OtherShip.PartnerShip = Ship)) then
           Break;
@@ -1840,11 +1844,11 @@ begin
   PlanetCount := Star.Planets.Count;
   for K := 0 to PlanetCount - 1 do
   begin
-    Planet := TPlanet(Star.Planets[K]);
+    Planet := Star.Planets[K];
     ShipCount := Planet.Warriors.Count;
     for I := 0 to ShipCount - 1 do
     begin
-      Ship := TShip(Planet.Warriors[I]);
+      Ship := Planet.Warriors[I];
       if Ship.ScriptShip <> nil then
         Continue;
       if Ship.AbsoluteScriptOrder > 0 then
@@ -1868,7 +1872,7 @@ var
 begin
   for I := 0 to Candidates.Count - 1 do
   begin
-    Ship := TShip(Candidates[I]);
+    Ship := Candidates[I];
     if Ship.LiberationGroup <> nil then
       Continue;
     if not (Ship.OwnerId in Group.OwnerMask) then
@@ -1879,15 +1883,13 @@ begin
         Group.StationNames,
         Group.DominatorMasks) then
       Continue;
-    if GetPlayer = Ship then
+    if Ship = GetPlayer then
       Continue;
-    if (BlazerShip <> Ship) and (KellerShip <> Ship) and (TerronShip <> Ship) then
-    begin
-      if Ship.Speed < Group.MinSpeed then
-        Continue;
-      if Ship.Speed > Group.MaxSpeed then
-        Continue;
-    end;
+    if (Ship <> BlazerShip)
+        and (Ship <> KellerShip)
+        and (Ship <> TerronShip)
+        and ((Ship.Speed < Group.MinSpeed) or (Ship.Speed > Group.MaxSpeed)) then
+      Continue;
     if (Group.WeaponRequirement = 1) and (Ship.WeaponCount <= 0) then
       Continue;
     if (Group.WeaponRequirement = 2) and (Ship.WeaponCount > 0) then
@@ -1903,17 +1905,14 @@ begin
       Continue;
     if Ship is TRanger then
     begin
-      if TRanger(Ship).CareerStatus[rcTrader] < Group.MinTraderStatus then
+      if (TRanger(Ship).CareerStatus[rcTrader] < Group.MinTraderStatus)
+          or (TRanger(Ship).CareerStatus[rcTrader] > Group.MaxTraderStatus) then
         Continue;
-      if TRanger(Ship).CareerStatus[rcTrader] > Group.MaxTraderStatus then
+      if (TRanger(Ship).CareerStatus[rcWarrior] < Group.MinWarriorStatus)
+          or (TRanger(Ship).CareerStatus[rcWarrior] > Group.MaxWarriorStatus) then
         Continue;
-      if TRanger(Ship).CareerStatus[rcWarrior] < Group.MinWarriorStatus then
-        Continue;
-      if TRanger(Ship).CareerStatus[rcWarrior] > Group.MaxWarriorStatus then
-        Continue;
-      if TRanger(Ship).CareerStatus[rcPirate] < Group.MinPirateStatus then
-        Continue;
-      if TRanger(Ship).CareerStatus[rcPirate] > Group.MaxPirateStatus then
+      if (TRanger(Ship).CareerStatus[rcPirate] < Group.MinPirateStatus)
+          or (TRanger(Ship).CareerStatus[rcPirate] > Group.MaxPirateStatus) then
         Continue;
     end;
     if (Group.MaxDistanceFromPlanet < 10000) and (Ship.CurrentPlanet <> Group.Planet) then
@@ -1948,7 +1947,7 @@ begin
   begin
     for I := 0 to TPlayer(Ship).ScriptShipBindings.Count - 1 do
     begin
-      Result := TScriptShip(TPlayer(Ship).ScriptShipBindings[I]);
+      Result := TPlayer(Ship).ScriptShipBindings[I];
       if Result.Script = Script then
         Break;
       Result := nil;
@@ -2001,7 +2000,7 @@ end;
 
 function TScriptShip.GetGroup: TScriptGroup;
 begin
-  Result := TScriptGroup(Script.Groups[GroupIndex]);
+  Result := Script.Groups[GroupIndex];
 end;
 
 constructor TScriptPlace.Create;
@@ -2057,7 +2056,7 @@ begin
     Center := MakePointF(0, 0);
     for I := 0 to Script.Ships.Count - 1 do
     begin
-      Binding := TScriptShip(Script.Ships[I]);
+      Binding := Script.Ships[I];
       if Binding.GroupIndex = Integer(TargetValue) then
       begin
         Center := AddPointsF(Center, Binding.Ship.Position);
@@ -2081,7 +2080,7 @@ begin
   end
   else if PlaceKind = spkCoordinates then
   begin
-    Center := MakePointF(TVarEC(TargetValue).GetFloat, TargetValue2.GetFloat);
+    Center := MakePointF(TVarEC(TargetValue).AsFloat, TargetValue2.AsFloat);
     Angle :=
         HeadingDegreesToRadians(
             WrapHeadingDegrees(PointBearingDegrees(Center, MakePointF(0, 0)) + AngleOffset)
@@ -2378,7 +2377,7 @@ begin
     StateCount := States.Count;
     for I := 0 to StateCount - 1 do
     begin
-      State := TScriptState(States[I]);
+      State := States[I];
       State.Free;
     end;
     States.Clear;
@@ -2417,7 +2416,7 @@ begin
   begin
     for I := 0 to Ships.Count - 1 do
     begin
-      Binding := TScriptShip(Ships[I]);
+      Binding := Ships[I];
       Binding.Free;
     end;
     Ships.Clear;
@@ -2426,7 +2425,7 @@ begin
   begin
     for I := 0 to Dialogs.Count - 1 do
     begin
-      Dialog := TScriptDialog(Dialogs[I]);
+      Dialog := Dialogs[I];
       Dialog.Free;
     end;
     Dialogs.Clear;
@@ -2460,15 +2459,15 @@ procedure TScript.PublishShipContext(Binding: TScriptShip);
 begin
   CurrentShip := Binding.Ship;
   CurrentScript := Self;
-  InitCode.LocalVar.GetVar('EndState').SetInt(Ord(Binding.EndState));
-  InitCode.LocalVar.GetVar('CurShip').SetDword(PtrUInt(CurrentShip));
+  InitCode.LocalVar.NamedItems['EndState'].AsInteger := Ord(Binding.EndState);
+  InitCode.LocalVar.NamedItems['CurShip'].AsDword := PtrUInt(CurrentShip);
 end;
 
 procedure TScript.PublishCurrentShip(Ship: TShip);
 begin
   CurrentShip := Ship;
   CurrentScript := Self;
-  InitCode.LocalVar.GetVar('CurShip').SetDword(PtrUInt(CurrentShip));
+  InitCode.LocalVar.NamedItems['CurShip'].AsDword := PtrUInt(CurrentShip);
 end;
 
 function TScript.GetStar(Name: WideString): TScriptStar;
@@ -2479,7 +2478,7 @@ begin
   Count := Stars.Count;
   for I := 0 to Count - 1 do
   begin
-    Star := TScriptStar(Stars[I]);
+    Star := Stars[I];
     if Name = Star.Name then
     begin
       Result := Star;
@@ -2497,7 +2496,7 @@ begin
   Count := Stars.Count;
   for I := 0 to Count - 1 do
   begin
-    Star := TScriptStar(Stars[I]);
+    Star := Stars[I];
     if Star.Planets <> nil then
       for J := 0 to High(Star.Planets) do
         if Name = Star.Planets[J].Name then
@@ -2516,7 +2515,7 @@ var
 begin
   for I := 0 to Items.Count - 1 do
   begin
-    Item := TScriptItem(Items[I]);
+    Item := Items[I];
     if Item.Name = Name then
     begin
       Result := Item;
@@ -2637,7 +2636,7 @@ begin
   Cell := InitCode.LocalVar.GetVarNE(Name);
   if Cell = nil then
     raise Exception.Create(AnsiString('Dialog ' + Name + ' not found in script ' + ScriptFileName));
-  CallDialog(Cell.GetInt);
+  CallDialog(Cell.AsInteger);
 end;
 
 procedure TScript.CallDialogMessage(Index: Integer);
@@ -2749,7 +2748,7 @@ begin
       Index := Ships.IndexOf(TPlayer(Ship).ScriptShipBindings[I]);
       if Index >= 0 then
       begin
-        Binding := TScriptShip(Ships[Index]);
+        Binding := Ships[Index];
         Binding.Free;
         Ships.Delete(Index);
         TPlayer(Ship).ScriptShipBindings.Delete(I);
@@ -2763,7 +2762,7 @@ begin
     Index := Ships.IndexOf(Ship.ScriptShip);
     if Index >= 0 then
     begin
-      Binding := TScriptShip(Ships[Index]);
+      Binding := Ships[Index];
       Binding.Free;
       Ships.Delete(Index);
     end;
@@ -2781,17 +2780,16 @@ begin
     for I := GetPlayer.ScriptShipBindings.Count - 1 downto 0 do
     begin
       Index := Ships.IndexOf(GetPlayer.ScriptShipBindings[I]);
-      if Index >= 0 then
-      begin
-        Binding := TScriptShip(Ships[Index]);
-        Binding.Free;
-        Ships.Delete(Index);
-        GetPlayer.ScriptShipBindings.Delete(I);
-      end;
+      if Index < 0 then
+        Continue;
+      Binding := Ships[Index];
+      Binding.Free;
+      Ships.Delete(Index);
+      GetPlayer.ScriptShipBindings.Delete(I);
     end;
   for I := Ships.Count - 1 downto 0 do
   begin
-    Binding := TScriptShip(Ships[I]);
+    Binding := Ships[I];
     Ship := Binding.Ship;
     Binding.Free;
     Ships.Delete(I);
@@ -2803,7 +2801,7 @@ procedure TScript.ChangeState(Binding: TScriptShip; StateIndex: Integer);
 begin
   if Binding = nil then
     Exit;
-  Binding.State := TScriptState(States[StateIndex]);
+  Binding.State := States[StateIndex];
   if Binding.State.EntryCode <> nil then
     Binding.State.EntryCode.Run(ScriptProcess);
   if not (Binding.Ship is TPlayer) then
@@ -2824,11 +2822,11 @@ begin
     Exit;
   for I := 0 to Ships.Count - 1 do
   begin
-    Source := TScriptShip(Ships[I]);
+    Source := Ships[I];
     if Source.GroupIndex = SourceGroup then
       for J := 0 to Ships.Count - 1 do
       begin
-        Target := TScriptShip(Ships[J]);
+        Target := Ships[J];
         if (Target.GroupIndex = TargetGroup) and (Target.Ship is TRanger) then
           Source.Ship.SetStoredRangerRelationLevel(TRanger(Target.Ship), Level);
       end;
@@ -2842,7 +2840,7 @@ var
 begin
   for I := 0 to Ships.Count - 1 do
   begin
-    Binding := TScriptShip(Ships[I]);
+    Binding := Ships[I];
     if (Binding.GroupIndex = GroupIndex) and (Binding.Ship is TRanger) then
       Planet.SetRelationLevelToRanger(TRanger(Binding.Ship), Level);
   end;
@@ -2869,7 +2867,7 @@ begin
   for J := 0 to StarIndex - 1 do
     Indent := Indent + '    ';
   Result := False;
-  Binding := TScriptStar(Stars[StarIndex]);
+  Binding := Stars[StarIndex];
   Star := Binding.Star;
   if Binding.RejectHostilePresence and Star.HasHostilePresenceForScriptBinding then
     Exit;
@@ -2892,7 +2890,7 @@ begin
         K := 0;
         while K < Count do
         begin
-          Hole := THole(aGalaxy.Galaxy.Holes[K]);
+          Hole := aGalaxy.Galaxy.Holes[K];
           if (Hole.Star1 = Star) and (Hole.Star2 = OtherStar.Star) then
             Break;
           if (Hole.Star1 = OtherStar.Star) and (Hole.Star2 = Star) then
@@ -2916,48 +2914,48 @@ begin
     for K := 0 to Count - 1 do
     begin
       if (StarIndex = 0) and (K = 0) and (AnchorPlanet <> nil) then
-        Binding.Planets[0].Planet := AnchorPlanet
-      else
       begin
-        if Star.Status.CustomFaction <> '' then
-          Exit;
-        MinOrbitSquared := Sqr(Binding.Planets[K].MinOrbitPercent / 100 * (Star.MapDiameter / 2));
-        MaxOrbitSquared := Sqr(Binding.Planets[K].MaxOrbitPercent / 100 * (Star.MapDiameter / 2));
-        Binding.Planets[K].Planet := nil;
-        for J := 0 to Star.Planets.Count - 1 do
-        begin
-          Planet := TPlanet(Star.Planets[J]);
-          if Planet.NoLanding then
-            Continue;
-          if not (Planet.RaceId in Binding.Planets[K].RaceMask) then
-            Continue;
-          if not (Planet.OwnerId in Binding.Planets[K].OwnerMask) then
-            Continue;
-          if not (Planet.Economy in Binding.Planets[K].EconomyMask) then
-            Continue;
-          if not (Planet.Government in Binding.Planets[K].GovernmentMask) then
-            Continue;
-          I := 0;
-          while I < K do
-          begin
-            if Binding.Planets[I].Planet = Planet then
-              Break;
-            Inc(I);
-          end;
-          if I < K then
-            Continue;
-          OrbitSquared := PointDistanceSquared(Planet.GetPosition, MakePointF(0, 0));
-          if OrbitSquared < MinOrbitSquared then
-            Continue;
-          // Native search stops at the first eligible orbit beyond the upper bound.
-          if OrbitSquared > MaxOrbitSquared then
-            Break;
-          Binding.Planets[K].Planet := Planet;
-          Break;
-        end;
-        if Binding.Planets[K].Planet = nil then
-          Exit;
+        Binding.Planets[0].Planet := AnchorPlanet;
+        Continue;
       end;
+      if Star.Status.CustomFaction <> '' then
+        Exit;
+      MinOrbitSquared := Sqr(Binding.Planets[K].MinOrbitPercent / 100 * (Star.MapDiameter / 2));
+      MaxOrbitSquared := Sqr(Binding.Planets[K].MaxOrbitPercent / 100 * (Star.MapDiameter / 2));
+      Binding.Planets[K].Planet := nil;
+      for J := 0 to Star.Planets.Count - 1 do
+      begin
+        Planet := Star.Planets[J];
+        if Planet.NoLanding then
+          Continue;
+        if not (Planet.RaceId in Binding.Planets[K].RaceMask) then
+          Continue;
+        if not (Planet.OwnerId in Binding.Planets[K].OwnerMask) then
+          Continue;
+        if not (Planet.Economy in Binding.Planets[K].EconomyMask) then
+          Continue;
+        if not (Planet.Government in Binding.Planets[K].GovernmentMask) then
+          Continue;
+        I := 0;
+        while I < K do
+        begin
+          if Binding.Planets[I].Planet = Planet then
+            Break;
+          Inc(I);
+        end;
+        if I < K then
+          Continue;
+        OrbitSquared := PointDistanceSquared(Planet.GetPosition, MakePointF(0, 0));
+        if OrbitSquared < MinOrbitSquared then
+          Continue;
+        // Native search stops at the first eligible orbit beyond the upper bound.
+        if OrbitSquared > MaxOrbitSquared then
+          Break;
+        Binding.Planets[K].Planet := Planet;
+        Break;
+      end;
+      if Binding.Planets[K].Planet = nil then
+        Exit;
     end;
   end;
   if Binding.ShipRequirements <> nil then
@@ -2975,7 +2973,7 @@ begin
         I := 0;
         while I < Candidates.Count do
         begin
-          Ship := TShip(Candidates[I]);
+          Ship := Candidates[I];
           Inc(I);
           if Requirement.PlayerOnly and (GetPlayer <> Ship) then
             Continue;
@@ -3050,13 +3048,13 @@ begin
     Result := True;
     Exit;
   end;
-  Binding := TScriptStar(Stars[StarIndex]);
+  Binding := Stars[StarIndex];
   if Binding.ConstellationIndex = -1 then
   begin
     Count := aGalaxy.Galaxy.Stars.Count;
     for K := 0 to Count - 1 do
     begin
-      Star := TScriptStar(Stars[0]).Star.StarDistances[K].Star;
+      Star := TStar(TScriptStar(Stars[0]).Star.StarDistances[K].Star);
       if Binding.RejectHostilePresence and Star.HasHostilePresenceForScriptBinding then
         Continue;
       J := 0;
@@ -3081,7 +3079,7 @@ begin
     Count := aGalaxy.Galaxy.Stars.Count;
     for K := 0 to Count - 1 do
     begin
-      Star := TStar(aGalaxy.Galaxy.Stars[K]);
+      Star := aGalaxy.Galaxy.Stars[K];
       if Binding.RejectHostilePresence and Star.HasHostilePresenceForScriptBinding then
         Continue;
       J := 0;
@@ -3096,7 +3094,7 @@ begin
       J := 0;
       while J < Constellations.Count do
       begin
-        ConstellationBinding := TScriptConstellation(Constellations[J]);
+        ConstellationBinding := Constellations[J];
         if ConstellationBinding.Constellation <> nil then
           if ConstellationBinding.Constellation = Star.Constellation then
             Break;
@@ -3104,7 +3102,7 @@ begin
       end;
       if J < Constellations.Count then
         Continue;
-      ConstellationBinding := TScriptConstellation(Constellations[Binding.ConstellationIndex]);
+      ConstellationBinding := Constellations[Binding.ConstellationIndex];
       ConstellationBinding.Constellation := Star.Constellation;
       Binding.Star := Star;
       Result := TryBindStars(StarIndex);
@@ -3122,7 +3120,7 @@ begin
       Count := Constellation.Stars.Count;
       for K := 0 to Count - 1 do
       begin
-        Star := TStar(Constellation.Stars[K]);
+        Star := Constellation.Stars[K];
         if Binding.RejectHostilePresence and Star.HasHostilePresenceForScriptBinding then
           Continue;
         J := 0;
@@ -3154,8 +3152,7 @@ var
   Candidates: TList;
   I, Count, J, SubCount, K: Integer;
   Balance, Radius: Single;
-  // The native frame retains and finalizes an otherwise unused WideString at EBP-$38.
-  Text, UnusedText, ErrorText: WideString;
+  Text, ErrorText: WideString;
   Constellation: TScriptConstellation;
   Star: TScriptStar;
   PlanetBinding: PScriptPlanetBinding;
@@ -3208,7 +3205,7 @@ var
             Include(State.ActionTypeMask, Action);
       end;
       if (StepTypes = '') or (StepTypes = 'Any') then
-        State.StepTypeMask := [0..11]
+        State.StepTypeMask := AllScriptStepTypes
       else
       begin
         State.StepTypeMask := [];
@@ -3216,7 +3213,7 @@ var
         for I := 0 to Count - 1 do
         begin
           Step := ExtractDigitsToIntW(ExtractDelimitedPartW(StepTypes, I, ','));
-          if Step in [0..11] then
+          if Step in AllScriptStepTypes then
             Include(State.StepTypeMask, Step);
         end;
       end;
@@ -3225,7 +3222,7 @@ var
     begin
       State.ActionCode := CompileScriptText(State.OnActionText);
       State.ActionTypeMask := [satOnStep..satOnDeath];
-      State.StepTypeMask := [0..11];
+      State.StepTypeMask := AllScriptStepTypes;
     end;
     State.ActionCode.LinkAll(ScriptFunctionScope, False);
     State.ActionCode.LinkAll(SharedScriptVariables, False);
@@ -3282,7 +3279,7 @@ begin
       if Version >= 7 then
         for J := 0 to SubCount - 1 do
         begin
-          Star.Constraints[J].OtherStar := TScriptStar(Stars[Buffer.GetInt32]);
+          Star.Constraints[J].OtherStar := Stars[Buffer.GetInt32];
           Star.Constraints[J].MinDistance := Buffer.GetInt32;
           Star.Constraints[J].MaxDistance := Buffer.GetInt32;
           Star.Constraints[J].RequireBlackHole := Buffer.GetBoolean;
@@ -3290,7 +3287,7 @@ begin
       else
         for J := 0 to SubCount - 1 do
         begin
-          Star.Constraints[J].OtherStar := TScriptStar(Stars[Buffer.GetInt32]);
+          Star.Constraints[J].OtherStar := Stars[Buffer.GetInt32];
           Buffer.GetInt32;
           Star.Constraints[J].MinDistance := Buffer.GetInt32;
           Star.Constraints[J].MaxDistance := Buffer.GetInt32;
@@ -3362,24 +3359,24 @@ begin
   end;
   if CreateObjects then
   begin
-    Star := TScriptStar(Stars[0]);
+    Star := Stars[0];
     Star.Star := AnchorStar;
     if Star.ConstellationIndex >= 0 then
     begin
-      Constellation := TScriptConstellation(Constellations[Star.ConstellationIndex]);
+      Constellation := Constellations[Star.ConstellationIndex];
       Constellation.Constellation := AnchorStar.Constellation;
     end;
     if not TryBindStars(0) then
       Exit;
     for I := 0 to Stars.Count - 1 do
     begin
-      Star := TScriptStar(Stars[I]);
-      InitCode.LocalVar.GetVar(Star.Name).SetDword(PtrUInt(Star.Star));
+      Star := Stars[I];
+      InitCode.LocalVar.NamedItems[Star.Name].AsDword := PtrUInt(Star.Star);
       if Star.Planets <> nil then
         for J := 0 to High(Star.Planets) do
         begin
           PlanetBinding := @Star.Planets[J];
-          InitCode.LocalVar.GetVar(PlanetBinding.Name).SetDword(PtrUInt(PlanetBinding.Planet));
+          InitCode.LocalVar.NamedItems[PlanetBinding.Name].AsDword := PtrUInt(PlanetBinding.Planet);
         end;
     end;
   end;
@@ -3433,7 +3430,7 @@ begin
     else
       RaiseWideMessage('Script.Place.Type');
     if CreateObjects then
-      InitCode.LocalVar.GetVar(Place.Name).SetDword(PtrUInt(Place));
+      InitCode.LocalVar.NamedItems[Place.Name].AsDword := PtrUInt(Place);
   end;
   Count := Buffer.GetInt32;
   for I := 0 to Count - 1 do
@@ -3459,7 +3456,7 @@ begin
     ScriptItem.TextData3 := '';
     ScriptItem.OnUseText := '';
     ScriptItem.OnActionText := '';
-    InitCode.LocalVar.GetVar(ScriptItem.Name).SetDword(PtrUInt(ScriptItem));
+    InitCode.LocalVar.NamedItems[ScriptItem.Name].AsDword := PtrUInt(ScriptItem);
   end;
   Count := Buffer.GetInt32;
   for I := 0 to Count - 1 do
@@ -3523,9 +3520,9 @@ begin
   begin
     for I := 0 to Groups.Count - 1 do
     begin
-      Group := TScriptGroup(Groups[I]);
+      Group := Groups[I];
       Group.Ships := TList.Create;
-      Group.Planet := TPlanet(InitCode.LocalVar.GetVar(Group.PlanetVarName).GetDword);
+      Group.Planet := TPlanet(InitCode.LocalVar.NamedItems[Group.PlanetVarName].AsDword);
       Candidates := CollectScriptCandidateShips(Group.Planet.CurrentStar);
       SubCount := Group.MinCount;
       if Group.IncludePlayer then
@@ -3567,13 +3564,13 @@ begin
               );
           if Balance < GroupRelations[I].MinCombatBalance then
           begin
-            Group := TScriptGroup(Groups[GroupRelations[I].Group1]);
+            Group := Groups[GroupRelations[I].Group1];
             if Group.Ships.Count < Group.MaxCount then
               Break;
           end
           else if Balance > GroupRelations[I].MaxCombatBalance then
           begin
-            Group := TScriptGroup(Groups[GroupRelations[I].Group2]);
+            Group := Groups[GroupRelations[I].Group2];
             if Group.Ships.Count < Group.MaxCount then
               Break;
           end;
@@ -3634,17 +3631,17 @@ begin
   Analyzer.RemoveNewlines;
   Analyzer.RemoveWhitespace;
   Analyzer.ValidateDelimiters;
-  InitCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+  ErrorText := InitCode.Compile(Analyzer, nil, nil, nil, nil);
   Analyzer.Free;
   if ErrorText <> '' then
     RaiseWideMessage('CodeInit.Compiler. Error=' + ErrorText);
-  InitCode.LocalVar.Add('EndState', vkInt).SetInt(0);
-  InitCode.LocalVar.Add('CurShip', vkDword).SetInt(0);
-  InitCode.LocalVar.Add('GABStatus', vkInt).SetInt(0);
-  InitCode.LocalVar.Add('GQuestStatus', vkInt).SetInt(0);
-  InitCode.LocalVar.Add('GRobotStatus', vkInt).SetInt(0);
-  InitCode.LocalVar.Add('GVideoStatus', vkInt).SetInt(0);
-  InitCode.LocalVar.Add('GAnswerData', vkDword).SetInt(0);
+  InitCode.LocalVar.Add('EndState', vkInt).AsInteger := 0;
+  InitCode.LocalVar.Add('CurShip', vkDword).AsInteger := 0;
+  InitCode.LocalVar.Add('GABStatus', vkInt).AsInteger := 0;
+  InitCode.LocalVar.Add('GQuestStatus', vkInt).AsInteger := Ord(sqsNone);
+  InitCode.LocalVar.Add('GRobotStatus', vkInt).AsInteger := 0;
+  InitCode.LocalVar.Add('GVideoStatus', vkInt).AsInteger := 0;
+  InitCode.LocalVar.Add('GAnswerData', vkDword).AsInteger := 0;
   InitCode.LinkAll(ScriptFunctionScope, False);
   InitCode.LinkAll(SharedScriptVariables, False);
   InitCode.LinkAll(InitCode.LocalVar, False);
@@ -3668,7 +3665,7 @@ begin
   Analyzer.RemoveNewlines;
   Analyzer.RemoveWhitespace;
   Analyzer.ValidateDelimiters;
-  TurnCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+  ErrorText := TurnCode.Compile(Analyzer, nil, nil, nil, nil);
   Analyzer.Free;
   if ErrorText <> '' then
     RaiseWideMessage('CodeTurn.Compiler. Error=' + ErrorText);
@@ -3684,7 +3681,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    DialogCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := DialogCode.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage('CodeTurn.Compiler. Error=' + ErrorText);
@@ -3712,7 +3709,8 @@ begin
     end;
     State.PickupItemVarName := Buffer.ReadWideString;
     if State.PickupItemVarName <> '' then
-      State.PickupItem := TScriptItem(InitCode.LocalVar.GetVar(State.PickupItemVarName).GetDword);
+      State.PickupItem :=
+          TScriptItem(InitCode.LocalVar.NamedItems[State.PickupItemVarName].AsDword);
     State.PickUpNearbyItems := Buffer.GetBoolean;
     State.DialogTextOrVariable := Buffer.ReadWideString;
     if (State.DialogTextOrVariable <> '')
@@ -3725,7 +3723,7 @@ begin
       Analyzer.RemoveNewlines;
       Analyzer.RemoveWhitespace;
       Analyzer.ValidateDelimiters;
-      State.DialogCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+      ErrorText := State.DialogCode.Compile(Analyzer, nil, nil, nil, nil);
       Analyzer.Free;
       if ErrorText <> '' then
         RaiseWideMessage('StateCodeText.Compiler. Error=' + ErrorText + ' State=' + State.Name);
@@ -3751,7 +3749,7 @@ begin
       Analyzer.RemoveNewlines;
       Analyzer.RemoveWhitespace;
       Analyzer.ValidateDelimiters;
-      State.EntryCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+      ErrorText := State.EntryCode.Compile(Analyzer, nil, nil, nil, nil);
       Analyzer.Free;
       if ErrorText <> '' then
         RaiseWideMessage('StateCodeEther.Compiler. Error=' + ErrorText + ' State=' + State.Name);
@@ -3766,7 +3764,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    State.StateCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := State.StateCode.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage('StateTurn.Compiler. Error=' + ErrorText + ' State=' + State.Name);
@@ -3787,7 +3785,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    Dialog.Code.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := Dialog.Code.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage('Dialog.Code.Compiler. Error=' + ErrorText + ' State=' + Dialog.Name);
@@ -3795,7 +3793,7 @@ begin
     Dialog.Code.LinkAll(SharedScriptVariables, False);
     Dialog.Code.LinkAll(InitCode.LocalVar, False);
     Dialog.Code.ScriptFunLinked := True;
-    InitCode.LocalVar.GetVar(Dialog.Name).SetInt(I);
+    InitCode.LocalVar.NamedItems[Dialog.Name].AsInteger := I;
   end;
   Count := Buffer.GetInt32;
   for I := 0 to Count - 1 do
@@ -3809,7 +3807,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    DialogMessage.Code.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := DialogMessage.Code.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage(
@@ -3832,7 +3830,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    DialogAnswer.AnswerCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := DialogAnswer.AnswerCode.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage(
@@ -3848,7 +3846,7 @@ begin
     Analyzer.RemoveNewlines;
     Analyzer.RemoveWhitespace;
     Analyzer.ValidateDelimiters;
-    DialogAnswer.ActionCode.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+    ErrorText := DialogAnswer.ActionCode.Compile(Analyzer, nil, nil, nil, nil);
     Analyzer.Free;
     if ErrorText <> '' then
       RaiseWideMessage(
@@ -3863,92 +3861,88 @@ begin
   begin
     for I := 0 to States.Count - 1 do
     begin
-      State := TScriptState(States[I]);
+      State := States[I];
       if State.TargetVarName <> '' then
-        State.TargetValue := InitCode.LocalVar.GetVar(State.TargetVarName).GetDword;
+        State.TargetValue := InitCode.LocalVar.NamedItems[State.TargetVarName].AsDword;
       if State.EnemyGroupIndices <> nil then
         for J := 0 to High(State.EnemyGroupIndices) do
-          State.EnemyGroupIndices[J] := InitCode.LocalVar.GetVar(State.EnemyGroupNames[J]).GetInt;
+          State.EnemyGroupIndices[J] :=
+              InitCode.LocalVar.NamedItems[State.EnemyGroupNames[J]].AsInteger;
     end;
     for I := 0 to Places.Count - 1 do
     begin
-      Place := TScriptPlace(Places[I]);
+      Place := Places[I];
       if Place.OriginVarName <> '' then
-        Place.OriginStar := TStar(InitCode.LocalVar.GetVar(Place.OriginVarName).GetDword);
+        Place.OriginStar := TStar(InitCode.LocalVar.NamedItems[Place.OriginVarName].AsDword);
       if Place.PlaceKind = spkCoordinates then
       begin
         if Place.TargetVarName <> '' then
-          Place.TargetValue := PtrUInt(InitCode.LocalVar.GetVar(Place.TargetVarName));
+          Place.TargetValue := PtrUInt(InitCode.LocalVar.NamedItems[Place.TargetVarName]);
         if Place.TargetVarName2 <> '' then
-          Place.TargetValue2 := InitCode.LocalVar.GetVar(Place.TargetVarName2);
+          Place.TargetValue2 := InitCode.LocalVar.NamedItems[Place.TargetVarName2];
       end
       else if Place.TargetVarName <> '' then
-        Place.TargetValue := InitCode.LocalVar.GetVar(Place.TargetVarName).GetDword;
+        Place.TargetValue := InitCode.LocalVar.NamedItems[Place.TargetVarName].AsDword;
     end;
     for I := 0 to Items.Count - 1 do
     begin
-      ScriptItem := TScriptItem(Items[I]);
+      ScriptItem := Items[I];
       if ScriptItem.Name = '' then
         Continue;
       Item := nil;
-      if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 0) then
+      if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 0) then
       begin
         Item := TFuelTanks.Create;
         (Item as TFuelTanks).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 1) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 1) then
       begin
         Item := TEngine.Create;
         (Item as TEngine).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 2) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 2) then
       begin
         Item := TRadar.Create;
         (Item as TRadar).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 3) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 3) then
       begin
         Item := TScaner.Create;
         (Item as TScaner).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 4) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 4) then
       begin
         Item := TRepairRobot.Create;
         (Item as TRepairRobot).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 5) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 5) then
       begin
         Item := TCargoHook.Create;
         (Item as TCargoHook).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if (ScriptItem.DefinitionKind = 0) and (ScriptItem.DefinitionType = 6) then
+      else if (ScriptItem.DefinitionKind = sidEquipment) and (ScriptItem.DefinitionType = 6) then
       begin
         Item := TDefGenerator.Create;
         (Item as TDefGenerator).Init(ScriptItem.Weight, ScriptItem.Level, ScriptItem.OwnerId);
       end
-      else if ScriptItem.DefinitionKind = 0 then
+      else if ScriptItem.DefinitionKind = sidEquipment then
         RaiseWideMessage('Script unknow item type')
-      else if (ScriptItem.DefinitionKind = 1)
+      else if (ScriptItem.DefinitionKind = sidWeapon)
           and (ScriptItem.DefinitionType >= 0)
           and (ScriptItem.DefinitionType
-              < CountItemTypesInMask([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])) then
+              < CountItemTypesInMask([t_IndustrialLaser..t_Lirecron])) then
       begin
         Item := TWeapon.Create;
         (Item as TWeapon)
             .Init(
-                TItemType(
-                    GetItemTypeFromMask(
-                        [Ord(t_IndustrialLaser)..Ord(t_Lirecron)],
-                        ScriptItem.DefinitionType + 1
-                    )
-                ),
+                GetItemTypeFromMask([t_IndustrialLaser..t_Lirecron], ScriptItem.DefinitionType + 1),
                 ScriptItem.Weight,
                 ScriptItem.Level,
                 ScriptItem.OwnerId);
       end
-      else if ScriptItem.DefinitionKind = 1 then
+      else if ScriptItem.DefinitionKind = sidWeapon then
         RaiseWideMessage('Script unknow item type')
-      else if (ScriptItem.DefinitionKind = 2)
+      else if (ScriptItem.DefinitionKind = sidGoods)
           and (ScriptItem.DefinitionType >= 0)
           and (ScriptItem.DefinitionType <= 8) then
       begin
@@ -3959,21 +3953,25 @@ begin
                 ScriptItem.Weight);
         (Item as TGoods).NaturalFlag := ScriptItem.DefinitionType = 5;
       end
-      else if (ScriptItem.DefinitionKind = 2) and (ScriptItem.DefinitionType = 9) then
+      else if (ScriptItem.DefinitionKind = sidGoods) and (ScriptItem.DefinitionType = 9) then
         RaiseWideMessage('Script. Protoplasm not support')
-      else if ScriptItem.DefinitionKind = 2 then
+      else if ScriptItem.DefinitionKind = sidGoods then
         RaiseWideMessage('Script unknow item type')
-      else if (ScriptItem.DefinitionKind = 3)
+      else if (ScriptItem.DefinitionKind = sidArtefact)
           and (ScriptItem.DefinitionType >= 0)
-          and (ScriptItem.DefinitionType < CountItemTypesInMask([10..41])) then
+          and (ScriptItem.DefinitionType
+              < CountItemTypesInMask([t_ArtefactHull..t_ArtFastRacks])) then
         Item :=
             CreateConfiguredArtefactByItemType(
-                TItemType(GetItemTypeFromMask([10..41], ScriptItem.DefinitionType + 1)),
+                GetItemTypeFromMask(
+                    [t_ArtefactHull..t_ArtFastRacks],
+                    ScriptItem.DefinitionType + 1
+                ),
                 ScriptItem.OwnerId
             )
-      else if ScriptItem.DefinitionKind = 3 then
+      else if ScriptItem.DefinitionKind = sidArtefact then
         RaiseWideMessage('Script unknow item type')
-      else if ScriptItem.DefinitionKind = 4 then
+      else if ScriptItem.DefinitionKind = sidCustomItem then
       begin
         Item := TUselessItem.Create;
         (Item as TUselessItem).Init(ScriptItem.ConfigName, dsBlazer, 0, False);
@@ -3983,21 +3981,20 @@ begin
       else
         RaiseWideMessage('Script unknow item type');
       Item.ScriptItem := ScriptItem;
-      if InitCode.LocalVar.GetVar(ScriptItem.LocationVarName).GetDword < 255 then
+      if InitCode.LocalVar.NamedItems[ScriptItem.LocationVarName].AsDword < 255 then
       begin
-        Group :=
-            TScriptGroup(Groups[InitCode.LocalVar.GetVar(ScriptItem.LocationVarName).GetDword]);
+        Group := Groups[InitCode.LocalVar.NamedItems[ScriptItem.LocationVarName].AsDword];
         J := 0;
         while J < Group.Ships.Count do
         begin
-          Ship := TShip(Group.Ships[J]);
+          Ship := Group.Ships[J];
           if Ship.CargoFreeSpace >= Item.Weight then
             Break;
           Inc(J);
         end;
         if J < Group.Ships.Count then
         begin
-          Ship := TShip(Group.Ships[J]);
+          Ship := Group.Ships[J];
           if Item is TGoods then
           begin
             Inc(Ship.CargoGoods[Ord(Item.ItemType)].Count, TGoods(Item).Quantity);
@@ -4008,7 +4005,7 @@ begin
           begin
             Ship.Artefacts.Add(Item);
             if Item is TArtefactTranclucator then
-              (TObject((Item as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip := Ship;
+              ((Item as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := Ship;
           end
           else
           begin
@@ -4021,7 +4018,7 @@ begin
         begin
           for J := 0 to Group.Ships.Count - 1 do
           begin
-            Ship := TShip(Group.Ships[J]);
+            Ship := Group.Ships[J];
             if Ship.CargoFreeSpace < TGoods(Item).Quantity then
             begin
               Inc(Ship.CargoGoods[Ord(Item.ItemType)].Count, Ship.CargoFreeSpace);
@@ -4039,7 +4036,7 @@ begin
           end;
           if TGoods(Item).Quantity > 0 then
           begin
-            Ship := TShip(Group.Ships[0]);
+            Ship := Group.Ships[0];
             Inc(Ship.CargoGoods[Ord(Item.ItemType)].Count, TGoods(Item).Quantity);
           end;
           Item.Free;
@@ -4047,7 +4044,7 @@ begin
         end
         else
         begin
-          Ship := TShip(Group.Ships[0]);
+          Ship := Group.Ships[0];
           if Item is TArtefact then
             Ship.Artefacts.Add(Item)
           else
@@ -4058,14 +4055,15 @@ begin
           Ship.RefreshDerivedStats(True);
         end;
       end
-      else if TObject(InitCode.LocalVar.GetVar(ScriptItem.LocationVarName).GetDword) is TPlanet then
+      else if TObject(InitCode.LocalVar.NamedItems[ScriptItem.LocationVarName].AsDword)
+          is TPlanet then
       begin
-        Planet := TPlanet(InitCode.LocalVar.GetVar(ScriptItem.LocationVarName).GetDword);
+        Planet := TPlanet(InitCode.LocalVar.NamedItems[ScriptItem.LocationVarName].AsDword);
         Planet.EquipmentShop.Add(Item);
       end
       else
       begin
-        Place := TScriptPlace(InitCode.LocalVar.GetVar(ScriptItem.LocationVarName).GetDword);
+        Place := TScriptPlace(InitCode.LocalVar.NamedItems[ScriptItem.LocationVarName].AsDword);
         if (Place.PlaceKind <> spkPolar)
             and (Place.PlaceKind <> spkPlanetPosition)
             and (Place.PlaceKind <> spkStarDirection)
@@ -4078,7 +4076,7 @@ begin
           J := 0;
           while J < SubCount do
           begin
-            OtherItem := TItem(Place.OriginStar.Items[J]);
+            OtherItem := Place.OriginStar.Items[J];
             if PointDistanceSquared(Item.Position, OtherItem.Position) < 16 - 2 * K then
               Break;
             Inc(J);
@@ -4112,12 +4110,12 @@ begin
     end;
     for I := Ships.Count - 1 downto 0 do
     begin
-      Binding := TScriptShip(Ships[I]);
+      Binding := Ships[I];
       ChangeState(Binding, TScriptGroup(Groups[Binding.GroupIndex]).InitialStateIndex);
     end;
     for I := 0 to Stars.Count - 1 do
     begin
-      Star := TScriptStar(Stars[I]);
+      Star := Stars[I];
       if Star.ProtectStar then
         aGalaxy.Galaxy.CancelEnemyJumpsToStar(Star.Star);
     end;
@@ -4173,7 +4171,7 @@ begin
   Buffer.AddWideChar(WideChar(Count));
   for I := 0 to Count - 1 do
   begin
-    Cell := InitCode.LocalVar.GetItem(I);
+    Cell := InitCode.LocalVar[I];
     Kind := Cell.Kind;
     if Kind = vkEmpty then
     begin
@@ -4184,37 +4182,37 @@ begin
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddIntegerValue(Cell.GetInt);
+      Buffer.AddIntegerValue(Cell.AsInteger);
     end
     else if Kind = vkDword then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddDWord(Cell.GetDword);
+      Buffer.AddDWord(Cell.AsDword);
     end
     else if Kind = vkFloat then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddDouble(Cell.GetFloat);
+      Buffer.AddDouble(Cell.AsFloat);
     end
     else if Kind = vkString then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddWideStringZ(Cell.GetString);
+      Buffer.AddWideStringZ(Cell.AsString);
     end
     else if Kind = vkArray then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Cell.GetArray.SaveToBuffer(Buffer);
+      Cell.AsArray.SaveToBuffer(Buffer);
     end
-    else if (Kind = vkLibraryFun) and (Cell.GetString <> '') then
+    else if (Kind = vkLibraryFun) and (Cell.AsString <> '') then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddWideStringZ(Cell.GetString);
+      Buffer.AddWideStringZ(Cell.AsString);
     end
     else
     begin
@@ -4227,7 +4225,7 @@ begin
   Buffer.AddWideChar(WideChar(Count));
   for I := 0 to Count - 1 do
   begin
-    Cell := TurnCode.LocalVar.GetItem(I);
+    Cell := TurnCode.LocalVar[I];
     Kind := Cell.Kind;
     if Kind = vkEmpty then
     begin
@@ -4238,37 +4236,37 @@ begin
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddIntegerValue(Cell.GetInt);
+      Buffer.AddIntegerValue(Cell.AsInteger);
     end
     else if Kind = vkDword then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddDWord(Cell.GetDword);
+      Buffer.AddDWord(Cell.AsDword);
     end
     else if Kind = vkFloat then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddDouble(Cell.GetFloat);
+      Buffer.AddDouble(Cell.AsFloat);
     end
     else if Kind = vkString then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddWideStringZ(Cell.GetString);
+      Buffer.AddWideStringZ(Cell.AsString);
     end
     else if Kind = vkArray then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Cell.GetArray.SaveToBuffer(Buffer);
+      Cell.AsArray.SaveToBuffer(Buffer);
     end
-    else if (Kind = vkLibraryFun) and (Cell.GetString <> '') then
+    else if (Kind = vkLibraryFun) and (Cell.AsString <> '') then
     begin
       Buffer.AddWideStringZ(Cell.Name);
       Buffer.AddAnsiChar(AnsiChar(Kind));
-      Buffer.AddWideStringZ(Cell.GetString);
+      Buffer.AddWideStringZ(Cell.AsString);
     end
     else
     begin
@@ -4280,7 +4278,7 @@ begin
   Buffer.AddIntegerValue(Stars.Count);
   for I := 0 to Stars.Count - 1 do
   begin
-    Star := TScriptStar(Stars[I]);
+    Star := Stars[I];
     Buffer.AddWideStringZ(Star.Name);
     Buffer.AddDWord(Star.Star.Id);
     if Star.Planets = nil then
@@ -4299,37 +4297,37 @@ begin
   Count := 0;
   for I := 0 to Items.Count - 1 do
   begin
-    ScriptItem := TScriptItem(Items[I]);
-    if (ScriptItem.Name <> '') or (ScriptItem.Item <> nil) then
-      Inc(Count);
+    ScriptItem := Items[I];
+    if (ScriptItem.Name = '') and (ScriptItem.Item = nil) then
+      Continue;
+    Inc(Count);
   end;
   Buffer.AddIntegerValue(Count);
   for I := 0 to Items.Count - 1 do
   begin
-    ScriptItem := TScriptItem(Items[I]);
-    if (ScriptItem.Name <> '') or (ScriptItem.Item <> nil) then
-    begin
-      Buffer.AddWideStringZ(ScriptItem.Name);
-      Buffer.AddBoolean(ScriptItem.CanSell);
-      Buffer.AddIntegerValue(ScriptItem.Data[1]);
-      Buffer.AddIntegerValue(ScriptItem.Data[2]);
-      Buffer.AddIntegerValue(ScriptItem.Data[3]);
-      Buffer.AddWideStringZ(ScriptItem.TextData1);
-      Buffer.AddWideStringZ(ScriptItem.TextData2);
-      Buffer.AddWideStringZ(ScriptItem.TextData3);
-      Buffer.AddWideStringZ(ScriptItem.OnUseText);
-      Buffer.AddWideStringZ(ScriptItem.OnActionText);
-      if ScriptItem.Item = nil then
-        Buffer.AddDWord(0)
-      else
-        Buffer.AddDWord(ScriptItem.Item.Id);
-    end;
+    ScriptItem := Items[I];
+    if (ScriptItem.Name = '') and (ScriptItem.Item = nil) then
+      Continue;
+    Buffer.AddWideStringZ(ScriptItem.Name);
+    Buffer.AddBoolean(ScriptItem.CanSell);
+    Buffer.AddIntegerValue(ScriptItem.Data[1]);
+    Buffer.AddIntegerValue(ScriptItem.Data[2]);
+    Buffer.AddIntegerValue(ScriptItem.Data[3]);
+    Buffer.AddWideStringZ(ScriptItem.TextData1);
+    Buffer.AddWideStringZ(ScriptItem.TextData2);
+    Buffer.AddWideStringZ(ScriptItem.TextData3);
+    Buffer.AddWideStringZ(ScriptItem.OnUseText);
+    Buffer.AddWideStringZ(ScriptItem.OnActionText);
+    if ScriptItem.Item = nil then
+      Buffer.AddDWord(0)
+    else
+      Buffer.AddDWord(ScriptItem.Item.Id);
   end;
   Count := Ships.Count;
   Buffer.AddWideChar(WideChar(Count));
   for I := 0 to Count - 1 do
   begin
-    Binding := TScriptShip(Ships[I]);
+    Binding := Ships[I];
     Buffer.AddIntegerValue(Binding.GroupIndex);
     Buffer.AddDWord(Binding.Ship.Id);
     Buffer.AddDWord(Binding.Data[0]);
@@ -4406,23 +4404,23 @@ begin
     begin
     end
     else if Kind = vkInt then
-      Cell.SetInt(Buffer.GetInt32)
+      Cell.AsInteger := Buffer.GetInt32
     else if Kind = vkDword then
-      Cell.SetDword(Buffer.GetUInt32)
+      Cell.AsDword := Buffer.GetUInt32
     else if Kind = vkFloat then
-      Cell.SetFloat(Buffer.GetDouble)
+      Cell.AsFloat := Buffer.GetDouble
     else if Kind = vkString then
-      Cell.SetString(Buffer.ReadWideString)
+      Cell.AsString := Buffer.ReadWideString
     else if Kind = vkArray then
     begin
-      Cell.SetArray(TVarArrayEC.Create);
-      Cell.GetArray.LoadFromBuffer(Buffer);
+      Cell.AsArray := TVarArrayEC.Create;
+      Cell.AsArray.LoadFromBuffer(Buffer);
     end
     else if Kind = vkLibraryFun then
     begin
       Cell.ConvertToKind(vkLibraryFun);
       Name := Buffer.ReadWideString;
-      Cell.SetString(Name);
+      Cell.AsString := Name;
       if ScriptLibraryCache = nil then
         ScriptLibraryCache := TLibraryCache.Create;
       try
@@ -4469,23 +4467,23 @@ begin
     begin
     end
     else if Kind = vkInt then
-      Cell.SetInt(Buffer.GetInt32)
+      Cell.AsInteger := Buffer.GetInt32
     else if Kind = vkDword then
-      Cell.SetDword(Buffer.GetUInt32)
+      Cell.AsDword := Buffer.GetUInt32
     else if Kind = vkFloat then
-      Cell.SetFloat(Buffer.GetDouble)
+      Cell.AsFloat := Buffer.GetDouble
     else if Kind = vkString then
-      Cell.SetString(Buffer.ReadWideString)
+      Cell.AsString := Buffer.ReadWideString
     else if Kind = vkArray then
     begin
-      Cell.SetArray(TVarArrayEC.Create);
-      Cell.GetArray.LoadFromBuffer(Buffer);
+      Cell.AsArray := TVarArrayEC.Create;
+      Cell.AsArray.LoadFromBuffer(Buffer);
     end
     else if Kind = vkLibraryFun then
     begin
       Cell.ConvertToKind(vkLibraryFun);
       Name := Buffer.ReadWideString;
-      Cell.SetString(Name);
+      Cell.AsString := Name;
       if ScriptLibraryCache = nil then
         ScriptLibraryCache := TLibraryCache.Create;
       try
@@ -4513,14 +4511,14 @@ begin
     Name := Buffer.ReadWideString;
     Star := GetStar(Name);
     Star.Star := TObject(Galaxy.IdToStar(Buffer.GetUInt32)) as TStar;
-    InitCode.LocalVar.GetVar(Star.Name).SetDword(PtrUInt(Star.Star));
+    InitCode.LocalVar.NamedItems[Star.Name].AsDword := PtrUInt(Star.Star);
     SubCount := Buffer.GetInt32;
     for K := 0 to SubCount - 1 do
     begin
       Name := Buffer.ReadWideString;
       PlanetBinding := GetPlanetBinding(Name);
-      PlanetBinding.Planet := TObject(Galaxy.IdToPlanet(Buffer.GetUInt32)) as TPlanet;
-      InitCode.LocalVar.GetVar(PlanetBinding.Name).SetDword(PtrUInt(PlanetBinding.Planet));
+      PlanetBinding.Planet := Galaxy.IdToPlanet(Buffer.GetUInt32) as TPlanet;
+      InitCode.LocalVar.NamedItems[PlanetBinding.Name].AsDword := PtrUInt(PlanetBinding.Planet);
     end;
     Buffer.GetInt32;
   end;
@@ -4556,7 +4554,7 @@ begin
     else
       ScriptItem.OnActionText := '';
     if Name <> '' then
-      InitCode.LocalVar.GetVar(Name).SetDword(PtrUInt(ScriptItem));
+      InitCode.LocalVar.NamedItems[Name].AsDword := PtrUInt(ScriptItem);
     try
       ScriptItem.Item := TObject(Galaxy.IdToItem(Buffer.GetUInt32, True)) as TItem;
     except
@@ -4585,7 +4583,7 @@ begin
     Binding.Data[3] := Buffer.GetUInt32;
     StateIndex := Buffer.GetInt32;
     if StateIndex >= 0 then
-      Binding.State := TScriptState(States[StateIndex])
+      Binding.State := States[StateIndex]
     else
       Binding.State := nil;
     if LoadedSaveVersion >= 149 then
@@ -4613,31 +4611,33 @@ begin
   for I := 0 to InitCode.LocalVar.Count - 1 do
   begin
     Cell := InitCode.LocalVar.GetItemByNameOrder(I);
-    if (Cell.RealVType = vkLibraryFun) and (Cell.GetString <> '') then
-    begin
-      if ScriptLibraryCache = nil then
-        ScriptLibraryCache := TLibraryCache.Create;
-      try
-        ScriptLibraryCache.InitFunction(Cell);
-      except
-        AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
-        Cell.ConvertToKind(vkEmpty);
-      end;
+    if Cell.ValueKind <> vkLibraryFun then
+      Continue;
+    if Cell.AsString = '' then
+      Continue;
+    if ScriptLibraryCache = nil then
+      ScriptLibraryCache := TLibraryCache.Create;
+    try
+      ScriptLibraryCache.InitFunction(Cell);
+    except
+      AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
+      Cell.ConvertToKind(vkEmpty);
     end;
   end;
   for I := 0 to TurnCode.LocalVar.Count - 1 do
   begin
     Cell := TurnCode.LocalVar.GetItemByNameOrder(I);
-    if (Cell.RealVType = vkLibraryFun) and (Cell.GetString <> '') then
-    begin
-      if ScriptLibraryCache = nil then
-        ScriptLibraryCache := TLibraryCache.Create;
-      try
-        ScriptLibraryCache.InitFunction(Cell);
-      except
-        AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
-        Cell.ConvertToKind(vkEmpty);
-      end;
+    if Cell.ValueKind <> vkLibraryFun then
+      Continue;
+    if Cell.AsString = '' then
+      Continue;
+    if ScriptLibraryCache = nil then
+      ScriptLibraryCache := TLibraryCache.Create;
+    try
+      ScriptLibraryCache.InitFunction(Cell);
+    except
+      AppendLogLineThreadSafe(AnsiString('Failed to load function ' + Cell.Name));
+      Cell.ConvertToKind(vkEmpty);
     end;
   end;
 end;
@@ -4652,8 +4652,8 @@ begin
   Count := Ships.Count;
   for I := 0 to Count - 1 do
   begin
-    Binding := TScriptShip(Ships[I]);
-    Binding.Ship := TObject(Galaxy.IdToShip(Cardinal(Binding.Ship), True)) as TShip;
+    Binding := Ships[I];
+    Binding.Ship := Galaxy.IdToShip(Cardinal(Binding.Ship), True) as TShip;
     if Binding.Ship is TPlayer then
       TPlayer(Binding.Ship).ScriptShipBindings.Add(Binding)
     else
@@ -4661,28 +4661,29 @@ begin
   end;
   for I := 0 to Places.Count - 1 do
   begin
-    Place := TScriptPlace(Places[I]);
-    InitCode.LocalVar.GetVar(Place.Name).SetDword(PtrUInt(Place));
+    Place := Places[I];
+    InitCode.LocalVar.NamedItems[Place.Name].AsDword := PtrUInt(Place);
     if Place.OriginVarName <> '' then
-      Place.OriginStar := TStar(InitCode.LocalVar.GetVar(Place.OriginVarName).GetDword);
+      Place.OriginStar := TStar(InitCode.LocalVar.NamedItems[Place.OriginVarName].AsDword);
     if Place.PlaceKind = spkCoordinates then
     begin
       if Place.TargetVarName <> '' then
-        Place.TargetValue := PtrUInt(InitCode.LocalVar.GetVar(Place.TargetVarName));
+        Place.TargetValue := PtrUInt(InitCode.LocalVar.NamedItems[Place.TargetVarName]);
       if Place.TargetVarName2 <> '' then
-        Place.TargetValue2 := InitCode.LocalVar.GetVar(Place.TargetVarName2);
+        Place.TargetValue2 := InitCode.LocalVar.NamedItems[Place.TargetVarName2];
     end
     else if Place.TargetVarName <> '' then
-      Place.TargetValue := InitCode.LocalVar.GetVar(Place.TargetVarName).GetDword;
+      Place.TargetValue := InitCode.LocalVar.NamedItems[Place.TargetVarName].AsDword;
   end;
   for I := 0 to States.Count - 1 do
   begin
-    State := TScriptState(States[I]);
+    State := States[I];
     if State.TargetVarName <> '' then
-      State.TargetValue := InitCode.LocalVar.GetVar(State.TargetVarName).GetDword;
+      State.TargetValue := InitCode.LocalVar.NamedItems[State.TargetVarName].AsDword;
     if State.EnemyGroupIndices <> nil then
       for J := 0 to High(State.EnemyGroupIndices) do
-        State.EnemyGroupIndices[J] := InitCode.LocalVar.GetVar(State.EnemyGroupNames[J]).GetInt;
+        State.EnemyGroupIndices[J] :=
+            InitCode.LocalVar.NamedItems[State.EnemyGroupNames[J]].AsInteger;
   end;
 end;
 
@@ -4690,12 +4691,11 @@ procedure ClearScriptDialogRules;
 var
   I, Count: Integer;
 begin
-  // Native untyped Dispose: these records have no managed-field finalization.
   if ScriptDialogOverrides <> nil then
   begin
     Count := ScriptDialogOverrides.Count;
     for I := 0 to Count - 1 do
-      Dispose(Pointer(ScriptDialogOverrides[I]));
+      Dispose(PScriptDialogOverride(ScriptDialogOverrides[I]));
     ScriptDialogOverrides.Clear;
   end
   else
@@ -4704,7 +4704,7 @@ begin
   begin
     Count := ScriptDialogInjections.Count;
     for I := 0 to Count - 1 do
-      Dispose(Pointer(ScriptDialogInjections[I]));
+      Dispose(PScriptDialogInjection(ScriptDialogInjections[I]));
     ScriptDialogInjections.Clear;
   end
   else
@@ -4713,7 +4713,7 @@ begin
   begin
     Count := ScriptDialogBlocks.Count;
     for I := 0 to Count - 1 do
-      Dispose(Pointer(ScriptDialogBlocks[I]));
+      Dispose(PScriptDialogBlock(ScriptDialogBlocks[I]));
     ScriptDialogBlocks.Clear;
   end
   else
@@ -4741,64 +4741,23 @@ end;
 
 procedure TLibraryHandler.InitFunction(Cell: TVarEC);
 var
-  Name, Text, Kind: WideString;
-  I, Count: Integer;
-  Proc: Pointer;
-  Signature: array of Dword;
+  Name: WideString;
+{$IFDEF NATIVE_SCRIPT_MODS}
+  Signature, ExportName: WideString;
+{$ENDIF}
 begin
-  Text := Cell.GetString;
-  Name := ExtractDelimitedPartW(Text, 1, ',');
-  Text := DefinitionBlock.GetParam(Name);
-  Count := CountDelimitedPartsW(Text, ',');
-  if Count < 2 then
-    raise Exception.Create(
-        AnsiString('Failed to init library function ' + Name + ' from ' + LibraryName));
-  Proc :=
-      ScriptLibraryProc(ModuleHandle, PAnsiChar(AnsiString(ExtractDelimitedPartW(Text, 1, ','))));
-  if Proc = nil then
-    raise Exception.Create(
-        AnsiString('Failed to find library function ' + Name + ' in ' + LibraryName));
-  SetLength(Signature, Count);
-  Kind := ExtractDelimitedPartW(Text, 0, ',');
-  if Kind = 'int' then
-    Signature[0] := Ord(lvInt)
-  else if Kind = 'dword' then
-    Signature[0] := Ord(lvDword)
-  else if Kind = 'float' then
-    Signature[0] := Ord(lvFloat)
-  else if Kind = 'str' then
-    Signature[0] := Ord(lvString)
-  else
-    Signature[0] := Ord(lvVoid);
-  Signature[1] := Cardinal(Proc);
-  for I := 2 to Count - 1 do
-  begin
-    Kind := ExtractDelimitedPartW(Text, I, ',');
-    if Kind = 'int' then
-      Signature[I] := Ord(lvInt)
-    else if Kind = 'dword' then
-      Signature[I] := Ord(lvDword)
-    else if Kind = 'float' then
-      Signature[I] := Ord(lvFloat)
-    else if Kind = 'str' then
-      Signature[I] := Ord(lvString)
-    else if Kind = 'ref' then
-      Signature[I] := Ord(lvRef)
-    else if Kind = 'code' then
-      Signature[I] := Ord(lvCode)
-    else
-      raise Exception.Create(
-          AnsiString(
-              'Failed to init library function '
-                  + Name
-                  + ' from '
-                  + LibraryName
-                  + ' - unknown type '
-                  + Kind
-          ));
-  end;
-  Cell.SetLibrarySignature(Signature);
-  SetLength(Signature, 0);
+  Name := ExtractDelimitedPartW(Cell.AsString, 1, ',');
+{$IFDEF NATIVE_SCRIPT_MODS}
+  Signature := '';
+  if (DefinitionBlock <> nil) and (DefinitionBlock.CountParams(Name) > 0) then
+    Signature := DefinitionBlock.GetParam(Name);
+  ExportName := Name;
+  if Signature <> '' then
+    ExportName := ExtractDelimitedPartW(Signature, 1, ',');
+  if InitNativeScriptFunction(Cell, ModuleHandle, ExportName, Signature) then
+    Exit;
+{$ENDIF}
+  raise Exception.Create('Failed to find library function ' + Name + ' in ' + LibraryName);
 end;
 
 procedure TLibraryHandler.InitAllFunctions(Scope: TVarArrayEC);
@@ -4807,6 +4766,13 @@ var
   Name: WideString;
   Cell: TVarEC;
 begin
+{$IFDEF NATIVE_SCRIPT_MODS}
+  if DefinitionBlock = nil then
+  begin
+    InitAllNativeScriptFunctions(Scope, ModuleHandle);
+    Exit;
+  end;
+{$ENDIF}
   Count := DefinitionBlock.GetParamCount;
   for I := 0 to Count - 1 do
   begin
@@ -4815,14 +4781,10 @@ begin
       Continue;
     Cell := Scope.GetVarNE(Name);
     if Cell = nil then
+      Cell := Scope.Add(Name, vkLibraryFun);
+    if Cell.ValueKind = vkLibraryFun then
     begin
-      Cell := TVarEC.Create(vkLibraryFun);
-      Cell.Name := Name;
-      Scope.AddItem(Cell);
-    end;
-    if Cell.RealVType = vkLibraryFun then
-    begin
-      Cell.SetString(LibraryName + ',' + Name);
+      Cell.AsString := LibraryName + ',' + Name;
       InitFunction(Cell);
     end;
   end;
@@ -4845,16 +4807,22 @@ var
   LowIndex, HighIndex, Middle, Comparison: Integer;
   Entry: TLibraryHandler;
 
-  function LoadHandler: TLibraryHandler; { Nested helper; captures the library name at ParentFrame-4. Returns nil when its ScriptLibs block is absent. }
+  function LoadHandler: TLibraryHandler;
   var
     Module: Cardinal;
     Definition: TBlockParEC;
   begin
-    Result := nil;
-    Definition := GameDataConfig.FindBlockByPath('ScriptLibs.' + Name);
+    Definition := nil;
+    if GameDataConfig <> nil then
+      Definition := GameDataConfig.FindBlockByPath('ScriptLibs.' + Name);
     if Definition = nil then
-      Exit;
-    Module := LoadScriptLibrary(Definition.GetParam('Path'));
+{$IFDEF NATIVE_SCRIPT_MODS}
+      Module := LoadNativeScriptLibrary(Name)
+{$ELSE}
+      Module := 0
+{$ENDIF}
+    else
+      Module := LoadScriptLibrary(Definition.GetParam('Path'));
     if Module = 0 then
       raise Exception.Create(AnsiString('Failed to load library ' + Name));
     Result := TLibraryHandler.Create(Name, Module, Definition);
@@ -4920,7 +4888,7 @@ end;
 
 procedure TLibraryCache.InitFunction(Cell: TVarEC);
 begin
-  GetLib(ExtractDelimitedPartW(Cell.GetString, 0, ',')).InitFunction(Cell);
+  GetLib(ExtractDelimitedPartW(Cell.AsString, 0, ',')).InitFunction(Cell);
 end;
 
 procedure ExecuteScriptText(SourceText: WideString; Scope: TVarArrayEC);
@@ -4968,16 +4936,16 @@ end;
 function CompileScriptText(SourceText: WideString): TCodeEC;
 var
   Analyzer: TCodeAnalyzerEC;
-  ErrorText, DelimiterError: WideString;
+  ErrorText: WideString;
 begin
   Analyzer := TCodeAnalyzerEC.Create;
   Analyzer.Tokenize(SourceText);
   Analyzer.RemoveComments;
   Analyzer.RemoveNewlines;
   Analyzer.RemoveWhitespace;
-  DelimiterError := Analyzer.ValidateDelimiters;
+  Analyzer.ValidateDelimiters;
   Result := TCodeEC.Create;
-  Result.Compile(Analyzer, nil, nil, nil, nil, ErrorText);
+  ErrorText := Result.Compile(Analyzer, nil, nil, nil, nil);
   if ErrorText <> '' then
   begin
     AppendLogLineThreadSafe(AnsiString('Compiler. Error=' + ErrorText));
@@ -5282,7 +5250,7 @@ begin
         Include(ActionTypeMask, Action);
   end;
   if (StepTypes = '') or (StepTypes = 'Any') then
-    StepTypeMask := [0..11]
+    StepTypeMask := AllScriptStepTypes
   else
   begin
     StepTypeMask := [];
@@ -5290,7 +5258,7 @@ begin
     for I := 0 to Count - 1 do
     begin
       Step := ExtractDigitsToIntW(ExtractDelimitedPartW(StepTypes, I, ','));
-      if Step in [0..11] then
+      if Step in AllScriptStepTypes then
         Include(StepTypeMask, Step);
     end;
   end;
@@ -5358,18 +5326,18 @@ begin
     begin
       Cell := Code.LocalVar.GetVarNE('KEY');
       if Cell <> nil then
-        Cell.SetDword(VirtualKey)
+        Cell.AsDword := VirtualKey
       else
-        Code.LocalVar.Add('KEY', vkDword).SetDword(VirtualKey);
+        Code.LocalVar.Add('KEY', vkDword).AsDword := VirtualKey;
       KeyModifiers :=
           Ord(IsVirtualKeyDown(VK_SHIFT))
               + Ord(IsVirtualKeyDown(VK_CONTROL)) * 2
               + Ord(IsVirtualKeyDown(VK_MENU)) * 4;
       Cell := Code.LocalVar.GetVarNE('KEYMOD');
       if Cell <> nil then
-        Cell.SetDword(KeyModifiers)
+        Cell.AsDword := KeyModifiers
       else
-        Code.LocalVar.Add('KEYMOD', vkDword).SetDword(KeyModifiers);
+        Code.LocalVar.Add('KEYMOD', vkDword).AsDword := KeyModifiers;
     end;
     Code.Run(ScriptProcess);
   except
@@ -5397,7 +5365,7 @@ begin
   if CurrentScript <> nil then
   begin
     Snapshot.CurrentShip := CurrentScript.CurrentShip;
-    Snapshot.EndState := CurrentScript.InitCode.LocalVar.GetVar('EndState').GetInt <> 0;
+    Snapshot.EndState := CurrentScript.InitCode.LocalVar.NamedItems['EndState'].AsInteger <> 0;
   end;
 end;
 
@@ -5407,8 +5375,8 @@ begin
   if CurrentScript <> nil then
   begin
     CurrentScript.CurrentShip := Snapshot.CurrentShip;
-    CurrentScript.InitCode.LocalVar.GetVar('CurShip').SetDword(PtrUInt(Snapshot.CurrentShip));
-    CurrentScript.InitCode.LocalVar.GetVar('EndState').SetInt(Ord(Snapshot.EndState));
+    CurrentScript.InitCode.LocalVar.NamedItems['CurShip'].AsDword := PtrUInt(Snapshot.CurrentShip);
+    CurrentScript.InitCode.LocalVar.NamedItems['EndState'].AsInteger := Ord(Snapshot.EndState);
   end;
 end;
 
@@ -5450,7 +5418,7 @@ begin
           Include(ActionTypeMask, Action);
     end;
     if (StepTypes = '') or (StepTypes = 'Any') then
-      StepTypeMask := [0..11]
+      StepTypeMask := AllScriptStepTypes
     else
     begin
       StepTypeMask := [];
@@ -5458,7 +5426,7 @@ begin
       for I := 0 to Count - 1 do
       begin
         Step := ExtractDigitsToIntW(ExtractDelimitedPartW(StepTypes, I, ','));
-        if Step in [0..11] then
+        if Step in AllScriptStepTypes then
           Include(StepTypeMask, Step);
       end;
     end;
@@ -5467,7 +5435,7 @@ begin
   begin
     ActionCode := CompileScriptText(OnActionText);
     ActionTypeMask := [satOnStep..satOnDeath];
-    StepTypeMask := [0..11];
+    StepTypeMask := AllScriptStepTypes;
   end;
 end;
 
@@ -5603,7 +5571,7 @@ begin
     Script := Binding.Script;
     CurrentScript := Script;
     Script.CurrentShip := Ship;
-    Script.InitCode.LocalVar.GetVar('CurShip').SetDword(PtrUInt(Ship));
+    Script.InitCode.LocalVar.NamedItems['CurShip'].AsDword := PtrUInt(Ship);
     ParentCode := Script.InitCode;
   end;
   if Text <> '' then
@@ -5777,13 +5745,13 @@ var
 begin
   if ScriptItemContextStack.Count > 0 then
   begin
-    Info := PCustomShipInfo(ScriptItemInfoContextStack[ScriptItemInfoContextStack.Count - 1]);
+    Info := ScriptItemInfoContextStack[ScriptItemInfoContextStack.Count - 1];
     if Info <> nil then
     begin
       Result := Info.TypeName;
       Exit;
     end;
-    Item := TItem(ScriptItemContextStack[ScriptItemInfoContextStack.Count - 1]);
+    Item := ScriptItemContextStack[ScriptItemInfoContextStack.Count - 1];
     if Item <> nil then
     begin
       Binding := TScriptItem(Item.ScriptItem);

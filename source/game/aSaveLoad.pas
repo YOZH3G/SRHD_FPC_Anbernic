@@ -62,6 +62,7 @@ procedure FinalizeSaveWriter(RaiseOnFailure: Boolean = True);
 implementation
 
 uses
+  aPlanet,
   GameEvents,
   aMyFunction,
   aGalaxyStruct,
@@ -456,9 +457,6 @@ begin
     Buffer.GetByte;
     Buffer.GetBoolean;
     PlayerStarDayPrepared := Buffer.GetBoolean;
-    if PlayerStarDayPrepared then
-    begin
-    end;
     ShownPlayerTips := Buffer.GetUInt32;
     Buffer.GetInt32;
     Count := Buffer.GetInt32;
@@ -540,7 +538,7 @@ begin
   if (CurrentScreenId <> screenPlanetQuest)
       and ((CurrentScreenId <> screenGovernment) or (GovernmentScreen.PendingTransition = 0))
       and ((CurrentScreenId <> screenStarMap) or (StarMapScreen.PlanetBattleState = 0)) then
-    (TObject(RegisteredScreens[CurrentScreenId]) as TMessageLoopGI).OnClose;
+    (RegisteredScreens[CurrentScreenId] as TMessageLoopGI).OnClose;
   for I := MessageLoopStack.Count - 1 downto 0 do
   begin
     Loop := MessageLoopStack[I];
@@ -638,9 +636,9 @@ begin
   end;
   Galaxy.LoadFromBuffer(MemorySnapshotBuffer);
   Dec(Galaxy.LoadCount);
-  TalkShip := Galaxy.IdToShip(MemorySnapshotBuffer.GetUInt32, True);
-  TalkPlanet := Galaxy.IdToPlanet(MemorySnapshotBuffer.GetUInt32);
-  ShipScreen.ShipToInspect := Galaxy.IdToShip(MemorySnapshotBuffer.GetUInt32, True);
+  TalkShip := TShip(Galaxy.IdToShip(MemorySnapshotBuffer.GetUInt32, True));
+  TalkPlanet := TPlanet(Galaxy.IdToPlanet(MemorySnapshotBuffer.GetUInt32));
+  ShipScreen.ShipToInspect := TShip(Galaxy.IdToShip(MemorySnapshotBuffer.GetUInt32, True));
   for I := MessageLoopStack.Count - 1 downto 0 do
   begin
     Loop := MessageLoopStack[I];
@@ -777,7 +775,7 @@ begin
       or (GetPlayer.IsDockedToShip and (GetPlayer.DockedTo is TRuins)) then
     BuildTemporaryShopSlotGrid;
   if ReopenScreen then
-    (TObject(RegisteredScreens[CurrentScreenId]) as TMessageLoopGI).OnOpen;
+    (RegisteredScreens[CurrentScreenId] as TMessageLoopGI).OnOpen;
   Galaxy.ClearIntegrityStatus;
   Galaxy.PrimeIntegrityChecksum(1);
   MemorySnapshotBuffer.Free;

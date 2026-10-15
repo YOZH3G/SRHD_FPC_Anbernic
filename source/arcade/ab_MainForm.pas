@@ -245,6 +245,7 @@ var
 implementation
 
 uses
+  EC_Thread,
   GameWindow,
   GI_GI,
   EC_CacheBitmap,
@@ -719,30 +720,15 @@ begin
     Ship.MaxHealth := 1000;
     Ship.Health := 1000;
     Ship.WeaponCount := 5;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[0],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[0], PickRandomItemType(StandardWeaponItemTypes));
     Ship.Weapons[0].SlotData := 0;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[1],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[1], PickRandomItemType(StandardWeaponItemTypes));
     Ship.Weapons[1].SlotData := 1;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[2],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[2], PickRandomItemType(StandardWeaponItemTypes));
     Ship.Weapons[2].SlotData := 2;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[3],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[3], PickRandomItemType(StandardWeaponItemTypes));
     Ship.Weapons[3].SlotData := 3 or EquipmentSecondaryFireFlag;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[4],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[4], PickRandomItemType(StandardWeaponItemTypes));
     Ship.Weapons[4].SlotData := 4 or EquipmentSecondaryFireFlag;
     Ship.PrimaryWeapon := -1;
     Ship.SecondaryWeapon := -1;
@@ -752,7 +738,7 @@ begin
   begin
     Ship.MaxHealth := GetPlayer.GetHull.Weight;
     Ship.Health := GetPlayer.GetHull.HullPoints;
-    for Index := 0 to 4 do
+    for Index := Low(CampaignWeapons) to High(CampaignWeapons) do
       CampaignWeapons[Index] := nil;
     SyncWeaponInventory;
     for Index := 0 to Ship.WeaponCount - 1 do
@@ -772,26 +758,11 @@ begin
     Ship.Health := 500;
     Ship.MaxHealth := 500;
     Ship.WeaponCount := 5;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[0],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[1],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[2],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[3],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[4],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[0], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[1], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[2], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[3], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[4], PickRandomItemType(StandardWeaponItemTypes));
     Ship.PrimaryWeapon := 0;
     ShipX0 := Ship;
     Ship := TabShipAI.Create;
@@ -803,26 +774,11 @@ begin
     Ship.Health := 500;
     Ship.MaxHealth := 500;
     Ship.WeaponCount := 5;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[0],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[1],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[2],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[3],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[4],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[0], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[1], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[2], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[3], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[4], PickRandomItemType(StandardWeaponItemTypes));
     Ship.PrimaryWeapon := 0;
     ShipX1 := Ship;
     Ship := TabShipAI.Create;
@@ -834,26 +790,11 @@ begin
     Ship.Health := 500;
     Ship.MaxHealth := 500;
     Ship.WeaponCount := 5;
-    ab_Weapon_Initialize(
-        @Ship.Weapons[0],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[1],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[2],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[3],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
-    ab_Weapon_Initialize(
-        @Ship.Weapons[4],
-        PickRandomItemType([Ord(t_IndustrialLaser)..Ord(t_Lirecron)])
-    );
+    ab_Weapon_Initialize(@Ship.Weapons[0], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[1], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[2], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[3], PickRandomItemType(StandardWeaponItemTypes));
+    ab_Weapon_Initialize(@Ship.Weapons[4], PickRandomItemType(StandardWeaponItemTypes));
     Ship.PrimaryWeapon := 0;
     for Index := 0 to 3 do
     begin
@@ -1008,9 +949,9 @@ begin
     ArcadeMapColorBuffer.Free;
     ArcadeMapColorBuffer := nil;
   end;
-  for Index := 0 to 7 do
+  for Index := Low(EnemyIcons) to High(EnemyIcons) do
     ClearEnemyStatus(Index);
-  for Index := 0 to 7 do
+  for Index := Low(TrackedShipIcons) to High(TrackedShipIcons) do
     ClearTrackedShipStatus(Index);
   CloseVictory(nil, 0);
 end;
@@ -2321,8 +2262,6 @@ var
   Current, Candidate, Previous, StartPoint, EndPoint: TPoint;
   Position: TPointF;
   Changed, Retry: Boolean;
-  UnusedLocal:
-      Integer; // Native reserves an unused dword before BlockCount; original name/type unknown.
   BlockCount, Weight: Integer;
   Config, Selected: TBlockParEC;
   Exits: array[-1..2] of Integer;
@@ -2789,6 +2728,8 @@ begin
 end;
 
 procedure TfAB.EnterCurrentSpace;
+const
+  BattleBarrierZoneKinds = [6..8];
 var
   Obj, Other: TabObject;
   ExitLink: PabSpaceLink;
@@ -2802,8 +2743,6 @@ var
   PendingLoads: TList;
   Remaining: Integer;
   ColorData: PArcadeMapColorHeader;
-  UnusedLocal:
-      Integer; // Native unused dword before compiler temporaries; original name/type unknown.
 begin
   CloseVictory(nil, 0);
   GetByName('PRight').SetActive(False);
@@ -2994,7 +2933,8 @@ begin
   while Zone <> nil do
   begin
     if (Zone.Kind = 5)
-        or ((Zone.Kind in [6..8]) and (HasEnemies and not ArcadeKellerEncounter)) then
+        or ((Zone.Kind in BattleBarrierZoneKinds)
+            and (HasEnemies and not ArcadeKellerEncounter)) then
     begin
       Wall := TabWall.Create;
       ab_Object_Add(Wall);
@@ -3026,8 +2966,8 @@ begin
   while ZoneLink <> nil do
   begin
     if (ZoneLink.BarrierLinkMode = 1)
-        and (ZoneLink.First.Kind in [6..8])
-        and (ZoneLink.Last.Kind in [6..8]) then
+        and (ZoneLink.First.Kind in BattleBarrierZoneKinds)
+        and (ZoneLink.Last.Kind in BattleBarrierZoneKinds) then
     begin
       Wall := ab_Wall_FindZone(ZoneLink.First);
       OtherWall := ab_Wall_FindZone(ZoneLink.Last);
@@ -3170,11 +3110,8 @@ var
   LabelControl, DateLabel: TLabelGI;
   CameraPos, TargetPos, UpVector: TVector3D;
   View, Rotation: TMatrix4D;
-  UnusedBeforeBearing:
-      array[0..7] of Byte; // Native unused bytes between the matrix and bearing records.
   Bearing: TSphericalBearingDistance;
   State: TSphericalBearingState;
-  UnusedAfterState: array[0..3] of Byte; // Native unused bytes before backend temporaries.
 begin
   Stage := 0;
   Obj := nil;
@@ -3434,7 +3371,7 @@ begin
         begin
           CacheLoader.SetPendingLoads(Loads, True);
           if ArcadeViewMode = 5 then
-            CacheLoader.SetPriority(3);
+            CacheLoader.SetPriority(ThreadPriorityNormal);
         end
         else
         begin
@@ -4154,18 +4091,15 @@ var
   StatusScale: Single;
   Ship: TabShipAI;
   Item: TItem;
-  UnusedRecord: record
-    Reserved: Integer;
-  end; // Native unused four-byte slot before the temporary point records.
 begin
   if (PlayerArcadeShip = nil)
       or ((GetPlayer <> nil) and (GetPlayer.CountActiveArtefacts(t_ArtefactScaner) <= 0))
       or (ExitCode <> 0)
       or (ArcadeViewMode = 5) then
   begin
-    for Index := 0 to 7 do
+    for Index := Low(EnemyIcons) to High(EnemyIcons) do
       ClearEnemyStatus(Index);
-    for Index := 0 to 7 do
+    for Index := Low(TrackedShipIcons) to High(TrackedShipIcons) do
       ClearTrackedShipStatus(Index);
   end
   else
@@ -5086,7 +5020,7 @@ begin
   NextArcadeSpace := EndArcadeSpace;
   CurrentArcadeSpace := EndArcadeSpace;
   if CampaignLoadStarted and not CampaignLoadFinished then
-    CacheLoader.SetPriority(3);
+    CacheLoader.SetPriority(ThreadPriorityNormal);
   LoadPanel.SetProgress(0);
   LoadPanel.SetShutterOpenFraction(0);
   LoadPanel.Show;
@@ -5435,8 +5369,7 @@ begin
       SetImageKindX(ikxCenter);
       SetImageKindY(ikyCenter);
     end;
-    if not ((Byte(Instance.ItemType) in ([0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79]))
-        or (Instance.ItemType = t_Hull)) then
+    if not ((Instance.ItemType in RepairableItemTypes) or (Instance.ItemType = t_Hull)) then
     begin
       with GetByName('InfoDurable') as TImageGI do
         Parent.Parent.SetActive(False);
@@ -5675,7 +5608,7 @@ begin
     (Instance as TEquipment).EquippedFlag := 0;
     GetPlayer.Artefacts.Add(Instance);
     if Instance is TArtefactTranclucator then
-      (TObject((Instance as TArtefactTranclucator).Ship) as TTranclucator).OwnerShip := GetPlayer;
+      ((Instance as TArtefactTranclucator).Ship as TTranclucator).OwnerShip := GetPlayer;
   end
   else if Instance is TCountableItem then
   begin

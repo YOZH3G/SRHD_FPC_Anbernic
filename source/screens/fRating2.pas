@@ -30,7 +30,7 @@ type
     RewardWindow: TWindowGI;
     Rows: array of TRangerRatingRow;
     SelectedIndex: Integer;
-    SelectedRangerId: Integer;
+    SelectedRangerId: Cardinal;
     SortColumn: TRangerRatingSortColumn;
     SortAscending: Boolean;
     TablePanel: TPanelScrollBarGI;
@@ -56,7 +56,7 @@ type
     procedure ShowCareerHint(Sender: TObjectGI);
     procedure ShowAwardHint(Ranger: TRanger; AwardId: Integer);
     procedure HideHint;
-    function FindRowByRangerId(RangerId: Integer): Integer;
+    function FindRowByRangerId(RangerId: Cardinal): Integer;
     procedure SortHeaderMouseUp(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
     procedure FeaturedRangerClicked(Sender: TObjectGI);
     procedure RowMouseDown(Sender: TObjectGI; KeyState: Cardinal; Point: TPoint);
@@ -350,7 +350,7 @@ var
     begin
       for I := 0 to Galaxy.Rangers.Count - 1 do
       begin
-        Ally := TRanger(Galaxy.Rangers[I]);
+        Ally := Galaxy.Rangers[I];
         if (GetPlayer <> Ally) and (Ally.PartnerShip = Ranger) then
           Result :=
               FormatText2(
@@ -368,7 +368,7 @@ var
       Names := '';
       for I := 0 to Galaxy.Rangers.Count - 1 do
       begin
-        Ally := TRanger(Galaxy.Rangers[I]);
+        Ally := Galaxy.Rangers[I];
         if (GetPlayer <> Ally) and (Ally.PartnerShip = Ranger) then
         begin
           if Names <> WideString('') then
@@ -416,7 +416,7 @@ begin
       Names := '';
       for I := 0 to Galaxy.Rangers.Count - 1 do
       begin
-        Ally := TRanger(Galaxy.Rangers[I]);
+        Ally := Galaxy.Rangers[I];
         if (GetPlayer <> Ally) and (GetPlayer = Ally.PartnerShip) then
         begin
           if Names <> WideString('') then
@@ -444,7 +444,7 @@ begin
       end;
       for I := 0 to GetPlayer.PiratePartners.Count - 1 do
       begin
-        Pirate := TPirate(GetPlayer.PiratePartners[I]);
+        Pirate := GetPlayer.PiratePartners[I];
         if Names <> WideString('') then
           Names :=
               Names
@@ -747,7 +747,7 @@ begin
   RewardWindow.SetActive(False);
 end;
 
-function TfRating2.FindRowByRangerId(RangerId: Integer): Integer;
+function TfRating2.FindRowByRangerId(RangerId: Cardinal): Integer;
 var
   I: Integer;
 begin
@@ -887,15 +887,15 @@ begin
   List := TList.Create;
   for I := 0 to Galaxy.Rangers.Count - 1 do
   begin
-    A := TRanger(Galaxy.Rangers[I]);
+    A := Galaxy.Rangers[I];
     if not A.ExcludedFromRating then
       List.Add(A);
   end;
   for I := 0 to List.Count - 2 do
     for J := I + 1 to List.Count - 1 do
     begin
-      A := TRanger(List[I]);
-      B := TRanger(List[J]);
+      A := List[I];
+      B := List[J];
       if SortColumn = rrscName then
       begin
         if SortAscending then
@@ -959,7 +959,7 @@ begin
     SetLength(Rows, List.Count);
     for I := 0 to List.Count - 1 do
     begin
-      Rows[I].Ranger := TRanger(List[I]);
+      Rows[I].Ranger := List[I];
       Rows[I].Top := 0;
       Rows[I].Height := 0;
       if (SelectedIndex < 0) and (Rows[I].Ranger.Id = SelectedRangerId) then
@@ -1671,7 +1671,6 @@ end;
 
 function ShowRangerRating(Parent: TMessageLoopGI): Boolean;
 var
-  CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
   Parent.RootUiObject.OnModalSuspend;

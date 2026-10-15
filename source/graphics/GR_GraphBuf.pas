@@ -1131,7 +1131,7 @@ end;
 procedure TGraphBufGR.FillPixels(Value: Byte);
 begin
   LockTexture(False);
-  System.FillChar(Pointer(Pixels)^, PitchBytes * Height, Value);
+  System.FillChar(Pixels^, PitchBytes * Height, Value);
 end;
 
 procedure TGraphBufGR.FillPixels16(Color: Word);
@@ -1833,7 +1833,7 @@ begin
   Buffer.AddDWord(PitchBytes);
   Size := PitchBytes * Height;
   Buffer.SetSize(Buffer.DataSize + Size);
-  System.Move(Pointer(GetPixels)^, Pointer(AddPointerOffset(Buffer.Data, Buffer.Position))^, Size);
+  System.Move(GetPixels^, AddPointerOffset(Buffer.Data, Buffer.Position)^, Size);
 end;
 
 procedure TGraphBufGR.LoadFromBuffer(Buffer: TBufEC);
@@ -1849,7 +1849,7 @@ begin
   if Buffer.DataSize - Buffer.Position < Size then
     RaiseWideMessage('load bin');
   Pixels := AllocEC(Size);
-  System.Move(Pointer(AddPointerOffset(Buffer.Data, Buffer.Position))^, Pointer(GetPixels)^, Size);
+  System.Move(AddPointerOffset(Buffer.Data, Buffer.Position)^, GetPixels^, Size);
   BytesPerPixel := Cardinal(PitchBytes) div Cardinal(Width);
   BitsPerPixel := BytesPerPixel * 8;
 end;
@@ -2354,8 +2354,8 @@ begin
   while Y < NewHeight do
   begin
     System.Move(
-        Pointer(AddPointerOffset(Source, Y * PitchBytes))^,
-        Pointer(AddPointerOffset(Dest, Y * NewPitch))^,
+        AddPointerOffset(Source, Y * PitchBytes)^,
+        AddPointerOffset(Dest, Y * NewPitch)^,
         NewWidth * BytesPerPixel
     );
     Inc(Y);
@@ -2499,11 +2499,11 @@ var
       while X < Width do
       begin
         System.Move(
-            Pointer(AddPointerOffset(Source, X * SizeOf(TColorRGB)))^,
-            Pointer(AddPointerOffset(Dest, X * SizeOf(TColorRGBA)))^,
+            AddPointerOffset(Source, X * SizeOf(TColorRGB))^,
+            AddPointerOffset(Dest, X * SizeOf(TColorRGBA))^,
             SizeOf(TColorRGB)
         );
-        PByte(AddPointerOffset(Dest, Integer(@PColorRGBA(X * SizeOf(TColorRGBA)).A)))^ := 255;
+        PColorRGBA(AddPointerOffset(Dest, X * SizeOf(TColorRGBA))).A := 255;
         Inc(X);
       end;
       Dest := AddPointerOffset(Dest, DestPitch);
@@ -2534,8 +2534,8 @@ begin
       while Y < Cardinal(Height) do
       begin
         System.Move(
-            Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
-            Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
+            AddPointerOffset(Pixels, PitchBytes * Y)^,
+            AddPointerOffset(Locked.Bits, Locked.Pitch * Y)^,
             RowBytes
         );
         Inc(Y);
@@ -2562,7 +2562,7 @@ var
   begin
     Alpha := Alpha and $FF;
     for X := 0 to Count - 1 do
-      PByte(AddPointerOffset(Pixels, Integer(@PColorRGBA(X * SizeOf(TColorRGBA)).A)))^ := Alpha;
+      PColorRGBA(AddPointerOffset(Pixels, X * SizeOf(TColorRGBA))).A := Alpha;
   end;
 
 begin
@@ -2600,8 +2600,8 @@ begin
                 try
                   for Y := 0 to Cardinal(Height) - 1 do
                     System.Move(
-                        Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
-                        Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+                        AddPointerOffset(Locked.Bits, Locked.Pitch * Y)^,
+                        AddPointerOffset(Pixels, PitchBytes * Y)^,
                         Width * SizeOf(TColorRGBA)
                     );
                 finally
@@ -2648,8 +2648,8 @@ begin
                 for Y := 0 to Cardinal(Height) - 1 do
                 begin
                   System.Move(
-                      Pointer(AddPointerOffset(Locked.Bits, Locked.Pitch * Y))^,
-                      Pointer(AddPointerOffset(Pixels, PitchBytes * Y))^,
+                      AddPointerOffset(Locked.Bits, Locked.Pitch * Y)^,
+                      AddPointerOffset(Pixels, PitchBytes * Y)^,
                       Width * SizeOf(TColorRGBA)
                   );
                   SetRowAlpha(AddPointerOffset(Pixels, PitchBytes * Y), Width, 255);
@@ -2766,10 +2766,10 @@ begin
     while X < Cardinal(Width) do
     begin
       PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).R :=
-          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).R)))^;
-      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).G)))^ :=
-          PByte(AddPointerOffset(Source, Integer(@PColorBGRA(X * SizeOf(TColorBGRA)).G)))^;
-      PByte(AddPointerOffset(Dest, Integer(@PColorRGB(X * SizeOf(TColorRGB)).B)))^ :=
+          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).R;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).G :=
+          PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).G;
+      PColorRGB(AddPointerOffset(Dest, X * SizeOf(TColorRGB))).B :=
           PColorBGRA(AddPointerOffset(Source, X * SizeOf(TColorBGRA))).B;
       Inc(X);
     end;

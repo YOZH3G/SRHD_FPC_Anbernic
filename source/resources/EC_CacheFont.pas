@@ -493,7 +493,7 @@ begin
     Index := WordStart;
     while Index < CharCount do
     begin
-      if PFontTextCharsEC(Pointer(Text))^[Index] = ' ' then
+      if Text[Index + 1] = ' ' then
         if SeenCharacter then
           Break;
       SeenCharacter := True;
@@ -505,7 +505,7 @@ begin
     FitEnd := WordStart - 1;
     while Index <= WordStart + WordLength - 1 do
     begin
-      Ch := PFontTextCharsEC(Pointer(Text))^[Index];
+      Ch := Text[Index + 1];
       Inc(Index);
       TokenLength :=
           GetTaggedTextTokenLength(
@@ -540,7 +540,7 @@ begin
           Index := Index + TokenLength - 1;
           while Index < CharCount do
           begin
-            Ch := PFontTextCharsEC(Pointer(Text))^[Index];
+            Ch := Text[Index + 1];
             Inc(Index);
             TokenLength :=
                 GetTaggedTextTokenLength(PWideChar(Text) + Index - 1, CharCount - Index + 1);

@@ -18,7 +18,7 @@ type
 
   PSPathNode = PointerToTSPathNode;
 
-  TSPathNode = packed record
+  TSPathNode = record
     Prev: PSPathNode;
     Next: PSPathNode;
     Position: TPointF;
@@ -85,6 +85,11 @@ uses
   GR_Main,
   SysUtils;
 
+const
+  InitialPathNodeCapacity = 200000;
+  PathNodeGrowthCount = 100000;
+  NodesPerPathAllocation = 24;
+
 var
   PathInitialBlock: Pointer;
   PathPoolFreeCount: Integer;
@@ -96,7 +101,7 @@ var
   Node, Prev: PSPathNode;
 begin
   PathPoolLock := TCriticalSection.Create;
-  PathPoolFreeCount := 200000;
+  PathPoolFreeCount := InitialPathNodeCapacity;
   PathNodeHeap := GameHeap.HeapCreate(0, 16, 0);
   PathInitialBlock := GameHeap.HeapAlloc(PathNodeHeap, 0, PathPoolFreeCount * SizeOf(TSPathNode));
   if PathInitialBlock = nil then
@@ -164,7 +169,7 @@ begin
     Exit;
   if not ReservePathGrowthBlock then
     Exit;
-  Count := 100000;
+  Count := PathNodeGrowthCount;
   Inc(PathPoolFreeCount, Count);
   ByteCount := Count * SizeOf(TSPathNode);
   Block := GameHeap.HeapAlloc(PathNodeHeap, GameHeap.HEAP_ZERO_MEMORY, ByteCount);
@@ -236,7 +241,7 @@ var
   First, Last: PSPathNode;
   Count: Integer;
 begin
-  Count := 24;
+  Count := NodesPerPathAllocation;
   PathPoolLock.Enter;
   if Count >= PathPoolFreeCount then
     if not GrowPathNodePool then

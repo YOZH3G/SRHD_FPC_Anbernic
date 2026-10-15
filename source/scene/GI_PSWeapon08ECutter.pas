@@ -268,7 +268,7 @@ begin
     if Block.CountBlocks(Text) <> 0 then
     begin
       PaletteBlock := Block.GetBlockByPath(Text);
-      for ColorIndex := 0 to 7 do
+      for ColorIndex := Low(TECutterPalette) to High(TECutterPalette) do
         if PaletteBlock.CountParams('Color' + IntToStr(ColorIndex)) > 0 then
         begin
           Text := PaletteBlock.GetParam('Color' + IntToStr(ColorIndex));

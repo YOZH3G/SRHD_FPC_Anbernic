@@ -13,11 +13,15 @@ import urllib.request
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from targets import ROOT
 
 DEPENDENCY_SOURCES = {
+    "zlib": (
+        "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz",
+        "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    ),
     "jpeg": (
         "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.2/libjpeg-turbo-3.1.2.tar.gz",
         "8f0012234b464ce50890c490f18194f913a7b1f4e6a03d6644179fa0f867d0cf",
@@ -41,7 +45,25 @@ def require_tool(name: str) -> Path:
     path = shutil.which(name)
     if path is None:
         raise FileNotFoundError(f"Required tool not found: {name}")
-    return Path(path).resolve()
+    # Clang and LLVM-MinGW select their mode/target from the invoked name.
+    # Resolving a prefixed driver symlink would silently select another target.
+    return Path(path).absolute()
+
+
+def tool_identity_files(path: Path) -> tuple[Path, ...]:
+    """Include Clang backends and LLVM-MinGW's shared compiler libraries."""
+    path = path.absolute()
+    if not re.fullmatch(r"(?:.+-)?clang(?:\+\+)?(?:-[0-9]+)?(?:\.exe)?", path.name.lower()):
+        return (path,)
+    backends = tuple(
+        candidate
+        for candidate in sorted(path.parent.glob("*"))
+        if re.fullmatch(
+            r"clang-[0-9]+(?:\.exe)?|libclang-cpp\.dll|libllvm-[0-9]+\.dll",
+            candidate.name.lower(),
+        ) and candidate.is_file()
+    )
+    return (path, *backends)
 
 
 def build_jobs() -> int:
@@ -100,16 +122,13 @@ def command_signature(command: list[str | Path]) -> str:
     return json.dumps(
         [
             list(map(str, command)),
-            content_state([compiler]),
+            content_state(tool_identity_files(compiler)),
             environment,
         ]
     )
 
 
-@lru_cache(maxsize=128)
-def _content_digest(path: Path, _metadata: tuple[int, ...]) -> str:
-    # Metadata only avoids rehashing unchanged files within this process. It is
-    # not part of the persistent identity: restoring an archive changes ctime.
+def _file_digest(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -117,29 +136,43 @@ def _content_digest(path: Path, _metadata: tuple[int, ...]) -> str:
     return digest.hexdigest()
 
 
+@lru_cache(maxsize=128)
+def _content_digest(path: Path, _metadata: tuple[int, ...]) -> str:
+    # Metadata only avoids rehashing unchanged files within this process. It is
+    # not part of the persistent identity: restoring an archive changes ctime.
+    return _file_digest(path)
+
+
 def content_state(paths: Iterable[str | Path]) -> list:
     """Inventory contents for build tools and recipes restored across runners."""
     result = []
     for path in sorted(set(map(Path, paths))):
         try:
-            stat = path.stat()
-            metadata = (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
-            result.append([str(path), _content_digest(path, metadata)])
+            # Windows ctime is creation time, not a reliable change counter.
+            if os.name == "nt":
+                digest = _file_digest(path)
+            else:
+                stat = path.stat()
+                metadata = (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+                digest = _content_digest(path, metadata)
+            result.append([str(path), digest])
         except FileNotFoundError:
             result.append([str(path), None])
     return result
 
 
 def file_state(paths: Iterable[str | Path]) -> list:
-    """Inventory [path, size, mtime_ns, ctime_ns], or [path, None] if missing.
+    """Inventory [path, size, mtime_ns, change_identity], or [path, None].
 
-    Include ctime to catch replacements and edits that preserve mtime.
+    Use contents on Windows and ctime on POSIX to catch replacements and edits
+    that preserve mtime.
     """
     result = []
     for path in sorted(set(map(Path, paths))):
         try:
             stat = path.stat()
-            result.append([str(path), stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns])
+            changed = _file_digest(path) if os.name == "nt" else stat.st_ctime_ns
+            result.append([str(path), stat.st_size, stat.st_mtime_ns, changed])
         except FileNotFoundError:
             result.append([str(path), None])
     return result
@@ -202,55 +235,114 @@ def compile_native(
         run_step(work, target.stem, command)
 
 
+def _cmake_tool_options(options: Iterable[str]) -> dict[str, str]:
+    """Read tool paths from CMake cache entries or typed/untyped -D options."""
+    tools = {}
+    for option in options:
+        name, separator, value = option.removeprefix("-D").partition("=")
+        name = name.split(":", 1)[0]
+        if separator and name in (
+            "CMAKE_C_COMPILER",
+            "CMAKE_CXX_COMPILER",
+            "CMAKE_RC_COMPILER",
+            "CMAKE_TOOLCHAIN_FILE",
+        ):
+            tools[name] = value
+    return tools
+
+
+def _cmake_tool_paths(directory: Path) -> dict[str, str]:
+    """Include NDK compiler paths recorded only in generated language files."""
+    cache = directory / "CMakeCache.txt"
+    tools = _cmake_tool_options(cache.read_text().splitlines()) if cache.is_file() else {}
+    for language in ("C", "CXX", "RC"):
+        name = f"CMAKE_{language}_COMPILER"
+        for config in directory.glob(f"CMakeFiles/*/CMake{language}Compiler.cmake"):
+            match = re.search(rf'^set\({name} "([^"]+)"\)', config.read_text(), re.MULTILINE)
+            if match:
+                tools.setdefault(name, match[1])
+    return tools
+
+
+def _tool_path_key(path: str) -> Path | PureWindowsPath:
+    # Windows caches use forward slashes and may change drive-letter case.
+    # Do not resolve symlinks: a prefixed Clang driver selects its target.
+    windows = PureWindowsPath(path)
+    return windows if windows.drive else Path(path).absolute()
+
+
+def _tool_states(signature: str) -> dict:
+    return {_tool_path_key(entry[0]): entry[1:] for entry in json.loads(signature)[2]}
+
+
 def configure_native(work: Path, directory: Path, command: list[str | Path]) -> bool:
-    """Configure when needed; report same-path compiler replacements requiring a clean."""
+    """Reset CMake on changed tool paths or toolchain-file contents.
+
+    Compiler binary changes only require cleaning objects. Return whether the
+    caller needs to clean its existing native objects in either case.
+    """
     stamp = BuildStamp(directory / "configure-command.json")
     cache = directory / "CMakeCache.txt"
-    inputs = [ROOT / "native/CMakeLists.txt", *ROOT.glob("native/*.patch")]
+    cached_tools = _cmake_tool_paths(directory)
+    requested_tools = _cmake_tool_options(map(str, command))
+    paths_changed = any(
+        name in cached_tools and _tool_path_key(cached_tools[name]) != _tool_path_key(value)
+        for name, value in requested_tools.items()
+    )
+    # Check immutable command/recipe inputs once. Only generated tool metadata
+    # must be reread after configuring; avoid hashing CMake twice on Windows.
+    recipe = [
+        command_signature(command),
+        content_state([ROOT / "native/CMakeLists.txt", *ROOT.glob("native/*.patch")]),
+    ]
 
-    def signature() -> str:
-        compilers = (
-            re.findall(r"^CMAKE_(?:C|CXX)_COMPILER:[^=]+=(.+)$", cache.read_text(), re.MULTILINE)
-            if cache.is_file()
-            else []
-        )
-        # The NDK toolchain sets compiler variables without caching them.
-        # CMake's generated language files still record the actual tools.
-        for language in ("C", "CXX"):
-            for config in directory.glob(f"CMakeFiles/*/CMake{language}Compiler.cmake"):
-                compilers.extend(
-                    re.findall(
-                        rf'^set\(CMAKE_{language}_COMPILER "([^"]+)"\)',
-                        config.read_text(),
-                        re.MULTILINE,
-                    )
-                )
+    def signature(tools: dict[str, str] | None = None) -> str:
+        if tools is None:
+            tools = _cmake_tool_paths(directory)
+        # Keep the invoked path as the identity key. Reading follows symlinks,
+        # so retargeting a driver changes its content identity without losing its name.
         return json.dumps(
             [
-                command_signature(command),
-                content_state(inputs),
-                content_state(Path(path).resolve() for path in compilers),
+                *recipe,
+                content_state(
+                    identity
+                    for path in tools.values()
+                    if path
+                    for identity in tool_identity_files(Path(path))
+                ),
             ]
         )
 
-    if not stamp.matches(signature(), cache):
+    current = signature(cached_tools)
+    if not stamp.matches(current, cache):
         try:
-            old_state = json.loads(stamp.previous)
-            old_compilers = {entry[0]: entry[1:] for entry in old_state[2]}
-            unknown_compilers = False
-        except (ValueError, IndexError, TypeError):
-            old_compilers = {}
-            # A failed configure may already have updated CMakeCache.txt.
-            # Without the previous signature we cannot trust existing objects.
-            unknown_compilers = cache.is_file()
+            old_tools = _tool_states(stamp.previous)
+        except (ValueError, IndexError, KeyError, TypeError):
+            old_tools = None
+        # Toolchain files can change compiler selection without changing their
+        # own path. Use the already captured contents to decide whether to reset.
+        toolchain_changed = False
+        if old_tools and (toolchain := cached_tools.get("CMAKE_TOOLCHAIN_FILE")):
+            path = _tool_path_key(toolchain)
+            current_tools = _tool_states(current)
+            toolchain_changed = path in old_tools and old_tools[path] != current_tools.get(path)
+        # Without a successful prior signature, existing CMake files can be
+        # leftovers from a failed configuration and must be discarded.
+        unknown_tools = old_tools is None and (cache.is_file() or stamp.path.is_file())
+        fresh = paths_changed or toolchain_changed or unknown_tools
         with stamp.recording(signature):
+            if fresh:
+                # CMake's automatic compiler-change reset can lose other -D
+                # options. Start fresh and apply the full recipe in one pass.
+                # Preserve downloaded sources and other dependency caches.
+                cache.unlink(missing_ok=True)
+                generated = directory / "CMakeFiles"
+                if generated.is_dir():
+                    shutil.rmtree(generated)
             run_step(work, "configure", command)
-        # CMake tracks changed flags and sources itself, but build systems do
-        # not necessarily notice replacement of a compiler at an unchanged path.
-        return unknown_compilers or any(
-            entry[0] in old_compilers and old_compilers[entry[0]] != entry[1:]
-            for entry in json.loads(stamp.previous)[2]
-        )
+        # Paths require a fresh configure; changed tool contents additionally
+        # require cleaning objects that Make/Ninja may otherwise leave untouched.
+        return fresh or (old_tools is not None and old_tools != _tool_states(stamp.previous))
     return False
 
 
@@ -312,9 +404,10 @@ def dependency_source(name: str) -> Path:
     return source
 
 
-def build_codecs(work: Path, options: list[str], rebuild: bool) -> None:
+def build_codecs(work: Path, options: list[str], rebuild: bool, *, windows: bool = False) -> None:
     """Build pinned codec archives with the platform's CMake toolchain and prefix."""
     dependencies = {
+        **({"zlib": ["-DZLIB_BUILD_EXAMPLES=OFF"]} if windows else {}),
         "jpeg": [
             "-DENABLE_SHARED=OFF",
             "-DENABLE_STATIC=ON",
@@ -338,7 +431,9 @@ def build_codecs(work: Path, options: list[str], rebuild: bool) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         changed = configure_native(directory, build, [
             "cmake", "-S", dependency_source(name), "-B", build, "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release", *options, "-DBUILD_SHARED_LIBS=OFF", *extra,
+            "-DCMAKE_BUILD_TYPE=Release", *options,
+            "-DBUILD_SHARED_LIBS=" + ("ON" if windows and name in ("ogg", "vorbis") else "OFF"),
+            *extra,
         ])  # fmt: skip
         run_step(directory, name, [
             "cmake", "--build", build, "--parallel", "6",
@@ -352,7 +447,8 @@ def build_codecs(work: Path, options: list[str], rebuild: bool) -> None:
         def install_state(build: Path = build, manifest: Path = manifest) -> str:
             installed = manifest.read_text().splitlines() if manifest.is_file() else []
             return json.dumps(file_state([
-                build / "configure-command.json", manifest, *build.rglob("*.a"), *installed,
+                build / "configure-command.json", manifest, *build.rglob("*.a"),
+                *build.rglob("*.dll"), *installed,
             ]))  # fmt: skip
 
         if not stamp.matches(install_state(), manifest):

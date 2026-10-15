@@ -846,7 +846,6 @@ end;
 
 function RunJournal(ParentLoop: TMessageLoopGI): Boolean;
 var
-  CursorAlignment: array[0..2] of Byte;
   State: TCursorStateGI;
 begin
   ParentLoop.RootUiObject.OnModalSuspend;

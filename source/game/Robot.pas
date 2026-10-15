@@ -744,7 +744,7 @@ end;
 
 function FRun(const MapName, StartText, WinText, LossText, TerronName: WideString): Integer;
 var
-  SavedDirectory, RobotDirectory: AnsiString;
+  SavedDirectory: AnsiString;
   SavedSoundVolume, SavedMusicVolume: Single;
   Failed: Boolean;
   CursorState: TCursorStateGI;
@@ -760,7 +760,7 @@ begin
     if InstallConfig.CountParams('RobotPath') > 0 then
     begin
       SetCurrentDir(NativeGamePath(AnsiString(InstallConfig.GetParam('RobotPath'))));
-      RobotDirectory := GetCurrentDir;
+      GetCurrentDir;
     end;
     RobotSetProgress(0);
     Memory.Length := SizeOf(Memory);

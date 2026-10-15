@@ -223,7 +223,6 @@ var
   Y: Integer;
   Distance, Phase: Single;
   Particle, Current: PLezkaParticle;
-  UnusedAlpha: Byte;
 begin
   if (FirstParticle = nil) and (RemainingTicks >= 2) then
   begin
@@ -233,7 +232,6 @@ begin
     if OriginalLength = 0 then
       OriginalLength := 1;
     LengthScale := 1;
-    UnusedAlpha := 0;
     while Y < Distance do
     begin
       Phase := Y / Distance;
@@ -252,11 +250,6 @@ begin
       Particle.AlphaStep := Random(10) + 10;
       Particle.Velocity := MakePointF(0, 3);
       Particle.State := 1 + Random(2);
-      // Retained native accumulator, although it does not feed a particle field.
-      if UnusedAlpha + 4 < 255 then
-        Inc(UnusedAlpha, 4)
-      else
-        UnusedAlpha := 255;
       Inc(Y);
     end;
   end

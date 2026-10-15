@@ -45,8 +45,8 @@ type
   PStorageEntry = PointerToTStorageEntry;
 
   TEquipmentConfiguration = packed record
-    EquipmentIds: array[0..11] of Integer;
-    ArtefactIds: array[0..31] of Integer;
+    EquipmentIds: array[0..11] of Cardinal;
+    ArtefactIds: array[0..31] of Cardinal;
   end;
 
   TJournalRecord = class(TObjectEx)
@@ -426,7 +426,7 @@ begin
   begin
     for I := 0 to StorageEntries.Count - 1 do
     begin
-      Entry := PStorageEntry(StorageEntries[I]);
+      Entry := StorageEntries[I];
       if Entry <> nil then
       begin
         if Entry.Item <> nil then
@@ -494,7 +494,7 @@ begin
   Buffer.AddIntegerValue(StorageEntries.Count);
   for I := 0 to StorageEntries.Count - 1 do
   begin
-    Entry := PStorageEntry(StorageEntries[I]);
+    Entry := StorageEntries[I];
     if Entry.LocationOwner is TPlanet then
     begin
       Buffer.AddAnsiChar(#0);
@@ -880,7 +880,7 @@ begin
   inherited ResolveLoadedReferences(Galaxy);
   for I := 0 to StorageEntries.Count - 1 do
   begin
-    Entry := PStorageEntry(StorageEntries[I]);
+    Entry := StorageEntries[I];
     if Cardinal(Entry.LocationOwner) and StoredItemPlanetFlag <> 0 then
       Entry.LocationOwner := Galaxy.IdToPlanet(Cardinal(Entry.LocationOwner) and TaggedObjectIdMask)
     else
@@ -903,15 +903,15 @@ begin
   if RuinsMode > 0 then
     RuinsProxy.CurrentStar := CurrentStar;
   if RuinsSavedPlanet <> nil then
-    RuinsSavedPlanet := TObject(Galaxy.IdToPlanet(Cardinal(RuinsSavedPlanet))) as TPlanet;
+    RuinsSavedPlanet := Galaxy.IdToPlanet(Cardinal(RuinsSavedPlanet)) as TPlanet;
   if RuinsSavedDockedTo <> nil then
-    RuinsSavedDockedTo := TObject(Galaxy.IdToShip(Cardinal(RuinsSavedDockedTo), True)) as TShip;
+    RuinsSavedDockedTo := Galaxy.IdToShip(Cardinal(RuinsSavedDockedTo), True) as TShip;
   if (LoadedSaveVersion < 146) and (CurrentPlanet = nil) and (DockedTo = nil) then
   begin
     Found := False;
     for I := 1 to Inventory.Count - 1 do
     begin
-      Item := TItem(Inventory[I]);
+      Item := Inventory[I];
       if (Item is TEngine) and (TEngine(Item).TechLevel <= 7) then
       begin
         Found := True;
@@ -927,7 +927,7 @@ begin
     Found := False;
     for I := 1 to Inventory.Count - 1 do
     begin
-      Item := TItem(Inventory[I]);
+      Item := Inventory[I];
       if (Item is TFuelTanks) and (TFuelTanks(Item).TechLevel <= 7) then
       begin
         Found := True;
@@ -1052,13 +1052,12 @@ var
 begin
   for I := Inventory.Count - 1 downto 0 do
   begin
-    Item := TObject(Inventory[I]);
+    Item := Inventory[I];
     Inventory.Delete(I);
     Item.Free;
   end;
-  for Kind := Low(PShipEquipmentCacheView(@Hull).Slots)
-      to High(PShipEquipmentCacheView(@Hull).Slots) do
-    PShipEquipmentCacheView(@Hull).Slots[Kind] := nil;
+  for Kind := Low(EquipmentCache.Slots) to High(EquipmentCache.Slots) do
+    EquipmentCache.Slots[Kind] := nil;
   for I := 1 to 5 do
     Weapons[I] := nil;
   WeaponCount := 0;
@@ -1812,7 +1811,7 @@ begin
             I := ScriptShipBindings.Count - 1
           else
           begin
-            Binding := TScriptShip(ScriptShipBindings[I]);
+            Binding := ScriptShipBindings[I];
             if Binding.Script <> nil then
               Binding.Script.RunShipState(Binding);
             Dec(I);
@@ -1825,9 +1824,6 @@ begin
               = 0)
           and (DiseaseImmunity > 0) then
         Dec(DiseaseImmunity);
-      { Native O- code retains this unreachable lower clamp on the byte field. }
-      if DiseaseImmunity < 0 then
-        DiseaseImmunity := 0;
       if DiseaseImmunity > 100 then
         DiseaseImmunity := 100;
       if not InNormalSpace then
@@ -1870,7 +1866,7 @@ begin
           Found := 0;
           for I := 0 to Galaxy.Stars.Count - 1 do
           begin
-            Star := TStar(Galaxy.Stars[I]);
+            Star := Galaxy.Stars[I];
             for J := 0 to Star.Ships.Count - 1 do
               if TShip(Star.Ships[J]).TypeId = rstDominion then
               begin
@@ -1912,14 +1908,14 @@ begin
       if InNormalSpace then
         for I := 0 to CurrentStar.Ships.Count - 1 do
         begin
-          Ship := TShip(CurrentStar.Ships[I]);
+          Ship := CurrentStar.Ships[I];
           if Ship.InNormalSpace then
             Ship.DaysSincePlayerSeen := 0;
         end;
       Stage := 4;
       for I := 0 to Inventory.Count - 1 do
       begin
-        Item := TEquipment(Inventory[I]);
+        Item := Inventory[I];
         if (Item.ItemType = t_Engine) and (Item.EquippedFlag = 0) then
         begin
           if (Item as TEngine).OutputPercent + 10 > 100 then
@@ -2322,7 +2318,7 @@ var
 begin
   for I := 0 to GetPlayer.Artefacts.Count - 1 do
   begin
-    Item := TItem(GetPlayer.Artefacts[I]);
+    Item := GetPlayer.Artefacts[I];
     if Item.ItemType = t_ArtefactTransmitter then
     begin
       Transmitter := Item as TArtefactTransmitter;
@@ -2453,9 +2449,7 @@ function TPlayer.FindProfitableTradeRoute(
 ): Boolean;
 var
   I, J, JumpRange: Integer;
-  UnusedRouteLocal1, UnusedRouteLocal2, UnusedRouteLocal3: Integer;
   BuyPlanet, SellPlanet, BestBuyPlanet, BestSellPlanet: TPlanet;
-  UnusedGoodsLocal1, UnusedGoodsLocal2: Integer;
   BestGood, Kind: Byte;
   Score, BestScore: Single;
 begin
@@ -2590,7 +2584,7 @@ var
 begin
   for I := 0 to Satellites.Count - 1 do
   begin
-    Satellite := TSatellite(GetPlayer.Satellites[I]);
+    Satellite := GetPlayer.Satellites[I];
     if Satellite.TargetPlanet <> nil then
     begin
       Result := True;
@@ -2660,10 +2654,10 @@ begin
   for I := 0 to Galaxy.Planets.Count - 1 do
   begin
     HeaderCount := 0;
-    Planet := TPlanet(Galaxy.Planets[I]);
+    Planet := Galaxy.Planets[I];
     for J := 0 to Satellites.Count - 1 do
     begin
-      Satellite := TSatellite(GetPlayer.Satellites[J]);
+      Satellite := GetPlayer.Satellites[J];
       if Satellite.TargetPlanet = Planet then
       begin
         if HeaderCount = 0 then
@@ -2673,12 +2667,12 @@ begin
                   LocalizedText('FormShip.StorageInfo.Star'),
                   '',
                   '<Star>',
-                  (TObject(Satellite.TargetPlanet) as TPlanet).CurrentStar.Name
+                  (Satellite.TargetPlanet as TPlanet).CurrentStar.Name
               );
           TempText :=
               WrapTextInColor(TempText + '. ', TextHighlightColorTag)
                   + WrapTextInColor(
-                      (TObject(Satellite.TargetPlanet) as TPlanet).GetFullName(' ') + '.',
+                      (Satellite.TargetPlanet as TPlanet).GetFullName(' ') + '.',
                       TextHighlightColorTag);
           RemainingText := ' ' + LocalizedText('FormShip.StorageInfo.PlanetNO');
           if Planet.WaterTiles - Planet.WaterExplored > 0 then
@@ -2815,13 +2809,13 @@ begin
     Exit;
   if Satellite.BrokenFlag <> 0 then
     Exit;
-  Planet := TObject(Satellite.TargetPlanet) as TPlanet;
+  Planet := Satellite.TargetPlanet as TPlanet;
   Water := 0;
   Land := 0;
   Hill := 0;
   for I := 0 to GetPlayer.Satellites.Count - 1 do
   begin
-    Probe := TSatellite(GetPlayer.Satellites[I]);
+    Probe := GetPlayer.Satellites[I];
     if (Satellite.TargetPlanet = Probe.TargetPlanet) and (Probe.BrokenFlag = 0) then
     begin
       Water := Min(Planet.WaterTiles - Planet.WaterExplored, Water + Probe.WaterExplorationRate);
@@ -2863,9 +2857,9 @@ begin
   Planets[3] := nil;
   for I := 0 to GetPlayer.Satellites.Count - 1 do
   begin
-    Satellite := TSatellite(GetPlayer.Satellites[I]);
+    Satellite := GetPlayer.Satellites[I];
     if (Satellite.TargetPlanet <> nil)
-        and ((TObject(Satellite.TargetPlanet) as TPlanet).CurrentStar = Star) then
+        and ((Satellite.TargetPlanet as TPlanet).CurrentStar = Star) then
     begin
       Remaining := GetSatelliteExplorationTurns(Satellite);
       if Remaining <= 0 then
@@ -3210,10 +3204,10 @@ begin
   for I := 0 to Galaxy.Stars.Count - 1 do
   begin
     HeaderCount := 0;
-    Star := TStar(Galaxy.Stars[I]);
+    Star := Galaxy.Stars[I];
     for J := 0 to Star.Ships.Count - 1 do
     begin
-      Ship := TShip(Star.Ships[J]);
+      Ship := Star.Ships[J];
       if Ship.TypeId = stTranclucator then
         if ((Ship as TTranclucator).OwnerShip = GetPlayer) and not Ship.IsHullDestroyed then
         begin
@@ -3288,14 +3282,12 @@ begin
   end;
   if Left.LocationOwner is TPlanet then
   begin
-    if Cardinal((Left.LocationOwner as TPlanet).Id)
-        < Cardinal((Right.LocationOwner as TPlanet).Id) then
+    if (Left.LocationOwner as TPlanet).Id < (Right.LocationOwner as TPlanet).Id then
     begin
       Result := -1;
       Exit
     end;
-    if Cardinal((Left.LocationOwner as TPlanet).Id)
-        > Cardinal((Right.LocationOwner as TPlanet).Id) then
+    if (Left.LocationOwner as TPlanet).Id > (Right.LocationOwner as TPlanet).Id then
     begin
       Result := 1;
       Exit
@@ -3303,12 +3295,12 @@ begin
   end
   else
   begin
-    if Cardinal((Left.LocationOwner as TShip).Id) < Cardinal((Right.LocationOwner as TShip).Id) then
+    if (Left.LocationOwner as TShip).Id < (Right.LocationOwner as TShip).Id then
     begin
       Result := -1;
       Exit
     end;
-    if Cardinal((Left.LocationOwner as TShip).Id) > Cardinal((Right.LocationOwner as TShip).Id) then
+    if (Left.LocationOwner as TShip).Id > (Right.LocationOwner as TShip).Id then
     begin
       Result := 1;
       Exit
@@ -4383,9 +4375,6 @@ begin
 end;
 
 function TPlayer.CanSelectShipTarget(Ship: TShip): Boolean;
-type
-  TOwnerMasks = array[TStarFaction] of TOwnerMask;
-
 var
   Faction: TStarFaction;
 begin
@@ -4400,10 +4389,10 @@ begin
   if Ship.TypeId in [rstRangerCenter..rstCustomStation] then
   begin
     for Faction := Low(TStarFaction) to High(TStarFaction) do
-      if (OwnerId in TOwnerMasks(PlanetOwnerMasks)[Faction])
+      if (OwnerId in PlanetOwnerMasks.ByFaction[Faction])
           and (Ship.CurrentStanding in NonTargetableStationStandingMasks[Faction])
           and ((Ship.ScriptShip = nil)
-              or (Ship.OwnerId in TOwnerMasks(PlanetOwnerMasks)[Faction])) then
+              or (Ship.OwnerId in PlanetOwnerMasks.ByFaction[Faction])) then
         Exit;
   end;
   Result := True;

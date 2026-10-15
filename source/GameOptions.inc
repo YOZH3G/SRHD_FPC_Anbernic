@@ -12,3 +12,5 @@
 {$LEGACYPC24 ON}
 {$DELPHIORDER ON}
 {$DELPHIINTEGER32 ON}
+
+{$I mods/NativeMods.inc}

@@ -232,7 +232,6 @@ procedure TfGoodsShop2.OnOpen;
 var
   I: Integer;
   BackgroundPath: WideString;
-  UnusedNativeLocal: array[0..3] of Byte; { Unreferenced native storage; original type is unknown. }
 begin
   if not ReopenRequested then
     LoadPanel.OnOpen;

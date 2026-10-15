@@ -19,13 +19,10 @@ type
 
   TAwardTypeMask = set of TAwardKind;
 
-  TSystemKillCountArray = array[0..3] of Word;
-
   TSystemKillCounts = packed record
-    Normal: Word;
-    Dominator: Word;
-    Pirate: Word;
-    Custom: Word;
+  case Boolean of
+    False: (Normal: Word; Dominator: Word; Pirate: Word; Custom: Word;);
+    True: (ByFaction: array[TStarFaction] of Word);
   end;
 
   TNormalShip = class(TShip)
@@ -214,8 +211,8 @@ procedure TNormalShip.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
   inherited ResolveLoadedReferences(Galaxy);
   PendingLiberationCeremonyPlanet :=
-      TObject(Galaxy.IdToPlanet(Cardinal(PendingLiberationCeremonyPlanet))) as TPlanet;
-  LastDockedPlanet := TObject(Galaxy.IdToPlanet(Cardinal(LastDockedPlanet))) as TPlanet;
+      Galaxy.IdToPlanet(Cardinal(PendingLiberationCeremonyPlanet)) as TPlanet;
+  LastDockedPlanet := Galaxy.IdToPlanet(Cardinal(LastDockedPlanet)) as TPlanet;
 end;
 
 procedure TNormalShip.ClearObjectReferences;
@@ -767,7 +764,7 @@ begin
       else
         ActivityAmount := 8;
       if Galaxy.CoalitionDefeatedTurn = 0 then
-        (Self as TRanger).AddWarriorCareerActivity(Byte(ActivityAmount));
+        (Self as TRanger).AddWarriorCareerActivity(ActivityAmount);
     end;
     if (PartnerShip <> nil)
         and (PartnerShip is TNormalShip)
@@ -801,7 +798,7 @@ begin
       ActivityAmount := 4
     else
       ActivityAmount := 1;
-    (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+    (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
   end
   else if (Victim is TRanger) and (Self is TRanger) then
   begin
@@ -832,7 +829,7 @@ begin
         ActivityAmount := 8
       else
         ActivityAmount := 2;
-      (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
       Experience :=
           Round(
               NextRandomIntRange(100, 250, Galaxy.RandomState)
@@ -906,7 +903,7 @@ begin
       else
         ActivityAmount := 8;
       if Galaxy.CoalitionDefeatedTurn = 0 then
-        (Self as TRanger).AddWarriorCareerActivity(Byte(ActivityAmount));
+        (Self as TRanger).AddWarriorCareerActivity(ActivityAmount);
       if GetPlayer = Self then
         GetPlayer.TryAwardDominatorPrograms(Victim);
       if (GetPlayer = Self) and GetPlayer.HasRadiationSickness then
@@ -956,7 +953,7 @@ begin
         ActivityAmount := 8
       else
         ActivityAmount := 2;
-      (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
     end;
   end
   else if Victim.TypeId = stTransport then
@@ -989,7 +986,7 @@ begin
         ActivityAmount := 8
       else
         ActivityAmount := 2;
-      (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
     end;
   end
   else if (Victim.TypeId in [rstRangerCenter..rstCustomStation])
@@ -1010,7 +1007,7 @@ begin
         ActivityAmount := 4
       else
         ActivityAmount := 1;
-      (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
     end;
   end
   else if (Victim.TypeId in [rstRangerCenter..rstCustomStation])
@@ -1042,7 +1039,7 @@ begin
         ActivityAmount := 4
       else
         ActivityAmount := 1;
-      (Self as TRanger).AddPirateCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddPirateCareerActivity(ActivityAmount);
     end;
     if (Victim.TypeId = rstPirateBase) and (Self is TRanger) then
     begin
@@ -1050,7 +1047,7 @@ begin
         ActivityAmount := 4
       else
         ActivityAmount := 1;
-      (Self as TRanger).AddWarriorCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddWarriorCareerActivity(ActivityAmount);
     end;
   end
   else if (Victim.TypeId in [rstRangerCenter..rstCustomStation])
@@ -1072,7 +1069,7 @@ begin
         ActivityAmount := 4
       else
         ActivityAmount := 1;
-      (Self as TRanger).AddWarriorCareerActivity(Byte(ActivityAmount));
+      (Self as TRanger).AddWarriorCareerActivity(ActivityAmount);
     end;
   end;
   if Victim.CurrentStanding <> ssCustom then
@@ -1269,7 +1266,7 @@ begin
       else if (Victim.TypeId in [rstRangerCenter..rstCustomStation])
           and (Victim.CurrentStanding in FactionStandingMasks[CurrentStar.ControlFaction]) then
         IncrementWordSaturating(
-            TSystemKillCountArray(OtherNormal.CurrentSystemKills)[Ord(CurrentStar.ControlFaction)]
+            OtherNormal.CurrentSystemKills.ByFaction[CurrentStar.ControlFaction]
         );
       RecordShipKillCategory(OtherNormal, Victim);
     end;
@@ -2638,19 +2635,18 @@ procedure TNormalShip.TrainSkillsAutomatically;
 var
   Score, BestScore: Single;
   Skill, BestSkill: TPilotSkill;
-  Bonus: Byte;
+  Bonus: TEquipmentBonusKind;
 begin
   repeat
     BestScore := -1;
     BestSkill := psAccuracy;
-    for Bonus := 22 to 27 do
+    for Bonus := bonSkill1 to bonSkill6 do
     begin
-      Skill := EquipmentBonusSkills[Bonus - 22];
+      Skill := EquipmentBonusSkills[Bonus];
       if BaseSkills[Skill] < 6 then
       begin
         Score :=
-            Sqr(EvaluateStatBonus(TEquipmentBonusKind(Bonus), 1))
-                / SkillTrainingCosts[BaseSkills[Skill] + 1, Skill];
+            Sqr(EvaluateStatBonus(Bonus, 1)) / SkillTrainingCosts[BaseSkills[Skill] + 1, Skill];
         if Score > BestScore then
         begin
           BestScore := Score;

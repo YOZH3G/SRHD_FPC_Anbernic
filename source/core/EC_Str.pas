@@ -12,7 +12,7 @@ type
 
   THexDigits = array[0..15] of WideChar;
 
-  TWideCasePair = packed record
+  TWideCasePair = record
     LowerChar: WideChar;
     UpperChar: WideChar;
   end;
@@ -53,6 +53,13 @@ type
     function IsEmpty: Boolean;
     procedure SetText(const Text: WideString);
     function GetText: WideString;
+    property Text: WideString read GetText write SetText;
+    property Count: Integer read GetCount;
+    property Strings[Index: Integer]: WideString read GetTextAt;
+    property Data[Index: Integer]: Pointer read GetDataAt write SetDataAt;
+    property Elements[Index: Integer]: TStringsElEC read GetElement;
+    property CurrentText: WideString read GetCurrentText;
+    property CurrentData: Pointer read GetCurrentData;
   end;
 
 const
@@ -337,7 +344,7 @@ begin
   if CharCount > 0 then
   begin
     SetLength(Item.Text, CharCount);
-    System.Move(Pointer(Text)^, Pointer(PWideChar(Item.Text))^, CharCount * 2);
+    System.Move(Text^, PWideChar(Item.Text)^, CharCount * SizeOf(WideChar));
   end;
 end;
 
@@ -412,7 +419,7 @@ begin
       Start := Cursor;
       while (Cursor^ <> #0) and (Cursor^ <> #10) and (Cursor^ <> #13) do
         Inc(Cursor);
-      AddSlice(Start, Integer(PAnsiChar(Cursor) - PAnsiChar(Start)) div SizeOf(WideChar));
+      AddSlice(Start, Cursor - Start);
       if Cursor^ = #13 then
         Inc(Cursor);
       if Cursor^ = #10 then
@@ -687,7 +694,7 @@ begin
   i := 0;
   while i < TextLength do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[i]);
+    Code := Ord(Text[i + 1]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
       Value := Value * 10 + (Code - Ord('0'))
     else if (Code = Ord('.')) or (Code = Ord(',')) then
@@ -698,7 +705,7 @@ begin
   Divisor := 10;
   while i < TextLength do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[i]);
+    Code := Ord(Text[i + 1]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
     begin
       Value := (Code - Ord('0')) / Divisor + Value;
@@ -707,7 +714,7 @@ begin
     Inc(i);
   end;
   for i := 0 to TextLength - 1 do
-    if Integer(PWideChar(Pointer(Text))[i]) = Ord('-') then
+    if Ord(Text[i + 1]) = Ord('-') then
     begin
       Value := -Value;
       Break;
@@ -733,7 +740,7 @@ begin
   i := 0;
   while i < TextLength do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[i]);
+    Code := Ord(Text[i + 1]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
       Value := Value * 10 + (Code - Ord('0'))
     else if (Code = Ord('.')) or (Code = Ord(',')) then
@@ -744,7 +751,7 @@ begin
   Divisor := 10;
   while i < TextLength do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[i]);
+    Code := Ord(Text[i + 1]);
     if (Code >= Ord('0')) and (Code <= Ord('9')) then
     begin
       Value := (Code - Ord('0')) / Divisor + Value;
@@ -753,7 +760,7 @@ begin
     Inc(i);
   end;
   for i := 0 to TextLength - 1 do
-    if Integer(PWideChar(Pointer(Text))[i]) = Ord('-') then
+    if Ord(Text[i + 1]) = Ord('-') then
     begin
       Value := -Value;
       Break;
@@ -789,7 +796,7 @@ begin
     j := 0;
     while j < SearchLength do
     begin
-      if PWideChar(Pointer(Text))[i + j] <> PWideChar(Pointer(Search))[j] then
+      if Text[i + j + 1] <> Search[j + 1] then
         Break;
       Inc(j);
     end;
@@ -800,7 +807,7 @@ begin
     end
     else
     begin
-      Result := Result + PWideChar(Pointer(Text))[i];
+      Result := Result + Text[i + 1];
       Inc(i);
     end;
   end;
@@ -873,7 +880,7 @@ begin
   FirstIndex := 0;
   while FirstIndex < TextLength do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[FirstIndex]);
+    Code := Ord(Text[FirstIndex + 1]);
     if (Code <> Ord(' ')) and (Code <> 9) and (Code <> 13) and (Code <> 10) and (Code <> 0) then
       Break;
     Inc(FirstIndex);
@@ -886,7 +893,7 @@ begin
   LastIndex := TextLength - 1;
   while LastIndex >= 0 do
   begin
-    Code := Integer(PWideChar(Pointer(Text))[LastIndex]);
+    Code := Ord(Text[LastIndex + 1]);
     if (Code <> Ord(' ')) and (Code <> 9) and (Code <> 13) and (Code <> 10) and (Code <> 0) then
       Break;
     Dec(LastIndex);
@@ -898,9 +905,9 @@ begin
   end;
   SetLength(Result, LastIndex - FirstIndex + 1);
   System.Move(
-      Pointer(AddPointerOffset(PWideChar(Text), FirstIndex * 2))^,
-      Pointer(PWideChar(Result))^,
-      (LastIndex - FirstIndex + 1) * 2
+      AddPointerOffset(PWideChar(Text), FirstIndex * SizeOf(WideChar))^,
+      PWideChar(Result)^,
+      (LastIndex - FirstIndex + 1) * SizeOf(WideChar)
   );
 end;
 
@@ -1067,7 +1074,7 @@ begin
     end
     else
     begin
-      Result := Result + PWideChar(Pointer(Text))[i];
+      Result := Result + Text[i + 1];
       Inc(i);
     end;
   end;
@@ -1140,7 +1147,7 @@ begin
       if SysUtils.CompareMem(
           Pointer(StartIndex * SizeOf(WideChar) + PAnsiChar(TextPtr)),
           SearchPtr,
-          SearchLength * 2) then
+          SearchLength * SizeOf(WideChar)) then
       begin
         Result := StartIndex;
         Exit
@@ -1201,7 +1208,7 @@ begin
   i := 0;
   while i < TextLength do
   begin
-    Result := Result + PWideChar(Pointer(Text))[i];
+    Result := Result + Text[i + 1];
     Inc(i, 2);
   end;
 end;
@@ -1216,7 +1223,7 @@ begin
   i := 0;
   while i < TextLength do
   begin
-    Result := Result + PWideChar(Pointer(Text))[i];
+    Result := Result + Text[i + 1];
     if Random(10) >= 8 then
       Result := Result + WideCaseTable[Random(LastPair + 1)].UpperChar
     else
@@ -1300,9 +1307,9 @@ function CopyWideStringUnchecked(Text: WideString; Index, Count: Integer): WideS
 begin
   SetLength(Result, Count);
   System.Move(
-      Pointer(AddPointerOffset(PWideChar(Text), Index * 2 - 2))^,
-      Pointer(PWideChar(Result))^,
-      Count * 2
+      AddPointerOffset(PWideChar(Text), (Index - 1) * SizeOf(WideChar))^,
+      PWideChar(Result)^,
+      Count * SizeOf(WideChar)
   );
 end;
 

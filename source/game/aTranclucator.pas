@@ -400,7 +400,7 @@ end;
 
 procedure TTranclucator.ResolveLoadedReferences(Galaxy: TGalaxy);
 begin
-  OwnerShip := TObject(Galaxy.IdToShip(Integer(OwnerShip), True)) as TShip;
+  OwnerShip := Galaxy.IdToShip(Integer(OwnerShip), True) as TShip;
   inherited ResolveLoadedReferences(Galaxy);
 end;
 
@@ -519,9 +519,7 @@ begin
     DisplayName := Name
   else
     DisplayName :=
-        LookupLocalizedTextByKey('Artefacts.ArtTranclucator.Name')
-            + '-'
-            + WideString(IntToStr(Cardinal(Id)));
+        LookupLocalizedTextByKey('Artefacts.ArtTranclucator.Name') + '-' + WideString(IntToStr(Id));
   if TypeNameOverrideKey = '' then
     Result := DisplayName
   else
@@ -615,7 +613,7 @@ var
 begin
   for I := Inventory.Count - 1 downto 0 do
   begin
-    Item := TEquipment(Inventory[I]);
+    Item := Inventory[I];
     if Item.EquippedFlag <> 0 then
       Continue;
     Inventory.Delete(Inventory.IndexOf(Item));
@@ -623,7 +621,7 @@ begin
   end;
   for I := Artefacts.Count - 1 downto 0 do
   begin
-    Artefact := TArtefact(Artefacts[I]);
+    Artefact := Artefacts[I];
     if Artefact.EquippedFlag <> 0 then
       Continue;
     Artefacts.Delete(Artefacts.IndexOf(Artefact));
@@ -655,7 +653,7 @@ begin
   begin
     for I := Inventory.Count - 1 downto 0 do
     begin
-      Item := TEquipment(Inventory[I]);
+      Item := Inventory[I];
       if Item.EquippedFlag <> 0 then
         Continue;
       GetPlayer.AddItemToPlayerStorage(Item, Location, -1);
@@ -663,7 +661,7 @@ begin
     end;
     for I := Artefacts.Count - 1 downto 0 do
     begin
-      Artefact := TArtefact(Artefacts[I]);
+      Artefact := Artefacts[I];
       if Artefact.EquippedFlag <> 0 then
         Continue;
       GetPlayer.AddItemToPlayerStorage(Artefact, Location, -1);
@@ -726,7 +724,7 @@ begin
     if GetStoragePermission(tskPlanet) then
       for I := 0 to CurrentStar.Planets.Count - 1 do
       begin
-        Planet := TPlanet(CurrentStar.Planets[I]);
+        Planet := CurrentStar.Planets[I];
         if (Planet.OwnerId in [oiMaloc..oiGaal, oiPirate])
             and (Planet.GetRelationLevelToShip(GetPlayer) >= rlNormal) then
         begin
@@ -741,7 +739,7 @@ begin
     if GetStoragePermission(tskStation) then
       for I := 0 to CurrentStar.Ships.Count - 1 do
       begin
-        Ship := TShip(CurrentStar.Ships[I]);
+        Ship := CurrentStar.Ships[I];
         if (Ship is TRuins)
             and (Ship.GetRelationLevelToShip(GetPlayer) >= rlNormal)
             and Ship.CanDock(Self) then
@@ -862,7 +860,7 @@ begin
     BestDistance := 10000;
     for I := 0 to CurrentStar.Items.Count - 1 do
     begin
-      Item := TItem(CurrentStar.Items[I]);
+      Item := CurrentStar.Items[I];
       if (CalculateCargoHookPower(GetCargoHook) >= Item.Weight)
           and ((Item.ScriptItem = nil) or (TScriptItem(Item.ScriptItem).Name = ''))
           and not (Item is TArtefactTranclucator) then
@@ -933,9 +931,9 @@ var
 begin
   for I := 1 to Inventory.Count - 1 do
   begin
-    Item := TItem(Inventory[I]);
-    case Byte(Item.ItemType) of
-      Ord(t_FuelTanks):
+    Item := Inventory[I];
+    case Item.ItemType of
+      t_FuelTanks:
         if GetFuelTanks = nil then
           EquipItem(Item as TFuelTanks)
         else if GetFuelTanks.Weight > Item.Weight then
@@ -943,7 +941,7 @@ begin
           UnequipSlot(GetFuelTanks.ItemType, 0);
           EquipItem(Item as TFuelTanks);
         end;
-      Ord(t_Engine):
+      t_Engine:
         if GetEngine = nil then
           EquipItem(Item as TEngine)
         else if CalculateItemEffectiveness(Item) > CalculateItemEffectiveness(GetEngine) then
@@ -1010,7 +1008,7 @@ begin
     if CurrentStar.Battle <> 0 then
       for I := 0 to CurrentStar.Ships.Count - 1 do
       begin
-        Ship := TShip(CurrentStar.Ships[I]);
+        Ship := CurrentStar.Ships[I];
         if (Ship.OwnerId = oiDominator) and Ship.InNormalSpace then
         begin
           Distance := PointDistance(Position, Ship.Position);
@@ -1031,7 +1029,7 @@ begin
       end;
     for I := 0 to CurrentStar.Ships.Count - 1 do
     begin
-      Ship := TShip(CurrentStar.Ships[I]);
+      Ship := CurrentStar.Ships[I];
       if Ship.InNormalSpace
           and (Ship <> Self)
           and (Ship <> OwnerShip)
@@ -1056,7 +1054,7 @@ begin
     if GetPlayer.CurrentStar = CurrentStar then
       for I := 0 to CurrentStar.Asteroids.Count - 1 do
       begin
-        Asteroid := TAsteroid(CurrentStar.Asteroids[I]);
+        Asteroid := CurrentStar.Asteroids[I];
         Distance := PointDistanceSquared(Position, Asteroid.Position);
         if Distance <= AsteroidTargetRangeSquared then
           for J := 1 to WeaponCount do
@@ -1348,33 +1346,20 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Math.Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Math.Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * TranclucatorSkillBonusWeights[BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
-            (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6)
+            (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6)
                     * (TranclucatorSkillBonusWeights[BonusKind] * 0.05)
                 + Result;
       if Value < 0 then
         Result :=
-            Math.Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Math.Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -TranclucatorSkillBonusWeights[BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
-            (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]))
+            (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]))
                     * (TranclucatorSkillBonusWeights[BonusKind] * 0.03)
                 + Result;
     end;

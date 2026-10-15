@@ -20,9 +20,6 @@ type
 
   TTransport = class;
 
-  {$Z1}
-  TTransportType = (ttTransport = 0, ttLiner = 1, ttDiplomat = 2);
-
   TTransport = class(TNormalShip)
     TransportType: TTransportType;
     procedure SaveToBuffer(Buffer: TBufEC); override;
@@ -167,8 +164,8 @@ var
   begin
     if Config = nil then
       Exit;
-    if Config.CountBlocks('Transport' + TransportTypeNames[Ord(TransportType)]) > 0 then
-      Block := Config.GetBlock('Transport' + TransportTypeNames[Ord(TransportType)])
+    if Config.CountBlocks('Transport' + TransportTypeNames[TransportType]) > 0 then
+      Block := Config.GetBlock('Transport' + TransportTypeNames[TransportType])
     else if Config.CountBlocks('Transport') > 0 then
       Block := Config.GetBlock('Transport')
     else
@@ -207,7 +204,7 @@ var
         Break;
       IncrementWrapped(Index, FirstIndex, LastIndex);
       if Attempt = LastIndex then
-        Name := Name + ' ' + '-' + IntToStr(Cardinal(Id) mod 100 + 1) + '-';
+        Name := Name + ' ' + '-' + IntToStr(Id mod 100 + 1) + '-';
     end;
   end;
 begin
@@ -531,7 +528,7 @@ begin
     SmallestShipCount := 100000;
     for I := 0 to Galaxy.Stars.Count - 1 do
     begin
-      Star := TObject(CurrentStar.StarDistances[I].Star) as TStar;
+      Star := CurrentStar.StarDistances[I].Star;
       if (CurrentStar.StarDistances[I].Distance <= JumpRange)
           and ((Star.Ships.Count <= 15)
               or (Star.Ships.Count <= SmallestShipCount)
@@ -679,7 +676,7 @@ end;
 
 function TTransport.GetTypeNameKey: WideString;
 begin
-  Result := TransportTypeNames[Ord(TransportType)];
+  Result := TransportTypeNames[TransportType];
 end;
 
 function TTransport.GetGreetingShipCategory: TGreetingShipCategory;
@@ -975,6 +972,9 @@ begin
 end;
 
 procedure TTransport.AssignWeaponTargetsInStar;
+const
+  MissileShotTypes = [wstTorpedo..wstRocket];
+  AreaOrMissileShotTypes = [wstAreaDamage..wstRocket];
 var
   I, J, Assigned: Integer;
   Ship: TShip;
@@ -998,7 +998,7 @@ begin
         for J := 1 to WeaponCount do
         begin
           Weapon := Weapons[J];
-          if (not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+          if (not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
               and (Weapon.Target = nil)
               and IsEquipmentUsable(Weapon) then
             if PointDistanceSquared(Position, Ship.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1014,7 +1014,7 @@ begin
     for J := 1 to WeaponCount do
     begin
       Weapon := Weapons[J];
-      if (not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+      if (not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
           and (Weapon.Target = nil)
           and IsEquipmentUsable(Weapon) then
         if PointDistanceSquared(Position, EnemyShip.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1032,7 +1032,7 @@ begin
       for J := 1 to WeaponCount do
       begin
         Weapon := Weapons[J];
-        if not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket])
+        if not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes)
             and (Weapon.Target = nil)
             and IsEquipmentUsable(Weapon) then
           if PointDistanceSquared(Position, Missile.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1055,7 +1055,7 @@ begin
         begin
           Weapon := Weapons[J];
           // Native asteroid targeting can overwrite an existing assignment.
-          if not (Weapon.GetWeaponInfo^.ShotType in [wstAreaDamage..wstRocket])
+          if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
               and IsEquipmentUsable(Weapon) then
             if Sqr(GetWeaponRange(Weapon)) >= Distance then
             begin
@@ -1085,7 +1085,7 @@ begin
             for J := 1 to WeaponCount do
             begin
               Weapon := Weapons[J];
-              if not (Weapon.GetWeaponInfo^.ShotType in [wstAreaDamage..wstRocket])
+              if not (Weapon.GetWeaponInfo^.ShotType in AreaOrMissileShotTypes)
                   and (Weapon.Target = nil)
                   and IsEquipmentUsable(Weapon) then
                 if PointDistanceSquared(Position, Item.Position) <= Sqr(GetWeaponRange(Weapon)) then
@@ -1104,7 +1104,7 @@ begin
         for J := 1 to WeaponCount do
         begin
           Weapon := Weapons[J];
-          if (not (Weapon.GetWeaponInfo^.ShotType in [wstTorpedo..wstRocket]) or (Weapon.Ammo <> 0))
+          if (not (Weapon.GetWeaponInfo^.ShotType in MissileShotTypes) or (Weapon.Ammo <> 0))
               and (Weapon.Target = nil)
               and IsEquipmentUsable(Weapon) then
             if PointDistanceSquared(Position, GetPlayer.Position)
@@ -1640,37 +1640,22 @@ begin
     begin
       if Value > 0 then
         Result :=
-            Min(
-                    6
-                        - GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    Value)
+            Min(6 - GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), Value)
                 * TransportSkillBonusWeights[BonusKind];
-      if (Value > 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              > 6) then
+      if (Value > 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) > 6) then
         Result :=
             Result
                 + (TransportSkillBonusWeights[BonusKind] * 0.05)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-                        - 6);
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) - 6);
       if Value < 0 then
         Result :=
-            Min(
-                    GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]),
-                    -Value)
+            Min(GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]), -Value)
                 * -TransportSkillBonusWeights[BonusKind];
-      if (Value < 0)
-          and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)])
-              < 0) then
+      if (Value < 0) and (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]) < 0) then
         Result :=
             Result
                 + (TransportSkillBonusWeights[BonusKind] * 0.03)
-                    * (Value
-                        + GetEffectiveSkillLevel(
-                            EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]));
+                    * (Value + GetEffectiveSkillLevel(EquipmentBonusSkills[BonusKind]));
     end;
   else
     Result := 0;
@@ -1687,9 +1672,7 @@ begin
         Result
             * 0.01
             * (100 + SeededRandomIntRange(-50, 50, Seed + 131 * Ord(BonusKind)))
-            * RaceSkillEvaluationFactors[
-                PilotRace,
-                EquipmentBonusSkills[Ord(BonusKind) - Ord(bonSkill1)]]
+            * RaceSkillEvaluationFactors[PilotRace, EquipmentBonusSkills[BonusKind]]
   else
     Result := Result * 0.01 * (100 + SeededRandomIntRange(-20, 20, Seed + 131 * Ord(BonusKind)));
 end;

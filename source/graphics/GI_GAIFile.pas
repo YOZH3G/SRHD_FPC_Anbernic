@@ -87,12 +87,7 @@ uses
 function ReadGaiFrameSize(const Directory: Pointer; const Index: Integer): Cardinal; inline;
 begin
   Result :=
-      ReadDWordEC(
-          AddPointerOffset(
-              Directory,
-              Integer(@PGaiFrameEntry(Index * SizeOf(TGaiFrameEntry)).DataSize)
-          )
-      );
+      ReadDWordEC(AddPointerOffset(Directory, Index * SizeOf(TGaiFrameEntry) + SizeOf(Integer)));
 end;
 
 procedure TGAIFileThreadGI.Execute;
@@ -157,7 +152,7 @@ begin
   ImageFile := TFileEC.Create;
   LoaderThread := TGAIFileThreadGI.Create;
   LoaderThread.Owner := Self;
-  LoaderThread.SetPriority(1);
+  LoaderThread.SetPriority(ThreadPriorityLowest);
   ImageKindX := ikxCenter;
   ImageKindY := ikyCenter;
   Stopped := False;

@@ -101,6 +101,18 @@ type
     function ConcatenateValues: WideString;
     procedure LoadFromDecodedBuffer(Buf: TBufEC);
     procedure LoadFromEncryptedDatFile(const FileName: WideString);
+    property ParamCount: Integer read GetParamCount;
+    property Params[const Name: WideString]: WideString read GetParam write SetParam;
+    property ParamNames[Index: Integer]: WideString read GetParamName;
+    property ParamValues[Index: Integer]: WideString read GetParamValue;
+    property BlockCount: Integer read GetBlockCount;
+    property Blocks[Index: Integer]: TBlockParEC read GetBlockByIndex;
+    property BlockNames[Index: Integer]: WideString read GetBlockNameByIndex;
+    property Count: Integer read GetEntryCount;
+    property EntryKinds[Index: Integer]: TBlockParKind read GetEntryKindByIndex;
+    property EntryNames[Index: Integer]: WideString read GetEntryNameByIndex;
+    property EntryStrings[Index: Integer]: WideString read GetEntryStringByIndex;
+    property EntryBlocks[Index: Integer]: TBlockParEC read GetEntryBlockByIndex;
   end;
 
 const
@@ -122,6 +134,10 @@ uses
   GlobalsV,
   SysUtils,
   Types;
+
+const
+  Utf16LittleEndianBom = $FEFF;
+  WideTextIndentWidth = 4;
 
 constructor TBlockParElEC.Create;
 begin
@@ -331,11 +347,8 @@ var
       Result := False
     else
       Result :=
-          SysUtils.CompareMem(
-              Pointer(PAnsiChar(PWideChar(Path)) + Start * SizeOf(WideChar)),
-              PWideChar(Name),
-              PartLength * 2
-          );
+          SysUtils
+              .CompareMem(PWideChar(Path) + Start, PWideChar(Name), PartLength * SizeOf(WideChar));
   end;
 
 begin
@@ -1130,7 +1143,7 @@ var
     end
     else if Entry.ItemType = bpkString then
     begin
-      for j := 1 to Indent * 4 do
+      for j := 1 to Indent * WideTextIndentWidth do
         Dest.AddWord(Ord(' '));
       Dest.AddWideStringRaw(Entry.Name);
       Dest.AddWord(Ord('='));
@@ -1142,7 +1155,7 @@ var
     end
     else
     begin
-      for j := 1 to Indent * 4 do
+      for j := 1 to Indent * WideTextIndentWidth do
         Dest.AddWord(Ord(' '));
       Dest.AddWideStringRaw(Entry.Name);
       Dest.AddWord(Ord(' '));
@@ -1154,7 +1167,7 @@ var
       Dest.AddWord(13);
       Dest.AddWord(10);
       Entry.ChildBlock.WriteWideText(Dest, Indent + 1, Sorted);
-      for j := 1 to Indent * 4 do
+      for j := 1 to Indent * WideTextIndentWidth do
         Dest.AddWord(Ord(' '));
       Dest.AddWord(Ord('}'));
       if Entry.Comment <> '' then
@@ -1254,7 +1267,7 @@ procedure TBlockParEC.WriteTextBuffer(Dest: TBufEC; AnsiText, Sorted: Boolean);
 begin
   if not AnsiText then
   begin
-    Dest.AddWord($FEFF);
+    Dest.AddWord(Utf16LittleEndianBom);
     WriteWideText(Dest, 0, Sorted);
   end
   else
@@ -1286,7 +1299,7 @@ procedure TBlockParEC.ParseTextBuffer(
     AnsiText, PreserveComments: Boolean
 );
 var
-  Text, Name, IncludeFile, Comment: WideString;
+  Text, Name, Value, Comment: WideString;
   Child: TBlockParEC;
   PartCount: Integer;
   Entry: TBlockParElEC;
@@ -1323,18 +1336,18 @@ begin
           Name := TrimWideString(Name);
         end;
       end;
-      IncludeFile := '';
+      Value := '';
       if CountDelimitedPartsW(Name, '=') = 2 then
       begin
-        IncludeFile := TrimWideString(ExtractDelimitedPartW(Name, 1, '='));
+        Value := TrimWideString(ExtractDelimitedPartW(Name, 1, '='));
         Name := TrimWideString(ExtractDelimitedPartW(Name, 0, '='));
       end;
       Child := AddChildBlock(Name);
       Child.UseSortedIndex := ChildSorted;
       Name := TrimWideString(ExtractDelimitedRangeW(Text, 1, PartCount - 1, '{'));
       Child.ParseTextBuffer(Buf, Name, AnsiText, PreserveComments);
-      if IncludeFile <> '' then
-        Child.LoadFromTextFileWithEncodingProbe(PWideChar(IncludeFile), False);
+      if Value <> '' then
+        Child.LoadFromTextFileWithEncodingProbe(PWideChar(Value), False);
     end
     else
     begin
@@ -1344,11 +1357,11 @@ begin
       if PartCount > 1 then
       begin
         Name := TrimWideString(ExtractDelimitedPartW(Text, 0, '='));
-        IncludeFile := ExtractDelimitedRangeW(Text, 1, PartCount - 1, '=');
+        Value := ExtractDelimitedRangeW(Text, 1, PartCount - 1, '=');
         if PreserveComments then
-          AddParam(Name, IncludeFile).Comment := Comment
+          AddParam(Name, Value).Comment := Comment
         else
-          AddParam(Name, IncludeFile);
+          AddParam(Name, Value);
       end
       else if PreserveComments then
       begin
@@ -1363,11 +1376,11 @@ end;
 
 procedure TBlockParEC.LoadFromTextBufferWithEncodingProbe(Buf: TBufEC; PreserveComments: Boolean);
 begin
-  if Buf.DataSize - Buf.Position <= 2 then
+  if Buf.DataSize - Buf.Position <= SizeOf(WideChar) then
     Exit;
-  if Buf.GetWord <> $FEFF then
+  if Buf.GetWord <> Utf16LittleEndianBom then
   begin
-    Buf.SetPosition(Buf.Position - 2);
+    Buf.SetPosition(Buf.Position - SizeOf(WideChar));
     ParseTextBuffer(Buf, '', True, PreserveComments);
   end
   else
@@ -1463,11 +1476,11 @@ var
   i: Integer;
 begin
   Result := '';
-  for i := 0 to GetEntryCount - 1 do
-    if GetEntryKindByIndex(i) = bpkBlock then
-      Result := Result + '{' + GetEntryBlockByIndex(i).ConcatenateValues + '}'
+  for i := 0 to Count - 1 do
+    if EntryKinds[i] = bpkBlock then
+      Result := Result + '{' + EntryBlocks[i].ConcatenateValues + '}'
     else
-      Result := Result + GetEntryStringByIndex(i);
+      Result := Result + EntryStrings[i];
 end;
 
 procedure TBlockParEC.LoadFromDecodedBuffer(Buf: TBufEC);
@@ -1530,10 +1543,10 @@ begin
   if FileObj.GetSize - FileObj.GetPointer = Cardinal(ByteCount) then
   begin
     Buf := TBufEC.Create;
-    Buf.SetSize(ByteCount + 4);
+    Buf.SetSize(ByteCount + SizeOf(Crc));
     Position := FileObj.GetPointer;
-    FileObj.ReadBuffer(Pointer(PAnsiChar(Buf.Data) + 4), Buf.DataSize - 4);
-    Crc := Buf.ComputeCrc32Range(4, Buf.DataSize) xor BlockDatCrcKey1;
+    FileObj.ReadBuffer(PAnsiChar(Buf.Data) + SizeOf(Crc), Buf.DataSize - SizeOf(Crc));
+    Crc := Buf.ComputeCrc32Range(SizeOf(Crc), Buf.DataSize) xor BlockDatCrcKey1;
     PCardinal(Buf.Data)^ := Crc;
     Crc := Buf.ComputeCrc32 xor BlockDatCrcKey2;
     Buf.Free;
@@ -1548,7 +1561,7 @@ begin
   FileObj.ReadBuffer(@Seed, SizeOf(Seed));
   Seed := Seed xor BlockDatSeedKey;
   Buf := TBufEC.Create;
-  Buf.SetSize(ByteCount - 4 - 4);
+  Buf.SetSize(ByteCount - SizeOf(Crc) - SizeOf(Seed));
   FileObj.ReadBuffer(Buf.Data, Buf.DataSize);
   Buf.ApplyDatXorCipher(Seed);
   if Buf.ComputeCrc32 = Crc then

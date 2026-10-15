@@ -456,10 +456,6 @@ end;
 
 procedure TSpaceCircleGI.CommitFrameDraw;
 begin
-  // Native code retains this empty renderer test before deferred deactivation.
-  if not HardwareRenderingEnabled then
-  begin
-  end;
   if DeactivateAfterFrame then
   begin
     inherited SetActive(False);

@@ -214,17 +214,15 @@ begin
   EditorGridWidth := 10;
   EditorGridHeight := 8;
   QuestSuccessGovMessageText.Text :=
-      TQuestMessages(MessageText.QuestMessages).GetText('GameContent.QuestSuccessGovMessage');
-  QuestDescriptionText.Text :=
-      TQuestMessages(MessageText.QuestMessages).GetText('GameContent.QuestDecription');
-  ToStarText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RToStar');
-  ToPlanetText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RToPlanet');
-  DateText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RDate');
-  MoneyText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RMoney');
-  FromPlanetText.Text :=
-      TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RFromPLanet');
-  FromStarText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RFromStar');
-  RangerText.Text := TQuestMessages(MessageText.QuestMessages).GetText('GameContent.RRanger');
+      MessageText.QuestMessages.GetText('GameContent.QuestSuccessGovMessage');
+  QuestDescriptionText.Text := MessageText.QuestMessages.GetText('GameContent.QuestDecription');
+  ToStarText.Text := MessageText.QuestMessages.GetText('GameContent.RToStar');
+  ToPlanetText.Text := MessageText.QuestMessages.GetText('GameContent.RToPlanet');
+  DateText.Text := MessageText.QuestMessages.GetText('GameContent.RDate');
+  MoneyText.Text := MessageText.QuestMessages.GetText('GameContent.RMoney');
+  FromPlanetText.Text := MessageText.QuestMessages.GetText('GameContent.RFromPLanet');
+  FromStarText.Text := MessageText.QuestMessages.GetText('GameContent.RFromStar');
+  RangerText.Text := MessageText.QuestMessages.GetText('GameContent.RRanger');
   for i := GetLocationCount downto 1 do
     GetLocation(i).Free;
   Locations.Clear;

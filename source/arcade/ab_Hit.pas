@@ -105,7 +105,7 @@ end;
 procedure TabHit.ApplyDamage(Amount: Integer; Source: TabObject; Disrupt: Boolean);
 var
   Frame: Integer;
-  Effect: TObjectGI;
+  Effect: TgaiGI;
   Invulnerable: Boolean;
   Animation: TgaiGI;
 begin
@@ -184,22 +184,22 @@ begin
           if IsDepthBeforeSphereHorizon(GetProjectedPosition.Z) then
           begin
             if (KellerArcadeShip = Self) or (KellerAuxiliaryShip = Self) then
-              TgaiGI(Effect).SetImagePath('Bm.Weapon.ExplM')
+              Effect.SetImagePath('Bm.Weapon.ExplM')
             else
-              TgaiGI(Effect).SetImagePath('Bm.Weapon.Expl' + IntToStr(RandomIntRange(0, 1)));
+              Effect.SetImagePath('Bm.Weapon.Expl' + IntToStr(RandomIntRange(0, 1)));
             Effect.SetDepth(ExplosionFrontDepth);
           end
           else
           begin
-            TgaiGI(Effect).SetImagePath('Bm.AB.expl0_s');
+            Effect.SetImagePath('Bm.AB.expl0_s');
             Effect.SetDepth(ExplosionBackDepth);
           end;
-          TgaiGI(Effect).SequenceIndex := 0;
+          Effect.SequenceIndex := 0;
           Effect.UpdateAutoGeometry;
-          Effect.SetSize(TgaiGI(Effect).GetContentSize);
+          Effect.SetSize(Effect.GetContentSize);
           Effect.SetOrigin(HalfPoint(Effect.ClientSize));
-          TgaiGI(Effect).CycleCompleteCallback := ExplosionComplete;
-          TgaiGI(Effect).RestartPlayback;
+          Effect.CycleCompleteCallback := ExplosionComplete;
+          Effect.RestartPlayback;
           Effect.SetActive(True);
           if Self is TabWall then
           begin
@@ -223,17 +223,17 @@ begin
           Effects.Add(Effect);
           if IsDepthBeforeSphereHorizon(GetProjectedPosition.Z) then
           begin
-            TgaiGI(Effect).SetImagePath('Bm.AB.hit00_f');
+            Effect.SetImagePath('Bm.AB.hit00_f');
             Effect.SetDepth(HitFrontDepth);
           end
           else
           begin
-            TgaiGI(Effect).SetImagePath('Bm.AB.hit00_s');
+            Effect.SetImagePath('Bm.AB.hit00_s');
             Effect.SetDepth(HitBackDepth);
           end;
-          TgaiGI(Effect).SequenceIndex := 0;
+          Effect.SequenceIndex := 0;
           Effect.UpdateAutoGeometry;
-          Effect.SetSize(TgaiGI(Effect).GetContentSize);
+          Effect.SetSize(Effect.GetContentSize);
           Effect.SetOrigin(
               Classes.Point(
                   Effect.ClientSize.X div 2
@@ -242,8 +242,8 @@ begin
                       + RandomIntRange(-EffectOriginSpread div 4, EffectOriginSpread div 4)
               )
           );
-          TgaiGI(Effect).CycleCompleteCallback := HitEffectComplete;
-          TgaiGI(Effect).RestartPlayback;
+          Effect.CycleCompleteCallback := HitEffectComplete;
+          Effect.RestartPlayback;
           Effect.SetActive(True);
           if PlayerArcadeShip = Self then
             SoundManager.PlaySound(ArcadeHitSounds[RandomIntRange(0, High(ArcadeHitSounds))]);
@@ -301,7 +301,7 @@ begin
         and (PlayerArcadeShip.Health > 0)
         and KellerFinishRequested then
     begin
-      for Index := 0 to 3 do
+      for Index := Low(KellerFragments) to High(KellerFragments) do
       begin
         KellerFragments[Index].ApplyDamage(KellerFragments[Index].Health, Self, False);
         KellerFragments[Index] := nil;
@@ -315,7 +315,7 @@ begin
     end
     else
     begin
-      for Index := 0 to 3 do
+      for Index := Low(KellerFragments) to High(KellerFragments) do
       begin
         Source := State;
         Source.BearingDegrees := 0;
@@ -424,7 +424,7 @@ var
   TargetPoint, SourcePoint: TPoint;
   Animation, FragmentAnimation: TgaiGI;
 begin
-  for Index := 0 to 3 do
+  for Index := Low(KellerFragments) to High(KellerFragments) do
   begin
     KellerFragments[Index] := nil;
     KellerFragmentDistances[Index] := 0;
@@ -444,7 +444,7 @@ begin
   Animation := ((Self as TabShip).Visual as TRuinsSE).Animation;
   Animation.CycleCompleteCallback := nil;
   (Self as TabShip).DetachVisual;
-  for Index := 0 to 3 do
+  for Index := Low(KellerFragments) to High(KellerFragments) do
   begin
     Ship := TabShip.Create;
     ab_Object_Add(Ship);

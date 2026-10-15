@@ -28,6 +28,7 @@ from ios import build_ios
 from pascal import build_paszlib, compile_pascal, pascal_flags
 from switch import build_switch
 from targets import ROOT, BuildConfig, add_build_arguments
+from windows import build_windows
 
 
 def build_macos(config: BuildConfig, rebuild: bool) -> Path:
@@ -226,6 +227,8 @@ def main() -> None:
         builders = {
             "linux": build_linux,
             "macos": build_macos,
+            "win32": build_windows,
+            "win64": build_windows,
             "wasm": build_wasm,
             "android": build_android,
             "switch": build_switch,

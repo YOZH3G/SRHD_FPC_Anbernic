@@ -176,9 +176,6 @@ begin
 end;
 
 procedure TEObjInfo.LoadFromStar(Star: TStar);
-const
-  NoDamageFlags = [dkEnergy..dkDroidBlock] - [dkEnergy..dkDroidBlock];
-  WearableItemTypes = [0..79] - [0..7, 9, 23..25, 35..38, 42, 69..72, 74..79];
 var
   Index, StatusCount: Integer;
   Planet: TPlanet;
@@ -263,7 +260,7 @@ begin
       Ships[Index].Speed := Ship.CalculateSpeed;
       Ships[Index].HullCapacity := Ship.GetHull.Weight;
       Ships[Index].HullPoints := Ship.GetHull.HullPoints;
-      Ships[Index].HullFragility := Ship.GetHull.GetFragilityFactor(NoDamageFlags);
+      Ships[Index].HullFragility := Ship.GetHull.GetFragilityFactor([]);
       if GetPlayer.CanResolveObjectWithScanner(Ship) or (GetPlayer = Ship) then
         Ships[Index].ScannerResolved := True
       else
@@ -335,10 +332,10 @@ begin
       Items[Index].ItemType := Item.ItemType;
       Items[Index].Weight := Item.Weight;
       Items[Index].Cost := Item.Cost;
-      if Byte(Item.ItemType) in WearableItemTypes then
+      if Item.ItemType in RepairableItemTypes then
       begin
         Items[Index].ConditionPercent := (Item as TEquipment).ConditionPercent;
-        Items[Index].Fragility := (Item as TEquipment).GetFragilityFactor(NoDamageFlags);
+        Items[Index].Fragility := (Item as TEquipment).GetFragilityFactor([]);
       end
       else
       begin
@@ -350,9 +347,9 @@ begin
         Stage := 31;
         Items[Index].ImagePath := 'GI,' + GetItemTypeBitmapPath(Item.ItemType);
         Items[Index].Name :=
-            WrapTextInColor(GoodsMarket[Byte(Item.ItemType)].DisplayName, InfoNameColorTag);
+            WrapTextInColor(GoodsMarket[Ord(Item.ItemType)].DisplayName, InfoNameColorTag);
         Items[Index].InfoText :=
-            LocalizedText('Items.Goods.Text.' + IntToStr(Byte(Item.ItemType) + 1));
+            LocalizedText('Items.Goods.Text.' + IntToStr(Ord(Item.ItemType) + 1));
         Items[Index].OwnerId := oiUninhabited;
       end
       else
@@ -392,7 +389,7 @@ begin
     SetLength(CustomSystemInfos, Star.CustomSystemInfos.Count);
     for Index := 0 to Star.CustomSystemInfos.Count - 1 do
     begin
-      CustomInfo := TCustomSystemInfo(Star.CustomSystemInfos[Index]);
+      CustomInfo := Star.CustomSystemInfos[Index];
       CustomSystemInfos[Index].Name := CustomInfo.Name;
       CustomSystemInfos[Index].ImagePath := CustomInfo.Icon;
       CustomSystemInfos[Index].Text := CustomInfo.Info;

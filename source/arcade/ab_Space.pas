@@ -638,7 +638,6 @@ procedure TabSpace.PopulateKellerEncounter;
 var
   Ship: TabShipAI;
   I, VisualIndex, Minimum, Maximum, Kind: Integer;
-  UnusedLocal: Integer; // Native unused scalar precedes managed temporaries.
 begin
   Ship := TabShipAI.Create;
   Ship.CreateRuinsVisual('Ruins.Keller', 128);

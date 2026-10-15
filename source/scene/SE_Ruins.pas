@@ -14,6 +14,13 @@ uses
   GI_MessageLoop,
   SE_Space;
 
+const
+  rsInitial = 0;
+  rsIdle = 1;
+  rsDisappearing = 2;
+  rsAppearing = 3;
+  rsPlayingDisappearance = 4;
+
 type
 
   TRuinsSE = class;
@@ -81,7 +88,7 @@ begin
   HasTransitionImages :=
       CacheDataRoot.FileExistsByPath(ImagePath + 'To')
           and CacheDataRoot.FileExistsByPath(ImagePath + 'From');
-  State := 0;
+  State := rsInitial;
   Alpha := 255;
 end;
 
@@ -99,17 +106,17 @@ begin
     if AnimShipFull or (CurrentScreenId = screenArcadeBattle) then
     begin
       Animation := TgaiGI.Create(Space.MapPanel);
-      if State = 3 then
+      if State = rsAppearing then
       begin
         Animation.SetImagePath(ImagePath + 'From');
         Animation.CycleCompleteCallback := AnimationCycleComplete;
         FrameIndex := 0;
       end
-      else if State = 2 then
+      else if State = rsDisappearing then
       begin
         Animation.SetImagePath(ImagePath + 'To');
         Animation.CycleCompleteCallback := AnimationCycleComplete;
-        State := 4;
+        State := rsPlayingDisappearance;
         FrameIndex := 0;
       end
       else
@@ -121,7 +128,7 @@ begin
       Animation.SetPositionModeW(True);
       Animation.SequenceIndex := 0;
       Animation.UpdateAutoGeometry;
-      if not (State in [2, 3]) then
+      if not (State in [rsDisappearing, rsAppearing]) then
         FrameIndex := Random(Animation.SequenceFrameCount - 1);
       Animation.SetSequenceFrame(FrameIndex);
       Animation.RestartPlayback;
@@ -139,12 +146,12 @@ begin
       StaticImage.SetPosition(TruncatePointF(Position));
       StaticImage.SetPositionModeW(True);
       StaticImage.SetAlpha(Math.Min(Alpha, AlphaLimit) shr Space.AlphaShift);
-      if State = 3 then
+      if State = rsAppearing then
       begin
         FadeTimer := Space.Screen.ScheduleCallbackTimer(20, 20, AdvanceFade);
         SetAlpha(0);
       end
-      else if State = 2 then
+      else if State = rsDisappearing then
       begin
         FadeTimer := Space.Screen.ScheduleCallbackTimer(20, 20, AdvanceFade);
         SetAlpha(255);
@@ -206,12 +213,12 @@ begin
   State := Value;
   if Animation <> nil then
   begin
-    if not (State in [0, 1]) then
+    if not (State in [rsInitial, rsIdle]) then
       Animation.CycleCompleteCallback := AnimationCycleComplete;
   end
   else if StaticImage <> nil then
   begin
-    if State in [2, 3] then
+    if State in [rsDisappearing, rsAppearing] then
       FadeTimer := Space.Screen.ScheduleCallbackTimer(20, 20, AdvanceFade)
     else if FadeTimer <> nil then
     begin
@@ -223,16 +230,16 @@ end;
 
 procedure TRuinsSE.AnimationCycleComplete(Sender: TObjectGI);
 begin
-  if State = 2 then
+  if State = rsDisappearing then
   begin
     Animation.SetImagePath(ImagePath + 'To');
     Animation.SequenceIndex := 0;
     Animation.UpdateAutoGeometry;
     Animation.SetSequenceFrame(0);
     Animation.RestartPlayback;
-    State := 4;
+    State := rsPlayingDisappearance;
   end
-  else if (State = 3) or (State = 1) then
+  else if (State = rsAppearing) or (State = rsIdle) then
   begin
     Animation.SetImagePath(ImagePath);
     Animation.SequenceIndex := 0;
@@ -240,7 +247,7 @@ begin
     Animation.SetSequenceFrame(0);
     Animation.RestartPlayback;
     Animation.CycleCompleteCallback := nil;
-    State := 1;
+    State := rsIdle;
   end
   else
   begin
@@ -251,12 +258,12 @@ end;
 
 procedure TRuinsSE.AdvanceFade(Timer: PCallbackTimerGI; UserData: PtrInt);
 begin
-  if State = 2 then
+  if State = rsDisappearing then
   begin
     SetAlpha(Math.Max(0, GetAlpha - 5));
     if GetAlpha = 0 then
     begin
-      State := 1;
+      State := rsIdle;
       DetachFromSpace;
     end;
   end
@@ -265,7 +272,7 @@ begin
     SetAlpha(Math.Min(255, GetAlpha + 5));
     if GetAlpha = 255 then
     begin
-      State := 1;
+      State := rsIdle;
       if FadeTimer <> nil then
       begin
         Space.Screen.CancelCallbackTimer(FadeTimer);

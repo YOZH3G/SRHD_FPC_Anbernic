@@ -8,6 +8,7 @@ uses
   EC_Buf,
   EC_Struct,
   SE_Space,
+  SE_Asteroid,
   aEFilm,
   aGalaxy;
 
@@ -25,7 +26,7 @@ type
     GravityForceFactor: Single;
     InverseMass: Single;
     MineralCount: Integer;
-    GraphObject: TObjectSE;
+    GraphObject: TAsteroidSE;
     FilmObject: TEFilmObj;
     constructor Create;
     destructor Destroy; override;
@@ -53,7 +54,6 @@ uses
   Classes,
   Math,
   SE_Process,
-  SE_Asteroid,
   Globals,
   aMyFunction,
   EC_Str,
@@ -153,7 +153,7 @@ end;
 
 procedure TAsteroid.Respawn;
 var
-  Angle, Radius, Speed, Reserved: Single; // Native reserves one additional scalar slot.
+  Angle, Radius, Speed: Single;
 begin
   Mass := 1000000;
   InverseMass := 1 / Mass;

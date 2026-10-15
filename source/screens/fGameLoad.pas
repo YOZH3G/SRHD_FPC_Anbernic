@@ -117,7 +117,7 @@ begin
   Galaxy := nil;
   AssetPreloadStarted := False;
   LoadThread := TThreadGameLoad.Create;
-  LoadThread.SetPriority(2);
+  LoadThread.SetPriority(ThreadPriorityBelowNormal);
   LoadThread.Start;
   ProgressTimer := ScheduleCallbackTimer(20, 20, UpdateLoadingProgress);
   LoadPanel.SetProgress(0);

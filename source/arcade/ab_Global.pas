@@ -635,8 +635,8 @@ procedure ClearMatrix4D(var Matrix: TMatrix4D);
 var
   I, J: Integer;
 begin
-  for I := 0 to 3 do
-    for J := 0 to 3 do
+  for I := Low(TMatrix4D) to High(TMatrix4D) do
+    for J := Low(TMatrix4D) to High(TMatrix4D) do
       Matrix[I, J] := 0;
 end;
 
@@ -733,7 +733,7 @@ var
     Sum: Double;
   begin
     FirstNonzero := -1;
-    for I := 0 to 3 do
+    for I := Low(TMatrix4D) to High(TMatrix4D) do
     begin
       Pivot := Permutations[I];
       Sum := Solution[Pivot];
@@ -745,10 +745,10 @@ var
         FirstNonzero := I;
       Solution[I] := Sum;
     end;
-    for I := 3 downto 0 do
+    for I := High(TMatrix4D) downto Low(TMatrix4D) do
     begin
       Sum := Solution[I];
-      for J := I + 1 to 3 do
+      for J := I + 1 to High(TMatrix4D) do
         Sum := Sum - Factors[I, J] * Solution[J];
       Solution[I] := Sum / Factors[I, I];
     end;
@@ -761,10 +761,10 @@ var
     Scales: array[0..3] of Double;
   begin
     PermutationSign := 1;
-    for I := 0 to 3 do
+    for I := Low(TMatrix4D) to High(TMatrix4D) do
     begin
       Big := 0;
-      for J := 0 to 3 do
+      for J := Low(TMatrix4D) to High(TMatrix4D) do
       begin
         Magnitude := Abs(Matrix[I, J]);
         if Magnitude > Big then
@@ -772,7 +772,7 @@ var
       end;
       Scales[I] := 1 / Big;
     end;
-    for J := 0 to 3 do
+    for J := Low(TMatrix4D) to High(TMatrix4D) do
     begin
       I := 0;
       while I < J do
@@ -789,7 +789,7 @@ var
       end;
       Pivot := 0;
       Big := 0;
-      for I := J to 3 do
+      for I := J to High(TMatrix4D) do
       begin
         Sum := Matrix[I, J];
         K := 0;
@@ -808,7 +808,7 @@ var
       end;
       if J <> Pivot then
       begin
-        for K := 0 to 3 do
+        for K := Low(TMatrix4D) to High(TMatrix4D) do
         begin
           Temp := Matrix[Pivot, K];
           Matrix[Pivot, K] := Matrix[J, K];
@@ -820,10 +820,10 @@ var
       Permutations[J] := Pivot;
       if Matrix[J, J] = 0 then
         Matrix[J, J] := 1E-20;
-      if J <> 3 then
+      if J <> High(TMatrix4D) then
       begin
         Temp := 1 / Matrix[J, J];
-        for I := J + 1 to 3 do
+        for I := J + 1 to High(TMatrix4D) do
           Matrix[I, J] := Matrix[I, J] * Temp;
       end;
     end;
@@ -832,13 +832,13 @@ var
 begin
   Factors := Matrix;
   DecomposeMatrix4DLu(Factors, PermutationSign);
-  for J := 0 to 3 do
+  for J := Low(TMatrix4D) to High(TMatrix4D) do
   begin
-    for I := 0 to 3 do
+    for I := Low(TMatrix4D) to High(TMatrix4D) do
       Solution[I] := 0;
     Solution[J] := 1;
     SolveMatrix4DLuSystem(Factors);
-    for I := 0 to 3 do
+    for I := Low(TMatrix4D) to High(TMatrix4D) do
       Result[I, J] := Solution[I];
   end;
 end;
@@ -848,9 +848,9 @@ var
   I, J, K: Integer;
 begin
   ClearMatrix4D(Result);
-  for I := 0 to 3 do
-    for J := 0 to 3 do
-      for K := 0 to 3 do
+  for I := Low(TMatrix4D) to High(TMatrix4D) do
+    for J := Low(TMatrix4D) to High(TMatrix4D) do
+      for K := Low(TMatrix4D) to High(TMatrix4D) do
         Result[I, J] := Left[K, J] * Right[I, K] + Result[I, J];
 end;
 
