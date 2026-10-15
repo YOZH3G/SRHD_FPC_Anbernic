@@ -8,7 +8,8 @@ cd "$gamedir" || exit 1
 # MainUI discards app output.
 exec >"$gamedir/log.txt" 2>&1
 
-if [ "$(getconf LONG_BIT 2>/dev/null)" != 64 ]; then
+# BusyBox on these firmwares has no getconf; the game needs the AArch64 loader.
+if [ ! -e "${TRIMUI_AARCH64_LOADER:-/lib/ld-linux-aarch64.so.1}" ]; then
     echo "This package requires a 64-bit TrimUI firmware."
     exit 1
 fi

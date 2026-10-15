@@ -235,7 +235,6 @@ class TrimUILauncherTests(unittest.TestCase):
             fake_bin = root / "bin"
             fake_bin.mkdir()
             scripts = {
-                fake_bin / "getconf": f'#!/bin/sh\necho "{bits}"\n',
                 port / "check-platform.aarch64": '#!/bin/sh\necho "PROBE:$LD_LIBRARY_PATH"\n',
                 port / "gptokeyb.aarch64": '#!/bin/sh\necho "GPTOKEYB:$*"\nsleep 5\n',
                 port / "Rangers.aarch64": '#!/bin/sh\nsleep 0.2\necho "EXEC:$0"\n'
@@ -248,8 +247,16 @@ class TrimUILauncherTests(unittest.TestCase):
             env = os.environ.copy()
             # CrossMix exports its own libraries, a GLVND libEGL among them,
             # and PortMaster's controller mapping.
+            loader = root / "lib/ld-linux-aarch64.so.1"
+            if bits == "64":
+                loader.parent.mkdir()
+                loader.touch()
+            # Only the commands every TrimUI BusyBox firmware has; getconf is not one of them.
+            for command in ("dirname", "kill", "mkdir", "sleep", "true", "uname"):
+                (fake_bin / command).symlink_to(shutil.which(command))
             env.update(
-                PATH=f"{fake_bin}:{env['PATH']}",
+                PATH=str(fake_bin),
+                TRIMUI_AARCH64_LOADER=str(loader),
                 LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib",
                 SDL_GAMECONTROLLERCONFIG="crossmix-controller",
                 TRIMUI_SYSTEM_LIBRARY_DIR=str(system),
@@ -259,7 +266,7 @@ class TrimUILauncherTests(unittest.TestCase):
             for name in ("SDL_VIDEO_EGL_DRIVER", "SDL_VIDEO_GL_DRIVER"):
                 env.pop(name, None)
             result = subprocess.run(
-                [*shell, str(launch)], cwd="/", env=env, capture_output=True, text=True
+                [shutil.which(shell[0]), *shell[1:], str(launch)], cwd="/", env=env, capture_output=True, text=True
             )
             log = (port / "log.txt").read_text() if (port / "log.txt").exists() else ""
             # gptokeyb must not outlive the game, or it keeps grabbing the pad in MainUI.
