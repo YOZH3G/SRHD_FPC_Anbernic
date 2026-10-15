@@ -133,21 +133,35 @@ provisioning profile before installation. Copy game files to
 
 ## Anbernic Linux cross builds
 
-Initialize submodules and bootstrap ARMHF/AArch64 compilers and RTL from the
-pinned `vendor/fpc` revision. A matching Linux sysroot and Clang/binutils wrappers
-are required; `--fpc-source` points at the bootstrapped source/build tree.
-The toolchain must also provide `<triplet>-fpcres` (the FPC resource compiler),
-and its sysroot must contain SDL2 ≥ 2.26 plus Ogg/Vorbis development libraries.
+On Ubuntu 24.04 x86_64, `tools/anbernic_sdk.sh` creates everything the cross
+build needs: Ubuntu 20.04 ARMHF/AArch64 sysroots, Clang 19 and binutils wrappers,
+SDL 2.32.4 for linking, `libevdev` for gptokeyb, and FPC cross compilers bootstrapped
+from the pinned `vendor/fpc`. Its header lists the host packages; debootstrap
+needs root or sudo. `sysroot` and `fpc` build the two halves separately; rebuild
+`fpc` whenever the `vendor/fpc` pin changes.
 
 ```sh
-python tools/build_linux.py --arch aarch64 \
-  --sysroot /path/to/arm64/root --toolchain /path/to/arm64/bin \
-  --fpc-source /path/to/fpc-aarch64/source --rebuild
-python tools/build_linux.py --arch armhf \
-  --sysroot /path/to/armhf/root --toolchain /path/to/armhf/bin \
-  --fpc-source /path/to/fpc-arm/source --rebuild
-python tools/package_anbernic.py --sdk-root /path/to/sdk --output /path/to/packages
+git submodule update --init --recursive
+tools/anbernic_sdk.sh ~/anbernic-sdk
+python tools/build_linux.py --arch aarch64 --sysroot ~/anbernic-sdk/arm64/root \
+  --toolchain ~/anbernic-sdk/arm64/bin --fpc-source ~/anbernic-sdk/fpc/arm64 --rebuild
+python tools/build_linux.py --arch armhf --sysroot ~/anbernic-sdk/armhf/root \
+  --toolchain ~/anbernic-sdk/armhf/bin --fpc-source ~/anbernic-sdk/fpc/armhf --rebuild
+python tools/package_anbernic.py --sdk-root ~/anbernic-sdk --output .local/dist
+PATH=~/anbernic-sdk/arm64/bin:~/anbernic-sdk/armhf/bin:$PATH \
+  python tools/tests/check_packages.py .local/dist --commit "$(git rev-parse HEAD)"
 ```
+
+Keep the output under `.local/`: packages record whether the tree was clean.
+`check_packages.py` requires identical game binaries in every ZIP, one clean
+commit, glibc imports no newer than 2.29, and no SDL2 or game files.
+
+The [Anbernic and TrimUI packages](.github/workflows/anbernic.yml) workflow runs
+these steps on every push and pull request, caching the SDK by the script's hash
+and the FPC pin, and uploads the ZIPs as an artifact. Run it manually from the
+Actions tab with `release` set to `draft` or `publish` to release exactly those
+ZIPs from `main`. It cannot run the scenarios below, which need licensed game
+data; run them locally before publishing.
 
 Outputs are `.local/anbernic/arm64/Rangers` and `armhf/Rangers`. SDL2 ≥ 2.26 is
 provided by firmware; OKGF, Ogg/Vorbis and codecs are bundled. The port uses
