@@ -57,6 +57,9 @@ build_sysroot() {
     for deb in "$root"/var/cache/apt/archives/*.deb; do
         $SUDO dpkg -x "$deb" "$root"
     done
+    # Device nodes and the downloaded packages are not needed to build, and the
+    # nodes cannot be restored from a cache without root.
+    $SUDO rm -rf "$root"/dev/* "$root"/var/cache/apt/archives/*.deb
     $SUDO chown -R "$(id -u):$(id -g)" "$root"
     # Absolute links would resolve against the host; make them sysroot-relative.
     find "$root" -lname '/*' | while read -r link; do
