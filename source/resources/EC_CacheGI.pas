@@ -59,6 +59,8 @@ procedure TCGiControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
   Control: TCGiControlEC;
 begin
+  if not HasEmptyCacheKey then
+    RecordCacheWarmupKey('GI', CacheKey);
   if RetainCount > 0 then
     Exit;
   if BoundData <> nil then

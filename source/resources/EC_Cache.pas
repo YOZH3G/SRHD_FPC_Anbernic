@@ -89,6 +89,13 @@ type
     procedure QueueNamedLoadIfMissing(PendingLoads: TList; const CacheKind: WideString; const Key: WideString);
   end;
 
+var
+  // While set, resource queueing also records each sprite it is asked for,
+  // loaded or not, as "kind<Tab>key", so a screen can prepare their textures.
+  CacheWarmupKeys: TStringList = nil;
+
+procedure RecordCacheWarmupKey(const Kind, Key: WideString);
+
 procedure EvictMainMenuShipCachesWhenAddressSpaceHigh;
 
 procedure EvictRuinsAndGovernmentCaches;
@@ -620,6 +627,12 @@ begin
   CacheLock.Leave;
 end;
 
+procedure RecordCacheWarmupKey(const Kind, Key: WideString);
+begin
+  if (CacheWarmupKeys <> nil) and (Key <> '') then
+    CacheWarmupKeys.Add(UTF8Encode(Kind + #9 + Key));
+end;
+
 procedure TCacheEC.QueueNamedLoadIfMissing(PendingLoads: TList; const CacheKind: WideString; const Key: WideString);
 var
   AlphaBitmap: TCAlphaBitmapControlEC;
@@ -630,6 +643,8 @@ var
   Gi: TCGiControlEC;
   PlanetTempl: TCPlanetTemplControlEC;
 begin
+  if (CacheKind = 'GAI') or (CacheKind = 'GI') then
+    RecordCacheWarmupKey(CacheKind, Key);
   if CacheKind = 'Alpha' then
   begin
     if FindDataByKeyAndClass(Key, TCAlphaBitmapEC) = nil then

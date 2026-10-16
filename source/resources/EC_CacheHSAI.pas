@@ -74,6 +74,8 @@ procedure TCHSAIControlEC.QueueLoadIfMissing(PendingLoads: TList);
 var
   Control: TCHSAIControlEC;
 begin
+  if not HasEmptyCacheKey then
+    RecordCacheWarmupKey('HSAI', CacheKey);
   if RetainCount > 0 then
     Exit;
   if BoundData <> nil then

@@ -29,7 +29,8 @@ uses
   fPanelLoad,
   aPath,
   ab_Item,
-  ab_Zone;
+  ab_Zone,
+  EC_Cache;
 
 type
 
@@ -100,6 +101,12 @@ type
     FrameStatsCounter, FrameStatsFrames: QWord;
     FrameStatsTick: Cardinal;
     FrameStatsActive: Boolean;
+    // Sprites of the current battle whose textures are still being prepared,
+    // as "kind<Tab>key"; see StepTextureWarmup.
+    WarmupKeys: TStringList;
+    WarmupIndex, WarmupFrame, WarmupTextures: Integer;
+    WarmupControl: TCacheControlEC;
+    WarmupStartTick: QWord;
     WorldLines: TPolyLineGI;
     UpdateTimer: PCallbackTimerGI;
     WorldCenterX: Integer;
@@ -154,6 +161,8 @@ type
     procedure DrawFrame; override;
     procedure UpdateMobileControls;
     procedure UpdateFrameStats(Finish: Boolean);
+    procedure StopTextureWarmup;
+    procedure StepTextureWarmup(BudgetMs: Cardinal);
     function HandleGamepadArcadeKey(VirtualKey: Cardinal): Boolean;
     procedure SelectNextPrimaryWeapon;
     procedure ApplyMobileSteering;
@@ -300,7 +309,11 @@ uses
   aPlanet,
   aRuins,
   SE_Star,
-  SE_Planet;
+  SE_Planet,
+  EC_CacheGAI,
+  EC_CacheGI,
+  EC_CacheHSAI,
+  Direct3D9;
 
 constructor TfAB.Create;
 begin
@@ -1880,6 +1893,7 @@ end;
 
 procedure TfAB.ClearBattle;
 begin
+  StopTextureWarmup;
   PlayerArcadeShip := nil;
   ab_Object_Clear;
   ClearGrid;
@@ -2816,10 +2830,23 @@ begin
   SphereCameraDistance := SphereRadius + SphereFarCameraOffset;
   TransitionSpeed := 500;
   UpdateWeaponPanel;
+  StopTextureWarmup;
+  if HardwareRenderingEnabled and not TextureManagerDisabled then
+  begin
+    CacheWarmupKeys := TStringList.Create;
+    CacheWarmupKeys.Sorted := True;
+    CacheWarmupKeys.Duplicates := dupIgnore;
+  end;
   PendingLoads := TList.Create;
-  QueueArcadeLoadingAssets(PendingLoads, ContentPanel);
+  try
+    QueueArcadeLoadingAssets(PendingLoads, ContentPanel);
+  finally
+    WarmupKeys := CacheWarmupKeys;
+    CacheWarmupKeys := nil;
+  end;
   LoadPendingAssets(PendingLoads);
   PendingLoads.Free;
+  WarmupStartTick := GetTickCount64;
   RefreshTimerTick;
 end;
 
@@ -4165,6 +4192,129 @@ begin
   end;
 end;
 
+procedure TfAB.StopTextureWarmup;
+begin
+  if WarmupControl <> nil then
+  begin
+    WarmupControl.Release;
+    WarmupControl.Free;
+    WarmupControl := nil;
+  end;
+  if WarmupKeys <> nil then
+  begin
+    WarmupKeys.Free;
+    WarmupKeys := nil;
+  end;
+  WarmupIndex := 0;
+  WarmupFrame := 0;
+  WarmupTextures := 0;
+end;
+
+procedure TfAB.StepTextureWarmup(BudgetMs: Cardinal);
+var
+  StartTick: QWord;
+  Kind, Key: WideString;
+  Split, Count: Integer;
+  Texture: IDirect3DTexture9;
+  Gai: TCGaiEC;
+begin
+  // A battle otherwise decodes each sprite frame and uploads it the first time
+  // it is drawn: hundreds of textures in the first seconds of combat. Decode
+  // and upload them ahead, within a part of the texture budget so that the
+  // budget eviction does not release them again before they are drawn.
+  StartTick := GetTickCount64;
+  while GetTickCount64 - StartTick < BudgetMs do
+  begin
+    if (WarmupIndex >= WarmupKeys.Count) or (ResidentTextureBytes >= ResidentTextureBudget div 10 * 6) then
+    begin
+      LogGameMessage(
+          gllInfo,
+          'performance',
+          Format(
+              'Arcade sprite warmup; sprites=%d of %d; textures=%d; seconds=%.1f; resident textures=%d MiB',
+              [
+                  Min(WarmupIndex, WarmupKeys.Count),
+                  WarmupKeys.Count,
+                  WarmupTextures,
+                  (GetTickCount64 - WarmupStartTick) / 1000,
+                  ResidentTextureBytes shr 20
+              ]
+          )
+      );
+      StopTextureWarmup;
+      Exit;
+    end;
+    Split := Pos(#9, WarmupKeys[WarmupIndex]);
+    Kind := UTF8Decode(Copy(WarmupKeys[WarmupIndex], 1, Split - 1));
+    Key := UTF8Decode(Copy(WarmupKeys[WarmupIndex], Split + 1, MaxInt));
+    if WarmupControl = nil then
+    begin
+      if Kind = 'GAI' then
+        WarmupControl := TCGaiControlEC.Create
+      else if Kind = 'GI' then
+        WarmupControl := TCGiControlEC.Create
+      else
+        WarmupControl := TCHSAIControlEC.Create;
+      GlobalCache.ResetControl(WarmupControl);
+      WarmupControl.SetCacheKey(Key);
+      WarmupFrame := 0;
+    end;
+    Texture := nil;
+    Count := 0;
+    try
+      if Kind = 'GAI' then
+        Gai := AcquireCachedGai(WarmupControl)
+      else if Kind = 'GI' then
+        AcquireCachedGi(WarmupControl)
+      else
+        AcquireCachedHSAI(WarmupControl);
+      try
+        if Kind = 'GAI' then
+        begin
+          // Animations with playback flags are composed on the CPU instead.
+          if not Gai.HasPlaybackFlags then
+          begin
+            Count := Gai.GetFrameCount;
+            if WarmupFrame < Count then
+              Texture := Gai.GetOrCreateFrameSurface(WarmupFrame);
+          end;
+        end
+        else if Kind = 'GI' then
+        begin
+          Count := 1;
+          Texture := TCGiEC(WarmupControl.BoundData).GetOrCreateSurface(0);
+        end
+        else
+        begin
+          Count := TCHSAIEC(WarmupControl.BoundData).GetFrameCount;
+          if WarmupFrame < Count then
+            Texture := TCHSAIEC(WarmupControl.BoundData).GetOrCreateFrameSurface(WarmupFrame);
+        end;
+      finally
+        WarmupControl.Release;
+      end;
+    except
+      on E: Exception do
+      begin
+        LogGameMessage(gllWarning, 'performance', 'Arcade sprite warmup skipped ' + Key + ': ' + E.Message);
+        Count := 0;
+      end;
+    end;
+    if Texture <> nil then
+    begin
+      Texture.PreLoad;
+      Inc(WarmupTextures);
+    end;
+    Inc(WarmupFrame);
+    if WarmupFrame >= Count then
+    begin
+      WarmupControl.Free;
+      WarmupControl := nil;
+      Inc(WarmupIndex);
+    end;
+  end;
+end;
+
 procedure TfAB.UpdateFrameStats(Finish: Boolean);
 var
   Running: Boolean;
@@ -4282,6 +4432,12 @@ begin
     Exit;
   Inc(ArcadeFrameCount);
   UpdateFrameStats(False);
+  // Prepare sprites mostly while the camera flies in, a little during combat.
+  if WarmupKeys <> nil then
+    if ArcadeViewMode = 3 then
+      StepTextureWarmup(12)
+    else
+      StepTextureWarmup(3);
   if (ArcadeViewMode = 0) and (CargoPickupZone <> nil) and (PlayerArcadeShip <> nil) then
   begin
     CargoPickupZone.Longitude := PlayerArcadeShip.State.LongitudeDegrees;

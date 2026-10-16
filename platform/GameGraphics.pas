@@ -91,6 +91,8 @@ type
     function LockRect(Level: Cardinal; out LockedRect: TD3DLockedRect; Rect: PRect; Flags: Cardinal): LongInt; stdcall;
     function UnlockRect(Level: Cardinal): LongInt; stdcall;
     function AddDirtyRect(Rect: PRect): LongInt; stdcall;
+    // Uploads pending pixels now instead of at the first draw.
+    procedure PreLoad; stdcall; override;
   end;
   TSDLSurface = class(TSDLResourceBase, IDirect3DSurface9, ISDLImage)
     Image: ISDLImage;
@@ -782,6 +784,12 @@ begin
   Storage.Unlock;
   Result := 0
 end;
+procedure TSDLTexture.PreLoad;
+begin
+  if not Storage.Locked then
+    Storage.Upload;
+end;
+
 function TSDLTexture.AddDirtyRect(Rect: PRect): LongInt;
 begin
   Storage.Dirty := True;
