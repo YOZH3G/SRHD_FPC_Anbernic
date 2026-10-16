@@ -8,6 +8,10 @@ uses
 function CreateGameGraphics: IDirect3D9;
 // Native raster copy for frozen backgrounds; surface locks still expose logical pixels.
 function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture9;
+// Marks a texture whose owner rebuilds it from resources instead of locking it
+// again. With GameGraphicsDiscardUploadedPixels set, its CPU pixel copy is
+// freed after each upload; a later lock starts from transparent pixels.
+procedure MarkGameGraphicsTextureRebuildable(Texture: IDirect3DTexture9);
 type
   TGameGraphicsTransform = record
     ScaleX, ScaleY, OffsetX, OffsetY: Single;
@@ -17,6 +21,9 @@ const
   GameGraphicsIdentityTransform: TGameGraphicsTransform = (ScaleX: 1; ScaleY: 1; OffsetX: 0; OffsetY: 0; PixelAligned: False);
 var
   GameGraphicsTransform: TGameGraphicsTransform;
+  // Unified-memory handhelds hold every uploaded texture twice: in Pascal
+  // pixels and in the GPU driver. Rebuildable textures can drop the first copy.
+  GameGraphicsDiscardUploadedPixels: Boolean = False;
 implementation
 uses
   GameGraphicsBase,
@@ -46,7 +53,7 @@ type
     TextureFormat: Cardinal;
     SamplingMode, BlendMode: Integer;
     Generation, DisplayGeneration: LongInt;
-    Dirty, Locked, ReadOnly, Screen, Target: Boolean;
+    Dirty, Locked, ReadOnly, Screen, Target, Rebuildable: Boolean;
     ClipCached: Boolean;
     CachedClip: TRect;
     CachedClipTransform: TGameGraphicsTransform;
@@ -55,6 +62,7 @@ type
     destructor Destroy; override;
     function Storage: TSDLStorage;
     procedure Realize;
+    procedure EnsurePixels;
     procedure SetSampling(Mode: Integer);
     procedure SetBlend(Mode: Integer);
     function UpdateScreenRaster: Boolean;
@@ -394,6 +402,9 @@ begin
     // discard any old readback and let the game redraw their lost contents.
     if Target then
       FillChar(Pixels^, SizeUInt(Pitch) * Desc.Height, 0);
+    // Discarded pixels cannot restore the lost handle; the texture owner
+    // rebuilds rebuildable textures after a device reset.
+    EnsurePixels;
     Dirty := True;
   end;
   if Handle <> nil then
@@ -421,6 +432,12 @@ begin
   Generation := CurrentGeneration;
   SamplingMode := -1;
   BlendMode := -1;
+end;
+
+procedure TSDLStorage.EnsurePixels;
+begin
+  if Pixels = nil then
+    Pixels := AllocMem(SizeUInt(Pitch) * Desc.Height);
 end;
 
 procedure TSDLStorage.SetSampling(Mode: Integer);
@@ -451,6 +468,7 @@ begin
   Realize;
   if Dirty then
   begin
+    EnsurePixels;
     Texture := Handle;
     if (RasterWidth <> Integer(Desc.Width)) or (RasterHeight <> Integer(Desc.Height)) then
     begin
@@ -490,6 +508,11 @@ begin
       end;
     end;
     Dirty := False;
+    if Rebuildable and GameGraphicsDiscardUploadedPixels and not Target and not Screen then
+    begin
+      FreeMem(Pixels);
+      Pixels := nil;
+    end;
   end;
 end;
 
@@ -645,6 +668,7 @@ begin
     X := Rect.Left;
     Y := Rect.Top;
   end;
+  EnsurePixels;
   if Target then
     ReadPixels(Pixels, Pitch, Desc.Format);
   if Desc.Format = D3DFMT_R5G6B5 then
@@ -703,6 +727,12 @@ begin
   Require(Level = 0, 'mip level');
   Desc := Storage.Desc;
   Result := 0
+end;
+
+procedure MarkGameGraphicsTextureRebuildable(Texture: IDirect3DTexture9);
+begin
+  if Texture <> nil then
+    ImageOf(Texture).Rebuildable := True;
 end;
 
 function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture9;
@@ -944,6 +974,8 @@ begin
   A := ImageOf(Source);
   B := ImageOf(Dest);
   Require((A.Desc.Width = B.Desc.Width) and (A.Desc.Height = B.Desc.Height) and (A.Desc.Format = B.Desc.Format), 'texture copy dimensions');
+  A.EnsurePixels;
+  B.EnsurePixels;
   Move(A.Pixels^, B.Pixels^, SizeUInt(A.Pitch) * A.Desc.Height);
   B.Dirty := True;
   Result := 0;
@@ -956,6 +988,7 @@ begin
   A := ImageOf(Source);
   B := ImageOf(Dest);
   Require(A.Target and not B.Target and (A.Desc.Width = B.Desc.Width) and (A.Desc.Height = B.Desc.Height), 'readback dimensions');
+  B.EnsurePixels;
   A.ReadPixels(B.Pixels, B.Pitch, B.Desc.Format);
   B.Dirty := True;
   Result := 0;

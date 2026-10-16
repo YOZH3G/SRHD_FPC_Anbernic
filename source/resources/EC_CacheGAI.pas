@@ -161,7 +161,10 @@ var
   Frame: TgiGR;
 begin
   if FrameSurfaceCache = nil then
+  begin
     FrameSurfaceCache := CreateTextureCache;
+    FrameSurfaceCache.Rebuildable := True;
+  end;
   Texture := FrameSurfaceCache.GetSurface(FrameIndex);
   if Texture = nil then
   begin

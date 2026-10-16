@@ -38,6 +38,9 @@ type
     SurfaceCount: Integer;
     Surfaces: array of IDirect3DTexture9;
     ResidentBytes: Cardinal;
+    // Set by resource caches that decode surfaces again after a release and
+    // never lock them after filling, so their CPU pixel copies can be freed.
+    Rebuildable: Boolean;
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
@@ -197,11 +200,18 @@ implementation
 
 uses
   GameDiagnostics,
+  GameGraphics,
   GameSystem,
+  GameWindow,
   EC_Mem,
   GR_Main,
   EC_Str,
   Math;
+
+var
+  SeenTextureGeneration: LongInt = 0;
+  LastBudgetEvictionTick: Cardinal = 0;
+  BudgetEvictionNow: Cardinal = 0;
 
 function CreateTextureCache: TTextureGR;
 var
@@ -247,6 +257,56 @@ begin
   end;
 end;
 
+function CompareTextureAge(A, B: Pointer): Integer;
+var
+  AgeA, AgeB: Cardinal;
+begin
+  AgeA := BudgetEvictionNow - TTextureGR(A).LastUseTick;
+  AgeB := BudgetEvictionNow - TTextureGR(B).LastUseTick;
+  if AgeA > AgeB then
+    Result := -1
+  else if AgeA < AgeB then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+procedure ReleaseLeastRecentTextures(NowTick: Cardinal);
+var
+  Candidates: TList;
+  Index: Integer;
+  Texture: TTextureGR;
+  Target: Cardinal;
+begin
+  // The idle sweep keeps every texture drawn in the last 20 seconds, so a
+  // system full of ships can hold far more than the budget. Without swap that
+  // ends in the kernel killing the game. Release the least recently drawn
+  // textures until the budget fits again, sparing those of the last second.
+  if NowTick - LastBudgetEvictionTick < 250 then
+    Exit;
+  LastBudgetEvictionTick := NowTick;
+  BudgetEvictionNow := NowTick;
+  Target := ResidentTextureBudget - ResidentTextureBudget div 8;
+  Candidates := TList.Create;
+  try
+    for Index := 0 to TextureCaches.Count - 1 do
+    begin
+      Texture := TextureCaches[Index];
+      if (Texture.ResidentBytes > 0) and (NowTick - Texture.LastUseTick > 1000) then
+        Candidates.Add(Texture);
+    end;
+    Candidates.Sort(@CompareTextureAge);
+    Index := 0;
+    while (ResidentTextureBytes > Target) and (Index < Candidates.Count) do
+    begin
+      TTextureGR(Candidates[Index]).ReleaseSurfaces;
+      Inc(Index);
+    end;
+  finally
+    Candidates.Free;
+  end;
+end;
+
 procedure EvictTextureCaches(Force: Boolean);
 var
   i: Integer;
@@ -283,6 +343,8 @@ begin
   if (ResidentTextureBytes > ResidentTextureBudget) or (AvailableBytes < $1400000) then
     if TextureIdleSeconds > 20 then
       Dec(TextureIdleSeconds, 10);
+  if GameGraphicsDiscardUploadedPixels and (ResidentTextureBytes > ResidentTextureBudget) then
+    ReleaseLeastRecentTextures(NowTick);
 end;
 
 function GR_CreateTexture(Width, Height: Integer; Format, Pool: Cardinal): IDirect3DTexture9;
@@ -453,6 +515,13 @@ end;
 function TTextureGR.GetSurface(Index: Integer): IDirect3DTexture9;
 begin
   Result := nil;
+  // A device reset loses rebuildable textures whose pixels were discarded.
+  // Release every cache so owners decode their surfaces again.
+  if GameGraphicsDiscardUploadedPixels and (SeenTextureGeneration <> GameTextureGeneration) then
+  begin
+    SeenTextureGeneration := GameTextureGeneration;
+    ReleaseAllTextureSurfaces;
+  end;
   if (Index < 0) or (Index >= SurfaceCount) then
     Exit;
   LastUseTick := GameTickCount;
@@ -490,6 +559,8 @@ begin
       SubtractResidentTextureBytes(ByteCount);
     end;
   end;
+  if Rebuildable then
+    MarkGameGraphicsTextureRebuildable(Value);
   ByteCount := GetTextureByteSize(Value);
   Inc(ResidentBytes, ByteCount);
   AddResidentTextureBytes(ByteCount);
