@@ -4215,9 +4215,16 @@ begin
       GlobalCache.ResidentByteLimit := Min(Int64(Cardinal(MemoryStatus.AvailVirtual) div 3), Int64($18000000));
   // 64-bit address space is never short, so the automatic budget above is
   // always 384 MiB. Without swap that exhausts 1 GiB handhelds; an explicit
-  // CacheSize still applies as configured.
+  // CacheSize still applies as configured. A quarter of memory holds the main
+  // menu and the arcade menu together, so returning from one to the other does
+  // not decode them again. When free memory runs low the cache shrinks back
+  // towards a sixth of memory, the earlier fixed budget.
   if (GlobalCache.ResidentByteLimit = $18000000) and (MemoryStatus.TotalPhys > 0) then
-    GlobalCache.ResidentByteLimit := Min(Int64(GlobalCache.ResidentByteLimit), Int64(MemoryStatus.TotalPhys div 6));
+  begin
+    GlobalCache.ResidentByteLimit := Min(Int64(GlobalCache.ResidentByteLimit), Int64(MemoryStatus.TotalPhys div 4));
+    GlobalCache.MemoryPressureLimit := True;
+    GlobalCache.MemoryPressureFloor := Min(GlobalCache.ResidentByteLimit, Int64(MemoryStatus.TotalPhys div 6));
+  end;
   LogGameMessage(gllInfo, 'config', 'Cache Size=' + IntToStr(GlobalCache.ResidentByteLimit div 1024) + ' KB');
   if UserSettingsConfig.CountParams('Brightness') > 0 then
     DisplayBrightness := ParseDecimalToSingleW(UserSettingsConfig.GetParamByPathOrMarker('Brightness'));
