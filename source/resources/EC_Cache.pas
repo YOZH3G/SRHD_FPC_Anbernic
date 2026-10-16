@@ -68,6 +68,12 @@ type
     DataRoot: TDataEC;
     ResidentBytes: Integer;
     ResidentByteLimit: Integer;
+    // Set for small-memory devices: the limit then also gives way when the
+    // system runs low on free memory, so a large limit cannot exhaust it.
+    MemoryPressureLimit: Boolean;
+    MemoryPressureFloor: Integer;
+    LastMemoryCheckTick: Cardinal;
+    LastAvailableBytes: QWord;
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
@@ -79,6 +85,7 @@ type
     procedure TouchData(Data: TCacheDataEC);
     function OpenDataBuffer(const Path: WideString): TBufEC;
     procedure TrimToBudget(BudgetBytes: Integer);
+    function EffectiveByteLimit: Integer;
     procedure QueueNamedLoadIfMissing(PendingLoads: TList; const CacheKind: WideString; const Key: WideString);
   end;
 
@@ -94,6 +101,7 @@ implementation
 
 uses
   GameSystem,
+  Math,
   EC_CacheSound,
   EC_CacheBitmap,
   EC_CacheTBitmap,
@@ -254,7 +262,7 @@ begin
     end;
   end;
   Result := BoundData;
-  GlobalCache.TrimToBudget(GlobalCache.ResidentByteLimit);
+  GlobalCache.TrimToBudget(GlobalCache.EffectiveByteLimit);
 end;
 
 function TCacheControlEC.AcquireDataFromDirectKey(CacheDataClass: TCacheDataClass): TCacheDataEC;
@@ -328,7 +336,7 @@ begin
     end;
   end;
   Result := BoundData;
-  GlobalCache.TrimToBudget(GlobalCache.ResidentByteLimit);
+  GlobalCache.TrimToBudget(GlobalCache.EffectiveByteLimit);
 end;
 
 function TCacheControlEC.AcquireData: TCacheDataEC;
@@ -549,6 +557,31 @@ begin
   Buffer := TBufEC.Create;
   DataRoot.ReadBufferByPath(Path, Buffer);
   Result := Buffer;
+end;
+
+function TCacheEC.EffectiveByteLimit: Integer;
+const
+  ReserveBytes = 160 shl 20;
+var
+  Status: TGameMemoryStatus;
+  NowTick: Cardinal;
+begin
+  Result := ResidentByteLimit;
+  if not MemoryPressureLimit then
+    Exit;
+  // Reading the system figures costs a file read; twice a second is enough.
+  NowTick := GameTickCount;
+  if (LastMemoryCheckTick = 0) or (NowTick - LastMemoryCheckTick >= 500) then
+  begin
+    LastMemoryCheckTick := NowTick;
+    Status.Length := SizeOf(Status);
+    if QueryGameMemory(Status) then
+      LastAvailableBytes := Status.AvailPhys
+    else
+      LastAvailableBytes := High(QWord);
+  end;
+  if LastAvailableBytes < ReserveBytes then
+    Result := Max(MemoryPressureFloor, Min(Result, ResidentBytes - Integer(ReserveBytes - LastAvailableBytes)));
 end;
 
 procedure TCacheEC.TrimToBudget(BudgetBytes: Integer);
