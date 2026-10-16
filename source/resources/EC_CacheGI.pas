@@ -131,7 +131,10 @@ var
   end;
 begin
   if SurfaceCache = nil then
+  begin
     SurfaceCache := CreateTextureCache;
+    SurfaceCache.Rebuildable := True;
+  end;
   Texture := SurfaceCache.GetSurface(SurfaceIndex);
   if (Texture = nil) and (Image <> nil) and not UsesTiledSurfaces then
   begin

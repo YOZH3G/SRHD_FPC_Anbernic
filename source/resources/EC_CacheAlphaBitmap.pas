@@ -172,7 +172,10 @@ var
   Texture: IDirect3DTexture9;
 begin
   if SurfaceCache = nil then
+  begin
     SurfaceCache := CreateTextureCache;
+    SurfaceCache.Rebuildable := True;
+  end;
   Texture := SurfaceCache.GetSurface(0);
   if Texture = nil then
   begin

@@ -4946,7 +4946,14 @@ begin
     if QueryGameMemory(Memory) and (Memory.TotalPhys div 8 < ResidentTextureBudget) then
     begin
       ResidentTextureBudget := Memory.TotalPhys div 8;
-      LogGameMessage(gllInfo, 'renderer', 'Resident texture budget=' + IntToStr(ResidentTextureBudget shr 20) + ' MiB');
+      // There the GPU driver's copy is ordinary memory too: keep sprites only
+      // there and hold the budget even for recently drawn textures.
+      GameGraphicsDiscardUploadedPixels := True;
+      LogGameMessage(
+          gllInfo,
+          'renderer',
+          'Resident texture budget=' + IntToStr(ResidentTextureBudget shr 20) + ' MiB; sprite pixels kept on the GPU only'
+      );
     end;
     for Index := Low(DrawVertices) to High(DrawVertices) do
     begin
