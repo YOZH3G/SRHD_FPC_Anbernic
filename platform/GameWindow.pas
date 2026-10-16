@@ -123,6 +123,13 @@ var
   // SDL performance-counter ticks of the last present and the longest gap
   // between two presents; reset the gap to start a new measurement.
   GameLastPresentCounter, GameLongestPresentInterval: QWord;
+  // Split of each frame since StartGameFrameStats: game work before Present,
+  // and Present itself, where the driver submits drawing and waits for the
+  // GPU and vertical sync. Frames longer than 1/30 s count as slow.
+  GameFrameWorkTicks, GameFramePresentTicks, GameLongestFrameWork, GameSlowFrames: QWord;
+  // Texture uploads since StartGameFrameStats: decoding sprites on a cache
+  // miss stalls the frame that first draws them.
+  GameTextureUploads, GameTextureUploadBytes: QWord;
 
 implementation
 
@@ -321,6 +328,12 @@ begin
   Frames := GamePresentedFrames;
   GameLastPresentCounter := Counter;
   GameLongestPresentInterval := 0;
+  GameFrameWorkTicks := 0;
+  GameFramePresentTicks := 0;
+  GameLongestFrameWork := 0;
+  GameSlowFrames := 0;
+  GameTextureUploads := 0;
+  GameTextureUploadBytes := 0;
 end;
 
 function DescribeGameFrameStats(Counter, Frames: QWord): string;
@@ -336,8 +349,20 @@ begin
   Format.DecimalSeparator := '.';
   Result :=
       SysUtils.Format(
-          'frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms',
-          [Count, Seconds, Count / Max(Seconds, 0.001), GameLongestPresentInterval * 1000 / Frequency],
+          'frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms; slow-frames=%d; '
+              + 'work=%.1f ms; longest-work=%.0f ms; present=%.1f ms; uploads=%d (%d KiB)',
+          [
+              Count,
+              Seconds,
+              Count / Max(Seconds, 0.001),
+              GameLongestPresentInterval * 1000 / Frequency,
+              GameSlowFrames,
+              GameFrameWorkTicks * 1000 / Frequency / Max(Count, 1),
+              GameLongestFrameWork * 1000 / Frequency,
+              GameFramePresentTicks * 1000 / Frequency / Max(Count, 1),
+              GameTextureUploads,
+              GameTextureUploadBytes shr 10
+          ],
           Format
       );
 end;
