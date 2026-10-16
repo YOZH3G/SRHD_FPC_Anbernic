@@ -480,6 +480,8 @@ begin
         );
       Texture := UploadTexture;
     end;
+    Inc(GameTextureUploads);
+    Inc(GameTextureUploadBytes, SizeUInt(Pitch) * Desc.Height);
     if PixelFormat(Desc.Format) = TextureFormat then
       CheckGameSDL(SDL_UpdateTexture(Texture, nil, Pixels, Pitch), 'SDL_UpdateTexture')
     else
@@ -1054,8 +1056,14 @@ var
   Destination: TSDL_Rect;
   DestinationPtr: PSDL_Rect;
   CoversOutput: Boolean;
-  PresentCounter: QWord;
+  PresentCounter, StartCounter: QWord;
 begin
+  StartCounter := SDL_GetPerformanceCounter;
+  if GameLastPresentCounter <> 0 then
+  begin
+    Inc(GameFrameWorkTicks, StartCounter - GameLastPresentCounter);
+    GameLongestFrameWork := Max(GameLongestFrameWork, StartCounter - GameLastPresentCounter);
+  end;
   TestCooperativeLevel;
   Screen := ImageOf(ScreenSurface);
   Screen.Upload;
@@ -1150,8 +1158,13 @@ begin
   SDL_RenderPresent(GameSDLRenderer);
   Inc(GamePresentedFrames);
   PresentCounter := SDL_GetPerformanceCounter;
+  Inc(GameFramePresentTicks, PresentCounter - StartCounter);
   if GameLastPresentCounter <> 0 then
+  begin
     GameLongestPresentInterval := Max(GameLongestPresentInterval, PresentCounter - GameLastPresentCounter);
+    if (PresentCounter - GameLastPresentCounter) * 30 > SDL_GetPerformanceFrequency then
+      Inc(GameSlowFrames);
+  end;
   GameLastPresentCounter := PresentCounter;
 {$IFDEF FPC_WASM_EMSCRIPTEN}
   BrowserFramePresented;

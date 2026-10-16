@@ -97,6 +97,9 @@ type
     Gap18C: array[0..3] of Byte;
     PlayButton: TGraphButtonGI;
     PauseButton: TGraphButtonGI;
+    FrameStatsCounter, FrameStatsFrames: QWord;
+    FrameStatsTick: Cardinal;
+    FrameStatsActive: Boolean;
     WorldLines: TPolyLineGI;
     UpdateTimer: PCallbackTimerGI;
     WorldCenterX: Integer;
@@ -150,6 +153,7 @@ type
     MobileShipStatusBottom: Integer;
     procedure DrawFrame; override;
     procedure UpdateMobileControls;
+    procedure UpdateFrameStats(Finish: Boolean);
     function HandleGamepadArcadeKey(VirtualKey: Cardinal): Boolean;
     procedure SelectNextPrimaryWeapon;
     procedure ApplyMobileSteering;
@@ -833,6 +837,7 @@ var
   Index: Integer;
 begin
   CancelPointerInput;
+  UpdateFrameStats(True);
   LoadPanel.OnClose;
   SelectedMapName := '';
   ClearShipPath;
@@ -4160,6 +4165,27 @@ begin
   end;
 end;
 
+procedure TfAB.UpdateFrameStats(Finish: Boolean);
+var
+  Running: Boolean;
+begin
+  // Combat frame rates for the game log, every 10 seconds of unpaused combat:
+  // turn films cover only the star map.
+  Running := not Finish and (ArcadeViewMode = 0) and not SimulationPaused and (PlayerArcadeShip <> nil);
+  if FrameStatsActive and (not Running or (GameTickCount - FrameStatsTick >= 10000)) then
+  begin
+    if GameTickCount - FrameStatsTick >= 1000 then
+      LogGameMessage(gllInfo, 'performance', 'Arcade combat; ' + DescribeGameFrameStats(FrameStatsCounter, FrameStatsFrames));
+    FrameStatsActive := False;
+  end;
+  if Running and not FrameStatsActive then
+  begin
+    StartGameFrameStats(FrameStatsCounter, FrameStatsFrames);
+    FrameStatsTick := GameTickCount;
+    FrameStatsActive := True;
+  end;
+end;
+
 procedure TfAB.CancelPointerInput;
 begin
   inherited CancelPointerInput;
@@ -4255,6 +4281,7 @@ begin
   if ExitCode <> 0 then
     Exit;
   Inc(ArcadeFrameCount);
+  UpdateFrameStats(False);
   if (ArcadeViewMode = 0) and (CargoPickupZone <> nil) and (PlayerArcadeShip <> nil) then
   begin
     CargoPickupZone.Longitude := PlayerArcadeShip.State.LongitudeDegrees;
