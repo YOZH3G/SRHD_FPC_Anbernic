@@ -257,6 +257,20 @@ begin
   end;
 end;
 
+procedure ReleaseRebuildableTextureSurfaces;
+var
+  Index: Integer;
+  Texture: TTextureGR;
+begin
+  if TextureCaches <> nil then
+    for Index := 0 to TextureCaches.Count - 1 do
+    begin
+      Texture := TextureCaches[Index];
+      if Texture.Rebuildable then
+        Texture.ReleaseSurfaces;
+    end;
+end;
+
 function CompareTextureAge(A, B: Pointer): Integer;
 var
   AgeA, AgeB: Cardinal;
@@ -516,11 +530,13 @@ function TTextureGR.GetSurface(Index: Integer): IDirect3DTexture9;
 begin
   Result := nil;
   // A device reset loses rebuildable textures whose pixels were discarded.
-  // Release every cache so owners decode their surfaces again.
+  // Release those caches so their owners decode the surfaces again; other
+  // caches keep their pixels and upload them again by themselves, and some
+  // owners (planet clouds) would not rebuild a released surface at once.
   if GameGraphicsDiscardUploadedPixels and (SeenTextureGeneration <> GameTextureGeneration) then
   begin
     SeenTextureGeneration := GameTextureGeneration;
-    ReleaseAllTextureSurfaces;
+    ReleaseRebuildableTextureSurfaces;
   end;
   if (Index < 0) or (Index >= SurfaceCount) then
     Exit;
