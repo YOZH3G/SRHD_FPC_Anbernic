@@ -150,6 +150,25 @@ begin
   end;
 end;
 
+// The save manager made the requested name unique, but its Latin form can
+// belong to another save. Number it like the save manager instead of deleting
+// that save.
+function UniqueAsciiSaveFileName(const Path: WideString): WideString;
+var
+  Base, Extension: WideString;
+  Index: Integer;
+begin
+  Result := AsciiSaveFileName(Path);
+  Extension := ExtractFileExt(Result);
+  Base := Copy(Result, 1, Length(Result) - Length(Extension));
+  Index := 1;
+  while FileExists(NativeGamePath(AnsiString(Result))) do
+  begin
+    Inc(Index);
+    Result := Base + ' (' + IntToStr(Index) + ')' + Extension;
+  end;
+end;
+
 procedure TSaver.Execute;
 var
   F: TFileEC;
@@ -225,12 +244,17 @@ begin
         if (GetLastOSError <> ESysEINVAL) or (AsciiSaveFileName(TargetName) = TargetName) then
 {$ENDIF}
           RaiseLastOSError;
-        LogGameMessage(gllWarning, 'save', 'The file system rejected "' + ExtractFileName(NativeGamePath(TargetName))
-            + '"; saving as "' + ExtractFileName(NativeGamePath(AsciiSaveFileName(TargetName))) + '"');
-        TargetName := AsciiSaveFileName(TargetName);
-        FileName := TargetName;
-        if FileExists(NativeGamePath(AnsiString(TargetName))) then
-          SysUtils.DeleteFile(NativeGamePath(TargetName));
+        FileName := UniqueAsciiSaveFileName(TargetName);
+        LogGameMessage(
+            gllWarning,
+            'save',
+            'The file system rejected "'
+                + ExtractFileName(NativeGamePath(TargetName))
+                + '"; saving as "'
+                + ExtractFileName(NativeGamePath(FileName))
+                + '"'
+        );
+        TargetName := FileName;
         if not RenameFile(NativeGamePath(SourceName), NativeGamePath(TargetName)) then
           RaiseLastOSError;
       end;
