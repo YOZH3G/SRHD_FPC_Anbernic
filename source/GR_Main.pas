@@ -4016,6 +4016,7 @@ var
   Reg: TRegistry;
 {$ENDIF}
   MemoryStatus: TMemoryStatusEx;
+  AutomaticCacheSize: Boolean;
 
 begin
   FinalizeRuntimeAndSettings;
@@ -4208,7 +4209,8 @@ begin
   GlobalCache.ResidentByteLimit := 0;
   if UserSettingsConfig.CountParams('CacheSize') > 0 then
     GlobalCache.ResidentByteLimit := (ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('CacheSize')) shl 10) shl 10;
-  if GlobalCache.ResidentByteLimit <= $1000000 then
+  AutomaticCacheSize := GlobalCache.ResidentByteLimit <= $1000000;
+  if AutomaticCacheSize then
     if MemoryStatus.AvailVirtual > $48000000 then
       GlobalCache.ResidentByteLimit := $18000000
     else
@@ -4219,7 +4221,7 @@ begin
   // menu and the arcade menu together, so returning from one to the other does
   // not decode them again. When free memory runs low the cache shrinks back
   // towards a sixth of memory, the earlier fixed budget.
-  if (GlobalCache.ResidentByteLimit = $18000000) and (MemoryStatus.TotalPhys > 0) then
+  if AutomaticCacheSize and (GlobalCache.ResidentByteLimit = $18000000) and (MemoryStatus.TotalPhys > 0) then
   begin
     GlobalCache.ResidentByteLimit := Min(Int64(GlobalCache.ResidentByteLimit), Int64(MemoryStatus.TotalPhys div 4));
     GlobalCache.MemoryPressureLimit := True;
