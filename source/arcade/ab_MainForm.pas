@@ -4217,6 +4217,7 @@ var
   Split, Count: Integer;
   Texture: IDirect3DTexture9;
   Gai: TCGaiEC;
+  PlaybackBufferOnly: Boolean;
 begin
   // A battle otherwise decodes each sprite frame and uploads it the first time
   // it is drawn: hundreds of textures in the first seconds of combat. Decode
@@ -4247,6 +4248,19 @@ begin
     Split := Pos(#9, WarmupKeys[WarmupIndex]);
     Kind := UTF8Decode(Copy(WarmupKeys[WarmupIndex], 1, Split - 1));
     Key := UTF8Decode(Copy(WarmupKeys[WarmupIndex], Split + 1, MaxInt));
+    // A playback-buffer control composes animations with playback flags on
+    // the CPU; it draws frame textures only for plain animations. Another
+    // control asking for the same animation already prepares them.
+    PlaybackBufferOnly := Kind = 'GAI-PBuf';
+    if PlaybackBufferOnly then
+    begin
+      if WarmupKeys.IndexOf(UTF8Encode('GAI'#9 + Key)) >= 0 then
+      begin
+        Inc(WarmupIndex);
+        Continue;
+      end;
+      Kind := 'GAI';
+    end;
     if WarmupControl = nil then
     begin
       if Kind = 'GAI' then
@@ -4272,6 +4286,8 @@ begin
         if Kind = 'GAI' then
         begin
           Count := Gai.GetFrameCount;
+          if PlaybackBufferOnly and Gai.HasPlaybackFlags then
+            Count := 0;
           if WarmupFrame < Count then
             Texture := Gai.GetOrCreateFrameSurface(WarmupFrame);
         end

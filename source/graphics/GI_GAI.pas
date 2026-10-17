@@ -1378,11 +1378,16 @@ procedure TgaiGI.QueueImageLoad(PendingLoads: TList);
 var
   WarmupKeys: TStringList;
 begin
-  // A playback buffer is composed on the CPU and never draws the frame
-  // textures, so it does not ask for them to be prepared.
+  // A playback buffer composes animations with playback flags on the CPU.
+  // Whether this one has them is known only once it is loaded, so mark it for
+  // the warmup to decide.
   WarmupKeys := CacheWarmupKeys;
   if UsesPlaybackBuffer then
+  begin
+    if not MainImageCache.HasEmptyCacheKey then
+      RecordCacheWarmupKey('GAI-PBuf', MainImageCache.CacheKey);
     CacheWarmupKeys := nil;
+  end;
   try
     MainImageCache.QueueLoadIfMissing(PendingLoads);
   finally
