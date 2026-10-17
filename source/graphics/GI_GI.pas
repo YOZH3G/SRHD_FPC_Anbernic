@@ -468,6 +468,7 @@ begin
     if HardwareRenderingEnabled then
     begin
       Y := Top;
+      Image.PrepareSurfaceLayout;
       if Image.UsesTiledSurfaces then
       begin
         while Y < Bottom do
