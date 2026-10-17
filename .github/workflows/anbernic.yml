@@ -173,8 +173,17 @@ jobs:
 
           [Инструкции установки и таблица моделей]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/platform/linux/ANBERNIC.md) · [README]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/README.md)
           EOF
+          title="Build $(date -u +%Y-%m-%d) · Anbernic и TrimUI · $short"
           flags=(--draft)
           [ "$MODE" = publish ] && flags=(--latest)
-          gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Build $(date -u +%Y-%m-%d) · Anbernic и TrimUI · $short" --notes-file notes.md "${flags[@]}" \
-            ./*.zip SHA256SUMS
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # A rerun for the same commit and day, such as publishing an
+            # earlier draft: replace its archives and notes in place.
+            gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber ./*.zip SHA256SUMS
+            [ "$MODE" = publish ] && flags=(--draft=false --latest)
+            gh release edit "$tag" -R "$GITHUB_REPOSITORY" --title "$title" --notes-file notes.md "${flags[@]}"
+          else
+            gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$title" --notes-file notes.md "${flags[@]}" \
+              ./*.zip SHA256SUMS
+          fi
