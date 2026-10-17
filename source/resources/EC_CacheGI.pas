@@ -32,6 +32,7 @@ type
     UsesTiledSurfaces: Boolean;
     TileOrigins: array of TPoint;
     TileCount: Integer;
+    TileSize: TPoint;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
@@ -124,7 +125,7 @@ var
   Texture: IDirect3DTexture9;
   ImageSize: TPoint;
   Locked: TD3DLockedRect;
-  TileIndex, Columns, Rows, TileWidth, TileHeight, Column, Row: Integer;
+  TileIndex, Columns, Rows, TileWidth, TileHeight: Integer;
   Origin: TPoint;
 
   function GiTileDivideRoundUp(Value, Divisor: Integer): Integer;
@@ -132,86 +133,67 @@ var
     Result := (Divisor - 1 + Value) div Divisor;
   end;
 begin
+  Result := nil;
   if SurfaceCache = nil then
   begin
     SurfaceCache := CreateTextureCache;
     SurfaceCache.Rebuildable := True;
   end;
   Texture := SurfaceCache.GetSurface(SurfaceIndex);
-  if (Texture = nil) and (Image <> nil) and not UsesTiledSurfaces then
+  if (Texture <> nil) or (Image = nil) then
   begin
-    ImageSize := Image.GetContentSize;
-    if (ImageSize.X = 0) or (ImageSize.Y = 0) then
-    begin
-      Result := nil;
-      Exit;
-    end;
-    if (MaxTextureSize.X < ImageSize.X) or (MaxTextureSize.Y < ImageSize.Y) then
-    begin
-      UsesTiledSurfaces := True;
-      Columns := GiTileDivideRoundUp(ImageSize.X, MaxTextureSize.X);
-      Rows := GiTileDivideRoundUp(ImageSize.Y, MaxTextureSize.Y);
-      TileCount := Columns * Rows;
-      SetLength(TileOrigins, TileCount);
-      Row := 0;
-      while Row < Rows do
-      begin
-        Column := 0;
-        if MaxTextureSize.Y >= ImageSize.Y then
-          TileHeight := ImageSize.Y
-        else if (Row + 1) * MaxTextureSize.Y > ImageSize.Y then
-          TileHeight := ImageSize.Y - MaxTextureSize.Y * Row
-        else
-          TileHeight := MaxTextureSize.Y;
-        while Column < Columns do
-        begin
-          TileIndex := Row * Columns + Column;
-          if MaxTextureSize.X >= ImageSize.X then
-            TileWidth := ImageSize.X
-          else if (Column + 1) * MaxTextureSize.X > ImageSize.X then
-            TileWidth := ImageSize.X - MaxTextureSize.X * Column
-          else
-            TileWidth := MaxTextureSize.X;
-          if (Image.Header.Format = 0) and (Image.Header.AlphaMask = 0) then
-            Texture := GR_CreateTexture(TileWidth, TileHeight, D3DFMT_R5G6B5, D3DPOOL_MANAGED)
-          else
-            Texture := GR_CreateTexture(TileWidth, TileHeight, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
-          Origin := Classes.Point(MaxTextureSize.X * Column, MaxTextureSize.Y * Row);
-          if Texture <> nil then
-          begin
-            Texture.LockRect(0, Locked, nil, 0);
-            if Locked.Bits <> nil then
-            begin
-              Image.DecodeRawRegion(Locked.Bits, Locked.Pitch, Origin.X, Origin.Y, TileWidth, TileHeight, True);
-              Texture.UnlockRect(0);
-            end;
-          end;
-          SurfaceCache.SetSurface(Texture, TileIndex);
-          TileOrigins[TileIndex] := Origin;
-          Inc(Column);
-        end;
-        Inc(Row);
-      end;
-      Texture := SurfaceCache.GetSurface(SurfaceIndex);
-    end
-    else
-    begin
-      if (Image.Header.Format = 0) and (Image.Header.AlphaMask = 0) then
-        Texture := GR_CreateTexture(ImageSize.X, ImageSize.Y, D3DFMT_R5G6B5, D3DPOOL_MANAGED)
-      else
-        Texture := GR_CreateTexture(ImageSize.X, ImageSize.Y, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
-      if Texture <> nil then
-      begin
-        Texture.LockRect(0, Locked, nil, 0);
-        if Locked.Bits <> nil then
-        begin
-          Image.DecodeToPixels(Locked.Bits, Locked.Pitch, ImageSize.X, ImageSize.Y, True);
-          Texture.UnlockRect(0);
-        end;
-      end;
-    end;
-    SurfaceCache.SetSurface(Texture, 0);
+    Result := Texture;
+    Exit;
   end;
+  ImageSize := Image.GetContentSize;
+  if (ImageSize.X = 0) or (ImageSize.Y = 0) then
+    Exit;
+  if not UsesTiledSurfaces and ((MaxTextureSize.X < ImageSize.X) or (MaxTextureSize.Y < ImageSize.Y)) then
+  begin
+    UsesTiledSurfaces := True;
+    TileSize := MaxTextureSize;
+    Columns := GiTileDivideRoundUp(ImageSize.X, TileSize.X);
+    Rows := GiTileDivideRoundUp(ImageSize.Y, TileSize.Y);
+    TileCount := Columns * Rows;
+    SetLength(TileOrigins, TileCount);
+    for TileIndex := 0 to TileCount - 1 do
+      TileOrigins[TileIndex] := Classes.Point(TileSize.X * (TileIndex mod Columns), TileSize.Y * (TileIndex div Columns));
+  end;
+  // Each tile is decoded on its own when first asked for, and again after the
+  // texture budget released it, so one call never decodes the whole image.
+  if UsesTiledSurfaces then
+  begin
+    if (SurfaceIndex < 0) or (SurfaceIndex >= TileCount) then
+      Exit;
+    Origin := TileOrigins[SurfaceIndex];
+    TileWidth := Min(TileSize.X, ImageSize.X - Origin.X);
+    TileHeight := Min(TileSize.Y, ImageSize.Y - Origin.Y);
+  end
+  else
+  begin
+    if SurfaceIndex <> 0 then
+      Exit;
+    Origin := Classes.Point(0, 0);
+    TileWidth := ImageSize.X;
+    TileHeight := ImageSize.Y;
+  end;
+  if (Image.Header.Format = 0) and (Image.Header.AlphaMask = 0) then
+    Texture := GR_CreateTexture(TileWidth, TileHeight, D3DFMT_R5G6B5, D3DPOOL_MANAGED)
+  else
+    Texture := GR_CreateTexture(TileWidth, TileHeight, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+  if Texture <> nil then
+  begin
+    Texture.LockRect(0, Locked, nil, 0);
+    if Locked.Bits <> nil then
+    begin
+      if UsesTiledSurfaces then
+        Image.DecodeRawRegion(Locked.Bits, Locked.Pitch, Origin.X, Origin.Y, TileWidth, TileHeight, True)
+      else
+        Image.DecodeToPixels(Locked.Bits, Locked.Pitch, ImageSize.X, ImageSize.Y, True);
+      Texture.UnlockRect(0);
+    end;
+  end;
+  SurfaceCache.SetSurface(Texture, SurfaceIndex);
   Result := Texture;
 end;
 

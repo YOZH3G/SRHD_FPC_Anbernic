@@ -1376,6 +1376,8 @@ end;
 
 procedure TgaiGI.QueueImageLoad(PendingLoads: TList);
 begin
+  if UsesPlaybackBuffer and not MainImageCache.HasEmptyCacheKey then
+    RecordCacheWarmupKey('GAI-CPU', MainImageCache.CacheKey);
   MainImageCache.QueueLoadIfMissing(PendingLoads);
 end;
 
