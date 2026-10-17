@@ -1375,10 +1375,19 @@ begin
 end;
 
 procedure TgaiGI.QueueImageLoad(PendingLoads: TList);
+var
+  WarmupKeys: TStringList;
 begin
-  if UsesPlaybackBuffer and not MainImageCache.HasEmptyCacheKey then
-    RecordCacheWarmupKey('GAI-CPU', MainImageCache.CacheKey);
-  MainImageCache.QueueLoadIfMissing(PendingLoads);
+  // A playback buffer is composed on the CPU and never draws the frame
+  // textures, so it does not ask for them to be prepared.
+  WarmupKeys := CacheWarmupKeys;
+  if UsesPlaybackBuffer then
+    CacheWarmupKeys := nil;
+  try
+    MainImageCache.QueueLoadIfMissing(PendingLoads);
+  finally
+    CacheWarmupKeys := WarmupKeys;
+  end;
 end;
 
 procedure LoadGaiFrameToGraphBuf(const Path: WideString; GraphBuf: TGraphBufGR; Seed: Cardinal);

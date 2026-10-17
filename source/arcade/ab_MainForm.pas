@@ -4247,13 +4247,6 @@ begin
     Split := Pos(#9, WarmupKeys[WarmupIndex]);
     Kind := UTF8Decode(Copy(WarmupKeys[WarmupIndex], 1, Split - 1));
     Key := UTF8Decode(Copy(WarmupKeys[WarmupIndex], Split + 1, MaxInt));
-    // Animations that a control composes in its playback buffer on the CPU
-    // never draw their frame textures.
-    if (Kind = 'GAI-CPU') or ((Kind = 'GAI') and (WarmupKeys.IndexOf(UTF8Encode('GAI-CPU'#9 + Key)) >= 0)) then
-    begin
-      Inc(WarmupIndex);
-      Continue;
-    end;
     if WarmupControl = nil then
     begin
       if Kind = 'GAI' then
