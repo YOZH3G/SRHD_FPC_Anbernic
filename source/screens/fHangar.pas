@@ -325,6 +325,10 @@ begin
       SetActive(False);
       StopAutoPlayback;
       CycleCompleteCallback := AmbientAnimationComplete;
+      // Load the idle animation with the screen. Its first frame would
+      // otherwise read and unpack the whole animation a few seconds later,
+      // while the player is buying repairs or fuel.
+      PrimeImageCaches;
     end;
     DrawQueuedUpdateRects;
     SoundManager.PlaySound('Sound.HangarOpen');
