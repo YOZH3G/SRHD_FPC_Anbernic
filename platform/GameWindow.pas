@@ -96,6 +96,10 @@ procedure SetGameArcadeControls(Flags: Integer);
 // Presentation statistics since StartGameFrameStats, for the game log.
 procedure StartGameFrameStats(out Counter, Frames: QWord);
 function DescribeGameFrameStats(Counter, Frames: QWord): string;
+// Called by the renderer after each present with the frame split in SDL
+// performance-counter ticks. Logs frames longer than 100 ms, and statistics
+// for the running screen every 10 s and when it changes.
+procedure NoteGamePresentedFrame(Interval, Work, Present: QWord);
 
 var
   // Read by settings; apply changes through ConfigureGameUi at a tree rebuild.
@@ -130,6 +134,14 @@ var
   // Texture uploads since StartGameFrameStats: decoding sprites on a cache
   // miss stalls the frame that first draws them.
   GameTextureUploads, GameTextureUploadBytes: QWord;
+  // Uploads since the last present, for the slow-frame log.
+  GameFrameUploads, GameFrameUploadBytes: QWord;
+  // Texture caches released to fit the memory budget, since
+  // StartGameFrameStats and since the last present. Uploads that follow
+  // evictions are the same sprites decoded again.
+  GameTextureEvictions, GameTextureEvictedBytes, GameFrameEvictions, GameFrameEvictedBytes: QWord;
+  // Screen whose message loop is running, named in the frame log.
+  GameFrameScene: UnicodeString;
 
 implementation
 
@@ -334,37 +346,123 @@ begin
   GameSlowFrames := 0;
   GameTextureUploads := 0;
   GameTextureUploadBytes := 0;
+  GameTextureEvictions := 0;
+  GameTextureEvictedBytes := 0;
 end;
 
-function DescribeGameFrameStats(Counter, Frames: QWord): string;
+type
+  TFrameStatsTotals = record
+    Frames, Longest, Slow, Work, LongestWork, Present, Uploads, UploadBytes, Evictions, EvictedBytes: QWord;
+  end;
+
+var
+  // Per-screen statistics for NoteGamePresentedFrame; independent of the
+  // counters StartGameFrameStats resets for turn films and arcade combat.
+  SceneName: UnicodeString;
+  SceneCounter: QWord;
+  SceneTotals: TFrameStatsTotals;
+
+function FormatFrameStats(const Totals: TFrameStatsTotals; Elapsed: QWord): string;
 var
   Frequency, Seconds: Double;
-  Count: QWord;
   Format: TFormatSettings;
 begin
   Frequency := SDL_GetPerformanceFrequency;
-  Seconds := (SDL_GetPerformanceCounter - Counter) / Frequency;
-  Count := GamePresentedFrames - Frames;
+  Seconds := Elapsed / Frequency;
   Format := DefaultFormatSettings;
   Format.DecimalSeparator := '.';
   Result :=
       SysUtils.Format(
           'frames=%d; seconds=%.2f; fps=%.1f; longest-frame=%.0f ms; slow-frames=%d; '
-              + 'work=%.1f ms; longest-work=%.0f ms; present=%.1f ms; uploads=%d (%d KiB)',
+              + 'work=%.1f ms; longest-work=%.0f ms; present=%.1f ms; uploads=%d (%d KiB); evicted=%d (%d KiB)',
           [
-              Count,
+              Totals.Frames,
               Seconds,
-              Count / Max(Seconds, 0.001),
-              GameLongestPresentInterval * 1000 / Frequency,
-              GameSlowFrames,
-              GameFrameWorkTicks * 1000 / Frequency / Max(Count, 1),
-              GameLongestFrameWork * 1000 / Frequency,
-              GameFramePresentTicks * 1000 / Frequency / Max(Count, 1),
-              GameTextureUploads,
-              GameTextureUploadBytes shr 10
+              Totals.Frames / Max(Seconds, 0.001),
+              Totals.Longest * 1000 / Frequency,
+              Totals.Slow,
+              Totals.Work * 1000 / Frequency / Max(Totals.Frames, 1),
+              Totals.LongestWork * 1000 / Frequency,
+              Totals.Present * 1000 / Frequency / Max(Totals.Frames, 1),
+              Totals.Uploads,
+              Totals.UploadBytes shr 10,
+              Totals.Evictions,
+              Totals.EvictedBytes shr 10
           ],
           Format
       );
+end;
+
+function DescribeGameFrameStats(Counter, Frames: QWord): string;
+var
+  Totals: TFrameStatsTotals;
+begin
+  Totals.Frames := GamePresentedFrames - Frames;
+  Totals.Longest := GameLongestPresentInterval;
+  Totals.Slow := GameSlowFrames;
+  Totals.Work := GameFrameWorkTicks;
+  Totals.LongestWork := GameLongestFrameWork;
+  Totals.Present := GameFramePresentTicks;
+  Totals.Uploads := GameTextureUploads;
+  Totals.UploadBytes := GameTextureUploadBytes;
+  Totals.Evictions := GameTextureEvictions;
+  Totals.EvictedBytes := GameTextureEvictedBytes;
+  Result := FormatFrameStats(Totals, SDL_GetPerformanceCounter - Counter);
+end;
+
+procedure NoteGamePresentedFrame(Interval, Work, Present: QWord);
+var
+  Frequency, Now: QWord;
+  Format: TFormatSettings;
+begin
+  Frequency := SDL_GetPerformanceFrequency;
+  Now := SDL_GetPerformanceCounter;
+  if Interval * 10 > Frequency then
+  begin
+    Format := DefaultFormatSettings;
+    Format.DecimalSeparator := '.';
+    LogGameMessage(
+        gllInfo,
+        'performance',
+        SysUtils.Format(
+            'Slow frame; scene=%s; frame=%.0f ms; work=%.0f ms; present=%.0f ms; uploads=%d (%d KiB); evicted=%d (%d KiB)',
+            [
+                GameFrameScene,
+                Interval * 1000 / Frequency,
+                Work * 1000 / Frequency,
+                Present * 1000 / Frequency,
+                GameFrameUploads,
+                GameFrameUploadBytes shr 10,
+                GameFrameEvictions,
+                GameFrameEvictedBytes shr 10
+            ],
+            Format
+        )
+    );
+  end;
+  if (SceneName <> GameFrameScene) or (Now - SceneCounter >= 10 * Frequency) then
+  begin
+    if (SceneTotals.Frames > 0) and (SceneName <> '') then
+      LogGameMessage(gllInfo, 'performance', 'Frames; scene=' + SceneName + '; ' + FormatFrameStats(SceneTotals, Now - SceneCounter));
+    SceneName := GameFrameScene;
+    SceneCounter := Now;
+    SceneTotals := Default(TFrameStatsTotals);
+  end;
+  Inc(SceneTotals.Frames);
+  SceneTotals.Longest := Max(SceneTotals.Longest, Interval);
+  if Interval * 30 > Frequency then
+    Inc(SceneTotals.Slow);
+  Inc(SceneTotals.Work, Work);
+  SceneTotals.LongestWork := Max(SceneTotals.LongestWork, Work);
+  Inc(SceneTotals.Present, Present);
+  Inc(SceneTotals.Uploads, GameFrameUploads);
+  Inc(SceneTotals.UploadBytes, GameFrameUploadBytes);
+  Inc(SceneTotals.Evictions, GameFrameEvictions);
+  Inc(SceneTotals.EvictedBytes, GameFrameEvictedBytes);
+  GameFrameUploads := 0;
+  GameFrameUploadBytes := 0;
+  GameFrameEvictions := 0;
+  GameFrameEvictedBytes := 0;
 end;
 
 procedure LogGameVideo(const Text: UnicodeString);
