@@ -329,6 +329,7 @@ begin
       // otherwise read and unpack the whole animation a few seconds later,
       // while the player is buying repairs or fuel.
       PrimeImageCaches;
+      PrefetchFirstFrames(4);
     end;
     DrawQueuedUpdateRects;
     SoundManager.PlaySound('Sound.HangarOpen');
@@ -1041,6 +1042,8 @@ procedure TfHangar.AmbientAnimationComplete(Sender: TObjectGI);
 begin
   if not AnimHangar then
     Exit;
+  // The idle animation starts in 2-4 s; decode its first frames meanwhile.
+  (GetByName('AnimRnd') as TgaiGI).PrefetchFirstFrames(4);
   with GetByName('AnimOpen') as TgaiGI do
   begin
     SetActive(True);

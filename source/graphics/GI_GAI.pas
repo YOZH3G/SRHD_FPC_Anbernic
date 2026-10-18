@@ -52,6 +52,8 @@ type
     FirstFrameOnly: Boolean;
     AutoUpdateFlags: Cardinal;
     HardwareMirrorHorizontal: Boolean;
+    // Sequence frame whose successors were last queued for EC_FramePrefetch.
+    PrefetchedSequenceFrame: Integer;
     procedure Clear; override;
     procedure SetSize(Size: TPoint); override;
     procedure SetActive(Value: Boolean); override;
@@ -90,6 +92,9 @@ type
     procedure AdvanceAutoFrame(Timer: PCallbackTimerGI; UserData: PtrInt);
     procedure SetHardwareMirrorHorizontal(Value: Boolean);
     procedure PrimeImageCaches;
+    // Decodes the first frames on a worker thread before playback starts.
+    procedure PrefetchFirstFrames(Count: Integer);
+    procedure PrefetchUpcomingFrames(Image: TCGaiEC);
   end;
 
 var
@@ -103,6 +108,8 @@ implementation
 uses
   GameDiagnostics,
   GR_Sound,
+  EC_FramePrefetch,
+  Math,
   EC_Struct,
   Direct3D9,
   GR_DX,
@@ -125,6 +132,7 @@ begin
       raise Exception.Create('TgaiGI.HeapCreate');
   end;
   Alpha := 255;
+  PrefetchedSequenceFrame := -1;
   MainImageCache := TCGaiControlEC.Create;
   GlobalCache.ResetControl(MainImageCache);
   ImageKindX := ikxCenter;
@@ -167,6 +175,7 @@ end;
 procedure TgaiGI.SetImagePath(const ImagePath: WideString);
 begin
   SequenceFrame := 0;
+  PrefetchedSequenceFrame := -1;
   if CachedPlaybackGraphBuf <> nil then
   begin
     CachedPlaybackGraphBuf.Free;
@@ -1099,6 +1108,7 @@ begin
       begin
         Texture := Image.GetOrCreateFrameSurface(GetSequenceFrameSourceIndex(SequenceFrame));
         FrameOrigin := Image.GetFrameOrigin(GetSequenceFrameSourceIndex(SequenceFrame));
+        PrefetchUpcomingFrames(Image);
         if Texture <> nil then
         begin
           Y := Top;
@@ -1372,6 +1382,39 @@ begin
     AcquireCachedGi(FirstFrameImageCache);
     FirstFrameImageCache.Release;
   end;
+end;
+
+procedure TgaiGI.PrefetchFirstFrames(Count: Integer);
+var
+  Image: TCGaiEC;
+  Index: Integer;
+begin
+  if FirstFrameOnly or (MainImageCache.CacheKey = '') or not FramePrefetchAvailable then
+    Exit;
+  Image := AcquireCachedGai(MainImageCache);
+  try
+    if (Image = nil) or Image.HasPlaybackFlags then
+      Exit;
+    for Index := 0 to Min(Count, SequenceFrameCount) - 1 do
+      Image.PrefetchFrame(GetSequenceFrameSourceIndex(Index));
+  finally
+    MainImageCache.Release;
+  end;
+end;
+
+procedure TgaiGI.PrefetchUpcomingFrames(Image: TCGaiEC);
+const
+  // At 15-30 animation frames per second this covers the next 130-270 ms,
+  // ahead of a worker decoding a large frame in 10-15 ms.
+  Lookahead = 4;
+var
+  Index: Integer;
+begin
+  if (SequenceFrame = PrefetchedSequenceFrame) or (SequenceFrameCount < 2) or StopPlaybackRequested then
+    Exit;
+  PrefetchedSequenceFrame := SequenceFrame;
+  for Index := 1 to Lookahead do
+    Image.PrefetchFrame(GetSequenceFrameSourceIndex((SequenceFrame + Index) mod SequenceFrameCount));
 end;
 
 procedure TgaiGI.QueueImageLoad(PendingLoads: TList);

@@ -44,6 +44,9 @@ type
     function GetBoundsRect: TRect;
     function GetCanvasSize: TPoint;
     function GetOrCreateFrameSurface(FrameIndex: Integer): IDirect3DTexture9;
+    // Queues a frame for EC_FramePrefetch if it has no surface yet and the
+    // animation is large enough for decoding to stall a draw.
+    procedure PrefetchFrame(FrameIndex: Integer);
     function GetFrameOrigin(FrameIndex: Integer): TPoint;
     function LoadFrameGi(FrameIndex: Integer): TgiGR;
     function IsFrameCompressed(FrameIndex: Integer): Boolean;
@@ -62,6 +65,8 @@ implementation
 
 uses
   GameDiagnostics,
+  EC_FramePrefetch,
+  GameGraphics,
   EC_Mem,
   EC_Str,
   EC_Struct,
@@ -119,6 +124,7 @@ end;
 
 destructor TCGaiEC.Destroy;
 begin
+  CancelFramePrefetch(Self);
   if RawGaiData <> nil then
   begin
     FreeEC(RawGaiData);
@@ -161,6 +167,7 @@ var
   Locked: TD3DLockedRect;
   FrameSize, Origin: TPoint;
   Frame: TgiGR;
+  Prefetched: PPrefetchedFrame;
 begin
   if FrameSurfaceCache = nil then
   begin
@@ -176,6 +183,34 @@ begin
         SetLength(EmptyFrames, Header.FrameCount);
       if EmptyFrames[FrameIndex] then
         Exit(nil);
+    end;
+    Prefetched := TakePrefetchedFrame(Self, FrameIndex);
+    if (Prefetched <> nil) and Prefetched.Failed then
+    begin
+      // Decode it here, where an error is reported as before.
+      FreePrefetchedFrame(Prefetched);
+      Prefetched := nil;
+    end;
+    if Prefetched <> nil then
+    begin
+      try
+        if Prefetched.Empty then
+        begin
+          EmptyFrames[FrameIndex] := True;
+          Exit(nil);
+        end;
+        // The worker decoded in the texture's format and pitch; the texture
+        // takes over its buffer.
+        Texture :=
+            CreateGameGraphicsTextureFromPixels(Prefetched.Width, Prefetched.Height, Prefetched.Format, D3DPOOL_MANAGED, Prefetched.Pixels);
+        Prefetched.Pixels := nil;
+        CachedFrameOrigins[FrameIndex].X := Prefetched.TopLeft.X - Header.Bounds.Left;
+        CachedFrameOrigins[FrameIndex].Y := Prefetched.TopLeft.Y - Header.Bounds.Top;
+        FrameSurfaceCache.SetSurface(Texture, FrameIndex);
+        Exit(Texture);
+      finally
+        FreePrefetchedFrame(Prefetched);
+      end;
     end;
     Frame := LoadFrameGi(FrameIndex);
     if Frame <> nil then
@@ -209,6 +244,33 @@ begin
       EmptyFrames[FrameIndex] := True;
   end;
   Result := Texture;
+end;
+
+procedure TCGaiEC.PrefetchFrame(FrameIndex: Integer);
+var
+  Entry: Pointer;
+  Offset: Cardinal;
+begin
+  if (RawGaiData = nil) or (FrameIndex < 0) or (FrameIndex >= Header.FrameCount) then
+    Exit;
+  // Small frames decode in well under a millisecond.
+  if (Header.Bounds.Right - Header.Bounds.Left) * (Header.Bounds.Bottom - Header.Bounds.Top) < 128 * 128 then
+    Exit;
+  if (FrameIndex < Length(EmptyFrames)) and EmptyFrames[FrameIndex] then
+    Exit;
+  if (FrameSurfaceCache <> nil) and (FrameIndex < FrameSurfaceCache.SurfaceCount) and (FrameSurfaceCache.Surfaces[FrameIndex] <> nil) then
+    Exit;
+  Entry := AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader));
+  Offset := ReadDWordEC(Entry);
+  if Offset = 0 then
+    Exit;
+  RequestFramePrefetch(
+      Self,
+      FrameIndex,
+      AddPointerOffset(RawGaiData, Offset),
+      ReadDWordEC(AddPointerOffset(Entry, SizeOf(Integer))),
+      ReadWordEC(AddPointerOffset(RawGaiData, Offset)) = $4C5A
+  );
 end;
 
 function TCGaiEC.GetFrameOrigin(FrameIndex: Integer): TPoint;

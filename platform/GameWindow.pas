@@ -142,6 +142,9 @@ var
   GameTextureEvictions, GameTextureEvictedBytes, GameFrameEvictions, GameFrameEvictedBytes: QWord;
   // Screen whose message loop is running, named in the frame log.
   GameFrameScene: UnicodeString;
+  // Animation frames decoded ahead on a worker thread and then drawn, or
+  // dropped unused; logged with each screen's statistics.
+  GamePrefetchedFramesUsed, GamePrefetchedFramesDropped: QWord;
 
 implementation
 
@@ -359,7 +362,7 @@ var
   // Per-screen statistics for NoteGamePresentedFrame; independent of the
   // counters StartGameFrameStats resets for turn films and arcade combat.
   SceneName: UnicodeString;
-  SceneCounter: QWord;
+  SceneCounter, ScenePrefetchUsed, ScenePrefetchDropped: QWord;
   SceneTotals: TFrameStatsTotals;
 
 function FormatFrameStats(const Totals: TFrameStatsTotals; Elapsed: QWord): string;
@@ -443,9 +446,23 @@ begin
   if (SceneName <> GameFrameScene) or (Now - SceneCounter >= 10 * Frequency) then
   begin
     if (SceneTotals.Frames > 0) and (SceneName <> '') then
-      LogGameMessage(gllInfo, 'performance', 'Frames; scene=' + SceneName + '; ' + FormatFrameStats(SceneTotals, Now - SceneCounter));
+      LogGameMessage(
+          gllInfo,
+          'performance',
+          'Frames; scene='
+              + SceneName
+              + '; '
+              + FormatFrameStats(SceneTotals, Now - SceneCounter)
+              + '; prefetched='
+              + IntToStr(GamePrefetchedFramesUsed - ScenePrefetchUsed)
+              + ' (dropped '
+              + IntToStr(GamePrefetchedFramesDropped - ScenePrefetchDropped)
+              + ')'
+      );
     SceneName := GameFrameScene;
     SceneCounter := Now;
+    ScenePrefetchUsed := GamePrefetchedFramesUsed;
+    ScenePrefetchDropped := GamePrefetchedFramesDropped;
     SceneTotals := Default(TFrameStatsTotals);
   end;
   Inc(SceneTotals.Frames);
