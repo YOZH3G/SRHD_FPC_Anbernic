@@ -103,8 +103,6 @@ function CreateTextureFromPixels(
     Pool: Cardinal
 ): IDirect3DTexture9;
 
-procedure ClearTexturePixels(Texture: IDirect3DTexture9);
-
 procedure QueueDrawPoint(X: Integer; Y: Integer; Color: Cardinal; Alpha: Integer);
 
 procedure FlushDrawPoints(ClipRect: PRect);
@@ -421,7 +419,9 @@ begin
       LogMemoryUsage;
     end;
   end;
-  ClearTexturePixels(Texture);
+  // A new texture's storage starts zero-filled and dirty. Clearing it again
+  // writes the whole buffer twice on every cache miss, e.g. each 624x323 frame
+  // of the hangar's hologram animations.
   Result := Texture;
 end;
 
@@ -473,23 +473,6 @@ begin
     Texture.UnlockRect(0);
   end;
   Result := Texture;
-end;
-
-procedure ClearTexturePixels(Texture: IDirect3DTexture9);
-var
-  Locked: TD3DLockedRect;
-  Y: Cardinal;
-  Desc: TD3DSurfaceDesc;
-begin
-  if Texture <> nil then
-  begin
-    Texture.GetLevelDesc(0, Desc);
-    Texture.LockRect(0, Locked, nil, 0);
-    if Locked.Bits <> nil then
-      for Y := 0 to Desc.Height - 1 do
-        System.FillChar(Pointer(Pointer(Integer(Y) * Locked.Pitch + PAnsiChar(Locked.Bits)))^, Locked.Pitch, 0);
-    Texture.UnlockRect(0);
-  end;
 end;
 
 constructor TTextureGR.Create;
