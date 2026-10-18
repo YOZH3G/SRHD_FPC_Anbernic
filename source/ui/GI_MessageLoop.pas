@@ -439,6 +439,7 @@ begin
   // the remaining gesture instead of releasing it into the new screen.
   CancelGamePointerInput;
   MessageLoopStack.Add(Loop);
+  GameFrameScene := Loop.RegisteredLoopName;
 end;
 
 procedure PopMessageLoop(Loop: TMessageLoopGI);
@@ -452,7 +453,12 @@ begin
   CancelGamePointerInput;
   MessageLoopStack.Delete(MessageLoopStack.Count - 1);
   if MessageLoopStack.Count > 0 then
-    LogGameMessage(gllInfo, 'ui', 'Rangers: resume ' + TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName);
+  begin
+    GameFrameScene := TMessageLoopGI(MessageLoopStack[MessageLoopStack.Count - 1]).RegisteredLoopName;
+    LogGameMessage(gllInfo, 'ui', 'Rangers: resume ' + GameFrameScene);
+  end
+  else
+    GameFrameScene := '';
 end;
 
 constructor TObjectGI.Create(Owner: TObjectGI);

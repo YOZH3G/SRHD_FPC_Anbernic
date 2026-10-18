@@ -484,6 +484,8 @@ begin
     end;
     Inc(GameTextureUploads);
     Inc(GameTextureUploadBytes, SizeUInt(Pitch) * Desc.Height);
+    Inc(GameFrameUploads);
+    Inc(GameFrameUploadBytes, SizeUInt(Pitch) * Desc.Height);
     if PixelFormat(Desc.Format) = TextureFormat then
       CheckGameSDL(SDL_UpdateTexture(Texture, nil, Pixels, Pitch), 'SDL_UpdateTexture')
     else
@@ -1172,6 +1174,7 @@ begin
     GameLongestPresentInterval := Max(GameLongestPresentInterval, PresentCounter - GameLastPresentCounter);
     if (PresentCounter - GameLastPresentCounter) * 30 > SDL_GetPerformanceFrequency then
       Inc(GameSlowFrames);
+    NoteGamePresentedFrame(PresentCounter - GameLastPresentCounter, StartCounter - GameLastPresentCounter, PresentCounter - StartCounter);
   end;
   GameLastPresentCounter := PresentCounter;
 {$IFDEF FPC_WASM_EMSCRIPTEN}

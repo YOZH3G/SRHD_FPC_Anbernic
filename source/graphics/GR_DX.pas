@@ -271,6 +271,16 @@ begin
     end;
 end;
 
+procedure NoteTextureEviction(Texture: TTextureGR);
+begin
+  if Texture.ResidentBytes = 0 then
+    Exit;
+  Inc(GameTextureEvictions);
+  Inc(GameTextureEvictedBytes, Texture.ResidentBytes);
+  Inc(GameFrameEvictions);
+  Inc(GameFrameEvictedBytes, Texture.ResidentBytes);
+end;
+
 function CompareTextureAge(A, B: Pointer): Integer;
 var
   AgeA, AgeB: Cardinal;
@@ -313,6 +323,7 @@ begin
     Index := 0;
     while (ResidentTextureBytes > Target) and (Index < Candidates.Count) do
     begin
+      NoteTextureEviction(TTextureGR(Candidates[Index]));
       TTextureGR(Candidates[Index]).ReleaseSurfaces;
       Inc(Index);
     end;
@@ -347,7 +358,10 @@ begin
     begin
       LastUsed := TTextureGR(Texture).LastUseTick;
       if NowTick - LastUsed > Cardinal(TextureIdleSeconds * 1000) then
+      begin
+        NoteTextureEviction(TTextureGR(Texture));
         TTextureGR(Texture).ReleaseSurfaces;
+      end;
     end;
     Inc(i);
   end;
