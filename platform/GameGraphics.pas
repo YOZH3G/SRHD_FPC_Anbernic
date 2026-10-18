@@ -12,6 +12,10 @@ function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture
 // again. With GameGraphicsDiscardUploadedPixels set, its CPU pixel copy is
 // freed after each upload; a later lock starts from transparent pixels.
 procedure MarkGameGraphicsTextureRebuildable(Texture: IDirect3DTexture9);
+// A new texture that takes over Pixels, allocated with GetMem in the
+// texture's pitch (rows padded to 4 bytes), instead of allocating and
+// clearing its own; for frames decoded on a worker thread.
+function CreateGameGraphicsTextureFromPixels(Width, Height: Integer; Format, Pool: Cardinal; Pixels: Pointer): IDirect3DTexture9;
 type
   TGameGraphicsTransform = record
     ScaleX, ScaleY, OffsetX, OffsetY: Single;
@@ -58,7 +62,7 @@ type
     CachedClip: TRect;
     CachedClipTransform: TGameGraphicsTransform;
     CachedRasterClip: TSDL_Rect;
-    constructor Create(W, H: Integer; Format, Pool: Cardinal; IsTarget: Boolean; IsScreen: Boolean = False);
+    constructor Create(W, H: Integer; Format, Pool: Cardinal; IsTarget: Boolean; IsScreen: Boolean = False; Adopted: Pointer = nil);
     destructor Destroy; override;
     function Storage: TSDLStorage;
     procedure Realize;
@@ -284,7 +288,7 @@ begin
   Require(Supports(Value, ISDLImage, Image), 'foreign resource');
   Result := Image.Storage;
 end;
-constructor TSDLStorage.Create(W, H: Integer; Format, Pool: Cardinal; IsTarget, IsScreen: Boolean);
+constructor TSDLStorage.Create(W, H: Integer; Format, Pool: Cardinal; IsTarget, IsScreen: Boolean; Adopted: Pointer);
 var
   Bpp: Integer;
 begin
@@ -301,7 +305,10 @@ begin
   else
     Bpp := 4;
   Pitch := (W * Bpp + 3) and not 3;
-  Pixels := AllocMem(SizeUInt(Pitch) * H);
+  if Adopted <> nil then
+    Pixels := Adopted
+  else
+    Pixels := AllocMem(SizeUInt(Pitch) * H);
   Screen := IsScreen;
   Target := IsTarget;
   Dirty := not Target;
@@ -739,6 +746,11 @@ procedure MarkGameGraphicsTextureRebuildable(Texture: IDirect3DTexture9);
 begin
   if Texture <> nil then
     ImageOf(Texture).Rebuildable := True;
+end;
+
+function CreateGameGraphicsTextureFromPixels(Width, Height: Integer; Format, Pool: Cardinal; Pixels: Pointer): IDirect3DTexture9;
+begin
+  Result := TSDLTexture.Create(TSDLStorage.Create(Width, Height, Format, Pool, False, False, Pixels));
 end;
 
 function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture9;
