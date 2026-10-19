@@ -118,6 +118,8 @@ type
     DrawVertices: array of TSDL_Vertex;
     PointVertices: array of TSDL_Vertex;
     FanIndices: array of Integer;
+    LineVertices: array of TSDL_Vertex;
+    LineIndices: array of Integer;
     Clip: TRect;
     LinearFilter, Wireframe, Accelerated: Boolean;
     ScreenSurface: IDirect3DSurface9;
@@ -1347,6 +1349,8 @@ type
     U, V: Single;
   end;
   PGameVertex = ^TGameVertex;
+  TEdgeQuad = array[0..3] of TSDL_Vertex;
+  PEdgeQuad = ^TEdgeQuad;
 var
   Image, Target: TSDLStorage;
   Texture: PSDL_Texture;
@@ -1480,18 +1484,43 @@ var
     end;
   end;
 
+  // SDL's line primitive has one color and a one-physical-pixel width. A
+  // quad retains interpolated colors and the game's logical one-pixel
+  // thickness. False for a zero-length edge.
+  function EdgeQuad(First, Last: Integer; Quad: PEdgeQuad): Boolean;
+  var
+    DX, DY, Distance, NX, NY: Single;
+  begin
+    DX := (DrawVertices[Last].Position.X - DrawVertices[First].Position.X) / Transform.ScaleX;
+    DY := (DrawVertices[Last].Position.Y - DrawVertices[First].Position.Y) / Transform.ScaleY;
+    Distance := Sqrt(DX * DX + DY * DY);
+    if Distance = 0 then
+      Exit(False);
+    NX := -DY * 0.5 * Transform.ScaleX / Distance;
+    NY := DX * 0.5 * Transform.ScaleY / Distance;
+    Quad^[0] := DrawVertices[First];
+    Quad^[1] := DrawVertices[Last];
+    Quad^[2] := DrawVertices[Last];
+    Quad^[3] := DrawVertices[First];
+    Quad^[0].Position.X := Quad^[0].Position.X + NX;
+    Quad^[0].Position.Y := Quad^[0].Position.Y + NY;
+    Quad^[1].Position.X := Quad^[1].Position.X + NX;
+    Quad^[1].Position.Y := Quad^[1].Position.Y + NY;
+    Quad^[2].Position.X := Quad^[2].Position.X - NX;
+    Quad^[2].Position.Y := Quad^[2].Position.Y - NY;
+    Quad^[3].Position.X := Quad^[3].Position.X - NX;
+    Quad^[3].Position.Y := Quad^[3].Position.Y - NY;
+    Result := True;
+  end;
+
   procedure DrawEdge(First, Last: Integer);
   const
     Order: array[0..5] of Integer = (0, 1, 2, 0, 2, 3);
   var
-    Line: array[0..3] of TSDL_Vertex;
-    DX, DY, Distance, NX, NY: Single;
+    Line: TEdgeQuad;
   begin
     Color := DrawVertices[First].Color;
-    DX := DrawVertices[Last].Position.X - DrawVertices[First].Position.X;
-    DY := DrawVertices[Last].Position.Y - DrawVertices[First].Position.Y;
-    Distance := Sqrt(DX * DX + DY * DY);
-    if (Distance = 0)
+    if not EdgeQuad(First, Last, @Line)
         or (CompareMem(@Color, @DrawVertices[Last].Color, SizeOf(Color)) and (Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
     begin
       CheckGameSDL(SDL_SetRenderDrawColor(GameSDLRenderer, Color.R, Color.G, Color.B, Color.A), 'SDL_SetRenderDrawColor');
@@ -1507,26 +1536,34 @@ var
       );
       Exit;
     end;
-    // SDL's line primitive has one color and a one-physical-pixel width. A strip
-    // retains interpolated colors and the game's logical one-pixel thickness.
-    DX := DX / Transform.ScaleX;
-    DY := DY / Transform.ScaleY;
-    Distance := Sqrt(DX * DX + DY * DY);
-    NX := -DY * 0.5 * Transform.ScaleX / Distance;
-    NY := DX * 0.5 * Transform.ScaleY / Distance;
-    Line[0] := DrawVertices[First];
-    Line[1] := DrawVertices[Last];
-    Line[2] := DrawVertices[Last];
-    Line[3] := DrawVertices[First];
-    Line[0].Position.X := Line[0].Position.X + NX;
-    Line[0].Position.Y := Line[0].Position.Y + NY;
-    Line[1].Position.X := Line[1].Position.X + NX;
-    Line[1].Position.Y := Line[1].Position.Y + NY;
-    Line[2].Position.X := Line[2].Position.X - NX;
-    Line[2].Position.Y := Line[2].Position.Y - NY;
-    Line[3].Position.X := Line[3].Position.X - NX;
-    Line[3].Position.Y := Line[3].Position.Y - NY;
     CheckGameSDL(SDL_RenderGeometry(GameSDLRenderer, nil, @Line, Length(Line), @Order, Length(Order)), 'SDL_RenderGeometry');
+  end;
+
+  // Every edge of a line list in one draw call; effects queue hundreds of
+  // edges a frame, and a call each costs more than drawing them.
+  procedure DrawEdgeList;
+  var
+    Edge, Quads: Integer;
+  begin
+    if Length(LineVertices) < Count * 2 then
+    begin
+      SetLength(LineVertices, Count * 2);
+      SetLength(LineIndices, Count * 3);
+    end;
+    Quads := 0;
+    for Edge := 0 to Count div 2 - 1 do
+      if EdgeQuad(Edge * 2, Edge * 2 + 1, PEdgeQuad(@LineVertices[Quads * 4])) then
+      begin
+        LineIndices[Quads * 6] := Quads * 4;
+        LineIndices[Quads * 6 + 1] := Quads * 4 + 1;
+        LineIndices[Quads * 6 + 2] := Quads * 4 + 2;
+        LineIndices[Quads * 6 + 3] := Quads * 4;
+        LineIndices[Quads * 6 + 4] := Quads * 4 + 2;
+        LineIndices[Quads * 6 + 5] := Quads * 4 + 3;
+        Inc(Quads);
+      end;
+    if Quads > 0 then
+      CheckGameSDL(SDL_RenderGeometry(GameSDLRenderer, nil, @LineVertices[0], Quads * 4, @LineIndices[0], Quads * 6), 'SDL_RenderGeometry');
   end;
 
 begin
@@ -1536,6 +1573,7 @@ begin
     Exit(0);
   case PrimitiveType of
     D3DPT_POINTLIST: Count := PrimitiveCount;
+    D3DPT_LINELIST: Count := PrimitiveCount * 2;
     D3DPT_LINESTRIP: Count := PrimitiveCount + 1;
     D3DPT_TRIANGLELIST: Count := PrimitiveCount * 3;
     D3DPT_TRIANGLEFAN: Count := PrimitiveCount + 2;
@@ -1608,6 +1646,8 @@ begin
       end;
     end;
   end
+  else if PrimitiveType = D3DPT_LINELIST then
+    DrawEdgeList
   else if PrimitiveType = D3DPT_LINESTRIP then
     for Index := 0 to Count - 2 do
       DrawEdge(Index, Index + 1)
