@@ -83,6 +83,7 @@ type
     procedure RemoveAndFreeData(Data: TCacheDataEC);
     function FindDataByKeyAndClass(const Key: WideString; CacheDataClass: TCacheDataClass): TCacheDataEC;
     procedure TouchData(Data: TCacheDataEC);
+    function TouchIfCached(const Key: WideString; CacheDataClass: TCacheDataClass): Boolean;
     function OpenDataBuffer(const Path: WideString): TBufEC;
     procedure TrimToBudget(BudgetBytes: Integer);
     function EffectiveByteLimit: Integer;
@@ -557,6 +558,23 @@ begin
   end;
 end;
 
+// Data queued for the next screen moves ahead of data used before it, so
+// loading the rest of that screen evicts the latter first.
+function TCacheEC.TouchIfCached(const Key: WideString; CacheDataClass: TCacheDataClass): Boolean;
+var
+  Data: TCacheDataEC;
+begin
+  CacheLock.Enter;
+  try
+    Data := FindDataByKeyAndClass(Key, CacheDataClass);
+    if Data <> nil then
+      TouchData(Data);
+    Result := Data <> nil;
+  finally
+    CacheLock.Leave;
+  end;
+end;
+
 function TCacheEC.OpenDataBuffer(const Path: WideString): TBufEC;
 var
   Buffer: TBufEC;
@@ -677,7 +695,7 @@ begin
   end
   else if CacheKind = 'GI' then
   begin
-    if FindDataByKeyAndClass(Key, TCGiEC) = nil then
+    if not TouchIfCached(Key, TCGiEC) then
     begin
       Gi := TCGiControlEC.Create;
       ResetControl(Gi);
@@ -687,7 +705,7 @@ begin
   end
   else if CacheKind = 'GAI' then
   begin
-    if FindDataByKeyAndClass(Key, TCGaiEC) = nil then
+    if not TouchIfCached(Key, TCGaiEC) then
     begin
       Gai := TCGaiControlEC.Create;
       ResetControl(Gai);

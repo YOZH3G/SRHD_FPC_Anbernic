@@ -90,11 +90,9 @@ begin
     RecordCacheWarmupKey('GAI', CacheKey);
   if RetainCount > 0 then
     Exit;
-  if BoundData <> nil then
-    Exit;
   if HasEmptyCacheKey then
     Exit;
-  if GlobalCache.FindDataByKeyAndClass(CacheKey, TCGaiEC) = nil then
+  if not GlobalCache.TouchIfCached(CacheKey, TCGaiEC) then
   begin
     Control := TCGaiControlEC.Create;
     GlobalCache.ResetControl(Control);
