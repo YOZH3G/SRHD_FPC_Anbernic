@@ -185,6 +185,31 @@ begin
   FreeGai(Reference);
   FreeGai(Prefetching);
 
+  // Delta frames inflated by the worker load the same gi bytes; raw frames
+  // are never queued for that.
+  Reference := NewGai;
+  Prefetching := NewGai;
+  Used := GamePrefetchedFramesUsed;
+  Prefetching.PrefetchFrame(0, True);
+  Prefetching.PrefetchFrame(1, True);
+  Sleep(500);
+  for I := 0 to 2 do
+  begin
+    Check(Reference.LoadFrameGi(I) <> nil, Format('reference gi %d', [I]));
+    Size := Reference.LoadFrameGi(I).DataSize;
+    SetLength(Expected, Size);
+    Move(Reference.LoadFrameGi(I).Data^, Expected[0], Size);
+    Check(Prefetching.LoadFrameGi(I) <> nil, Format('prefetched gi %d', [I]));
+    Check(
+        (Prefetching.LoadFrameGi(I).DataSize = Size) and CompareMem(Prefetching.LoadFrameGi(I).Data, @Expected[0], Size),
+        Format('gi bytes of frame %d differ', [I])
+    );
+  end;
+  Check(GamePrefetchedFramesUsed - Used = 1, Format('used %d inflated frames', [GamePrefetchedFramesUsed - Used]));
+  WriteLn('UNPACK OK');
+  FreeGai(Reference);
+  FreeGai(Prefetching);
+
   // Freeing an owner drops its queued and decoded frames, many times over
   // while the worker is busy.
   for I := 1 to 200 do

@@ -10,6 +10,9 @@ unit EC_FramePrefetch;
 // them into pixel buffers, and the render thread only copies a finished
 // buffer into a new texture. Jobs point into the owner's immutable source
 // data, so an owner must call CancelFramePrefetch before freeing it.
+//
+// Animations composed on the CPU from delta frames only need a frame's gi
+// bytes; for those the worker just inflates the frame.
 
 interface
 
@@ -25,6 +28,8 @@ type
     Source: Pointer;
     SourceSize: Integer;
     Compressed: Boolean;
+    // Only inflate the frame into Unpacked.
+    UnpackOnly: Boolean;
     Running, Done: Boolean;
     // Results, valid once Done. Pixels has the texture's format and pitch;
     // an empty frame has no content, and a failed one is decoded again by
@@ -34,16 +39,25 @@ type
     Width, Height, Pitch: Integer;
     Format: Cardinal;
     TopLeft: TPoint;
+    Unpacked: Pointer;
+    UnpackedSize: Integer;
     QueuedTick: QWord;
   end;
 
 // Queues a frame unless it is already queued or the queue is full. Source is
 // the frame's gi data inside the owner's buffer.
-procedure RequestFramePrefetch(Owner: Pointer; FrameIndex: Integer; Source: Pointer; SourceSize: Integer; Compressed: Boolean);
+procedure RequestFramePrefetch(
+    Owner: Pointer;
+    FrameIndex: Integer;
+    Source: Pointer;
+    SourceSize: Integer;
+    Compressed: Boolean;
+    UnpackOnly: Boolean = False
+);
 // Returns the decoded frame and removes it from the queue, waiting if the
 // worker is decoding it now; nil if the frame is not queued or not started.
 // The caller frees the result with FreePrefetchedFrame.
-function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer): PPrefetchedFrame;
+function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer; UnpackOnly: Boolean = False): PPrefetchedFrame;
 procedure FreePrefetchedFrame(Frame: PPrefetchedFrame);
 // Drops every frame of the owner, waiting for one being decoded.
 procedure CancelFramePrefetch(Owner: Pointer);
@@ -92,6 +106,7 @@ var
   UnpackedSize, Bpp: Integer;
 begin
   Unpacked := nil;
+  UnpackedSize := 0;
   Image := TgiGR.Create;
   try
     // TgiGR.LoadCompressedGiBytes allocates through AllocEC, which evicts
@@ -105,9 +120,26 @@ begin
         begin
           GetMem(Unpacked, UnpackedSize);
           UnpackedSize := OKGF_ZLib_UnCompress(Unpacked, UnpackedSize, Frame.Source, Frame.SourceSize);
+          if Frame.UnpackOnly then
+          begin
+            if UnpackedSize <= 0 then
+              Frame.Failed := True
+            else
+            begin
+              Frame.Unpacked := Unpacked;
+              Frame.UnpackedSize := UnpackedSize;
+              Unpacked := nil;
+            end;
+            Exit;
+          end;
           if UnpackedSize > 0 then
             Image.LoadRawGiBytes(Unpacked, UnpackedSize);
         end;
+      end;
+      if Frame.UnpackOnly then
+      begin
+        Frame.Failed := True;
+        Exit;
       end;
     end
     else
@@ -140,6 +172,13 @@ begin
     if Unpacked <> nil then
       FreeMem(Unpacked);
   end;
+end;
+
+function ResultSize(Frame: PPrefetchedFrame): SizeUInt;
+begin
+  Result := SizeUInt(Frame.UnpackedSize);
+  if Frame.Pixels <> nil then
+    Inc(Result, SizeUInt(Frame.Pitch) * Frame.Height);
 end;
 
 procedure TFramePrefetchWorker.Execute;
@@ -175,8 +214,7 @@ begin
     EnterCriticalSection(Lock);
     Frame.Running := False;
     Frame.Done := True;
-    if Frame.Pixels <> nil then
-      Inc(ResultBytes, SizeUInt(Frame.Pitch) * Frame.Height);
+    Inc(ResultBytes, ResultSize(Frame));
     LeaveCriticalSection(Lock);
     RTLEventSetEvent(DoneEvent);
   end;
@@ -215,21 +253,32 @@ var
 begin
   Frame := Frames[Index];
   Frames.Delete(Index);
-  if Frame.Pixels <> nil then
-    Dec(ResultBytes, SizeUInt(Frame.Pitch) * Frame.Height);
+  if Frame.Done then
+    Dec(ResultBytes, ResultSize(Frame));
 end;
 
-function FindFrame(Owner: Pointer; FrameIndex: Integer): Integer;
+function FindFrame(Owner: Pointer; FrameIndex: Integer; UnpackOnly: Boolean): Integer;
 var
   Index: Integer;
+  Frame: PPrefetchedFrame;
 begin
   for Index := 0 to Frames.Count - 1 do
-    if (PPrefetchedFrame(Frames[Index]).Owner = Owner) and (PPrefetchedFrame(Frames[Index]).FrameIndex = FrameIndex) then
+  begin
+    Frame := Frames[Index];
+    if (Frame.Owner = Owner) and (Frame.FrameIndex = FrameIndex) and (Frame.UnpackOnly = UnpackOnly) then
       Exit(Index);
+  end;
   Result := -1;
 end;
 
-procedure RequestFramePrefetch(Owner: Pointer; FrameIndex: Integer; Source: Pointer; SourceSize: Integer; Compressed: Boolean);
+procedure RequestFramePrefetch(
+    Owner: Pointer;
+    FrameIndex: Integer;
+    Source: Pointer;
+    SourceSize: Integer;
+    Compressed: Boolean;
+    UnpackOnly: Boolean
+);
 var
   Index: Integer;
   Frame: PPrefetchedFrame;
@@ -253,7 +302,7 @@ begin
       else
         Inc(Index);
     end;
-    if (Frames.Count >= MaxQueuedFrames) or (ResultBytes >= MaxResultBytes) or (FindFrame(Owner, FrameIndex) >= 0) then
+    if (Frames.Count >= MaxQueuedFrames) or (ResultBytes >= MaxResultBytes) or (FindFrame(Owner, FrameIndex, UnpackOnly) >= 0) then
       Exit;
     New(Frame);
     FillChar(Frame^, SizeOf(Frame^), 0);
@@ -262,6 +311,7 @@ begin
     Frame.Source := Source;
     Frame.SourceSize := SourceSize;
     Frame.Compressed := Compressed;
+    Frame.UnpackOnly := UnpackOnly;
     Frame.QueuedTick := Now;
     Frames.Add(Frame);
   finally
@@ -270,7 +320,7 @@ begin
   RTLEventSetEvent(WorkEvent);
 end;
 
-function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer): PPrefetchedFrame;
+function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer; UnpackOnly: Boolean): PPrefetchedFrame;
 var
   Index: Integer;
 begin
@@ -281,7 +331,7 @@ begin
   try
     while True do
     begin
-      Index := FindFrame(Owner, FrameIndex);
+      Index := FindFrame(Owner, FrameIndex, UnpackOnly);
       if Index < 0 then
         Exit;
       Result := Frames[Index];
@@ -313,6 +363,8 @@ begin
     Exit;
   if Frame.Pixels <> nil then
     FreeMem(Frame.Pixels);
+  if Frame.Unpacked <> nil then
+    FreeMem(Frame.Unpacked);
   Dispose(Frame);
 end;
 
@@ -390,11 +442,18 @@ finalization
 
 // The browser build has no threads; frames decode on their first draw.
 
-procedure RequestFramePrefetch(Owner: Pointer; FrameIndex: Integer; Source: Pointer; SourceSize: Integer; Compressed: Boolean);
+procedure RequestFramePrefetch(
+    Owner: Pointer;
+    FrameIndex: Integer;
+    Source: Pointer;
+    SourceSize: Integer;
+    Compressed: Boolean;
+    UnpackOnly: Boolean
+);
 begin
 end;
 
-function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer): PPrefetchedFrame;
+function TakePrefetchedFrame(Owner: Pointer; FrameIndex: Integer; UnpackOnly: Boolean): PPrefetchedFrame;
 begin
   Result := nil;
 end;

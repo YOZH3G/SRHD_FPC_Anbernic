@@ -94,7 +94,7 @@ type
     procedure PrimeImageCaches;
     // Decodes the first frames on a worker thread before playback starts.
     procedure PrefetchFirstFrames(Count: Integer);
-    procedure PrefetchUpcomingFrames(Image: TCGaiEC);
+    procedure PrefetchUpcomingFrames(Image: TCGaiEC; UnpackOnly: Boolean = False);
   end;
 
 var
@@ -1237,6 +1237,9 @@ begin
             end;
           end;
           LastCachedFrameIndex := SequenceFrame;
+          // Later frames are composed from their delta frames.
+          if Image <> nil then
+            PrefetchUpcomingFrames(Image, True);
         end;
         Y := Top;
         if HardwareRenderingEnabled then
@@ -1323,6 +1326,9 @@ begin
             Inc(FrameIndex);
           end;
           LastCachedFrameIndex := SequenceFrame;
+          // Later frames are composed from their delta frames.
+          if Image <> nil then
+            PrefetchUpcomingFrames(Image, True);
         end;
         Y := Top;
         if HardwareRenderingEnabled then
@@ -1402,7 +1408,7 @@ begin
   end;
 end;
 
-procedure TgaiGI.PrefetchUpcomingFrames(Image: TCGaiEC);
+procedure TgaiGI.PrefetchUpcomingFrames(Image: TCGaiEC; UnpackOnly: Boolean);
 const
   // At 15-30 animation frames per second this covers the next 130-270 ms,
   // ahead of a worker decoding a large frame in 10-15 ms.
@@ -1414,7 +1420,7 @@ begin
     Exit;
   PrefetchedSequenceFrame := SequenceFrame;
   for Index := 1 to Lookahead do
-    Image.PrefetchFrame(GetSequenceFrameSourceIndex((SequenceFrame + Index) mod SequenceFrameCount));
+    Image.PrefetchFrame(GetSequenceFrameSourceIndex((SequenceFrame + Index) mod SequenceFrameCount), UnpackOnly);
 end;
 
 procedure TgaiGI.QueueImageLoad(PendingLoads: TList);
