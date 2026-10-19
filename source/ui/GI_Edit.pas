@@ -10,6 +10,7 @@ uses
   EC_CacheBitmap,
   EC_CacheFont,
   GI_Main,
+  GR_GraphBuf,
   GI_MessageLoop,
   Types;
 
@@ -37,6 +38,10 @@ type
     FocusLostCallback: TObjectNotifyEventGI;
     AcceptCharCallback: TEditAcceptCharEventGI;
     ClearFocusOnEnter: Boolean;
+    // Rendered text and what it was rendered from, so frames that only blink
+    // the caret reuse the texture.
+    TextBuffer: TGraphBufGR;
+    TextBufferKey: WideString;
     procedure Clear; override;
     procedure QueueImageLoad(PendingLoads: TList); override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -69,7 +74,6 @@ uses
   GameInput,
   EC_Cache,
   GR_Main,
-  GR_GraphBuf,
   GR_DX,
   EC_Str;
 
@@ -98,6 +102,8 @@ begin
   FontCache := nil;
   BackgroundCache.Free;
   BackgroundCache := nil;
+  TextBuffer.Free;
+  TextBuffer := nil;
   inherited Destroy;
 end;
 
@@ -504,10 +510,10 @@ procedure TEditGI.Draw(ClipRect: TRect);
 var
   Font: TCFontEC;
   Bitmap: TCBitmapEC;
-  X, Y, N, I, Advance, FirstCharacter, Width: Integer;
+  X, Y, N, I, Advance, FirstCharacter, Width, GlyphX, BufferWidth, BufferHeight: Integer;
   Fits: Boolean;
   CharacterText: WideString;
-  Buffer: TGraphBufGR;
+  Key: WideString;
 begin
   Font := nil;
   Bitmap := nil;
@@ -582,14 +588,43 @@ begin
       until Fits;
     if FirstCharacter > N then
       FirstCharacter := N;
-    Buffer := TGraphBufGR.Create(True);
+    SetLength(CharacterText, 1);
     if HardwareRenderingEnabled then
     begin
-      Buffer.AllocateRgbaTight(HitTestBounds.Right - HitTestBounds.Left, HitTestBounds.Bottom - HitTestBounds.Top);
-      Font.UseARGBColors := True;
-      Font.DefaultColor := ColorWithAlpha(Color565ToArgb(TextColor), 255);
+      // Glyphs go one by one at the advances the caret uses below, all into
+      // one texture that is uploaded only when the text or its layout changes.
+      BufferWidth := HitTestBounds.Right - HitTestBounds.Left;
+      BufferHeight := HitTestBounds.Bottom - HitTestBounds.Top;
+      Key :=
+          Format('%d,%d,%d,%d,%d,%d', [FirstCharacter, X, Y, TextColor, BufferWidth, BufferHeight]) + #0 + FontCache.CacheKey + #0 + Text;
+      if (TextBuffer = nil) or (Key <> TextBufferKey) then
+      begin
+        if TextBuffer = nil then
+          TextBuffer := TGraphBufGR.Create(True);
+        if (TextBuffer.Width <> BufferWidth) or (TextBuffer.Height <> BufferHeight) then
+          TextBuffer.AllocateRgbaTight(BufferWidth, BufferHeight);
+        TextBuffer.ClearPixels;
+        Font.UseARGBColors := True;
+        Font.DefaultColor := ColorWithAlpha(Color565ToArgb(TextColor), 255);
+        GlyphX := X;
+        for I := FirstCharacter to N - 1 do
+        begin
+          CharacterText[1] := Text[I + 1];
+          Font.DrawTaggedText32(
+              TextBuffer.GetPixels,
+              TextBuffer.PitchBytes,
+              GlyphX - HitTestBounds.Left,
+              Y - HitTestBounds.Top,
+              CharacterText,
+              Classes.Rect(0, 0, TextBuffer.Width, TextBuffer.Height)
+          );
+          Inc(GlyphX, Font.GetGlyphAdvance(Text[I + 1]));
+        end;
+        TextBufferKey := Key;
+      end;
+      if FirstCharacter < N then
+        DrawTexture(TextBuffer.GetTexture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
     end;
-    SetLength(CharacterText, 1);
     for I := FirstCharacter to N do
     begin
       Advance := 0;
@@ -597,20 +632,7 @@ begin
       begin
         Advance := Font.GetGlyphAdvance(Text[I + 1]);
         CharacterText[1] := Text[I + 1];
-        if HardwareRenderingEnabled then
-        begin
-          Buffer.ClearPixels;
-          Font.DrawTaggedText32(
-              Buffer.GetPixels,
-              Buffer.PitchBytes,
-              X - HitTestBounds.Left,
-              Y - HitTestBounds.Top,
-              CharacterText,
-              Classes.Rect(0, 0, Buffer.Width, Buffer.Height)
-          );
-          DrawTexture(Buffer.GetTexture, HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
-        end
-        else
+        if not HardwareRenderingEnabled then
           Font.DrawTaggedText16(ScreenRenderBuffer.GetPixels, ScreenRenderBuffer.PitchBytes, X, Y, CharacterText, ClipRect);
       end;
       if (HasFocus = True) and (CaretPosition = I) and (MessageLoop.CaretBlinkOn = True) then
@@ -651,8 +673,6 @@ begin
       end;
       Inc(X, Advance);
     end;
-    if Buffer <> nil then
-      Buffer.Free;
     if BorderEnabled then
     begin
       if HardwareRenderingEnabled then
