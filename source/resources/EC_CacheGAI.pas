@@ -8,6 +8,7 @@ uses
   Classes,
   EC_Buf,
   EC_Cache,
+  EC_FramePrefetch,
   GR_DX,
   GR_gi,
   Types,
@@ -36,6 +37,8 @@ type
     // Frames without drawable content; they never get a texture, so remember
     // them instead of decoding them again on every draw.
     EmptyFrames: array of Boolean;
+    // Frame inflated by EC_FramePrefetch that DecodedFrameGi points into.
+    UnpackedFrame: PPrefetchedFrame;
     procedure LoadFromConfigBuffer(SourceBuffer: TBufEC; const LoadOption: WideString); override;
     constructor Create;
     destructor Destroy; override;
@@ -45,8 +48,9 @@ type
     function GetCanvasSize: TPoint;
     function GetOrCreateFrameSurface(FrameIndex: Integer): IDirect3DTexture9;
     // Queues a frame for EC_FramePrefetch if it has no surface yet and the
-    // animation is large enough for decoding to stall a draw.
-    procedure PrefetchFrame(FrameIndex: Integer);
+    // animation is large enough for decoding to stall a draw. UnpackOnly
+    // queues a compressed frame for LoadFrameGi instead.
+    procedure PrefetchFrame(FrameIndex: Integer; UnpackOnly: Boolean = False);
     function GetFrameOrigin(FrameIndex: Integer): TPoint;
     function LoadFrameGi(FrameIndex: Integer): TgiGR;
     function IsFrameCompressed(FrameIndex: Integer): Boolean;
@@ -65,7 +69,6 @@ implementation
 
 uses
   GameDiagnostics,
-  EC_FramePrefetch,
   GameGraphics,
   EC_Mem,
   EC_Str,
@@ -131,6 +134,8 @@ begin
     RawGaiData := nil;
   end;
   DecodedFrameGi.Free;
+  FreePrefetchedFrame(UnpackedFrame);
+  UnpackedFrame := nil;
   if FrameSurfaceCache <> nil then
   begin
     FreeTextureCache(FrameSurfaceCache);
@@ -246,7 +251,7 @@ begin
   Result := Texture;
 end;
 
-procedure TCGaiEC.PrefetchFrame(FrameIndex: Integer);
+procedure TCGaiEC.PrefetchFrame(FrameIndex: Integer; UnpackOnly: Boolean);
 var
   Entry: Pointer;
   Offset: Cardinal;
@@ -258,18 +263,24 @@ begin
     Exit;
   if (FrameIndex < Length(EmptyFrames)) and EmptyFrames[FrameIndex] then
     Exit;
-  if (FrameSurfaceCache <> nil) and (FrameIndex < FrameSurfaceCache.SurfaceCount) and (FrameSurfaceCache.Surfaces[FrameIndex] <> nil) then
+  if not UnpackOnly
+      and (FrameSurfaceCache <> nil)
+      and (FrameIndex < FrameSurfaceCache.SurfaceCount)
+      and (FrameSurfaceCache.Surfaces[FrameIndex] <> nil) then
     Exit;
   Entry := AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader));
   Offset := ReadDWordEC(Entry);
   if Offset = 0 then
+    Exit;
+  if UnpackOnly and (ReadWordEC(AddPointerOffset(RawGaiData, Offset)) <> $4C5A) then
     Exit;
   RequestFramePrefetch(
       Self,
       FrameIndex,
       AddPointerOffset(RawGaiData, Offset),
       ReadDWordEC(AddPointerOffset(Entry, SizeOf(Integer))),
-      ReadWordEC(AddPointerOffset(RawGaiData, Offset)) = $4C5A
+      ReadWordEC(AddPointerOffset(RawGaiData, Offset)) = $4C5A,
+      UnpackOnly
   );
 end;
 
@@ -281,6 +292,7 @@ end;
 function TCGaiEC.LoadFrameGi(FrameIndex: Integer): TgiGR;
 var
   Offset: Integer;
+  Previous: PPrefetchedFrame;
 begin
   Result := nil;
   if (FrameIndex < 0) or (Header.FrameCount <= FrameIndex) then
@@ -291,12 +303,25 @@ begin
     Result := nil;
     Exit;
   end;
+  // DecodedFrameGi may point into the previous inflated frame until it loads
+  // this one.
+  Previous := UnpackedFrame;
+  UnpackedFrame := nil;
   if ReadWordEC(AddPointerOffset(RawGaiData, Offset)) = $4C5A then
   begin
-    DecodedFrameGi.LoadCompressedGiBytes(
-        AddPointerOffset(RawGaiData, Offset),
-        ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)))
-    );
+    UnpackedFrame := TakePrefetchedFrame(Self, FrameIndex, True);
+    if (UnpackedFrame <> nil) and UnpackedFrame.Failed then
+    begin
+      FreePrefetchedFrame(UnpackedFrame);
+      UnpackedFrame := nil;
+    end;
+    if UnpackedFrame <> nil then
+      DecodedFrameGi.LoadRawGiBytes(UnpackedFrame.Unpacked, UnpackedFrame.UnpackedSize)
+    else
+      DecodedFrameGi.LoadCompressedGiBytes(
+          AddPointerOffset(RawGaiData, Offset),
+          ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)))
+      );
     if not SkipPalettedColorCacheBuild then
       DecodedFrameGi.BuildPalettedFormat4ColorCache;
   end
@@ -305,6 +330,7 @@ begin
         AddPointerOffset(RawGaiData, Offset),
         ReadDWordEC(AddPointerOffset(RawGaiData, FrameIndex * SizeOf(TGaiFrameEntry) + SizeOf(TGaiHeader) + SizeOf(Integer)))
     );
+  FreePrefetchedFrame(Previous);
   if not DecodedFrameGi.IsEmpty then
     Result := DecodedFrameGi;
 end;
