@@ -1368,10 +1368,12 @@ var
     Rect: TSDL_Rect;
   begin
     Result := False;
-    if not Accelerated or not OpaqueVertices or ((Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
+    if not Accelerated or ((Transform.ScaleX = 1) and (Transform.ScaleY = 1)) then
       Exit;
     // Keep the existing integer coverage, colors and submission order. One
-    // geometry command replaces a color change and fill command per point.
+    // geometry command replaces a color change and fill command per point;
+    // translucent points blend in the same order within the draw. Radiation
+    // rings queue tens of thousands of them a frame.
     Require(Count <= High(Integer) div 6, 'point vertex count');
     VertexCount := Count * 6;
     if Length(PointVertices) < VertexCount then
