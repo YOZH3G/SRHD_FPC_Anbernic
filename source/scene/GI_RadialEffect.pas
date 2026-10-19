@@ -306,37 +306,6 @@ var
       Result := Round(Math.Max(0, (Distance + 10.0) * 3.0 + (Alpha - 100)));
   end;
 
-  procedure QueueRadiationOctants(X, Y: Integer);
-  var
-    PixelColor: Cardinal;
-    PixelAlpha: Integer;
-    Distance: Single;
-  begin
-    Distance := Sqrt(DistanceSquared);
-    PixelAlpha := RadiationRingAlpha(Distance - FadeRadius);
-    if PixelAlpha > 0 then
-    begin
-      PixelColor := Color565ToArgb(RadiationRingColor(PixelAlpha));
-      QueueDrawPoint(X + CenterX, Y + CenterY, PixelColor, PixelAlpha);
-      QueueDrawPoint(-X + CenterX, -Y + CenterY, PixelColor, PixelAlpha);
-      if (X > 0) and (Y > 0) then
-      begin
-        QueueDrawPoint(-X + CenterX, Y + CenterY, PixelColor, PixelAlpha);
-        QueueDrawPoint(X + CenterX, -Y + CenterY, PixelColor, PixelAlpha);
-      end;
-      if X <> Y then
-      begin
-        QueueDrawPoint(Y + CenterX, X + CenterY, PixelColor, PixelAlpha);
-        QueueDrawPoint(-Y + CenterX, -X + CenterY, PixelColor, PixelAlpha);
-        if (X > 0) and (Y > 0) then
-        begin
-          QueueDrawPoint(-Y + CenterX, X + CenterY, PixelColor, PixelAlpha);
-          QueueDrawPoint(Y + CenterX, -X + CenterY, PixelColor, PixelAlpha);
-        end;
-      end;
-    end;
-  end;
-
 var
   Edge: Integer;
 
@@ -382,7 +351,8 @@ var
 
 var
   Particle: PRadiationParticle;
-  OuterRadius, InnerRadius, OuterSquared, InnerSquared, X, Y: Integer;
+  OuterRadius, InnerRadius, OuterSquared, InnerSquared, X, Y, PixelAlpha: Integer;
+  RingTexels: array of Cardinal;
 begin
   OuterRadius := Radius;
   InnerRadius := Math.Max(OuterRadius - 100, 0);
@@ -409,29 +379,16 @@ begin
       Particle := Particle.Next;
     end;
     FlushAlphaLines(@ClipRect);
-    Y := 0;
-    X := 0;
-    while True do
+    // The ring's color depends only on the distance from the center; drawn
+    // per pixel it took tens of thousands of points a frame in a battle.
+    SetLength(RingTexels, OuterRadius - InnerRadius + 1);
+    for X := 0 to High(RingTexels) do
     begin
-      DistanceSquared := Sqr(X) + Sqr(Y);
-      if DistanceSquared < InnerSquared then
-      begin
-        Inc(X);
-        Continue;
-      end;
-      if DistanceSquared > OuterSquared then
-      begin
-        Inc(Y);
-        X := Y;
-        DistanceSquared := Sqr(X) + Sqr(Y);
-        if DistanceSquared > OuterSquared then
-          Break;
-        Continue;
-      end;
-      QueueRadiationOctants(X, Y);
-      Inc(X);
+      // Transparent texels keep a color too: filtering blends it into the edge.
+      PixelAlpha := RadiationRingAlpha(InnerRadius + X - FadeRadius);
+      RingTexels[X] := ColorWithAlpha(Color565ToArgb(RadiationRingColor(PixelAlpha)), PixelAlpha);
     end;
-    FlushDrawPoints(@ClipRect);
+    DrawRadialRing(CenterX, CenterY, InnerRadius, RingTexels, @ClipRect);
   end
   else
   begin

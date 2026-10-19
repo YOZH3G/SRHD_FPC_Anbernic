@@ -3757,6 +3757,7 @@ begin
   FinalizePackageCollection;
   // Drop every device-owned image before SDL destroys its renderer.
   OffscreenTexture := nil;
+  ReleaseRadialRingTexture;
   Direct3DDevice := nil;
   Direct3D := nil;
   CloseGameWindow;

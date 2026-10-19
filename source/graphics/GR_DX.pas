@@ -118,6 +118,14 @@ procedure QueueAlphaLine(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Col
 
 procedure FlushAlphaLines(ClipRect: PRect);
 
+// Draws the annulus from InnerRadius to InnerRadius + High(Texels) around the
+// center; Texels[I] is the color at distance InnerRadius + I, interpolated
+// between whole distances.
+procedure DrawRadialRing(CenterX: Integer; CenterY: Integer; InnerRadius: Integer; const Texels: array of Cardinal; ClipRect: PRect);
+
+// Drops DrawRadialRing's texture; call before the device is released.
+procedure ReleaseRadialRingTexture;
+
 procedure DrawAlphaLine(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 
 procedure DrawGradientLine(X1: Integer; Y1: Integer; Color1: Cardinal; X2: Integer; Y2: Integer; Color2: Cardinal; ClipRect: PRect);
@@ -218,6 +226,9 @@ uses
   Math;
 
 var
+  RingTexture: IDirect3DTexture9;
+  RingTextureWidth: Integer;
+  RingVertices: array of TScreenVertexGR;
   SeenTextureGeneration: LongInt = 0;
   LastBudgetEvictionTick: Cardinal = 0;
   BudgetEvictionNow: Cardinal = 0;
@@ -664,6 +675,76 @@ begin
   PendingLineCount := 0;
   if ClipRect <> nil then
     Direct3DDevice.SetScissorRect(@OldClip);
+end;
+
+procedure DrawRadialRing(CenterX, CenterY, InnerRadius: Integer; const Texels: array of Cardinal; ClipRect: PRect);
+var
+  Locked: TD3DLockedRect;
+  OldClip: TRect;
+  Spoke, Segments, Index, OuterRadius: Integer;
+  Cosine, Sine: Single;
+  Inner, Outer, PreviousInner, PreviousOuter: TScreenVertexGR;
+begin
+  if (RingTexture = nil) or (RingTextureWidth <> Length(Texels)) then
+  begin
+    RingTexture := GR_CreateTexture(Length(Texels), 1, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+    RingTextureWidth := Length(Texels);
+  end;
+  RingTexture.LockRect(0, Locked, nil, 0);
+  System.Move(Texels[0], Locked.Bits^, Length(Texels) * SizeOf(Cardinal));
+  RingTexture.UnlockRect(0);
+  // Texel centers sit at whole distances. Chords sag R * (1 - Cos(Pi / N))
+  // inside the circle; this many keeps that within 0.05 pixels, as the
+  // steepest edge of the radiation ring shows a larger error.
+  OuterRadius := InnerRadius + High(Texels);
+  Segments := Max(16, Ceil(Pi * Sqrt(10 * OuterRadius)));
+  if Length(RingVertices) < Segments * 6 then
+    SetLength(RingVertices, Segments * 6);
+  FillChar(Inner, SizeOf(Inner), 0);
+  Inner.Z := 1;
+  Inner.RHW := 1;
+  Inner.Color := $FFFFFFFF;
+  Inner.V := 0.5;
+  Outer := Inner;
+  Inner.U := 0.5 / Length(Texels);
+  Outer.U := (High(Texels) + 0.5) / Length(Texels);
+  Index := 0;
+  for Spoke := 0 to Segments do
+  begin
+    SinCos(Spoke * 2 * Pi / Segments, Sine, Cosine);
+    Inner.X := CenterX + InnerRadius * Cosine;
+    Inner.Y := CenterY + InnerRadius * Sine;
+    Outer.X := CenterX + OuterRadius * Cosine;
+    Outer.Y := CenterY + OuterRadius * Sine;
+    if Spoke > 0 then
+    begin
+      RingVertices[Index] := PreviousInner;
+      RingVertices[Index + 1] := PreviousOuter;
+      RingVertices[Index + 2] := Outer;
+      RingVertices[Index + 3] := PreviousInner;
+      RingVertices[Index + 4] := Outer;
+      RingVertices[Index + 5] := Inner;
+      Inc(Index, 6);
+    end;
+    PreviousInner := Inner;
+    PreviousOuter := Outer;
+  end;
+  if ClipRect <> nil then
+  begin
+    Direct3DDevice.GetScissorRect(OldClip);
+    Direct3DDevice.SetScissorRect(ClipRect);
+  end;
+  Direct3DDevice.SetTexture(0, RingTexture);
+  Direct3DDevice.DrawPrimitiveUP(D3DPT_TRIANGLELIST, Segments * 2, @RingVertices[0], SizeOf(TScreenVertexGR));
+  Direct3DDevice.SetTexture(0, nil);
+  if ClipRect <> nil then
+    Direct3DDevice.SetScissorRect(@OldClip);
+end;
+
+procedure ReleaseRadialRingTexture;
+begin
+  RingTexture := nil;
+  RingTextureWidth := 0;
 end;
 
 procedure DrawAlphaLine(X1, Y1, X2, Y2: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
