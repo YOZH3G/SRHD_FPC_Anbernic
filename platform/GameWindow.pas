@@ -145,6 +145,10 @@ var
   // Animation frames decoded ahead on a worker thread and then drawn, or
   // dropped unused; logged with each screen's statistics.
   GamePrefetchedFramesUsed, GamePrefetchedFramesDropped: QWord;
+  // Performance-counter ticks the message loop spent advancing timers (game
+  // logic, animations, turn films) since the last present; the rest of a
+  // frame's work is drawing.
+  GameFrameLogicTicks: QWord;
 
 implementation
 
@@ -362,7 +366,7 @@ var
   // Per-screen statistics for NoteGamePresentedFrame; independent of the
   // counters StartGameFrameStats resets for turn films and arcade combat.
   SceneName: UnicodeString;
-  SceneCounter, ScenePrefetchUsed, ScenePrefetchDropped: QWord;
+  SceneCounter, ScenePrefetchUsed, ScenePrefetchDropped, SceneLogic: QWord;
   SceneTotals: TFrameStatsTotals;
 
 function FormatFrameStats(const Totals: TFrameStatsTotals; Elapsed: QWord): string;
@@ -420,19 +424,19 @@ var
 begin
   Frequency := SDL_GetPerformanceFrequency;
   Now := SDL_GetPerformanceCounter;
+  Format := DefaultFormatSettings;
+  Format.DecimalSeparator := '.';
   if Interval * 10 > Frequency then
-  begin
-    Format := DefaultFormatSettings;
-    Format.DecimalSeparator := '.';
     LogGameMessage(
         gllInfo,
         'performance',
         SysUtils.Format(
-            'Slow frame; scene=%s; frame=%.0f ms; work=%.0f ms; present=%.0f ms; uploads=%d (%d KiB); evicted=%d (%d KiB)',
+            'Slow frame; scene=%s; frame=%.0f ms; work=%.0f ms; logic=%.0f ms; present=%.0f ms; uploads=%d (%d KiB); evicted=%d (%d KiB)',
             [
                 GameFrameScene,
                 Interval * 1000 / Frequency,
                 Work * 1000 / Frequency,
+                GameFrameLogicTicks * 1000 / Frequency,
                 Present * 1000 / Frequency,
                 GameFrameUploads,
                 GameFrameUploadBytes shr 10,
@@ -442,7 +446,6 @@ begin
             Format
         )
     );
-  end;
   if (SceneName <> GameFrameScene) or (Now - SceneCounter >= 10 * Frequency) then
   begin
     if (SceneTotals.Frames > 0) and (SceneName <> '') then
@@ -453,6 +456,7 @@ begin
               + SceneName
               + '; '
               + FormatFrameStats(SceneTotals, Now - SceneCounter)
+              + SysUtils.Format('; logic=%.1f ms', [SceneLogic * 1000 / Frequency / SceneTotals.Frames], Format)
               + '; prefetched='
               + IntToStr(GamePrefetchedFramesUsed - ScenePrefetchUsed)
               + ' (dropped '
@@ -463,6 +467,7 @@ begin
     SceneCounter := Now;
     ScenePrefetchUsed := GamePrefetchedFramesUsed;
     ScenePrefetchDropped := GamePrefetchedFramesDropped;
+    SceneLogic := 0;
     SceneTotals := Default(TFrameStatsTotals);
   end;
   Inc(SceneTotals.Frames);
@@ -476,6 +481,8 @@ begin
   Inc(SceneTotals.UploadBytes, GameFrameUploadBytes);
   Inc(SceneTotals.Evictions, GameFrameEvictions);
   Inc(SceneTotals.EvictedBytes, GameFrameEvictedBytes);
+  Inc(SceneLogic, GameFrameLogicTicks);
+  GameFrameLogicTicks := 0;
   GameFrameUploads := 0;
   GameFrameUploadBytes := 0;
   GameFrameEvictions := 0;

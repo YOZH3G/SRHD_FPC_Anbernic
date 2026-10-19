@@ -410,6 +410,7 @@ uses
   GameGraphics,
   Direct3D9,
   GameWindow,
+  SDL2,
   PopUp,
   BreakMessageGIException,
   EC_Mem,
@@ -2149,7 +2150,7 @@ var
   FrameTime, ProcessingTime: Cardinal;
   CarryTicks: Cardinal;
   LastFpsTick, FpsTick: Cardinal;
-  LastPresentedFrames: QWord;
+  LastPresentedFrames, LogicStarted: QWord;
   Index, Stage: Integer;
 begin
   Stage := 0;
@@ -2248,6 +2249,7 @@ begin
             if ShowFrameRate then
               (GetByName('FPS') as TLabelGI).SetText('FPS: ' + IntToStr(FramesPerSecond));
           end;
+          LogicStarted := SDL_GetPerformanceCounter;
           for Index := 0 to FrameTime + CarryTicks - 1 do
           begin
             Stage := 23;
@@ -2255,6 +2257,7 @@ begin
             if PopupController <> nil then
               PopupController.AdvancePopups(TimerTick);
           end;
+          Inc(GameFrameLogicTicks, SDL_GetPerformanceCounter - LogicStarted);
           Stage := 24;
           for Index := 0 to SoundGroupList.Count - 1 do
             if (TFormSoundGroup(SoundGroupList[Index]).Section = 0) or (TFormSoundGroup(SoundGroupList[Index]).Section = SoundSection) then
