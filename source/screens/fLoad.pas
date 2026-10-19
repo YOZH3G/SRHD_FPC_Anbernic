@@ -96,11 +96,32 @@ uses
   aGalaxy,
   SE_Gate;
 
+procedure QueueControlImageLoads(PendingLoads: TList; Control: TObjectGI);
+var
+  Child: TObjectGI;
+begin
+  Control.QueueImageLoad(PendingLoads);
+  Child := Control.FirstChild;
+  while Child <> nil do
+  begin
+    if Child.Active then
+      QueueControlImageLoads(PendingLoads, Child);
+    Child := Child.NextSibling;
+  end;
+end;
+
 procedure QueueCommonLoadingAssets(PendingLoads: TList; Owner: TObjectGI);
 begin
   if ScreenLoadMode <> 4 then
   begin
     QueueConfiguredLoadingAssets(PendingLoads, 'LoadGame');
+    RemoveDuplicateCacheLoads(PendingLoads);
+  end
+  else if PostLoadScreenId = screenMainMenu then
+  begin
+    // A game evicts the menu's artwork. Loading it here, off the main thread,
+    // keeps the menu from reading and inflating it all in its first frame.
+    QueueControlImageLoads(PendingLoads, MainMenuScreen.RootUiObject);
     RemoveDuplicateCacheLoads(PendingLoads);
   end;
   if AnimMenuShip then
