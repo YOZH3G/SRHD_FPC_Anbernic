@@ -59,6 +59,9 @@ var
 
   PendingPoints: array of TScreenVertexGR;
 
+  // Two vertices per queued line.
+  PendingLines: array of TScreenVertexGR;
+
   TextureCaches: TList = nil;
 
   AvailableTextureBytes: Cardinal = 0;
@@ -81,6 +84,8 @@ var
   PendingPointCount: Integer = 0;
 
   PendingPointCapacity: Integer = 0;
+
+  PendingLineCount: Integer = 0;
 
   ResidentTextureBytes: Cardinal = 0;
 
@@ -106,6 +111,12 @@ function CreateTextureFromPixels(
 procedure QueueDrawPoint(X: Integer; Y: Integer; Color: Cardinal; Alpha: Integer);
 
 procedure FlushDrawPoints(ClipRect: PRect);
+
+// Like DrawAlphaLine, drawn with the other queued lines in one call by
+// FlushAlphaLines.
+procedure QueueAlphaLine(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Cardinal; Alpha: Integer);
+
+procedure FlushAlphaLines(ClipRect: PRect);
 
 procedure DrawAlphaLine(X1: Integer; Y1: Integer; X2: Integer; Y2: Integer; Color: Cardinal; Alpha: Integer; ClipRect: PRect);
 
@@ -614,6 +625,43 @@ begin
   end;
   Direct3DDevice.DrawPrimitiveUP(D3DPT_POINTLIST, PendingPointCount, @PendingPoints[0], SizeOf(TScreenVertexGR));
   PendingPointCount := 0;
+  if ClipRect <> nil then
+    Direct3DDevice.SetScissorRect(@OldClip);
+end;
+
+procedure QueueAlphaLine(X1, Y1, X2, Y2: Integer; Color: Cardinal; Alpha: Integer);
+var
+  Index: Integer;
+begin
+  if Length(PendingLines) < PendingLineCount * 2 + 2 then
+    SetLength(PendingLines, Length(PendingLines) + 512);
+  Index := PendingLineCount * 2;
+  Inc(PendingLineCount);
+  PendingLines[Index].Color := ColorWithAlpha(Color, Alpha);
+  PendingLines[Index].X := X1;
+  PendingLines[Index].Y := Y1;
+  PendingLines[Index].Z := 1;
+  PendingLines[Index].RHW := 1;
+  PendingLines[Index].U := 0;
+  PendingLines[Index].V := 0;
+  PendingLines[Index + 1] := PendingLines[Index];
+  PendingLines[Index + 1].X := X2;
+  PendingLines[Index + 1].Y := Y2;
+end;
+
+procedure FlushAlphaLines(ClipRect: PRect);
+var
+  OldClip: TRect;
+begin
+  if PendingLineCount = 0 then
+    Exit;
+  if ClipRect <> nil then
+  begin
+    Direct3DDevice.GetScissorRect(OldClip);
+    Direct3DDevice.SetScissorRect(ClipRect);
+  end;
+  Direct3DDevice.DrawPrimitiveUP(D3DPT_LINELIST, PendingLineCount, @PendingLines[0], SizeOf(TScreenVertexGR));
+  PendingLineCount := 0;
   if ClipRect <> nil then
     Direct3DDevice.SetScissorRect(@OldClip);
 end;

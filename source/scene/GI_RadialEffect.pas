@@ -398,17 +398,17 @@ begin
     begin
       for Edge := Low(Particle.Alpha) to High(Particle.Alpha) do
         if Particle.Alpha[Edge] > 0 then
-          DrawAlphaLine(
+          QueueAlphaLine(
               AbsolutePosition.X + Particle.Position.X + RadiationEdgeStarts[Edge].X,
               AbsolutePosition.Y + Particle.Position.Y + RadiationEdgeStarts[Edge].Y,
               AbsolutePosition.X + Particle.Position.X + RadiationEdgeEnds[Edge].X,
               AbsolutePosition.Y + Particle.Position.Y + RadiationEdgeEnds[Edge].Y,
               Color565ToArgb(Particle.Color),
-              Particle.Alpha[Edge],
-              @ClipRect
+              Particle.Alpha[Edge]
           );
       Particle := Particle.Next;
     end;
+    FlushAlphaLines(@ClipRect);
     Y := 0;
     X := 0;
     while True do
