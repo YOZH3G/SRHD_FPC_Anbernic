@@ -125,6 +125,8 @@ type
     BrakeKeyDown: Boolean;
     TurnLeftKeyDown: Boolean;
     TurnRightKeyDown: Boolean;
+    // Gamepad R1 held: the stick thrusts along the heading and turns.
+    HeadingLockKeyDown: Boolean;
     PrimaryFireKeyDown: Boolean;
     SecondaryFireKeyDown: Boolean;
     MobileAxisX, MobileAxisY: Integer;
@@ -314,6 +316,10 @@ uses
   EC_CacheGI,
   EC_CacheHSAI,
   Direct3D9;
+
+const
+  // rangers.gptk sends ] for the R1 shoulder button.
+  GamepadHeadingLockKey = 221;
 
 constructor TfAB.Create;
 begin
@@ -804,6 +810,7 @@ begin
   BrakeKeyDown := False;
   TurnLeftKeyDown := False;
   TurnRightKeyDown := False;
+  HeadingLockKeyDown := False;
   PrimaryFireKeyDown := False;
   SecondaryFireKeyDown := False;
   ArcadePaused := False;
@@ -1145,6 +1152,8 @@ end;
 procedure TfAB.BattleKeyUp(Sender: TObjectGI; VirtualKey: Cardinal);
 begin
   CancelCargoPickup;
+  if VirtualKey = GamepadHeadingLockKey then
+    HeadingLockKeyDown := False;
   if (VirtualKey = VK_UP) or ((VirtualKey = Ord('R')) and not IsVirtualKeyDown(VK_SHIFT) and not IsVirtualKeyDown(VK_CONTROL)) then
   begin
     ForwardKeyDown := False;
@@ -2428,6 +2437,7 @@ begin
   BrakeKeyDown := False;
   TurnLeftKeyDown := False;
   TurnRightKeyDown := False;
+  HeadingLockKeyDown := False;
   PrimaryFireKeyDown := False;
   SecondaryFireKeyDown := False;
   PlayerArcadeShip.DisruptUntilTick := 0;
@@ -2468,6 +2478,7 @@ begin
   BrakeKeyDown := False;
   TurnLeftKeyDown := False;
   TurnRightKeyDown := False;
+  HeadingLockKeyDown := False;
   PrimaryFireKeyDown := False;
   SecondaryFireKeyDown := False;
   ArcadeViewMode := 2;
@@ -4131,6 +4142,23 @@ begin
   Magnitude := Sqrt(Sqr(MobileAxisX) + Sqr(MobileAxisY));
   if Magnitude = 0 then
     Exit;
+  if HeadingLockKeyDown then
+  begin
+    // Keep the heading unless the stick is pushed sideways: up and down thrust
+    // forward and back, as the arrow keys do.
+    PlayerArcadeShip.SetTurnInput(MobileAxisX);
+    if MobileAxisY > 0 then
+    begin
+      PlayerArcadeShip.StartThrust;
+      PlayerArcadeShip.Thrust := PlayerArcadeShip.Thrust * Min(1, MobileAxisY / 100);
+    end
+    else if MobileAxisY < 0 then
+    begin
+      PlayerArcadeShip.StartReverseThrust;
+      PlayerArcadeShip.Thrust := PlayerArcadeShip.Thrust * Min(1, -MobileAxisY / 100);
+    end;
+    Exit;
+  end;
   // Interpret the stick as a direction on the screen. Unproject a nearby
   // point to get its bearing on the sphere, including the camera's rotation.
   // Raw stick X must not become degrees per tick: even a tiny offset would
@@ -4363,8 +4391,8 @@ end;
 
 function TfAB.HandleGamepadArcadeKey(VirtualKey: Cardinal): Boolean;
 begin
-  // rangers.gptk sends Tab for Y, Enter for Start and R1, F6 for L2. They do
-  // nothing in combat on a keyboard, so they take combat actions on handhelds.
+  // rangers.gptk sends Tab for Y, Enter for Start, F6 for L2 and ] for R1. They
+  // do nothing in combat on a keyboard, so they take combat actions on handhelds.
   Result := False;
   if not GameWindowHasGamepadArcadeLayout
       or (ArcadeViewMode <> 0)
@@ -4386,6 +4414,7 @@ begin
     VK_F6:
       if not SimulationPaused then
         SelectNextPrimaryWeapon;
+    GamepadHeadingLockKey: HeadingLockKeyDown := True;
   else
     Result := False;
   end;
@@ -5271,6 +5300,7 @@ begin
     BrakeKeyDown := False;
     TurnLeftKeyDown := False;
     TurnRightKeyDown := False;
+    HeadingLockKeyDown := False;
     PrimaryFireKeyDown := False;
     SecondaryFireKeyDown := False;
     GetPlayer.GetHull.HullPoints := PlayerArcadeShip.Health;

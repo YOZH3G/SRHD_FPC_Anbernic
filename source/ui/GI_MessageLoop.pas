@@ -392,6 +392,11 @@ var
 
   MessageLoopStack: TList = nil;
 
+  // Steps through the windows of a screen's panel; True when it used the key.
+  PanelCarouselKeyCallback: function(Loop: TMessageLoopGI; Key: Cardinal): Boolean = nil;
+  // Called when Run returns, after the loop has stopped taking messages.
+  MessageLoopClosedCallback: procedure(Loop: TMessageLoopGI) = nil;
+
   IgnoreWarpMouseMove: Boolean = False;
 
   LastMousePosition: TPoint;
@@ -2135,6 +2140,8 @@ begin
     finally
       PopMessageLoop(Self);
     end;
+    if Assigned(MessageLoopClosedCallback) then
+      MessageLoopClosedCallback(Self);
   except
     on E: Exception do
     begin
@@ -2878,6 +2885,8 @@ begin
     else if (Message = WM_KEYDOWN) or ((Message = WM_SYSKEYDOWN) and (WParam in [VK_MENU, VK_LEFT..VK_DOWN, VK_F5])) then
     begin
       Stage := 31;
+      if Assigned(PanelCarouselKeyCallback) and not (FocusedControl is TEditGI) and PanelCarouselKeyCallback(Self, WParam) then
+        Exit;
       RootUiObject.BroadcastKeyDown(WParam);
       if FocusedControl <> nil then
       begin
