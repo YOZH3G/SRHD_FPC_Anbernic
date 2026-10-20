@@ -21,7 +21,9 @@ def build_linux(
     libraries.mkdir(parents=True, exist_ok=True)
     units.mkdir(parents=True, exist_ok=True)
     compiler = fpc_source / "compiler" / ("ppcrossarm" if arm else "ppcrossa64")
-    runtime = fpc_source / "rtl/units" / f"{cpu}-linux"
+    # aarch64 links with LLVM link-time optimization against an RTL built for
+    # it (anbernic_sdk.sh); FPC's ARM backend for armhf has no LTO.
+    runtime = fpc_source / ("rtl" if arm else "lto/rtl") / "units" / f"{cpu}-linux"
     clang = toolchain / f"{triplet}-clang"
     for required in (compiler, runtime / "system.ppu", clang):
         if not required.is_file():
@@ -66,7 +68,9 @@ def build_linux(
         link.symlink_to(soname)
     packages = ROOT / "vendor/fpc/packages"
     backend = (
-        ["-CaEABIHF", "-CpARMV7A", "-CfVFPV3"] if arm else ["-Clv17.0", "-Aclang-llvm"]
+        ["-CaEABIHF", "-CpARMV7A", "-CfVFPV3"]
+        if arm
+        else ["-Clv17.0", "-Aclang-llvm", "-Clflto", "-XLL"]
     )
     compiler_flags = [
         "-n",

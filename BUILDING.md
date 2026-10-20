@@ -138,7 +138,9 @@ build needs: Ubuntu 20.04 ARMHF/AArch64 sysroots, Clang 19 and binutils wrappers
 SDL 2.32.4 for linking, `libevdev` for gptokeyb, and FPC cross compilers bootstrapped
 from the pinned `vendor/fpc`. Its header lists the host packages; debootstrap
 needs root or sudo. `sysroot` and `fpc` build the two halves separately; rebuild
-`fpc` whenever the `vendor/fpc` pin changes.
+`fpc` whenever the `vendor/fpc` pin changes. The AArch64 game is linked with LLVM
+link-time optimization against a second RTL in `fpc/arm64/lto`; ARMHF uses FPC's
+native ARM backend, which has no LTO.
 
 ```sh
 git submodule update --init --recursive
