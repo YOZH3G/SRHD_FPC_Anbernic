@@ -67,10 +67,10 @@ come from the firmware; the package includes the other runtime libraries.
 | --- | --- |
 | D-pad / left stick | mouse cursor |
 | A / B | left / right click |
-| Start / R1 | Enter |
+| Start | Enter |
 | Select | Escape |
 | X / Y | Space / Tab |
-| L1 | slow cursor |
+| L1 / R1 | previous / next window of the bottom-right panel: ship, map, quests, and on a planet its sections |
 | Select + Start | quit the game |
 
 Click a text field with **A** to open the keyboard; **L2** opens it for the
@@ -79,7 +79,7 @@ focused field. While it is open:
 - **Y:** Russian/English; **R2:** lower/upper case, including ё/Ё.
 - **A:** press a key; **B:** delete the character before the caret.
 - On-screen Space, `<` and `>` insert a space and move the caret.
-- **Start/R1** or **OK** apply; **Select** or **Cancel** discard edits.
+- **Start** or **OK** apply; **Select** or **Cancel** discard edits.
 
 The keyboard respects each field's length and character limits. It is on by
 default in PortMaster; manual launches use `--on-screen-keyboard`.
@@ -92,11 +92,12 @@ During arcade combat the buttons fly the ship and the cursor stays put:
 | --- | --- |
 | D-pad / left stick | fly in that direction |
 | Right stick | thrust/reverse and turn, like the arrow keys |
+| R1 + D-pad / left stick | the same without changing course: up/down thrust forward/back, left/right turn |
 | A | primary weapons |
 | B / X / R2 | secondary weapons |
 | L2 | next primary weapon |
 | Y | autopilot on/off |
-| Start / R1 | pause; the cursor works again while paused |
+| Start | pause; the cursor works again while paused |
 | Select | leave the battle |
 
 ## Resolution and renderer

@@ -1681,4 +1681,190 @@ begin
   inherited Destroy;
 end;
 
+const
+  // Gamepad shoulder buttons send these through gptokeyb; the game uses neither.
+  CarouselPreviousKey = 219;
+  CarouselNextKey = 221;
+  // Posted after a carousel step has closed a window; its parent opens the next.
+  CarouselResumeKey = $E9;
+  CarouselButtonNames: array[0..12] of WideString = (
+      'PP_Gov',
+      'PP_Goods',
+      'PP_Shop',
+      'PP_Hangar',
+      'PP_Info',
+      'PR_Gov',
+      'PR_Goods',
+      'PR_Shop',
+      'PR_Hangar',
+      'PR_Info',
+      'PM_Ship',
+      'PM_Gal',
+      'PM_Quest'
+  );
+
+var
+  CarouselPendingTarget: WideString;
+
+function IsCarouselWindow(Loop: TMessageLoopGI): Boolean;
+begin
+  Result := (Loop = TMessageLoopGI(ShipScreen)) or (Loop = TMessageLoopGI(GalaxyScreen)) or (Loop = TMessageLoopGI(RangerRatingScreen));
+end;
+
+function CarouselWindowButton(Loop: TMessageLoopGI): WideString;
+begin
+  if Loop = TMessageLoopGI(ShipScreen) then
+    Result := 'PM_Ship'
+  else if Loop = TMessageLoopGI(GalaxyScreen) then
+    Result := 'PM_Gal'
+  else
+    Result := 'PM_Quest';
+end;
+
+function CarouselScreenSuffix(Loop: TMessageLoopGI): WideString;
+var
+  Id: TGameScreenId;
+begin
+  Result := '';
+  try
+    Id := FormToId(Loop);
+  except
+    Exit;
+  end;
+  case Id of
+    screenGovernment, screenRuinsTalk: Result := '_Gov';
+    screenGoodsShop: Result := '_Goods';
+    screenEquipmentShop: Result := '_Shop';
+    screenHangar: Result := '_Hangar';
+    screenInfo: Result := '_Info';
+  end;
+end;
+
+function CarouselButtonShown(Button: TObjectGI): Boolean;
+var
+  Item: TObjectGI;
+begin
+  Result := (Button is TGraphButtonGI) and not TGraphButtonGI(Button).Disabled;
+  Item := Button;
+  while Result and (Item <> nil) do
+  begin
+    Result := Item.Active;
+    Item := Item.Parent;
+  end;
+end;
+
+// Panel buttons of Loop that open windows, in screen order from left to right.
+function CarouselButtons(Loop: TMessageLoopGI): TList;
+var
+  Index, Other: Integer;
+  Button: TObjectGI;
+begin
+  Result := TList.Create;
+  for Index := Low(CarouselButtonNames) to High(CarouselButtonNames) do
+  begin
+    Button := Loop.ContentPanel.FindByNameRecursive(CarouselButtonNames[Index]);
+    if (Button <> nil) and CarouselButtonShown(Button) then
+    begin
+      Other := 0;
+      while (Other < Result.Count) and (TObjectGI(Result[Other]).AbsolutePosition.X <= Button.AbsolutePosition.X) do
+        Inc(Other);
+      Result.Insert(Other, Button);
+    end;
+  end;
+end;
+
+procedure ClickCarouselButton(Loop: TMessageLoopGI; const Name: WideString);
+var
+  Button: TObjectGI;
+begin
+  Button := Loop.ContentPanel.FindByNameRecursive(Name);
+  if (Button is TGraphButtonGI) and CarouselButtonShown(Button) and Assigned(TGraphButtonGI(Button).UpCallback) then
+    TGraphButtonGI(Button).UpCallback(Button);
+end;
+
+function HandlePanelCarouselKey(Loop: TMessageLoopGI; Key: Cardinal): Boolean;
+var
+  Buttons: TList;
+  Ring: TMessageLoopGI;
+  Current, Target: WideString;
+  Index, Position: Integer;
+begin
+  Result := Key = CarouselResumeKey;
+  if Result then
+  begin
+    if CarouselPendingTarget = '' then
+      Exit;
+    Target := CarouselPendingTarget;
+    CarouselPendingTarget := '';
+    if not IsCarouselWindow(Loop) and (Copy(Target, 3, MaxInt) <> CarouselScreenSuffix(Loop)) then
+      ClickCarouselButton(Loop, Target);
+    Exit;
+  end;
+  if (Key <> CarouselPreviousKey) and (Key <> CarouselNextKey) then
+    Exit;
+  if (Loop.ExitCode <> 0) or (Loop.ChildLoop <> nil) then
+    Exit;
+  Ring := Loop;
+  if IsCarouselWindow(Loop) then
+  begin
+    Current := CarouselWindowButton(Loop);
+    if Loop.ParentLoop <> nil then
+      Ring := Loop.ParentLoop;
+  end
+  else
+    Current := CarouselScreenSuffix(Loop);
+  Buttons := CarouselButtons(Ring);
+  try
+    if Buttons.Count = 0 then
+      Exit;
+    Result := True;
+    Position := -1;
+    for Index := 0 to Buttons.Count - 1 do
+      if (Current <> '')
+          and ((TObjectGI(Buttons[Index]).ControlName = Current) or (Copy(TObjectGI(Buttons[Index]).ControlName, 3, MaxInt) = Current)) then
+        Position := Index;
+    if Position < 0 then
+    begin
+      if Key = CarouselNextKey then
+        Position := 0
+      else
+        Position := Buttons.Count - 1;
+    end
+    else if Key = CarouselNextKey then
+      Position := (Position + 1) mod Buttons.Count
+    else
+      Position := (Position + Buttons.Count - 1) mod Buttons.Count;
+    Target := TObjectGI(Buttons[Position]).ControlName;
+  finally
+    Buttons.Free;
+  end;
+  if not IsCarouselWindow(Loop) then
+  begin
+    ClickCarouselButton(Loop, Target);
+    Exit;
+  end;
+  if Target = Current then
+    Exit;
+  // Windows open inside their parent's click handler. Close this one as its
+  // close button does; its parent opens the next on the message posted once
+  // this window's loop has returned.
+  CarouselPendingTarget := Target;
+  if Loop = TMessageLoopGI(ShipScreen) then
+    ShipScreen.CloseClicked(nil)
+  else if Loop = TMessageLoopGI(GalaxyScreen) then
+    GalaxyScreen.CloseClicked(nil)
+  else
+    Loop.RequestClose(1);
+end;
+
+procedure PostCarouselResume(Loop: TMessageLoopGI);
+begin
+  if (CarouselPendingTarget <> '') and IsCarouselWindow(Loop) then
+    PostGameMessage(WM_KEYDOWN, CarouselResumeKey, 1);
+end;
+
+initialization
+  PanelCarouselKeyCallback := @HandlePanelCarouselKey;
+  MessageLoopClosedCallback := @PostCarouselResume;
+
 end.
