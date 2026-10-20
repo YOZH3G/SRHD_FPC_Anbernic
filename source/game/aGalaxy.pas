@@ -12925,6 +12925,7 @@ end;
 
 procedure TStar.NextDay(RecordFilm: Boolean);
 var
+  RepulsionSpeeds: array of Integer;
   Item: TItem;
   Ship: TShip;
   Quantity: Integer;
@@ -13547,9 +13548,15 @@ begin
     Stage := 13;
     if RecordFilm then
     begin
+      // This phase changes positions and destinations, not speed inputs.
+      // Reuse exact virtual calculations only until the phase ends; Ship.Speed
+      // may predate equipment or status changes made earlier in this turn.
+      SetLength(RepulsionSpeeds, EntryCount);
       for EntryIndex := 0 to (EntryCount - 1) do
       begin
         Ship := Self.Ships[EntryIndex];
+        if Ship.Order in [soMove, soFollowShip] then
+          RepulsionSpeeds[EntryIndex] := Ship.CalculateSpeed;
         if Ship.Order = soFollowShip then
           Ship.RepulsionPosition := Ship.Position;
       end;
@@ -13578,7 +13585,7 @@ begin
                 Ship.RepulsionPosition.Y := (Ship.OrderDestination.Y - Ship.RepulsionPosition.Y) * Distance + Ship.RepulsionPosition.Y;
               end;
               if Galaxy.StasisModEnabled <> 1 then
-                Ship.RepelFollowingShips;
+                Ship.RepelFollowingShips(RepulsionSpeeds[EntryIndex], RepulsionSpeeds);
             end;
           end;
         end;
@@ -13591,6 +13598,7 @@ begin
             and (not (Ship is TKling) or (((Ship as TKling).KlingType <> ktBoss) or ((Ship as TKling).DominatorSeries <> dsTerron))) then
           Ship.OrderDestination := Ship.RepulsionPosition;
       end;
+      RepulsionSpeeds := nil;
     end;
 
     Stage := 14;

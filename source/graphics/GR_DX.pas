@@ -363,13 +363,15 @@ begin
     Exit;
   if Direct3DDevice = nil then
     Exit;
+  AvailableBytes := Max(0, Integer(Direct3DDevice.GetAvailableTextureMem - ReservedTextureBytes));
+  if (ResidentTextureBytes < ResidentTextureBudget) and (AvailableBytes > $1400000) and not Force then
+    Exit;
+  // Throttle actual pressure checks, not every under-budget texture lookup.
+  // The SDL budget query is cheap; reading the clock can enter the kernel.
   NowTick := GameTickCount;
   if (NowTick - LastTextureEvictionTick < 10) and not Force then
     Exit;
   LastTextureEvictionTick := NowTick;
-  AvailableBytes := Max(0, Integer(Direct3DDevice.GetAvailableTextureMem - ReservedTextureBytes));
-  if (ResidentTextureBytes < ResidentTextureBudget) and (AvailableBytes > $1400000) and not Force then
-    Exit;
   i := 0;
   while i < TextureCaches.Count do
   begin

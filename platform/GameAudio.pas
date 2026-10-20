@@ -11,6 +11,9 @@ uses
 function CreateGameSound(Guid: Pointer; out Sound: IDirectSound; Outer: IInterface): LongInt; stdcall;
 function EnumerateGameSound(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
 procedure CheckGameSoundFailure(const Sound: IDirectSound);
+{$IFDEF GAME_AUDIO_TEST}
+procedure RunGameAudioTests;
+{$ENDIF}
 
 implementation
 
@@ -39,6 +42,8 @@ type
     Owner: TGameSound;
     OwnerReference: IDirectSound;
     Data: array of Byte;
+    Decoded: array of Single;
+    DecodedValid: Boolean;
     Wave: TSoundWaveFormat;
     Playing, Looping, Primary: Boolean;
     Cursor: Double;
@@ -47,7 +52,12 @@ type
     Notifications: array of TDSPositionNotify;
     procedure UpdateGains;
     function Sample(Frame, Channel: Integer): Single;
+    procedure PrepareDecoded;
+    procedure MixEffect(Output: PSingle; Frames, FrameCount: Integer);
     procedure Mix(Output: PSingle; Frames: Integer);
+{$IFDEF GAME_AUDIO_TEST}
+    procedure MixReference(Output: PSingle; Frames: Integer);
+{$ENDIF}
   public
     constructor Create(AOwner: TGameSound; const Desc: TDSBufferDesc);
     destructor Destroy; override;
@@ -275,6 +285,80 @@ begin
   end;
 end;
 
+procedure TGameSoundBuffer.PrepareDecoded;
+var
+  Index, Count: Integer;
+  Value: SmallInt;
+begin
+  if DecodedValid then
+    Exit;
+  // Keep native-rate PCM: pitch, fractional cursors and loop boundaries still
+  // use the original buffer's frame positions. Integer PCM scales exactly to
+  // Single, so caching this conversion does not quantize the original mixer.
+  Count := (Length(Data) div Wave.BlockAlign) * Wave.Channels;
+  SetLength(Decoded, Count);
+  if Wave.BitsPerSample = 8 then
+    for Index := 0 to Count - 1 do
+      Decoded[Index] := (Integer(Data[Index]) - 128) / 128
+  else
+    for Index := 0 to Count - 1 do
+    begin
+      Move(Data[Index * SizeOf(Value)], Value, SizeOf(Value));
+      Decoded[Index] := LEtoN(Value) / 32768;
+    end;
+  DecodedValid := True;
+end;
+
+procedure TGameSoundBuffer.MixEffect(Output: PSingle; Frames, FrameCount: Integer);
+var
+  Index, Frame, NextFrame: Integer;
+  Fraction, Step, Value, LeftValue, RightValue: Double;
+begin
+  PrepareDecoded;
+  Step := Wave.SamplesPerSecond / 44100;
+  for Index := 0 to Frames - 1 do
+  begin
+    Frame := Trunc(Cursor);
+    NextFrame := Frame + 1;
+    if NextFrame >= FrameCount then
+      if Looping then
+        NextFrame := 0
+      else
+        NextFrame := Frame;
+    Fraction := Cursor - Frame;
+    if Wave.Channels = 1 then
+    begin
+      // Mono effects need one interpolation, followed by independent gains.
+      Value := Decoded[Frame] * (1 - Fraction) + Decoded[NextFrame] * Fraction;
+      LeftValue := Value * LeftGain;
+      RightValue := Value * RightGain;
+    end
+    else
+    begin
+      Frame := Frame * 2;
+      NextFrame := NextFrame * 2;
+      Value := Decoded[Frame] * (1 - Fraction) + Decoded[NextFrame] * Fraction;
+      LeftValue := Value * LeftGain;
+      Value := Decoded[Frame + 1] * (1 - Fraction) + Decoded[NextFrame + 1] * Fraction;
+      RightValue := Value * RightGain;
+    end;
+    Output[Index * 2] := Output[Index * 2] + LeftValue;
+    Output[Index * 2 + 1] := Output[Index * 2 + 1] + RightValue;
+    Cursor := Cursor + Step;
+    if Cursor >= FrameCount then
+    begin
+      if not Looping then
+      begin
+        Playing := False;
+        Cursor := 0;
+        Break;
+      end;
+      while Cursor >= FrameCount do
+        Cursor := Cursor - FrameCount;
+    end;
+  end;
+end;
+
 procedure TGameSoundBuffer.Mix(Output: PSingle; Frames: Integer);
 var
   Index, FrameCount, Frame, NextFrame, Channel, Notice: Integer;
@@ -287,6 +371,13 @@ begin
   FrameCount := Length(Data) div Wave.BlockAlign;
   if FrameCount = 0 then
     Exit;
+  // Static effects have no position notifications. Avoid byte-position work
+  // for every output sample; streaming buffers retain the notification path.
+  if Length(Notifications) = 0 then
+  begin
+    MixEffect(Output, Frames, FrameCount);
+    Exit;
+  end;
   Step := Wave.SamplesPerSecond / 44100;
   for Index := 0 to Frames - 1 do
   begin
@@ -417,6 +508,9 @@ begin
   if (First <> Bytes) and ((Audio2 = nil) or (Bytes2 = nil)) then
     Exit(DSERR_INVALIDPARAM);
   Owner.Lock;
+  // Lock/Unlock exclude the mixer. Invalidate before handing out writable PCM,
+  // including wraparound locks and writes to a currently playing buffer.
+  DecodedValid := False;
   Audio1^ := @Data[Offset];
   Bytes1^ := First;
   if Audio2 <> nil then
@@ -472,6 +566,7 @@ begin
   Owner.Lock;
   try
     Wave := Value;
+    DecodedValid := False;
   finally
     Owner.Unlock;
   end;
@@ -604,5 +699,9 @@ begin
     Callback(nil, 'SDL default audio device', 'SDL2', Context);
   Result := DS_OK;
 end;
+
+{$IFDEF GAME_AUDIO_TEST}
+{$I ../tests/game_audio_cases.inc}
+{$ENDIF}
 
 end.

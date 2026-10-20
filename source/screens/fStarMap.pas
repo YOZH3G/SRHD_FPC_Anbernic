@@ -2602,6 +2602,17 @@ end;
 
 procedure TfStarMap.RedrawMap;
 begin
+  // Hardware invalidation only queues draw regions. Once the whole viewport
+  // is queued, walking every map control again cannot add any visible pixels.
+  // Keep the existing region and all animation/drawing work unchanged.
+  if HardwareRenderingEnabled
+      and (UpdateRects.FirstRect <> nil)
+      and (UpdateRects.FirstRect = UpdateRects.LastRect)
+      and CompareMem(@UpdateRects.FirstRect.Bounds, @GameScreenRect, SizeOf(TRect)) then
+  begin
+    UpdateRectsEnabled := False;
+    Exit;
+  end;
   UpdateRectsEnabled := True;
   MapControls.InvalidateChildren(False);
   CursorControl.Invalidate;

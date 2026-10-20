@@ -582,7 +582,7 @@ type
     function ProcessMovementStep(StepIndex: Integer; RecordFilm: Boolean): Boolean;
     procedure ClearCompletedTakeoffOrHoleOrder(UnusedStepIndex: Integer; UnusedRecordFilm: Boolean);
     function IsTravelCompletionPathReady: Boolean;
-    procedure RepelFollowingShips;
+    procedure RepelFollowingShips(SelfSpeed: Integer; const RepulsionSpeeds: array of Integer);
     procedure RebuildMovePath;
     procedure BuildFullPathTo(Destination: TPointF);
     procedure BuildPlanetLandingPath;
@@ -12619,9 +12619,9 @@ begin
   Result := False;
 end;
 
-procedure TShip.RepelFollowingShips;
+procedure TShip.RepelFollowingShips(SelfSpeed: Integer; const RepulsionSpeeds: array of Integer);
 var
-  I, Count: Integer;
+  I, Count, RandomWeight: Integer;
   Other: TShip;
   Distance, Overlap, VectorLength, Angle, DeltaY, DeltaX, OffsetY, OffsetX, SelfWeight, OtherWeight, Fraction: Single;
 begin
@@ -12629,7 +12629,7 @@ begin
     Count := CurrentStar.Ships.Count;
     OffsetX := 0;
     OffsetY := 0;
-    SelfWeight := Max(0.01, CalculateSpeed / Max(0.01, PointDistance(RepulsionPosition, Position)));
+    SelfWeight := Max(0.01, SelfSpeed / Max(0.01, PointDistance(RepulsionPosition, Position)));
     repeat
       I := 0;
       while I < Count do
@@ -12640,15 +12640,17 @@ begin
           Inc(I);
           Continue;
         end;
-        OtherWeight := Max(0.01, Other.CalculateSpeed / Max(0.01, PointDistance(Other.RepulsionPosition, Other.Position)));
-        Fraction :=
-            SeededRandomIntRange(95, 105, Cardinal(Galaxy.CurrentTurn) * (Other.Seed + Seed))
-                * (SelfWeight / (SelfWeight + OtherWeight))
-                * 0.01;
+        // Chaotic-random campaigns consume global RNG even for distant pairs.
+        RandomWeight := SeededRandomIntRange(95, 105, Cardinal(Galaxy.CurrentTurn) * (Other.Seed + Seed));
         Distance := PointDistance(RepulsionPosition, Other.RepulsionPosition);
         Overlap := Distance - CollisionRadius - Other.CollisionRadius - 5;
         if Overlap < -0.01 then
         begin
+          // Non-overlapping pairs need neither stat queries nor weighting.
+          // Preserve the original Single intermediates for interacting pairs.
+          OtherWeight := Max(0.01, RepulsionSpeeds[I] / Max(0.01, PointDistance(Other.RepulsionPosition, Other.Position)));
+          Fraction :=
+              RandomWeight * (SelfWeight / (SelfWeight + OtherWeight)) * 0.01;
           Overlap := -Overlap;
           if Distance <= 1 then
           begin
