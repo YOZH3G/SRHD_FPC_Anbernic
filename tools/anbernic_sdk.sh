@@ -7,7 +7,8 @@
 # sysroot: SDK_DIR/{arm64,armhf}/{root,bin}. Ubuntu 20.04 sysroots keep the
 #          binaries at glibc 2.29 or older; SDL 2.32.4 is installed into them
 #          for linking and QEMU checks only and is never packaged.
-# fpc:     SDK_DIR/fpc/{arm64,armhf}, cross compilers and RTL from vendor/fpc.
+# fpc:     SDK_DIR/fpc/{arm64,armhf}, cross compilers and RTL from vendor/fpc
+#          (arm64 also an LTO RTL in fpc/arm64/lto/rtl).
 #
 # Host packages: clang-19 lld-19 llvm-19 fp-compiler fp-utils
 # binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf cmake ninja-build make
@@ -80,6 +81,8 @@ EOF
         [ -e "$bin/$(basename "$tool")" ] || ln -s "$tool" "$bin/$(basename "$tool")"
     done
     ln -sfn "$(command -v fpcres)" "$bin/$t-fpcres"
+    # FPC links LTO builds (-XLL) with the prefixed LLVM linker.
+    ln -sfn /usr/bin/ld.lld-19 "$bin/$t-ld.lld"
     if [ "$arch" = arm64 ]; then
         for entry in "${EVDEV_DEBS[@]}"; do
             set -- $entry
@@ -118,6 +121,14 @@ build_fpc() {
         compiler=$dst/compiler/ppcrossa64
         make -C "$dst/rtl" all CPU_TARGET=aarch64 OS_TARGET=linux FPC="$compiler" BINUTILSPREFIX="$t-" \
             CROSSBINDIR="$SDK/$arch/bin" OPT="-O2 -OoNOFASTMATH -Clv17.0 -Aclang-llvm -XR$SDK/$arch/root $RTL_DEFINES"
+        # A second RTL with LLVM bitcode for link-time optimization of the game.
+        # Its Makefiles find the compiler through ../compiler, as in the tree.
+        mkdir -p "$dst/lto"
+        (cd "$ROOT/vendor/fpc" && git archive HEAD rtl) | tar -x -C "$dst/lto"
+        ln -s ../compiler "$dst/lto/compiler"
+        make -C "$dst/lto/rtl" all CPU_TARGET=aarch64 OS_TARGET=linux FPC="$compiler" BINUTILSPREFIX="$t-" \
+            CROSSBINDIR="$SDK/$arch/bin" \
+            OPT="-O2 -OoNOFASTMATH -Clv17.0 -Aclang-llvm -Clflto -XR$SDK/$arch/root $RTL_DEFINES"
     else
         make -C "$dst" compiler_cycle NOWPOCYCLE=1 PP="$(command -v fpc)" CPU_TARGET=arm OS_TARGET=linux \
             CROSSINSTALL=1 OPT="-O2 -dFPC_ARMHF"
