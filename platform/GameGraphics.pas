@@ -8,6 +8,11 @@ uses
 function CreateGameGraphics: IDirect3D9;
 // Native raster copy for frozen backgrounds; surface locks still expose logical pixels.
 function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture9;
+function GameGPUPlanetsAvailable: Boolean;
+function CreateGamePlanetTexture(Width, Height: Integer): IDirect3DTexture9;
+function GenerateGamePlanetTexture(
+    ObjectHandle: Pointer; Layer, MapOffset: Integer; Color: Cardinal; Texture: IDirect3DTexture9
+): Boolean;
 // Marks a texture whose owner rebuilds it from resources instead of locking it
 // again. With GameGraphicsDiscardUploadedPixels set, its CPU pixel copy is
 // freed after each upload; a later lock starts from transparent pixels.
@@ -57,6 +62,7 @@ type
     TextureFormat: Cardinal;
     SamplingMode, BlendMode: Integer;
     Generation, DisplayGeneration: LongInt;
+    RealizationSerial: QWord;
     Dirty, Locked, ReadOnly, Screen, Target, Rebuildable: Boolean;
     ClipCached: Boolean;
     CachedClip: TRect;
@@ -182,6 +188,25 @@ type
 
 var
   RetiredTextures: TThreadList;
+  NextTextureRealization: QWord;
+
+{$IFDEF ANDROID}
+function sr_planet_available(Renderer: PSDL_Renderer; Generation: Cardinal): Integer;
+    cdecl; external 'okgf';
+function sr_planet_render_versioned(
+    ObjectHandle: Pointer; Layer, MapOffset: Integer; Color: Cardinal;
+    Renderer: PSDL_Renderer; Texture: PSDL_Texture; Generation: Cardinal; OutputSerial: QWord
+): Integer; cdecl; external 'okgf';
+{$ENDIF}
+
+function GameGPUPlanetsAvailable: Boolean;
+begin
+{$IFDEF ANDROID}
+  Result := sr_planet_available(GameSDLRenderer, GameTextureGeneration) <> 0;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
 
 procedure CollectTextures;
 var
@@ -259,16 +284,17 @@ begin
   CheckGameSDL(SDL_GetTextureScaleMode(Texture, Previous), 'SDL_GetTextureScaleMode');
   if Previous = Mode then
     Exit;
-  // SDL2 queues geometry without capturing its sampling mode. Finish those
-  // draws before changing the texture; unchanged sampling retains batching.
-  CheckGameSDL(SDL_RenderFlush(GameSDLRenderer), 'SDL_RenderFlush');
   CheckGameSDL(SDL_GetRendererInfo(GameSDLRenderer, Info), 'SDL_GetRendererInfo');
   OpenGL := Pos('opengl', string(Info.Name)) = 1;
   if OpenGL then
-    // The public bind/unbind API activates the context and repairs SDL2's GL
-    // binding cache, including native texture wrappers. SetScaleMode alone does
-    // neither reliably on GLES2. Other renderers do not expose GL textures.
-    CheckGameSDL(SDL_GL_BindTexture(Texture, nil, nil), 'SDL_GL_BindTexture');
+    // BindTexture flushes queued consumers of this texture, activates its
+    // context and repairs SDL's binding cache, including native wrappers.
+    // Unrelated queued geometry can remain batched across the sampling change.
+    CheckGameSDL(SDL_GL_BindTexture(Texture, nil, nil), 'SDL_GL_BindTexture')
+  else
+    // SDL2 geometry does not capture sampling mode. Backends without the GL
+    // texture dependency barrier retain the conservative full queue flush.
+    CheckGameSDL(SDL_RenderFlush(GameSDLRenderer), 'SDL_RenderFlush');
   Completed := False;
   try
     CheckGameSDL(SDL_SetTextureScaleMode(Texture, Mode), 'SDL_SetTextureScaleMode');
@@ -441,6 +467,8 @@ begin
         Format('SDL_CreateTexture(size=%dx%d, format=$%s, access=%d)', [RasterWidth, RasterHeight, IntToHex(TextureFormat, 8), Access])
     );
   Generation := CurrentGeneration;
+  Inc(NextTextureRealization);
+  RealizationSerial := NextTextureRealization;
   SamplingMode := -1;
   BlendMode := -1;
 end;
@@ -753,6 +781,34 @@ end;
 function CreateGameGraphicsTextureFromPixels(Width, Height: Integer; Format, Pool: Cardinal; Pixels: Pointer): IDirect3DTexture9;
 begin
   Result := TSDLTexture.Create(TSDLStorage.Create(Width, Height, Format, Pool, False, False, Pixels));
+end;
+
+function CreateGamePlanetTexture(Width, Height: Integer): IDirect3DTexture9;
+begin
+  // A target texture retains correct CPU-lock/readback semantics. Generation
+  // changes discard its contents; the owning planet then regenerates every layer.
+  Result := TSDLTexture.Create(TSDLStorage.Create(Width, Height, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, True));
+end;
+
+function GenerateGamePlanetTexture(
+    ObjectHandle: Pointer; Layer, MapOffset: Integer; Color: Cardinal; Texture: IDirect3DTexture9
+): Boolean;
+{$IFDEF ANDROID}
+var
+  Image: TSDLStorage;
+{$ENDIF}
+begin
+  Result := False;
+{$IFDEF ANDROID}
+  Image := ImageOf(Texture);
+  Image.Realize;
+  Result := sr_planet_render_versioned(
+      ObjectHandle, Layer, MapOffset, Color, GameSDLRenderer, Image.Handle, GameTextureGeneration,
+      Image.RealizationSerial
+  ) <> 0;
+  if Result then
+    Image.Dirty := False;
+{$ENDIF}
 end;
 
 function CaptureGameGraphicsSurface(Source: IDirect3DSurface9): IDirect3DTexture9;
@@ -1255,13 +1311,14 @@ begin
   Result := 0;
 end;
 function TSDLDevice.SetScissorRect(Rect: PRect): LongInt;
-var
-  Value: TSDL_Rect;
 begin
   Require(Rect <> nil, 'nil scissor');
+  // DrawPrimitiveUP installs this logical clip after any texture uploads and
+  // immediately before submitting geometry. Restore/set pairs without a draw
+  // must not introduce clip commands that split otherwise compatible batches.
+  // Copy, fill and presentation operations install their own unclipped state;
+  // SDL_RenderClear ignores the scissor, matching the device clear semantics.
   Clip := Rect^;
-  Value := ImageOf(CurrentTarget).RasterClipRect(Clip);
-  CheckGameSDL(SDL_RenderSetClipRect(GameSDLRenderer, @Value), 'SDL_RenderSetClipRect');
   Result := 0;
 end;
 function TSDLDevice.GetScissorRect(out Rect: TRect): LongInt;

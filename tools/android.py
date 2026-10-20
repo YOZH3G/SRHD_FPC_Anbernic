@@ -56,6 +56,7 @@ SYSTEM_LIBRARIES = {
     "libz.so",
     "libGLESv1_CM.so",
     "libGLESv2.so",
+    "libGLESv3.so",
     "libEGL.so",
     "libOpenSLES.so",
     "libaaudio.so",

@@ -1065,6 +1065,10 @@ begin
         end;
         if GameSDLRenderer = nil then
           RaiseGameSDLError('SDL_CreateRenderer(software, target textures); accelerated attempt: ' + ErrorText + '; software attempt');
+        // A new renderer can reuse the old renderer/context pointer. Give its
+        // textures and native helper resources a distinct lifetime regardless.
+        InterlockedIncrement(GameTextureGeneration);
+        InterlockedIncrement(GameTargetGeneration);
         // Enable UTF-8 commits without calling SDL_StartTextInput on Android: that
         // API also requests the soft keyboard. The Java overlay opens it directly.
 {$IFDEF SWITCH}

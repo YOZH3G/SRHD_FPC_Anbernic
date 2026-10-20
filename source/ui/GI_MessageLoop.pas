@@ -261,6 +261,7 @@ type
     FirstTimer: PCallbackTimerGI;
     LastTimer: PCallbackTimerGI;
     NextTimerToProcess: PCallbackTimerGI;
+    TimerInsertionHint: PCallbackTimerGI;
     LastObservedTimerTick: Cardinal;
     SavedPixels16: Pointer;
     SavedPixelCount16: Integer;
@@ -3212,6 +3213,8 @@ var
   Current: PCallbackTimerGI;
 begin
   Current := Timer;
+  if TimerInsertionHint = Current then
+    TimerInsertionHint := nil;
   if NextTimerToProcess = Current then
     NextTimerToProcess := NextTimerToProcess.Next;
   if Current.Prev <> nil then
@@ -3239,9 +3242,11 @@ end;
 
 procedure TMessageLoopGI.ReinsertCallbackTimer(Timer: PCallbackTimerGI);
 var
-  Current, Before: PCallbackTimerGI;
+  Current, Before, Hint: PCallbackTimerGI;
 begin
   Current := Timer;
+  if TimerInsertionHint = Current then
+    TimerInsertionHint := nil;
   if Current.Prev <> nil then
     Current.Prev.Next := Current.Next;
   if Current.Next <> nil then
@@ -3250,6 +3255,23 @@ begin
     LastTimer := Current.Prev;
   if FirstTimer = Current then
     FirstTimer := Current.Next;
+  // Animation timers commonly share a deadline. The old reverse search walks
+  // that same group for every insertion. Reuse its first node when valid,
+  // inserting before equal deadlines to preserve the original callback order.
+  Hint := TimerInsertionHint;
+  TimerInsertionHint := Current;
+  if (Hint <> nil) and (Hint.DueTick = Current.DueTick)
+      and ((Hint.Prev = nil) or (Hint.Prev.DueTick < Current.DueTick)) then
+  begin
+    Current.Prev := Hint.Prev;
+    Current.Next := Hint;
+    if Hint.Prev = nil then
+      FirstTimer := Current
+    else
+      Hint.Prev.Next := Current;
+    Hint.Prev := Current;
+    Exit;
+  end;
   if FirstTimer = nil then
   begin
     FirstTimer := Current;

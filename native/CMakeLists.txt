@@ -97,6 +97,13 @@ set(OKGF_MATH_BACKEND
     NATIVE
     CACHE STRING "OKGF arithmetic backend" FORCE)
 add_subdirectory("${OKGF_ROOT}" okgf)
+if(ANDROID)
+  # Keep the optional SDL/GLES accelerator in the existing native library.
+  # Non-GLES targets retain the original CPU planet implementation.
+  target_sources(okgf PRIVATE planet/lookup.cpp planet/sdl_backend.cpp)
+  target_compile_features(okgf PRIVATE cxx_std_17)
+  target_link_libraries(okgf PRIVATE SDL2::SDL2 GLESv3)
+endif()
 set_target_properties(okgf PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
                                       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
                                       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

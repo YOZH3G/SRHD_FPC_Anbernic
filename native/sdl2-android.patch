@@ -101,3 +101,24 @@
      if (aaudio_DetectBrokenPlayState()) {
          aaudio_PauseDevices();
          aaudio_ResumeDevices();
+--- a/src/render/opengles2/SDL_render_gles2.c
++++ b/src/render/opengles2/SDL_render_gles2.c
+@@ -1320,6 +1320,18 @@
+             int ret;
+             while (nextcmd) {
+                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
++                /* Points and geometry already contain each vertex's color.
++                 * SETDRAWCOLOR does nothing in this backend and allocates no
++                 * vertices, so skipping it preserves the contiguous vertex
++                 * stream and the exact primitive, color and submission order.
++                 * All texture, blend, clip and viewport boundaries still stop
++                 * the batch below.
++                 */
++                if (nextcmdtype == SDL_RENDERCMD_SETDRAWCOLOR) {
++                    finalcmd = nextcmd;
++                    nextcmd = nextcmd->next;
++                    continue;
++                }
+                 if (nextcmdtype != thiscmdtype) {
+                     break; /* can't go any further on this draw call, different render command up next. */
+                 } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {

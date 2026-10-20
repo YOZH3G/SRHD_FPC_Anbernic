@@ -8,6 +8,7 @@ interface
 uses
   Types,
   Classes,
+  Direct3D9,
   EC_CachePalBitmap,
   EC_CacheRotateBuf,
   EC_CachePlanetTempl,
@@ -50,11 +51,24 @@ type
     SourceLightBuffer: Pointer;
     RotatedLightBuffer: Pointer;
     LightAngle: Byte;
+    CPULightDirty: Boolean;
     MapWidth: Integer;
     MapHeight: Integer;
     TextureCache: TTextureGR;
     TextureSize: TPoint;
     AtmosphereTextureSize: TPoint;
+    GPUPlanet, GPUAtmosphere: Pointer;
+    GPUPlanetSize, GPUAtmosphereSize: TPoint;
+    GPUPlanetTemplateKey: WideString;
+    GPUPlanetImageKeys, GPUPlanetPaletteKeys: array[0..3] of WideString;
+    GPUPlanetLightAngle, GPUAtmosphereLightAngle: Integer;
+    GPUTextures: array[0..4] of IDirect3DTexture9;
+    GPUOffsets, GPUAngles: array[0..4] of Integer;
+    GPUTextureGeneration: LongInt;
+    GPUFailureReported: Boolean;
+    procedure ResetGPU;
+    procedure EnsureCPULight;
+    function DrawGPU(const ClipRect: TRect): Boolean;
     procedure Clear; override;
     procedure QueueImageLoad(PendingLoads: TList); override;
     procedure LoadFromConfigPath(const Path: WideString); override;
@@ -82,14 +96,16 @@ type
 implementation
 
 uses
+  GameGraphics,
+  GameGPUPlanet,
+  GameWindow,
   GameDiagnostics,
   SysUtils,
   EC_Cache,
   EC_Mem,
   GR_Main,
   GI_Main,
-  GlobalsV,
-  Direct3D9;
+  GlobalsV;
 
 constructor TPlanetGI.Create(Owner: TObjectGI);
 begin
@@ -130,6 +146,7 @@ end;
 
 destructor TPlanetGI.Destroy;
 begin
+  ResetGPU;
   TemplateCache.Free;
   TemplateCache := nil;
   SurfacePaletteCache.Free;
@@ -168,6 +185,8 @@ end;
 
 procedure TPlanetGI.Clear;
 begin
+  ResetGPU;
+  CPULightDirty := False;
   if SourceLightBuffer <> nil then
   begin
     Ex_OKGR_LightBuf_Destroy(SourceLightBuffer);
@@ -188,6 +207,7 @@ var
   LightControl: TCPalBitmapControlEC;
   LightImage: TCPalBitmapEC;
 begin
+  ResetGPU;
   Invalidate;
   if SourceLightBuffer <> nil then
   begin
@@ -328,6 +348,7 @@ var
   LightControl: TCPalBitmapControlEC;
   LightImage: TCPalBitmapEC;
 begin
+  ResetGPU;
   Invalidate;
   if SourceLightBuffer <> nil then
   begin
@@ -490,6 +511,7 @@ procedure TPlanetGI.SetAtmosphere(ImagePath, MaskPath: WideString; Color: Cardin
 var
   Image, Mask: TCBitmapEC;
 begin
+  ResetGPU;
   AtmosphereColor := Color;
   AtmosphereImageCache.SetCacheKey(ImagePath + '?Gray');
   AtmosphereMaskCache.SetCacheKey(MaskPath + '?Gray');
@@ -654,21 +676,47 @@ begin
   end;
 end;
 
-procedure TPlanetGI.SetLightAngle(Value: Byte);
+procedure TPlanetGI.ResetGPU;
+var
+  I: Integer;
+begin
+  GPUPlanetDestroy(GPUPlanet);
+  GPUAtmosphereDestroy(GPUAtmosphere);
+  for I := 0 to High(GPUTextures) do
+  begin
+    GPUTextures[I] := nil;
+    GPUOffsets[I] := $FFFFFF;
+    GPUAngles[I] := -1;
+  end;
+end;
+
+procedure TPlanetGI.EnsureCPULight;
 var
   Rotation: TCRotateBufEC;
+begin
+  if not CPULightDirty then
+    Exit;
+  Ex_OKGR_LightBuf_Init(RotatedLightBuffer, 0);
+  Rotation := AcquireOrCreateRotateBuf(LightRotationCache);
+  try
+    Ex_OKGR_LightBuf_Rotate(RotatedLightBuffer, SourceLightBuffer, Rotation.Buffer, LightAngle);
+  finally
+    LightRotationCache.Release;
+  end;
+  CPULightDirty := False;
+end;
+
+procedure TPlanetGI.SetLightAngle(Value: Byte);
+var
+  I: Integer;
 begin
   if LightAngle <> Value then
   begin
     LightAngle := Value;
-    Ex_OKGR_LightBuf_Init(RotatedLightBuffer, 0);
-    Rotation := AcquireOrCreateRotateBuf(LightRotationCache);
-    try
-      Ex_OKGR_LightBuf_Rotate(RotatedLightBuffer, SourceLightBuffer, Rotation.Buffer, LightAngle);
-    finally
-      LightRotationCache.Release;
-    end;
+    CPULightDirty := True;
     AtmosphereDirty := True;
+    for I := 0 to High(RenderedMapOffsets) do
+      RenderedMapOffsets[I] := $FFFFFF;
     Invalidate;
   end;
 end;
@@ -697,6 +745,228 @@ begin
     LightAngle := StrToInt(Block.GetParam('AngleLight'));
 end;
 
+function TPlanetGI.DrawGPU(const ClipRect: TRect): Boolean;
+{$IFDEF ANDROID}
+var
+  ImageControls: array[0..3] of TCPalBitmapControlEC;
+  PaletteControls: array[0..3] of TCLightPalControlEC;
+  Offsets: array[0..3] of Integer;
+  Template: TCPlanetTemplEC;
+  Image: TCPalBitmapEC;
+  Palette: TCLightPalEC;
+  AtmosphereImage, AtmosphereMask: TCBitmapEC;
+  Rotation: TCRotateBufEC;
+  Width, Height, Layer, Variant: Integer;
+  GenerationChanged, Compositing: Boolean;
+{$ENDIF}
+begin
+  Result := False;
+{$IFDEF ANDROID}
+  if not GameGPUPlanetsAvailable then
+    Exit;
+  Compositing := False;
+  try
+  try
+  Width := HitTestBounds.Right - HitTestBounds.Left;
+  Height := HitTestBounds.Bottom - HitTestBounds.Top;
+  if (Width <= 0) or (Height <= 0) then
+    Exit;
+  if (GPUPlanet <> nil)
+      and ((GPUPlanetSize.X <> Width)
+          or (GPUPlanetSize.Y <> Height)
+          or (GPUPlanetTemplateKey <> TemplateCache.CacheKey)) then
+    ResetGPU;
+  if GPUPlanet = nil then
+  begin
+    Template := AcquireOrCreatePlanetTemplate(TemplateCache);
+    try
+      GPUPlanet := GPUPlanetCreate(Template.TemplateData, Width, Height);
+    finally
+      TemplateCache.Release;
+    end;
+    if GPUPlanet = nil then
+      Exit;
+    GPUPlanetSize := Classes.Point(Width, Height);
+    GPUPlanetTemplateKey := TemplateCache.CacheKey;
+    GPUPlanetLightAngle := -1;
+    for Layer := 0 to 3 do
+    begin
+      GPUPlanetImageKeys[Layer] := '';
+      GPUPlanetPaletteKeys[Layer] := '';
+    end;
+  end;
+  ImageControls[0] := SurfaceImageCache;
+  ImageControls[1] := Cloud1ImageCache;
+  ImageControls[2] := Cloud2ImageCache;
+  ImageControls[3] := Cloud3ImageCache;
+  PaletteControls[0] := SurfacePaletteCache;
+  PaletteControls[1] := Cloud1PaletteCache;
+  PaletteControls[2] := Cloud2PaletteCache;
+  PaletteControls[3] := Cloud3PaletteCache;
+  Offsets[0] := SurfaceMapOffset;
+  Offsets[1] := Cloud1MapOffset;
+  Offsets[2] := Cloud2MapOffset;
+  Offsets[3] := Cloud3MapOffset;
+  for Layer := 0 to 3 do
+  begin
+    if ImageControls[Layer].HasEmptyCacheKey then
+      Continue;
+    if (GPUPlanetImageKeys[Layer] = ImageControls[Layer].CacheKey)
+        and (GPUPlanetPaletteKeys[Layer] = PaletteControls[Layer].CacheKey) then
+      Continue;
+    Image := AcquireOrCreatePalBitmap(ImageControls[Layer]);
+    try
+      Palette := AcquireOrCreateLightPalette(PaletteControls[Layer]);
+      try
+        if Layer <> 0 then
+          Variant := 4
+        else if Image.Bitmap.BytesPerPixel = 2 then
+          Variant := 3
+        else
+          Variant := 2;
+        if not GPUPlanetLayer(
+            GPUPlanet,
+            Layer,
+            Image.Bitmap.Pixels,
+            Image.Bitmap.Width,
+            Image.Bitmap.Height,
+            Image.Bitmap.PitchBytes,
+            Image.Bitmap.BytesPerPixel,
+            Palette.PaletteData,
+            Image.Bitmap.PaletteCount,
+            Variant) then
+          Exit;
+      finally
+        PaletteControls[Layer].Release;
+      end;
+    finally
+      ImageControls[Layer].Release;
+    end;
+    GPUOffsets[Layer] := $FFFFFF;
+    GPUPlanetImageKeys[Layer] := ImageControls[Layer].CacheKey;
+    GPUPlanetPaletteKeys[Layer] := PaletteControls[Layer].CacheKey;
+  end;
+  if GPUPlanetLightAngle = -1 then
+  begin
+    Rotation := AcquireOrCreateRotateBuf(LightRotationCache);
+    try
+      if not GPUPlanetLightSource(GPUPlanet, SourceLightBuffer, Rotation.Buffer) then
+        Exit;
+    finally
+      LightRotationCache.Release;
+    end;
+  end;
+  GPUPlanetSetLightAngle(GPUPlanet, LightAngle);
+  GPUPlanetLightAngle := LightAngle;
+  if not AtmosphereImageCache.HasEmptyCacheKey and (AtmosphereColor <> 0) then
+  begin
+    if GPUAtmosphere = nil then
+    begin
+      AtmosphereImage := AcquireOrCreateBitmap(AtmosphereImageCache);
+      try
+        GPUAtmosphere :=
+            GPUAtmosphereCreate(
+                AtmosphereImage.Bitmap.GetPixels,
+                AtmosphereImage.Bitmap.Width,
+                AtmosphereImage.Bitmap.Height,
+                AtmosphereImage.Bitmap.PitchBytes
+            );
+        GPUAtmosphereSize :=
+            Classes.Point(AtmosphereImage.Bitmap.Width, AtmosphereImage.Bitmap.Height);
+      finally
+        AtmosphereImageCache.Release;
+      end;
+      GPUAtmosphereLightAngle := -1;
+      if GPUAtmosphere = nil then
+        Exit;
+    end;
+    if GPUAtmosphereLightAngle = -1 then
+    begin
+      AtmosphereMask := AcquireOrCreateBitmap(AtmosphereMaskCache);
+      try
+        Rotation := AcquireOrCreateRotateBuf(AtmosphereRotationCache);
+        try
+          if not GPUAtmosphereSource(
+              GPUAtmosphere,
+              AtmosphereMask.Bitmap.GetPixels,
+              AtmosphereMask.Bitmap.Width,
+              AtmosphereMask.Bitmap.Height,
+              AtmosphereMask.Bitmap.PitchBytes,
+              Rotation.Buffer) then
+            Exit;
+        finally
+          AtmosphereRotationCache.Release;
+        end;
+      finally
+        AtmosphereMaskCache.Release;
+      end;
+    end;
+    GPUAtmosphereAngle(GPUAtmosphere, LightAngle);
+    GPUAtmosphereLightAngle := LightAngle;
+  end;
+  // Generate every changed layer before submitting any composite draw. A failed
+  // import/render can then use the complete CPU fallback without double blending.
+  GenerationChanged := GPUTextureGeneration <> GameTargetGeneration;
+  for Layer := 0 to 3 do
+  begin
+    if ImageControls[Layer].HasEmptyCacheKey then
+    begin
+      GPUTextures[Layer] := nil;
+      Continue;
+    end;
+    if (GPUTextures[Layer] = nil) or GenerationChanged
+        or (GPUOffsets[Layer] <> Offsets[Layer]) or (GPUAngles[Layer] <> LightAngle) then
+    begin
+      if GPUTextures[Layer] = nil then
+        GPUTextures[Layer] := CreateGamePlanetTexture(Width, Height);
+      if not GenerateGamePlanetTexture(GPUPlanet, Layer, Offsets[Layer], 0, GPUTextures[Layer]) then
+        Exit;
+      GPUOffsets[Layer] := Offsets[Layer];
+      GPUAngles[Layer] := LightAngle;
+    end;
+  end;
+  if not AtmosphereImageCache.HasEmptyCacheKey and (AtmosphereColor <> 0) then
+  begin
+    if (GPUTextures[4] = nil) or GenerationChanged or (GPUAngles[4] <> LightAngle)
+        or (Cardinal(GPUOffsets[4]) <> AtmosphereColor) then
+    begin
+      if GPUTextures[4] = nil then
+        GPUTextures[4] := CreateGamePlanetTexture(GPUAtmosphereSize.X, GPUAtmosphereSize.Y);
+      if not GenerateGamePlanetTexture(GPUAtmosphere, -1, 0, AtmosphereColor, GPUTextures[4]) then
+        Exit;
+      GPUAngles[4] := LightAngle;
+      GPUOffsets[4] := Integer(AtmosphereColor);
+    end;
+  end
+  else
+    GPUTextures[4] := nil;
+  GPUTextureGeneration := GameTargetGeneration;
+  Compositing := True;
+  for Layer := 0 to 4 do
+    if GPUTextures[Layer] <> nil then
+      DrawTexture(GPUTextures[Layer], HitTestBounds.Left, HitTestBounds.Top, 255, RgbWhite, @ClipRect, False, False);
+  Result := True;
+  except
+    on E: Exception do
+    begin
+      if Compositing or GameExceptionPreventsRecovery(E) then
+        raise;
+      if not GPUFailureReported then
+        LogCurrentGameException('video', 'Optional GPU planet generation failed; using CPU fallback', gllWarning);
+      GPUFailureReported := True;
+      Result := False;
+    end;
+  end;
+  finally
+    if not Result and not Compositing and not GPUFailureReported then
+    begin
+      LogGameMessage(gllWarning, 'video', 'GPU planet lookup import or texture generation failed; using CPU fallback');
+      GPUFailureReported := True;
+    end;
+  end;
+{$ENDIF}
+end;
+
 procedure TPlanetGI.Draw(ClipRect: TRect);
 var
   Image, Cloud1, Cloud2, Cloud3: TCPalBitmapEC;
@@ -707,6 +977,9 @@ var
   Index: Integer;
   Texture: IDirect3DTexture9;
 begin
+  if HardwareRenderingEnabled and DrawGPU(ClipRect) then
+    Exit;
+  EnsureCPULight;
   HasCloud1 := Cloud1ImageCache.CacheKey <> '';
   HasCloud2 := Cloud2ImageCache.CacheKey <> '';
   HasCloud3 := Cloud3ImageCache.CacheKey <> '';
@@ -1028,6 +1301,7 @@ var
   Palette: TCLightPalEC;
   Template: TCPlanetTemplEC;
 begin
+  EnsureCPULight;
   Image := nil;
   Palette := nil;
   Template := nil;
