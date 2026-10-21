@@ -8,7 +8,8 @@ uses
   Types,
   GI_MessageLoop,
   GI_Label,
-  GI_PanelScrollBar;
+  GI_PanelScrollBar,
+  GI_ScrollBar;
 
 // Called once after the original control tree has been loaded.
 procedure PrepareDialoguePanel(TalkPanel: TObjectGI; ContentHeight: Integer; const Bounds: TRect);
@@ -187,7 +188,7 @@ var
   begin
     Panel.SetDragScrollingEnabled(True);
     Panel.AutoVerticalPlacement := True;
-    Panel.VerticalScrollBar.SetIndicatorThickness(2);
+    Panel.VerticalScrollBar.SetIndicatorThickness(MobileScrollIndicatorThickness);
     Panel.UpdateScrollbarPlacement;
   end;
 
