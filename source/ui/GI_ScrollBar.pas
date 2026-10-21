@@ -105,6 +105,11 @@ type
     procedure LoadScrollBarProperties(Block: TBlockParEC);
   end;
 
+// Mobile layouts replace scroll bars with a thin position indicator, since a
+// finger drags the content. Handheld pads point with a cursor instead and keep
+// the draggable bar (0: no indicator).
+function MobileScrollIndicatorThickness: Integer;
+
 implementation
 
 uses
@@ -195,6 +200,15 @@ begin
   DownImages[sbImageActive].Free;
   DownImages[sbImageDown].Free;
   inherited Destroy;
+end;
+
+function MobileScrollIndicatorThickness: Integer;
+begin
+{$IFDEF SRHD_ANBERNIC}
+  Result := 0;
+{$ELSE}
+  Result := 2;
+{$ENDIF}
 end;
 
 procedure TScrollBarGI.Clear;
