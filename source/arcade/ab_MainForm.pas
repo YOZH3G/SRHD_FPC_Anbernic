@@ -320,6 +320,9 @@ uses
 const
   // rangers.gptk sends ] for the R1 shoulder button.
   GamepadHeadingLockKey = 221;
+  // Stick X (of 100) that turns while R1 is held: about 25 degrees off the
+  // stick's forward direction at full deflection.
+  HeadingLockTurnThreshold = 40;
 
 constructor TfAB.Create;
 begin
@@ -4145,8 +4148,11 @@ begin
   if HeadingLockKeyDown then
   begin
     // Keep the heading unless the stick is pushed sideways: up and down thrust
-    // forward and back, as the arrow keys do.
-    PlayerArcadeShip.SetTurnInput(MobileAxisX);
+    // forward and back, as the arrow keys do. The turn input is in degrees, so
+    // any stick X would turn at full rate; an analog stick held forward always
+    // drifts a little sideways and would keep the ship spinning.
+    if Abs(MobileAxisX) >= HeadingLockTurnThreshold then
+      PlayerArcadeShip.SetTurnInput(Sign(MobileAxisX) * 100);
     if MobileAxisY > 0 then
     begin
       PlayerArcadeShip.StartThrust;
