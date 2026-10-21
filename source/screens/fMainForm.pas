@@ -17,6 +17,10 @@ type
   TfMainForm = class(TMessageLoopGI)
   private
     procedure FitMobileMenu;
+{$IFDEF SRHD_ANBERNIC}
+    procedure AddControlsButton;
+    procedure ControlsClicked(Sender: TObjectGI);
+{$ENDIF}
   public
     BackgroundTimer: PCallbackTimerGI;
     BackgroundScrollOffset: Integer;
@@ -71,6 +75,7 @@ uses
   GI_MessageBox,
   GI_Label,
   GI_Image,
+  GI_Main,
   EC_Str,
   aMyFunction,
   aScript,
@@ -98,7 +103,11 @@ end;
 
 procedure TfMainForm.FitMobileMenu;
 const
+{$IFDEF SRHD_ANBERNIC}
+  ButtonNames: array[0..8] of WideString = ('New', 'Load', 'Settings', 'Controls', 'Score', 'Achievements', 'About', 'Exit', 'Circle');
+{$ELSE}
   ButtonNames: array[0..7] of WideString = ('New', 'Load', 'Settings', 'Score', 'Achievements', 'About', 'Exit', 'Circle');
+{$ENDIF}
 var
   ButtonBounds, HeaderBounds: TRect;
   Control: TObjectGI;
@@ -154,6 +163,118 @@ begin
   PlaceControls(ButtonNames, ButtonScale, (ButtonBounds.Left + ButtonBounds.Right) / 2, ButtonBounds.Top, MenuTop);
 end;
 
+{$IFDEF SRHD_ANBERNIC}
+function ControlsText(const English, Russian: WideString): WideString;
+begin
+  if LowerCaseWideString(SelectedLanguage) = 'russian' then
+    Result := Russian
+  else
+    Result := English;
+end;
+
+procedure TfMainForm.AddControlsButton;
+const
+  // The original seven entries keep their span; Controls follows Settings.
+  Entries: array[0..7] of WideString = ('New', 'Load', 'Settings', 'Controls', 'Score', 'Achievements', 'About', 'Exit');
+var
+  Template: TGraphButtonGI;
+  Button: TGraphButtonGI;
+  Top, Span, Index: Integer;
+begin
+  Template := GetByName('About') as TGraphButtonGI;
+  Button := TGraphButtonGI.Create(Template.Parent);
+  Button.SetName('Controls');
+  Button.SetDepth(Template.Depth);
+  Button.SetSize(Template.ClientSize);
+  Button.HitKind := gbhRect;
+  Button.UpOnlyDown := True;
+  Button.EnterSound := Template.EnterSound;
+  Button.LeaveSound := Template.LeaveSound;
+  Button.ClickSound := Template.ClickSound;
+  // The other entries are artwork. Letter this one with the largest font,
+  // outlined, in their colors: light grey, yellow under the cursor.
+  Button.SetCaptionFontName(HugeFontName);
+  Button.SetCaption(ControlsText('CONTROLS', 'УПРАВЛЕНИЕ'));
+  Button.CaptionLabel.SetTextBorderWidth(1);
+  Button.CaptionLabel.SetTextBorderColor(CurrentPixelFormat.PackRgbBytes(30, 20, 10));
+  Button.CaptionColors[0] := CurrentPixelFormat.PackRgbBytes(222, 222, 222);
+  Button.CaptionColors[1] := CurrentPixelFormat.PackRgbBytes(255, 200, 40);
+  Button.CaptionColors[2] := Button.CaptionColors[1];
+  Button.CaptionColors[3] := Button.CaptionColors[1];
+  Button.UpdateStateVisuals(False);
+  Top := GetByName('New').LocalPosition.Y;
+  Span := GetByName('Exit').LocalPosition.Y - Top;
+  for Index := 0 to High(Entries) do
+    with GetByName(Entries[Index]) do
+      SetPosition(Classes.Point(Template.LocalPosition.X, Top + Span * Index div High(Entries)));
+end;
+
+procedure TfMainForm.ControlsClicked(Sender: TObjectGI);
+var
+  Text: WideString;
+
+  procedure Heading(const English, Russian: WideString);
+  begin
+    // A space keeps the empty line before the heading.
+    if Text <> '' then
+      Text := Text + ' ' + #13#10;
+    Text := Text + '<color=140,40,0>' + ControlsText(English, Russian) + EndColorTag + #13#10;
+  end;
+
+  procedure Line(const Keys, English, Russian: WideString);
+  begin
+    Text := Text + TextHighlightColorTag + Keys + EndColorTag + ' - ' + ControlsText(English, Russian) + #13#10;
+  end;
+
+begin
+  Text := '';
+  Heading('GAMEPAD', 'ГЕЙМПАД');
+  Line('D-pad / ' + ControlsText('left stick', 'левый стик'), 'cursor', 'курсор');
+  Line('A / B', 'left / right mouse button', 'левая / правая кнопка мыши');
+  Line('X', 'Space: next turn', 'пробел: следующий ход');
+  Line('Y', 'Tab', 'Tab');
+  Line('Start', 'Enter', 'Enter');
+  Line('Select', 'Escape: menu, back', 'Escape: меню, назад');
+  Line(
+      'L1 / R1',
+      'previous / next panel window: ship, map, quests, planet sections',
+      'предыдущее / следующее окно панели: корабль, карта, задания, разделы планеты'
+  );
+  Line(
+      'L2',
+      'on-screen keyboard in a text field; quick load 3 (F6) in space',
+      'экранная клавиатура в текстовом поле; в космосе - быстрая загрузка 3 (F6)'
+  );
+  Line('R2', 'Shift', 'Shift');
+  Line('Select + Start', 'quit the game', 'выход из игры');
+  if GetEnvironmentVariable('SRHD_APP_VOLUME') = '1' then
+    Line(ControlsText('Volume buttons', 'Кнопки громкости'), 'game volume', 'громкость игры');
+  Heading('ARCADE COMBAT', 'АРКАДНЫЙ БОЙ');
+  Line(
+      'D-pad / ' + ControlsText('left stick', 'левый стик'),
+      'fly where pressed',
+      'лететь в направлении нажатия'
+  );
+  Line(
+      ControlsText('Right stick', 'Правый стик'),
+      'forward, back and turn, as the arrow keys',
+      'вперёд, назад и поворот, как стрелки'
+  );
+  Line(
+      'R1 + D-pad / ' + ControlsText('stick', 'стик'),
+      'keep course: up/down thrust, left/right turn',
+      'без смены курса: вверх/вниз - тяга, влево/вправо - поворот'
+  );
+  Line('A', 'primary weapons', 'основное оружие');
+  Line('B / X / R2', 'secondary weapons', 'дополнительное оружие');
+  Line('L2', 'next primary weapon', 'следующее основное оружие');
+  Line('Y', 'autopilot', 'автопилот');
+  Line('Start', 'pause; the cursor works while paused', 'пауза; на паузе работает курсор');
+  Line('Select', 'leave the battle', 'выход из боя');
+  ShowMessageBoxGI(Self, Text, mbgOK or mbgLeftAlign);
+end;
+{$ENDIF}
+
 procedure TfMainForm.InitializeLayout;
 var
   OffsetX, OffsetY, LogoShift: Integer;
@@ -163,6 +284,9 @@ var
   CaptionControl: TObjectGI;
 begin
   inherited InitializeLayout;
+{$IFDEF SRHD_ANBERNIC}
+  AddControlsButton;
+{$ENDIF}
   LayoutExtraWidth := ExtraScreenWidth;
   LayoutExtraHeight := ExtraScreenHeight;
   if GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024) then
@@ -235,6 +359,10 @@ begin
         SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Settings') do
         SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
+{$IFDEF SRHD_ANBERNIC}
+      with FindByNameRecursive('Controls') do
+        SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
+{$ENDIF}
       with FindByNameRecursive('About') do
         SetPosition(Classes.Point(LocalPosition.X + ExtraScreenWidth div 2 + OffsetX, LocalPosition.Y + ExtraScreenHeight div 2 + OffsetY));
       with FindByNameRecursive('Exit') do
@@ -390,6 +518,9 @@ begin
   (GetByName('New') as TGraphButtonGI).UpCallback := NewGameClicked;
   (GetByName('Load') as TGraphButtonGI).UpCallback := LoadGameClicked;
   (GetByName('Settings') as TGraphButtonGI).UpCallback := SettingsClicked;
+{$IFDEF SRHD_ANBERNIC}
+  (GetByName('Controls') as TGraphButtonGI).UpCallback := ControlsClicked;
+{$ENDIF}
   (GetByName('Achievements') as TGraphButtonGI).UpCallback := AchievementsClicked;
   with GetByName('Score') as TGraphButtonGI do
     UpCallback := ScoresClicked;
