@@ -34,6 +34,9 @@ if [ ! -f "$gamedir/game/INSTALL.TXT" ]; then
     exit 1
 fi
 mkdir -p "$gamedir/profile"
+# The firmware handles its volume buttons only in its own menu; the game turns
+# its own output up and down with them instead.
+export SRHD_APP_VOLUME=1
 
 # Built-in pad "ANBERNIC-keys". Button numbers differ between models (L2/R2 are
 # 9/10 on the RG28XX and 10/11 on the RG34XX SP), so read the firmware's own

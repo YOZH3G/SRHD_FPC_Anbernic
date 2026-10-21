@@ -1249,6 +1249,8 @@ begin
     45: Result := 189;
     46: Result := 187;
     270: Result := VK_ESCAPE; // SDL_SCANCODE_AC_BACK, including Android Back.
+    128: Result := VK_VOLUME_UP;
+    129: Result := VK_VOLUME_DOWN;
     47: Result := 219;
     48: Result := 221;
     49: Result := 220;

@@ -4006,6 +4006,35 @@ begin
   end;
 end;
 
+{$IFDEF SRHD_ANBERNIC}
+var
+  // 0..10, as the firmware menu counts; -1 until read from CFG.TXT.
+  AppVolumeLevel: Integer = -1;
+
+// The stock Anbernic firmware handles its volume buttons only in its own menu
+// and leaves them to each app; its launcher sets SRHD_APP_VOLUME. Elsewhere the
+// firmware changes the system volume and the game must not scale it again.
+procedure ApplyAppVolume(Step: Integer);
+begin
+  if GetEnvironmentVariable('SRHD_APP_VOLUME') <> '1' then
+    Exit;
+  if AppVolumeLevel < 0 then
+  begin
+    AppVolumeLevel := 10;
+    if UserSettingsConfig.CountParams('AppVolume') > 0 then
+      AppVolumeLevel := EnsureRange(ExtractDigitsToIntW(UserSettingsConfig.GetParamByPathOrMarker('AppVolume')), 0, 10);
+  end;
+  if Step <> 0 then
+  begin
+    AppVolumeLevel := EnsureRange(AppVolumeLevel + Step, 0, 10);
+    UserSettingsConfig.SetOrAddParam('AppVolume', WideString(SysUtils.IntToStr(AppVolumeLevel)));
+    UserSettingsConfig.SaveTextFile(PWideChar(GetGameUserDirectory + 'CFG.TXT'), True, False);
+    LogGameMessage(gllInfo, 'audio', 'Volume buttons: level ' + SysUtils.IntToStr(AppVolumeLevel) + ' of 10');
+  end;
+  GameAudioOutputGain := Sqr(AppVolumeLevel / 10);
+end;
+{$ENDIF}
+
 procedure InitializeRuntimeAndSettings;
 var
   DetailText, Text, ExtraText: WideString;
@@ -4166,6 +4195,9 @@ begin
         ShowWineWarning := True;
       end;
   end;
+{$IFDEF SRHD_ANBERNIC}
+  ApplyAppVolume(0);
+{$ENDIF}
   ConfigureGameUi(
       TGameUiMode(
           EnsureRange(
@@ -5209,6 +5241,16 @@ begin
           LastMouseMessageTick := 0;
         end;
         Stage := 9;
+{$IFDEF SRHD_ANBERNIC}
+        if (Msg.Message = WM_KEYDOWN) and ((Msg.WParam = VK_VOLUME_UP) or (Msg.WParam = VK_VOLUME_DOWN)) then
+        begin
+          if Msg.WParam = VK_VOLUME_UP then
+            ApplyAppVolume(1)
+          else
+            ApplyAppVolume(-1);
+          Continue;
+        end;
+{$ENDIF}
         PreviousInputSource := CurrentGameInputSource;
         CurrentGameInputSource := Msg.Source;
         try

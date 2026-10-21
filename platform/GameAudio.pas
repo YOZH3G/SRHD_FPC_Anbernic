@@ -12,6 +12,11 @@ function CreateGameSound(Guid: Pointer; out Sound: IDirectSound; Outer: IInterfa
 function EnumerateGameSound(Callback: TDSEnumCallback; Context: Pointer): LongInt; stdcall;
 procedure CheckGameSoundFailure(const Sound: IDirectSound);
 
+var
+  // Gain on the final mix, 0..1. Firmware that leaves the volume buttons to
+  // the running app sets it from those buttons.
+  GameAudioOutputGain: Single = 1;
+
 implementation
 
 uses
@@ -110,13 +115,15 @@ type
 procedure TGameSound.Mix(Samples: PSingle; Frames: Integer);
 var
   Index: Integer;
+  Gain: Single;
 begin
+  Gain := GameAudioOutputGain;
   FillChar(Samples^, Frames * 2 * SizeOf(Single), 0);
   // Buffer edits, destruction and mixing share the same critical section.
   for Index := 0 to Buffers.Count - 1 do
     TGameSoundBuffer(Buffers[Index]).Mix(Samples, Frames);
   for Index := 0 to Frames * 2 - 1 do
-    Samples[Index] := EnsureRange(Samples[Index], -1.0, 1.0);
+    Samples[Index] := EnsureRange(Samples[Index] * Gain, -1.0, 1.0);
 end;
 
 constructor TGameAudioMixer.Create(AOwner: TGameSound);
