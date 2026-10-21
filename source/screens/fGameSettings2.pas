@@ -160,20 +160,12 @@ procedure TfGameSettings2.InitializeLayout;
 var
   I, J: Integer;
   LayoutWidth, LayoutHeight, LayoutExtraWidth, LayoutExtraHeight: Integer;
-  Compact: Boolean;
   Text: WideString;
   Race: TOwnerId;
 begin
   inherited InitializeLayout;
-  Compact := GameCompactLayoutEnabled and HardwareRenderingEnabled and (GameScreenWidth < 1024);
   LayoutWidth := GameScreenWidth;
   LayoutHeight := GameScreenHeight;
-  if Compact then
-  begin
-    LayoutWidth := 1024;
-    LayoutHeight := 768;
-    GetByName('MainPanel').DisplayScale := Min(GameScreenWidth / 1024, GameScreenHeight / 768);
-  end;
   LayoutExtraWidth := LayoutWidth - 1024;
   LayoutExtraHeight := LayoutHeight - 768;
   LogGameMessage(gllDebug, 'ui', 'Initializing layout fGameSettings2');
