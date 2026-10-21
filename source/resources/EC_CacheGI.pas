@@ -275,6 +275,11 @@ var
   end;
 begin
   LayoutSize := GetNormalGameLayoutSize;
+  // Below 1024x768 the screens with this artwork show the fitted legacy canvas.
+  // Assets loaded during OnOpen must use that canvas too, rather than shrink to
+  // the native framebuffer and then shrink a second time with ContentPanel.
+  if GameCompactLayoutEnabled and HardwareRenderingEnabled and (LayoutSize.X < 1024) then
+    LayoutSize := Classes.Point(1024, 768);
   LayoutWidth := LayoutSize.X;
   LayoutHeight := LayoutSize.Y;
   ExtraWidth := LayoutWidth - 1024;
@@ -716,19 +721,6 @@ begin
       PreserveAlpha := True;
       Quiet := True;
     until True;
-    // Planet artwork is displayed on the fitted legacy canvas. Assets loaded
-    // during OnOpen must use that canvas too, rather than shrink to the native
-    // framebuffer and then shrink a second time with ContentPanel.
-    if GameCompactLayoutEnabled
-        and HardwareRenderingEnabled
-        and (LayoutWidth < 1024)
-        and ((FindTextOffsetW(ResourceKey, 'Bm.City.') = 0)
-            or (FindTextOffsetW(ResourceKey, 'Bm.Gov.') = 0)
-            or (FindTextOffsetW(ResourceKey, 'Bm.PlanetBG') = 0)) then
-    begin
-      LayoutWidth := 1024;
-      LayoutHeight := 768;
-    end;
     SourceGraph := TGraphBufGR.Create(False);
     RenderGiBufferToGraphBuf(SourceBuffer, SourceGraph);
     Delta := SourceGraph.Width;
