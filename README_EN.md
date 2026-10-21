@@ -73,6 +73,10 @@ come from the firmware; the package includes the other runtime libraries.
 | L1 / R1 | previous / next window of the bottom-right panel: ship, map, quests, and on a planet its sections |
 | Select + Start | quit the game |
 
+The main menu's **Controls** entry shows these buttons, arcade combat included.
+On the Anbernic stock firmware the volume buttons change the game's volume: the
+firmware handles them only in its own menu.
+
 Click a text field with **A** to open the keyboard; **L2** opens it for the
 focused field. While it is open:
 
