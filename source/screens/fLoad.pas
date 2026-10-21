@@ -399,8 +399,8 @@ begin
     else
       PlanetQuestScreen.InitializeFittedLayout;
     LoadScreen.InitializeLayout;
-    NewGameScreen.InitializeLayout;
-    IntroductionScreen.InitializeLayout;
+    NewGameScreen.InitializeFittedLayout;
+    IntroductionScreen.InitializeFittedLayout;
     HangarScreen.InitializeFittedLayout;
     PlanetScreen.InitializeFittedLayout;
     UninhabitedPlanetScreen.InitializeFittedLayout;
