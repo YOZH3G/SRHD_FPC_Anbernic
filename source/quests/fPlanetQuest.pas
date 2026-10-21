@@ -1185,8 +1185,8 @@ begin
   GetByName('PanelImage').SetActive(False);
   GetByName('BGStyle').SetActive(False);
   GetByName('ImageFrame').SetActive(False);
-  (GetByName('MessageWindow') as TPanelScrollBarGI).VerticalScrollBar.SetIndicatorThickness(2);
-  (GetByName('ActionListWindow') as TPanelScrollBarGI).VerticalScrollBar.SetIndicatorThickness(2);
+  (GetByName('MessageWindow') as TPanelScrollBarGI).VerticalScrollBar.SetIndicatorThickness(MobileScrollIndicatorThickness);
+  (GetByName('ActionListWindow') as TPanelScrollBarGI).VerticalScrollBar.SetIndicatorThickness(MobileScrollIndicatorThickness);
   // Both scroll panels and their external scrollbars share this transform.
   // Their text, row positions and scrolling stay in the same source coordinates.
   with GetByName('QuestPanel') do

@@ -29,6 +29,7 @@ uses
   GI_Image,
   GI_Panel,
   GI_PanelScrollBar,
+  GI_ScrollBar,
   GI_GraphButton;
 
 const
@@ -176,7 +177,7 @@ begin
   Panel.SetSize(Point(Body.ClientSize.X - 247, BodyHeight - Panel.LocalPosition.Y - FrameBottomHeight));
   Panel.SetDragScrollingEnabled(True);
   Panel.AutoVerticalPlacement := True;
-  Panel.VerticalScrollBar.SetIndicatorThickness(2);
+  Panel.VerticalScrollBar.SetIndicatorThickness(MobileScrollIndicatorThickness);
   Panel.UpdateScrollbarPlacement;
   // Spend spare height on padding, never by letting top- and bottom-anchored
   // action groups overlap. Compact windows retain all original button artwork.
