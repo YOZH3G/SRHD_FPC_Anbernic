@@ -116,8 +116,8 @@ The main menu's **Controls** entry shows every button, arcade combat included.
 | R2 | Shift |
 | Select + Start | quit the game |
 
-On the Anbernic stock firmware the volume buttons change the game's volume: the
-firmware handles them only in its own menu.
+On the Anbernic stock firmware the volume buttons change the game's volume and the
+power button puts the handheld to sleep: the firmware handles them only in its own menu.
 
 <details>
 <summary><b>Arcade combat</b></summary>

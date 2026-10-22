@@ -279,7 +279,10 @@ begin
   Line('R2', 'Shift', 'Shift');
   Line('Select + Start', 'quit the game', 'выход из игры');
   if GetEnvironmentVariable('SRHD_APP_VOLUME') = '1' then
+  begin
     Line(ControlsText('Volume buttons', 'Кнопки громкости'), 'game volume', 'громкость игры');
+    Line(ControlsText('Power button', 'Кнопка питания'), 'sleep', 'сон');
+  end;
   Heading('ARCADE COMBAT', 'АРКАДНЫЙ БОЙ');
   Line(
       'D-pad / ' + ControlsText('left stick', 'левый стик'),
