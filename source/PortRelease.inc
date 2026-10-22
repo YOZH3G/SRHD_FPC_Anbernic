@@ -9,6 +9,7 @@ PortChangesRussian =
   '- ' + 'L1 снова включает медленный курсор, пока удерживается. R1 переключает окна панели вперёд по кругу.' + #13#10 +
   '- ' + 'Аркадный бой: R1 с крестовиной влево или вправо поворачивает корабль на ходу, а не на месте.' + #13#10 +
   '- ' + 'Меню аркадных боёв целиком помещается на экране 800x600 и меньше.' + #13#10 +
+  '- ' + 'Меньше лишней работы видеокарты: мигающий значок новых сообщений больше не загружается заново на каждом шаге.' + #13#10 +
   '- ' + 'Версии порта получили номера, а после обновления игра показывает это окно с изменениями.';
 PortChangesEnglish =
   '- ' + 'Long text is readable on small screens: dialogues, descriptions, the introduction and the ship window take a larger font below 1024x768. The introduction scrolls to the end of its text.' + #13#10 +
@@ -18,4 +19,5 @@ PortChangesEnglish =
   '- ' + 'L1 is the slow cursor again while held. R1 steps forward through the panel windows.' + #13#10 +
   '- ' + 'Arcade combat: R1 with left or right on the D-pad turns the ship on the move instead of in place.' + #13#10 +
   '- ' + 'The arcade battle menu fits the screen at 800x600 and below.' + #13#10 +
+  '- ' + 'Less needless GPU work: the blinking new-message icon is no longer loaded again at every step.' + #13#10 +
   '- ' + 'Port versions are numbered, and after an update the game shows this window with the changes.';

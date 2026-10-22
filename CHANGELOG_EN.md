@@ -21,6 +21,8 @@ game shows its changes once after starting. [Русский](CHANGELOG.md)
 - Arcade combat: R1 with left or right on the D-pad turns the ship on the move
   instead of in place.
 - The arcade battle menu fits the screen at 800x600 and below.
+- Less needless GPU work: the blinking new-message icon is no longer loaded
+  again at every step.
 - Port versions are numbered, and after an update the game shows this window
   with the changes.
 
