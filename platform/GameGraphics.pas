@@ -1849,7 +1849,13 @@ begin
   if Result = 0 then
   begin
     // Small physical panels must not select the legacy low-mode CPU-only path.
-    GetGameAutomaticLayoutSize(1024, 768, Value.W, Value.H);
+    // The smallest complete layout, 800x600, keeps a 640x480 panel at 0.8
+    // rather than 0.625 and a 1280x720 panel at its own size. Narrower
+    // layouts of other shapes would leave the fitted 4:3 screens in a corner;
+    // they keep 1024x768, which the presentation centres.
+    GetGameAutomaticLayoutSize(800, 600, Value.W, Value.H);
+    if (Value.W < 1024) and (Value.W * 3 <> Value.H * 4) then
+      GetGameAutomaticLayoutSize(1024, 768, Value.W, Value.H);
     Exit;
   end;
 {$ENDIF}
