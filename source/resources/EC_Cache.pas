@@ -13,6 +13,13 @@ uses
   SyncObjs,
   Classes;
 
+{$IFDEF SRHD_ANBERNIC}
+const
+  // Built into the program for captions the menu artwork lacks; see
+  // tools/make_menu_font.py.
+  HandheldMenuFontName = 'Font.HandheldMenu';
+{$ENDIF}
+
 type
 
   TCacheControlEC = class;
@@ -123,6 +130,11 @@ uses
   GlobalsV,
   SysUtils,
   Types;
+
+{$IFDEF SRHD_ANBERNIC}
+const
+{$I HandheldMenuFont.inc}
+{$ENDIF}
 
 constructor TCacheControlEC.Create;
 begin
@@ -580,7 +592,12 @@ var
   Buffer: TBufEC;
 begin
   Buffer := TBufEC.Create;
-  DataRoot.ReadBufferByPath(Path, Buffer);
+{$IFDEF SRHD_ANBERNIC}
+  if Path = HandheldMenuFontName then
+    Buffer.AddBytes(@HandheldMenuFontData, SizeOf(HandheldMenuFontData))
+  else
+{$ENDIF}
+    DataRoot.ReadBufferByPath(Path, Buffer);
   Result := Buffer;
 end;
 
