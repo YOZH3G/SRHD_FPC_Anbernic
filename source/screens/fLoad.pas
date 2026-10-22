@@ -431,7 +431,7 @@ begin
     JournalScreen.InitializeFittedLayout;
     LoadRobotScreen.InitializeLayout;
     LoadQuestScreen.InitializeFittedLayout;
-    LoadArcadeScreen.InitializeLayout;
+    LoadArcadeScreen.InitializeFittedLayout;
     AchievementsScreen.InitializeFittedLayout;
     // Anchor the shared HUD after each owner has positioned its content tree.
     for ScreenId := Low(TGameScreenId) to High(TGameScreenId) do
