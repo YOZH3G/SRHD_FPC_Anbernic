@@ -10,6 +10,24 @@ SDL software renderer and licensed game assets. No physical handheld was used.
 
 [Русский README](../../README.md) · [English README](../../README_EN.md)
 
+## Текущий набор / Current set
+
+Кадры 800×600 с x86_64-сборки порта (`-dSRHD_ANBERNIC`), с теми же настройками,
+что и на приставке: интерфейс выбирается автоматически, отрисовка через SDL.
+Новая кампания, лицензионные ресурсы 2.1.2500.
+
+800×600 frames from the port's x86_64 build (`-dSRHD_ANBERNIC`) with handheld
+settings: automatic UI choice and SDL drawing. A new campaign, licensed assets 2.1.2500.
+
+| | |
+| --- | --- |
+| ![Главное меню](current/menu.png) | ![Управление](current/controls.png) |
+| ![Создание персонажа](current/new-game.png) | ![Экранная клавиатура](current/keyboard.png) |
+| ![Центр рейнджеров](current/ranger-center.png) | ![Карта галактики](current/galaxy.png) |
+| ![Корабль](current/ship.png) | ![Космос после вылета](current/space.png) |
+
+## Прежние наборы / Earlier sets
+
 | Набор | Что показывает |
 | --- | --- |
 | [Интерфейс 800×600](adapted-800x600/README.md) | Меню, станция, магазины, карта, журнал, сохранение и клавиатура в минимальном режиме |

@@ -1,18 +1,43 @@
+<div align="center">
+
 [Русская версия](README.md)
 
-# Space Rangers HD — Anbernic Linux / FPC Port
+# Space Rangers HD on Anbernic and TrimUI
 
-An unofficial Free Pascal port of **Space Rangers HD: A War Apart** for Anbernic
-and TrimUI Linux handhelds, with a built-in Russian/English on-screen keyboard and a UI
-adapted to 800×600. Supply game assets from your own licensed copy; downloads
-contain the port only.
+An unofficial Free Pascal port of **Space Rangers HD: A War Apart** for Linux
+handhelds: gamepad controls, a Russian/English on-screen keyboard and a UI
+that fits 800×600.
 
-**[Download the latest release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
+[![Latest release](https://img.shields.io/github/v/release/YOZH3G/SRHD_FPC_Anbernic?label=release)](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/YOZH3G/SRHD_FPC_Anbernic/anbernic.yml?branch=main&label=build)](https://github.com/YOZH3G/SRHD_FPC_Anbernic/actions/workflows/anbernic.yml)
+[![Custom additions: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+<img src="docs/screenshots/current/menu.png" alt="Main menu with the Controls entry" width="640">
+
+**[⬇ Download the latest release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
 · [Build from source](BUILDING.md)
 
-> Status: **experimental**. Builds are verified under QEMU; physical handhelds,
-> their GPUs, sound and controls have not been tested yet.
+</div>
+
+> [!IMPORTANT]
+> Supply game assets from your own **licensed copy**; downloads contain the port only.
+
+> [!NOTE]
+> Status: **experimental**. Testers have run builds on the RG40XX H and TrimUI,
+> but there is no systematic check of every model, its GPU, sound and controls yet.
+> Device reports are welcome in [Issues](https://github.com/YOZH3G/SRHD_FPC_Anbernic/issues).
+
+## Contents
+
+- [Choose a package](#choose-a-package)
+- [Install](#install)
+- [Controls](#controls)
+- [Screenshots](#screenshots)
+- [Resolution and renderer](#resolution-and-renderer)
+- [Performance](#performance)
+- [What is verified](#what-is-verified)
+- [Development and attribution](#development-and-attribution)
 
 ## Choose a package
 
@@ -34,61 +59,68 @@ Package checksums are in the release's `SHA256SUMS`.
 
 ## Install
 
+You need `INSTALL*.TXT`, `CFG.TXT`, `CFG/` and `DATA/` from your installed game.
+Copy them into the port's `game/` folder; `INSTALL.TXT` must be directly inside it.
+
+<details open>
+<summary><b>muOS, KNULLI, ArkOS, AmberELEC, ROCKNIX — with PortMaster</b></summary>
+
 1. Install current **PortMaster**. The firmware must provide **SDL2 ≥ 2.26.0**
    and **glibc ≥ 2.29**.
 2. Extract the package into the Ports directory: muOS uses
    `/mnt/mmc/ROMS/Ports` or `/mnt/sdcard/ROMS/Ports`; KNULLI uses
    `/userdata/roms/ports`; ArkOS/AmberELEC/ROCKNIX usually use `/roms/ports`.
    See the [full instructions](platform/linux/ANBERNIC.md) for alternate paths.
-3. Keep `Space Rangers HD.sh` beside `spacerangershd/`. Copy `INSTALL*.TXT`,
-   `CFG.TXT`, `CFG/` and `DATA/` from your installed game into
-   `spacerangershd/game/`; `INSTALL.TXT` must be directly inside that folder.
+3. Keep `Space Rangers HD.sh` beside `spacerangershd/`. The game assets go into
+   `spacerangershd/game/`.
 4. Refresh the game list and launch **Space Rangers HD** from Ports.
 
-**Anbernic stock firmware or Stock OS Mod:** PortMaster is not needed.
-Extract `SpaceRangersHD-H700-StockOS.zip` into `Roms/APPS` on the games card,
-copy the game assets into `Roms/APPS/spacerangershd/game/` and launch
-**Space Rangers HD** from the Apps section. See the
-[full instructions](platform/linux/ANBERNIC.md) (Russian).
+</details>
 
-**TrimUI (stock firmware or CrossMix-OS):** PortMaster is not needed. Extract
-`SpaceRangersHD-TrimUI.zip` into the SD card root, copy the game assets into
-`Apps/SpaceRangersHD/spacerangershd/game/` and launch **Space Rangers HD** from
-the Apps section.
+<details>
+<summary><b>Anbernic stock firmware or Stock OS Mod</b></summary>
+
+PortMaster is not needed. Extract `SpaceRangersHD-H700-StockOS.zip` into
+`Roms/APPS` on the games card, copy the game assets into
+`Roms/APPS/spacerangershd/game/` and launch **Space Rangers HD** from the Apps
+section. See the [full instructions](platform/linux/ANBERNIC.md) (Russian).
+
+</details>
+
+<details>
+<summary><b>TrimUI: stock firmware or CrossMix-OS</b></summary>
+
+PortMaster is not needed. Extract `SpaceRangersHD-TrimUI.zip` into the SD card
+root, copy the game assets into `Apps/SpaceRangersHD/spacerangershd/game/` and
+launch **Space Rangers HD** from the Apps section.
+
+</details>
 
 Settings and saves live in `spacerangershd/profile/`; the launcher log is
 `spacerangershd/log.txt`. Back up `game/` and `profile/` before updating and do
 not mix libraries from different port versions. SDL and display/audio drivers
 come from the firmware; the package includes the other runtime libraries.
 
-## Controls and RU/EN keyboard
+## Controls
+
+The main menu's **Controls** entry shows every button, arcade combat included.
 
 | Button | Action |
 | --- | --- |
 | D-pad / left stick | mouse cursor |
 | A / B | left / right click |
-| Start | Enter |
-| Select | Escape |
-| X / Y | Space / Tab |
+| X / Y | Space (next turn) / Tab |
+| Start / Select | Enter / Escape: menu, back |
 | L1 / R1 | previous / next window of the bottom-right panel: ship, map, quests, and on a planet its sections |
+| L2 | on-screen keyboard in a text field; quick load 3 (F6) in space |
+| R2 | Shift |
 | Select + Start | quit the game |
 
-The main menu's **Controls** entry shows these buttons, arcade combat included.
 On the Anbernic stock firmware the volume buttons change the game's volume: the
 firmware handles them only in its own menu.
 
-Click a text field with **A** to open the keyboard; **L2** opens it for the
-focused field. While it is open:
-
-- **Y:** Russian/English; **R2:** lower/upper case, including ё/Ё.
-- **A:** press a key; **B:** delete the character before the caret.
-- On-screen Space, `<` and `>` insert a space and move the caret.
-- **Start** or **OK** apply; **Select** or **Cancel** discard edits.
-
-The keyboard respects each field's length and character limits. It is on by
-default in PortMaster; manual launches use `--on-screen-keyboard`.
-
-### Arcade combat
+<details>
+<summary><b>Arcade combat</b></summary>
 
 During arcade combat the buttons fly the ship and the cursor stays put:
 
@@ -104,14 +136,48 @@ During arcade combat the buttons fly the ship and the cursor stays put:
 | Start | pause; the cursor works again while paused |
 | Select | leave the battle |
 
+</details>
+
+<details>
+<summary><b>RU/EN on-screen keyboard</b></summary>
+
+Click a text field with **A** to open the keyboard; **L2** opens it for the
+focused field. While it is open:
+
+- **Y:** Russian/English; **R2:** lower/upper case, including ё/Ё.
+- **A:** press a key; **B:** delete the character before the caret.
+- On-screen Space, `<` and `>` insert a space and move the caret.
+- **Start** or **OK** apply; **Select** or **Cancel** discard edits.
+
+The keyboard respects each field's length and character limits. The port's
+launchers turn it on; manual launches use `--on-screen-keyboard`.
+
+</details>
+
+## Screenshots
+
+| The Controls entry | On-screen keyboard |
+| --- | --- |
+| ![Controls window in the main menu](docs/screenshots/current/controls.png) | ![On-screen keyboard entering a name](docs/screenshots/current/keyboard.png) |
+| **Ranger center** | **Galaxy map** |
+| ![Ranger center at the start of a campaign](docs/screenshots/current/ranger-center.png) | ![Galaxy map](docs/screenshots/current/galaxy.png) |
+| **Character setup** | **Ship** |
+| ![Character setup](docs/screenshots/current/new-game.png) | ![Ship window](docs/screenshots/current/ship.png) |
+
+The 800×600 frames were captured with licensed game assets from the port's
+x86_64 build using the same settings as on a handheld: automatic UI choice and
+SDL drawing. [All screenshots](docs/screenshots/README.md), including the
+earlier sets from the ARM builds under QEMU.
+
 ## Resolution and renderer
 
 The minimum internal resolution is **800×600**: set `VideoMode=800,600` in
 `profile/CFG.TXT` and keep Mobile UI enabled. Menus, station, shops, equipment,
 galaxy map, journal, save/load and the keyboard fit the frame; the space HUD
 scales separately from the world. Lower values are replaced with 800×600.
-Fullscreen scales the frame to the panel while preserving aspect ratio: on the
-RG34XX SP's 720×480 panel the 4:3 image fills 640×480 with side bars.
+Fullscreen scales the frame to the panel while preserving aspect ratio: a
+640×480 panel shows the whole image scaled down, and on the RG34XX SP's
+720×480 panel the 4:3 image fills 640×480 with side bars.
 
 Linux defaults to the hardware-accelerated `--renderer=sdl`. If acceleration
 is unavailable, the game falls back to software drawing automatically;
@@ -129,25 +195,6 @@ OpenGL and GLES2.
 All measurements were taken under QEMU and on x86_64, not on handhelds.
 [Method, results and limitations](docs/performance/README.md) (Russian).
 
-## Screenshots and video
-
-Captured from the real ARMHF/AArch64 builds under QEMU with licensed game assets.
-
-| Russian keyboard, ARMHF | In space after takeoff, AArch64 |
-| --- | --- |
-| ![Russian keyboard on ARMHF](docs/screenshots/armhf/keyboard-ru.png) | ![Ship in space on AArch64](docs/screenshots/aarch64/space.png) |
-
-More: [800×600 UI](docs/screenshots/adapted-800x600/README.md),
-[equipment and resolution switching](docs/screenshots/centered-1024/README.md),
-[planet screens](docs/screenshots/planet-layout/README.md),
-[all screenshots](docs/screenshots/README.md).
-
-[![Watch: main menu to space](docs/media/video-preview.png)](docs/media/aarch64-menu-to-space.mp4)
-
-Real-time AArch64 recording with game audio: main menu, character setup,
-galaxy generation, station, hangar, takeoff and 20 seconds in space. Recorded
-under QEMU with the early keyboard release; [recording details](docs/media/README.md).
-
 ## What is verified
 
 Every release is rebuilt from source. The final binaries for both architectures
@@ -159,8 +206,8 @@ the Smart Pro S firmware libraries and the Smart Pro, Brick and Brick Pro root
 filesystems. Release notes list the SHA256 of the verified binaries. RU/EN input and
 the 800×600 screens were verified by dedicated scenarios when introduced.
 
-Not verified: physical handhelds, their GPUs and display rotation, sound and
-controls, extended play. Device reports are welcome in Issues.
+Not systematically verified: behavior on each model, their GPUs and display
+rotation, sound and controls, extended play.
 
 ## Development and attribution
 
