@@ -33,3 +33,9 @@ diagnostics log, mod and script fixes, and robot battles resolved as victories
 behavior: the SDL acceleration probe and software fallback, compact 800x600
 layouts, the on-screen keyboard and `--user-dir`, which is now applied before
 the instance lock and the log open.
+
+Since 0.9.0 the fork builds only for Linux: the Android, Windows, macOS, iOS,
+Switch and browser build tooling, their platform directories, the Android GPU
+planet renderer and upstream's `build.yml` release workflow are removed. Their
+`{$IFDEF}` branches stay in the Pascal sources to keep upstream merges simple;
+when a merge touches the removed files, keep them deleted.

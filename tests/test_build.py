@@ -16,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import build_support as native
 import compiler
 import pascal
-import windows
 from targets import BuildConfig
 
 EXE_SUFFIX = ".exe" if os.name == "nt" else ""
@@ -189,52 +188,6 @@ class PascalBuildTests(BuildFixture):
 
 
 class NativeBuildTests(BuildFixture):
-    def test_depfile_tracks_header_changes(self):
-        header = self.sources / "header with spaces.h"
-        header.write_text("a declaration")
-        obj = self.work / "native.o"
-        command = [self.clang, "-c", self.source, "-o", obj]
-
-        def compile_step(work, name, command):
-            obj.write_text("object")
-            depfile = Path(command[command.index("-MF") + 1])
-            escaped = header.as_posix().replace(" ", "\\ ")
-            depfile.write_text(f"native.o: {escaped}\n")
-
-        with patch.object(native, "run_step", side_effect=compile_step) as runner:
-            native.compile_native(self.work, command, False)
-            native.compile_native(self.work, command, False)
-            self.assertEqual(runner.call_count, 1)
-            self.edit(header)
-            native.compile_native(self.work, command, False)
-            self.assertEqual(runner.call_count, 2)
-            (self.work / "native.d").write_text("malformed dependency file")
-            native.compile_native(self.work, command, False)
-            self.assertEqual(runner.call_count, 3)
-
-    def test_link_requires_all_outputs_and_tracks_inputs(self):
-        wasm = self.work / "game.wasm"
-        loader = self.work / "game.js"
-        command = [self.clang, self.source, "-o", loader]
-
-        def link_step(*args):
-            wasm.write_text("wasm")
-            loader.write_text("javascript")
-
-        def link():
-            native.link_native(self.work, command, [self.source], [loader, wasm], False)
-
-        with patch.object(native, "run_step", side_effect=link_step) as runner:
-            link()
-            link()
-            self.assertEqual(runner.call_count, 1)
-            self.edit(self.source)
-            link()
-            self.assertEqual(runner.call_count, 2)
-            wasm.unlink()
-            link()
-            self.assertEqual(runner.call_count, 3)
-
     def test_bootstrap_revision_tracks_tool_replacement(self):
         command = [self.compiler, "compiler_cycle"]
         before = compiler.recipe_revision("source revision", command, (self.compiler,))
@@ -398,186 +351,21 @@ class StampTests(BuildFixture):
 
 
 class ConfigurationTests(unittest.TestCase):
-    def test_windows_target_cpu_is_independent_of_host(self):
-        with patch("targets.host_cpu", return_value="aarch64"):
-            for target, cpu in (("win32", "i386"), ("win64", "x86_64")):
-                config = BuildConfig(target, True, True, Path("/project"))
-                self.assertEqual(config.cpu, cpu)
-                self.assertEqual(config.work, Path(f"/project/.local/{target}-{cpu}/release-lto"))
-                self.assertEqual(config.artifact.name, "Rangers.exe")
-
     def test_existing_output_layout_for_all_profiles(self):
         root = Path("/project")
-        directories = {
-            "macos": root / ".local",
-            "linux": root / ".local/linux-aarch64",
-            "wasm": root / ".local/wasm",
-        }
         with patch("targets.host_cpu", return_value="aarch64"):
-            for target, directory in directories.items():
-                for release in (False, True):
-                    for lto in (False, True):
-                        with self.subTest(target=target, release=release, lto=lto):
-                            config = BuildConfig(target, release, lto, root)
-                            profile = ("release" if release else "debug") + ("-lto" if lto else "")
-                            self.assertEqual(config.work, directory / profile)
-                            if target == "macos":
-                                self.assertEqual(
-                                    config.artifact, config.work / "Space Rangers HD.app"
-                                )
-                                self.assertEqual(
-                                    config.binary_directory, config.artifact / "Contents/MacOS"
-                                )
-                            else:
-                                self.assertEqual(config.binary_directory, config.work / "bin")
-                                name = "index.html" if target == "wasm" else "Rangers"
-                                self.assertEqual(config.artifact, config.binary_directory / name)
+            for release in (False, True):
+                for lto in (False, True):
+                    with self.subTest(release=release, lto=lto):
+                        config = BuildConfig("linux", release, lto, root)
+                        profile = ("release" if release else "debug") + ("-lto" if lto else "")
+                        self.assertEqual(config.work, root / ".local/linux-aarch64" / profile)
+                        self.assertEqual(config.binary_directory, config.work / "bin")
+                        self.assertEqual(config.artifact, config.binary_directory / "Rangers")
 
     def test_unknown_target_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unsupported target"):
             BuildConfig("unknown")
-
-
-class WindowsToolchainFixture(BuildFixture):
-    temporary_prefix = "srhd-build-"
-    triples = (("i386", "i686-w64-mingw32"), ("x86_64", "x86_64-w64-mingw32"))
-
-    def setUp(self):
-        super().setUp()
-        self.sdk = self.root / "llvm-mingw"
-        self.bin = self.sdk / "bin"
-        for _, triple in self.triples:
-            for name in ("clang", "clang++", "windres"):
-                make_tool(self.bin / (f"{triple}-{name}" + EXE_SUFFIX))
-        self.sdk_clang = make_tool(self.bin / ("clang" + EXE_SUFFIX))
-        self.sdk_backend = make_tool(self.bin / ("clang-23" + EXE_SUFFIX))
-        self.sdk_library = make_tool(self.bin / "libclang-cpp.dll")
-
-
-class WindowsBuildTests(WindowsToolchainFixture):
-    @unittest.skipIf(os.name == "nt", "Creating symbolic links needs Windows privileges")
-    def test_prefixed_driver_symlink_keeps_its_target_selection(self):
-        for cpu, triple in self.triples:
-            target = "win32" if cpu == "i386" else "win64"
-            with self.subTest(target=target):
-                driver = self.bin / f"{triple}-clang"
-                driver.unlink()
-                driver.symlink_to(self.sdk_clang)
-                options = windows.cmake_options(BuildConfig(target), self.sdk, self.work)
-                self.assertIn(f"-DCMAKE_C_COMPILER={driver.as_posix()}", options)
-
-
-class WindowsCompilerTests(WindowsToolchainFixture):
-    """Check orchestration contracts; full compiler cycles are tested on Windows separately."""
-
-    def setUp(self):
-        super().setUp()
-        self.clang.unlink()  # Host and target compilers must both use the SDK.
-        vendor = self.root / "vendor"
-        for name in ("compiler/pp.pas", "rtl/Makefile"):
-            path = vendor / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("source")
-        make_tool(self.root / ("make" + EXE_SUFFIX))
-        self.builtins = {}
-        for cpu, triple in self.triples:
-            library = self.sdk / triple / "builtins/clang_rt.builtins.a"
-            library.parent.mkdir(parents=True)
-            library.write_text("compiler runtime")
-            self.builtins[cpu] = library
-        unwind = self.sdk / "x86_64-w64-mingw32" / "bin/libunwind.dll"
-        unwind.parent.mkdir()
-        unwind.write_text("Win64 unwinder")
-        self.identity = {"-iV": "3.2.2", "-iSP": "x86_64", "-iSO": "win64"}
-        self.commands = {"compiler": [], "runtime": []}
-        self.unwind_at_bootstrap = []
-        enter = self.contexts.enter_context
-        for name, value in (("VENDOR", vendor), ("WORK", self.work)):
-            enter(patch.object(compiler, name, value))
-        enter(patch.object(compiler, "host_cpu", return_value="x86_64"))
-        enter(patch("compiler.platform.system", return_value="Windows"))
-        enter(patch.object(compiler, "source_revision", return_value="source revision"))
-        enter(patch.object(compiler, "record_build_source"))
-        self.llvm = enter(patch.object(compiler, "llvm_options", return_value=("-Clv17.0",)))
-        enter(patch.object(compiler, "output", side_effect=self.query))
-        self.runner = enter(patch.object(compiler, "run_step", side_effect=self.build_step))
-        enter(patch.dict(os.environ, {
-            "FPC_BOOTSTRAP": str(self.compiler), "FPC_SOURCE": "", "FPC_COMPILER": "",
-        }))
-
-    def query(self, tool, option):
-        if option == "-print-libgcc-file-name":
-            cpu = "i386" if Path(tool).name.startswith("i686-") else "x86_64"
-            return str(self.builtins[cpu])
-        return self.identity[option]
-
-    def build_step(self, work, name, command):
-        self.commands[name].append(command)
-        if name == "compiler":
-            unwind = work / "source/compiler/libunwind.dll"
-            self.unwind_at_bootstrap.append(unwind.read_text() if unwind.exists() else None)
-            executable = "ppcross386.exe" if work.name.startswith("i386-") else "ppcx64.exe"
-            make_tool(work / "source/compiler" / executable, "compiled LLVM backend")
-        else:
-            (work / "src/rtl/units" / work.parent.name / "classes.ppu").write_text("compiled RTL")
-
-    def prepare(self, target="win64"):
-        return compiler.prepare_compiler(BuildConfig(target, root=self.root), self.bin)
-
-    def test_win32_uses_host_libraries_for_bootstrap_and_target_libraries_for_runtime(self):
-        _, flags = self.prepare("win32")
-        bootstrap = " ".join(self.commands["compiler"][0])
-        runtime = " ".join(self.commands["runtime"][0])
-        host = f"-Fl{self.builtins['x86_64'].parent.as_posix()}"
-        target = f"-Fl{self.builtins['i386'].parent.as_posix()}"
-        self.assertIn(host, bootstrap)
-        self.assertNotIn(target, bootstrap)
-        self.assertIn(target, runtime)
-        self.assertNotIn(host, runtime)
-        self.assertIn(f"-Fl{self.builtins['i386'].parent}", flags)
-        self.assertEqual(self.unwind_at_bootstrap, ["Win64 unwinder"])
-
-    def test_clang_backend_replacement_behind_wrapper_invalidates_cached_build(self):
-        self.prepare()
-        self.prepare()
-        self.assertEqual(self.runner.call_count, 2)
-        for executable in (self.sdk_backend, self.sdk_library):
-            with self.subTest(executable=executable.name):
-                before = {name: len(calls) for name, calls in self.commands.items()}
-                self.edit(executable)
-                self.prepare()
-                self.assertEqual(
-                    {name: len(calls) for name, calls in self.commands.items()},
-                    {name: count + 1 for name, count in before.items()},
-                )
-
-    def test_missing_host_unwinder_is_restored_before_bootstrap(self):
-        executable, _ = self.prepare()
-        executable.with_name("libunwind.dll").unlink()
-        self.prepare()
-        self.assertEqual(self.unwind_at_bootstrap, ["Win64 unwinder", "Win64 unwinder"])
-
-    def test_invalid_bootstrap_is_rejected_before_sdk_probing_or_building(self):
-        for option, value in (("-iV", "3.0.4"), ("-iSP", "i386"), ("-iSO", "linux")):
-            with (
-                self.subTest(option=option),
-                patch.dict(self.identity, {option: value}),
-                self.assertRaisesRegex(RuntimeError, "native Win64 FPC"),
-            ):
-                self.prepare()
-        self.llvm.assert_not_called()
-        self.runner.assert_not_called()
-        self.assertEqual(list(self.work.iterdir()), [])
-
-    def test_spaced_paths_are_rejected_before_sdk_probing_or_building(self):
-        with (
-            patch.object(compiler, "WORK", self.work / "path with spaces"),
-            self.assertRaisesRegex(RuntimeError, "paths without spaces"),
-        ):
-            self.prepare()
-        self.llvm.assert_not_called()
-        self.runner.assert_not_called()
-        self.assertEqual(list(self.work.iterdir()), [])
 
 
 if __name__ == "__main__":
