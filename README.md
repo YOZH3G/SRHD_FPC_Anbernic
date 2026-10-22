@@ -162,7 +162,7 @@ PortMaster не нужен. Распакуйте `SpaceRangersHD-TrimUI.zip` в 
 | --- | --- |
 | ![Окно управления в главном меню](docs/screenshots/current/controls.png) | ![Экранная клавиатура при вводе имени](docs/screenshots/current/keyboard.png) |
 | **Центр рейнджеров** | **Карта галактики** |
-| ![Центр рейнджеров в начале кампании](docs/screenshots/current/ranger-center.png) | ![Карта галактики](docs/screenshots/current/galaxy.png) |
+| ![Центр рейнджеров в начале кампании](docs/screenshots/current/ranger-center-800.png) | ![Карта галактики](docs/screenshots/current/galaxy.png) |
 | **Создание персонажа** | **Корабль** |
 | ![Создание персонажа](docs/screenshots/current/new-game.png) | ![Окно корабля](docs/screenshots/current/ship.png) |
 

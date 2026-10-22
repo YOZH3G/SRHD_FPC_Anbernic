@@ -23,7 +23,7 @@ settings: automatic UI choice and SDL drawing. A new campaign, licensed assets 2
 | --- | --- |
 | ![Главное меню](current/menu.png) | ![Управление](current/controls.png) |
 | ![Создание персонажа](current/new-game.png) | ![Экранная клавиатура](current/keyboard.png) |
-| ![Центр рейнджеров](current/ranger-center.png) | ![Карта галактики](current/galaxy.png) |
+| ![Центр рейнджеров](current/ranger-center-800.png) | ![Карта галактики](current/galaxy.png) |
 | ![Корабль](current/ship.png) | ![Космос после вылета](current/space.png) |
 
 ## Прежние наборы / Earlier sets

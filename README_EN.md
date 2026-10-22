@@ -160,7 +160,7 @@ launchers turn it on; manual launches use `--on-screen-keyboard`.
 | --- | --- |
 | ![Controls window in the main menu](docs/screenshots/current/controls.png) | ![On-screen keyboard entering a name](docs/screenshots/current/keyboard.png) |
 | **Ranger center** | **Galaxy map** |
-| ![Ranger center at the start of a campaign](docs/screenshots/current/ranger-center.png) | ![Galaxy map](docs/screenshots/current/galaxy.png) |
+| ![Ranger center at the start of a campaign](docs/screenshots/current/ranger-center-800.png) | ![Galaxy map](docs/screenshots/current/galaxy.png) |
 | **Character setup** | **Ship** |
 | ![Character setup](docs/screenshots/current/new-game.png) | ![Ship window](docs/screenshots/current/ship.png) |
 
