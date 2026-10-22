@@ -278,6 +278,10 @@ begin
   Base := ReadableFontIndex(RequestedFontName, Bold);
   Scale := GetDisplayScale * GetGameWindowPixelScale;
   FontScale := Scale;
+  // A dense handheld panel shows each pixel smaller. The mobile UI already
+  // enlarges its dialogs by the density; desktop screens are not enlarged.
+  if not GameMobileUiEnabled then
+    Scale := Scale / GetGameDisplayMetrics.Density;
   if WordWrapEnabled then
   begin
     Index := ReadableFontLimit(Base, Scale);
