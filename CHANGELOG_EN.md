@@ -12,6 +12,8 @@ game shows its changes once after starting. [Русский](CHANGELOG.md)
   introduction scrolls to the end of its text.
 - 640x480 screens choose 800x600 by default instead of 1024x768; TrimUI
   1280x720 runs at the screen's own resolution.
+- TrimUI: larger text and mobile UI for the dense screens; the Brick defaults
+  to 800x600.
 - Anbernic stock firmware: the volume buttons change the game's volume, the
   power button puts the handheld to sleep.
 - L1 is the slow cursor again while held. R1 steps forward through the panel
