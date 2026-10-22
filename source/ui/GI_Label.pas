@@ -42,6 +42,10 @@ type
     AutoHeightPadding: Integer;
     CreateEmbeddedControl: TCreateLabelControlEventGI;
     TextTexture: TTextureGR;
+    // The font asked for; wrapped text may draw a larger one on a scaled screen.
+    RequestedFontName: WideString;
+    LargerFontApplied: Boolean;
+    FontScale: Single;
     procedure Clear; override;
     procedure UpdateHitTestBounds; override;
     procedure SetSize(Size: TPoint); override;
@@ -56,6 +60,7 @@ type
     constructor Create(Owner: TObjectGI);
     destructor Destroy; override;
     procedure SetFontName(const FontName: WideString);
+    procedure ApplyFontName;
     procedure SetTextBorderWidth(Value: Integer);
     procedure SetTextBorderColor(Value: Cardinal);
     procedure SetShadowOffset(Value: Integer);
@@ -83,6 +88,8 @@ type
 
 function MeasureLabelTextBounds(const Text: WideString; const FontName: WideString): TRect;
 
+function ReadableTextFontName(const FontName: WideString; Scale: Single): WideString;
+
 function MeasureWrappedLabelBounds(Width: Integer; TextLines: TStringsEC; Font: TCFontEC): TRect;
 
 procedure DrawWrappedLabelLines(Buffer: TGraphBufGR; Width: Integer; X: Integer; Y: Integer; TextLines: TStringsEC; Font: TCFontEC);
@@ -106,6 +113,7 @@ uses
   GR_Main,
   Math,
   SysUtils,
+  GameWindow,
   GlobalsV,
   Direct3D9;
 
@@ -167,8 +175,131 @@ end;
 
 procedure TLabelGI.SetFontName(const FontName: WideString);
 begin
-  Invalidate;
-  FontCache.SetCacheKey(FontName);
+  RequestedFontName := FontName;
+  ApplyFontName;
+end;
+
+const
+  // Verdana sizes the game ships, smallest first.
+  ReadableFontSizes: array[0..6] of Integer = (8, 9, 11, 12, 13, 14, 16);
+
+// The ladder size of a text font, or -1 for fonts that keep their size.
+function ReadableFontIndex(const FontName: WideString; out Bold: Boolean): Integer;
+begin
+  Bold :=
+      (FontName = SmallBoldFontName)
+          or (FontName = SmoothSmallBoldFontName)
+          or (FontName = NormalBoldFontName)
+          or (FontName = SmoothNormalBoldFontName);
+  if (FontName = SmallFontName)
+      or (FontName = SmoothSmallFontName)
+      or (FontName = SmallBoldFontName)
+      or (FontName = SmoothSmallBoldFontName) then
+    Result := 0
+  else if (FontName = NormalFontName)
+      or (FontName = SmoothNormalFontName)
+      or (FontName = NormalBoldFontName)
+      or (FontName = SmoothNormalBoldFontName) then
+    Result := 1
+  else if (FontName = IntroFontName) or (FontName = SmoothBigFontName) then
+    Result := 2
+  else if FontName = SmoothHugeFontName then
+    Result := 3
+  else if FontName = SmoothIntroFontName then
+    Result := 4
+  else
+    Result := -1;
+end;
+
+// The largest ladder size the scale calls for, or Base when it calls for none.
+function ReadableFontLimit(Base: Integer; Scale: Single): Integer;
+begin
+  Result := Base;
+  if not GameCompactLayoutEnabled or (Base < 0) or (Scale <= 0) or (Scale >= 0.95) then
+    Exit;
+  while (Result < High(ReadableFontSizes)) and (ReadableFontSizes[Result] < 0.92 * ReadableFontSizes[Base] / Scale) do
+    Inc(Result);
+end;
+
+function ReadableFontName(Index: Integer; Bold: Boolean): WideString;
+begin
+  case Index of
+    0:
+      if Bold then
+        Result := SmoothSmallBoldFontName
+      else
+        Result := SmoothSmallFontName;
+    1:
+      if Bold then
+        Result := SmoothNormalBoldFontName
+      else
+        Result := SmoothNormalFontName;
+    2: Result := SmoothBigFontName;
+    3:
+      if Bold then
+        Result := 'Font.Verdana12bold'
+      else
+        Result := SmoothHugeFontName;
+    4: Result := SmoothIntroFontName;
+    5: Result := BigFontName;
+  else
+    Result := HugeFontName;
+  end;
+end;
+
+// For text drawn without a label at Scale physical pixels per layout pixel.
+function ReadableTextFontName(const FontName: WideString; Scale: Single): WideString;
+var
+  Base, Index: Integer;
+  Bold: Boolean;
+begin
+  Base := ReadableFontIndex(FontName, Bold);
+  Index := ReadableFontLimit(Base, Scale);
+  if Index = Base then
+    Result := FontName
+  else
+    Result := ReadableFontName(Index, Bold);
+end;
+
+// Wrapped text on a screen drawn smaller than its layout takes a larger
+// Verdana, so that its letters keep their designed size in physical pixels.
+// Text in a box of fixed height takes the largest size that still fits.
+procedure TLabelGI.ApplyFontName;
+var
+  FontName, OldFontName: WideString;
+  Scale: Single;
+  Base, Index: Integer;
+  Bold: Boolean;
+begin
+  if RequestedFontName = '' then
+    Exit;
+  OldFontName := FontCache.CacheKey;
+  FontName := RequestedFontName;
+  Base := ReadableFontIndex(RequestedFontName, Bold);
+  Scale := GetDisplayScale * GetGameWindowPixelScale;
+  FontScale := Scale;
+  if WordWrapEnabled then
+  begin
+    Index := ReadableFontLimit(Base, Scale);
+    while Index > Base do
+    begin
+      FontName := ReadableFontName(Index, Bold);
+      if (TextAlignY = tayAuto) or (TextLines.GetCount = 0) then
+        Break;
+      FontCache.SetCacheKey(FontName);
+      if MeasureContentSize(nil).Y <= ClientSize.Y then
+        Break;
+      Dec(Index);
+      FontName := RequestedFontName;
+    end;
+  end;
+  LargerFontApplied := FontName <> RequestedFontName;
+  if FontCache.CacheKey <> FontName then
+    FontCache.SetCacheKey(FontName);
+  if FontName = OldFontName then
+    Exit;
+  UpdateAbsolutePosition;
+  UpdateSubtreeHitBounds;
   Invalidate;
   if TextTexture <> nil then
     TextTexture.ReleaseSurfaces;
@@ -217,8 +348,11 @@ begin
 end;
 
 procedure TLabelGI.SetText(const Text: WideString);
+var
+  Changed: Boolean;
 begin
-  if TextLines.GetText <> Text then
+  Changed := TextLines.GetText <> Text;
+  if Changed then
   begin
     Invalidate;
     TextLines.SetText(Text);
@@ -228,6 +362,10 @@ begin
     if TextTexture <> nil then
       TextTexture.ReleaseSurfaces;
   end;
+  // The scale is known only once the screen is laid out, and the fit
+  // depends on the text.
+  if WordWrapEnabled and (Changed or (GetDisplayScale * GetGameWindowPixelScale <> FontScale)) then
+    ApplyFontName;
 end;
 
 procedure TLabelGI.LoadTextLinesFromBlockParam(Block: TBlockParEC; const ParamName: WideString);
@@ -293,6 +431,7 @@ begin
   if WordWrapEnabled <> Value then
   begin
     WordWrapEnabled := Value;
+    ApplyFontName;
     UpdateAbsolutePosition;
     UpdateSubtreeHitBounds;
     Invalidate;
@@ -650,7 +789,10 @@ begin
   inherited LoadFromConfigPath(Path);
   Block := UiStyleConfig.GetBlockByPath(Path);
   if Block.CountParams('Font') > 0 then
-    FontCache.SetCacheKey(Block.GetParam('Font'));
+  begin
+    RequestedFontName := Block.GetParam('Font');
+    FontCache.SetCacheKey(RequestedFontName);
+  end;
   LoadTextLinesFromBlockParam(Block, 'Text');
   if Block.CountParams('Image') > 0 then
     SetEmbeddedImagePath(Block.GetParam('Image'));
@@ -694,7 +836,10 @@ var
 begin
   inherited LoadFromBlock(Block);
   if Block.CountParams('Font') > 0 then
-    FontCache.SetCacheKey(Block.GetParam('Font'));
+  begin
+    RequestedFontName := Block.GetParam('Font');
+    FontCache.SetCacheKey(RequestedFontName);
+  end;
   LoadTextLinesFromBlockParam(Block, 'Text');
   if Block.CountParams('Image') > 0 then
     SetEmbeddedImagePath(Block.GetParam('Image'));
@@ -748,6 +893,7 @@ var
   Color: Cardinal;
   Texture: IDirect3DTexture9;
   Bounds: TRect;
+  AlignX: TTextAlignXGI;
 
   procedure SwitchLabelDrawFont(FontName: WideString); { Nested Draw helper; caller removes the parent-frame argument. }
   begin
@@ -757,6 +903,10 @@ var
   end;
 
 begin
+  // Justified lines of a larger font leave wide gaps in the same box.
+  AlignX := TextAlignX;
+  if LargerFontApplied and (AlignX = taxAuto) then
+    AlignX := taxLeft;
   Font := nil;
   if FontCache <> nil then
   begin
@@ -798,7 +948,7 @@ begin
               TextLines.GetText,
               ClientSize.X,
               ClientSize.Y,
-              Ord(TextAlignX),
+              Ord(AlignX),
               Ord(TextAlignY),
               WordWrapEnabled,
               nil,
@@ -870,7 +1020,7 @@ begin
               TextLines.GetText,
               ClientSize.X,
               ClientSize.Y,
-              Ord(TextAlignX),
+              Ord(AlignX),
               Ord(TextAlignY),
               WordWrapEnabled,
               nil,
@@ -996,7 +1146,7 @@ begin
             Lines.First;
             while not Lines.IsAtEnd do
             begin
-              if TextAlignX = taxLeft then
+              if AlignX = taxLeft then
               begin
                 Font.ColorTagsEnabled := False;
                 if TextShadowOffset > 0 then
@@ -1058,7 +1208,7 @@ begin
                     ClipRect
                 );
               end
-              else if TextAlignX = taxRight then
+              else if AlignX = taxRight then
               begin
                 Font.ColorTagsEnabled := False;
                 Bounds := Font.MeasureTaggedTextBounds(Lines.GetCurrentText, 0, 0, nil);
@@ -1121,7 +1271,7 @@ begin
                     ClipRect
                 );
               end
-              else if TextAlignX = taxCenter then
+              else if AlignX = taxCenter then
               begin
                 Font.ColorTagsEnabled := False;
                 Bounds := Font.MeasureTaggedTextBounds(Lines.GetCurrentText, 0, 0, nil);
@@ -1199,7 +1349,7 @@ begin
                     ClipRect
                 );
               end
-              else if (TextAlignX = taxAuto) and (not Lines.IsAtLast) then
+              else if (AlignX = taxAuto) and (not Lines.IsAtLast) then
               begin
                 Font.ColorTagsEnabled := False;
                 if TextShadowOffset > 0 then

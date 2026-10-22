@@ -60,6 +60,8 @@ uses
   Classes,
   Types,
   GameInput,
+  GameWindow,
+  Math,
   SysUtils,
   EC_Str,
   EC_Struct,
@@ -157,7 +159,17 @@ begin
     else if ExtraScreenWidth > 127 then
       RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, SmoothIntroFontName, $FFFDFFD7, $FF373737, $FFDBDA9C)
     else
-      RenderLabelTextToBuffer(GraphBuf, ClientSize.X, 1, 0, Text, IntroFontName, $FFFDFFD7, $FF373737, $FFDBDA9C);
+      RenderLabelTextToBuffer(
+          GraphBuf,
+          ClientSize.X,
+          1,
+          0,
+          Text,
+          ReadableTextFontName(IntroFontName, GetDisplayScale * GetGameWindowPixelScale),
+          $FFFDFFD7,
+          $FF373737,
+          $FFDBDA9C
+      );
     SetSize(Classes.Point(ClientSize.X, GraphBuf.Height));
     SetPosition(Classes.Point(LocalPosition.X, TextPanelHeight));
   end;
@@ -314,7 +326,8 @@ begin
   with GetByName('GBText') as TGraphBufGI do
   begin
     SetPosition(AddPoints(LocalPosition, Classes.Point(0, -1)));
-    Limit := (TextPanelTop + TextPanelHeight) div 2 - ClientSize.Y div 2;
+    // Text taller than its panel keeps rising until its end is in view.
+    Limit := Min((TextPanelTop + TextPanelHeight) div 2 - ClientSize.Y div 2, TextPanelTop + TextPanelHeight - ClientSize.Y);
     if LocalPosition.Y < Limit then
       if TextScrollTimer <> nil then
       begin
