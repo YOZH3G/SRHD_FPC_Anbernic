@@ -139,3 +139,18 @@ cmake-format, and xmllint.
 ./tools/format.py
 ./tools/format.py --check
 ```
+
+## Handheld releases
+
+The Anbernic/TrimUI port is versioned in `CHANGELOG.md` and `CHANGELOG_EN.md`: the top
+`## X.Y.Z` section is the next release, with the same items in both languages. New
+features raise Y, fixes raise Z. After editing them, regenerate the game's copy:
+
+```sh
+python3 tools/release_notes.py
+```
+
+`source/PortRelease.inc` gives the game its version and the changes it shows once after
+the main menu loads (remembered as `PortVersionSeen` in `CFG.TXT`). CI fails when the
+include is out of date. A `release` run of `anbernic.yml` publishes tag `vX.Y.Z` with
+that section as its notes, and refuses a version already released from another commit.

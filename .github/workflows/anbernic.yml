@@ -104,6 +104,10 @@ jobs:
           path: ${{ env.SDK }}/fpc
           key: ${{ steps.keys.outputs.fpc }}
 
+      - name: Check release notes
+        # The game shows the changes of its version from source/PortRelease.inc.
+        run: python3 tools/release_notes.py --check
+
       - name: Build game
         run: |
           for arch in aarch64 armhf; do
@@ -146,6 +150,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: anbernic-packages
@@ -156,13 +164,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.release }}
         run: |
+          version=$(python3 tools/release_notes.py version)
+          python3 tools/release_notes.py notes "$version" > dist/changes.md
           cd dist
           sha256sum -c SHA256SUMS
           short=${GITHUB_SHA::7}
-          tag="anbernic-$(date -u +%Y.%m.%d)-$short"
+          tag="v$version"
+          # A version is released from one commit; a rerun of that commit
+          # updates it in place, a later commit needs the next version.
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            released=$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json targetCommitish -q .targetCommitish)
+            if [ "$released" != "$GITHUB_SHA" ]; then
+              echo "::error::$tag is already released from ${released::7}; add the next version to CHANGELOG.md and CHANGELOG_EN.md"
+              exit 1
+            fi
+          fi
           aarch64=$(jq -r '.binaries["Rangers.aarch64"]' report.json)
           armhf=$(jq -r '.binaries["Rangers.armhf"]' report.json)
-          cat > notes.md <<EOF
+          { cat changes.md; echo; echo '---'; echo; } > notes.md
+          cat >> notes.md <<EOF
           Сборка из [$short]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA), собрана GitHub Actions ([запуск]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)).
 
           Семь архивов: **H700-muOS** (ARMHF и AArch64), **H700-KNULLI**, **H700-StockOS**, **TrimUI**, **Rockchip-ArkOS**, **Rockchip-AmberELEC**, **Rockchip-ROCKNIX** (AArch64). Контрольные суммы — **SHA256SUMS**. Требуются системная SDL2 ≥ 2.26.0, glibc ≥ 2.29 и ваши игровые ресурсы. Перед обновлением сохраните \`spacerangershd/game\` и \`spacerangershd/profile\`.
@@ -173,12 +193,12 @@ jobs:
 
           [Инструкции установки и таблица моделей]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/platform/linux/ANBERNIC.md) · [README]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/README.md)
           EOF
-          title="Build $(date -u +%Y-%m-%d) · Anbernic и TrimUI · $short"
+          title="v$version · Anbernic и TrimUI · $(date -u +%Y-%m-%d)"
           flags=(--draft)
           [ "$MODE" = publish ] && flags=(--latest)
           if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            # A rerun for the same commit and day, such as publishing an
-            # earlier draft: replace its archives and notes in place.
+            # A rerun for the same commit, such as publishing an earlier
+            # draft: replace its archives and notes in place.
             gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber ./*.zip SHA256SUMS
             [ "$MODE" = publish ] && flags=(--draft=false --latest)
             gh release edit "$tag" -R "$GITHUB_REPOSITORY" --title "$title" --notes-file notes.md "${flags[@]}"

@@ -16,6 +16,7 @@
 
 **[⬇ Скачать последний релиз](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
 · [Подробная установка и диагностика](platform/linux/ANBERNIC.md)
+· [История изменений](CHANGELOG.md)
 · [Сборка из исходников](BUILDING.md)
 
 </div>

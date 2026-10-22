@@ -797,6 +797,9 @@ begin
         'startup',
         'SpaceRangersHD_FPC revision=' + GameBuildRevision + ' source=' + GameBuildSourceState + ' profile=' + GameBuildProfile
     );
+{$IFDEF SRHD_ANBERNIC}
+    LogGameMessage(gllInfo, 'startup', 'Handheld port version=' + PortVersion);
+{$ENDIF}
     LogGameMessage(gllInfo, 'startup', 'Target=' + GameBuildTarget + ' backend=' + GameBuildBackend + ' compiler=' + GameBuildCompiler);
     LogGameMessage(gllInfo, 'startup', 'FPC revision=' + GameBuildCompilerRevision + ' source=' + GameBuildCompilerSourceState);
 {$IFDEF MSWINDOWS}
