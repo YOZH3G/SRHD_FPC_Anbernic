@@ -80,6 +80,7 @@ def package(
         (ROOT / "vendor/fpc/rtl/COPYING.txt", "FPC-runtime.txt"),
         (ROOT / "vendor/fpc/rtl/COPYING.FPC", "FPC-linking-exception.txt"),
         (ROOT / "vendor/okgf/LICENSE", "OKGF.txt"),
+        (ROOT / "licenses/DaysOne-OFL.txt", "DaysOne-OFL.txt"),
     ):
         shutil.copy2(path, licenses / name)
     for arch in arches:

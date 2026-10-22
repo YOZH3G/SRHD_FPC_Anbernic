@@ -76,6 +76,7 @@ uses
   GI_Label,
   GI_Image,
   GI_Main,
+  EC_Cache,
   EC_Str,
   aMyFunction,
   aScript,
@@ -191,13 +192,13 @@ begin
   Button.EnterSound := Template.EnterSound;
   Button.LeaveSound := Template.LeaveSound;
   Button.ClickSound := Template.ClickSound;
-  // The other entries are artwork. Letter this one with the largest font,
-  // outlined, in their colors: light grey, yellow under the cursor.
-  Button.SetCaptionFontName(HugeFontName);
+  // The other entries are artwork. Letter this one with the built-in font
+  // drawn after it, outlined in black, yellow under the cursor.
+  Button.SetCaptionFontName(HandheldMenuFontName);
   Button.SetCaption(ControlsText('CONTROLS', 'УПРАВЛЕНИЕ'));
-  Button.CaptionLabel.SetTextBorderWidth(1);
-  Button.CaptionLabel.SetTextBorderColor(CurrentPixelFormat.PackRgbBytes(30, 20, 10));
-  Button.CaptionColors[0] := CurrentPixelFormat.PackRgbBytes(222, 222, 222);
+  Button.CaptionLabel.SetTextBorderWidth(2);
+  Button.CaptionLabel.SetTextBorderColor(CurrentPixelFormat.PackRgbBytes(0, 0, 0));
+  Button.CaptionColors[0] := CurrentPixelFormat.PackRgbBytes(224, 214, 186);
   Button.CaptionColors[1] := CurrentPixelFormat.PackRgbBytes(255, 200, 40);
   Button.CaptionColors[2] := Button.CaptionColors[1];
   Button.CaptionColors[3] := Button.CaptionColors[1];

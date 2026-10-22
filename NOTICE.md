@@ -23,6 +23,9 @@ It is not affiliated with the game's developers or publisher.
 - Gamepad-to-keyboard/mouse mapping in the Anbernic stock-firmware package:
   [gptokeyb](https://github.com/PortsMaster/gptokeyb), a separate program under
   the [GNU GPL 2.0](vendor/gptokeyb/LICENSE.md); its source ships in the package.
+- Handheld main-menu caption font: generated from
+  [Days One](https://github.com/googlefonts/daysone) by Jovanny Lemonad, under the
+  [SIL Open Font License 1.1](licenses/DaysOne-OFL.txt).
 - Compiler and runtime: [Free Pascal](https://www.freepascal.org/), with
   [source and license details](vendor/fpc/PORT.md).
 - Selected fixes adapted from
