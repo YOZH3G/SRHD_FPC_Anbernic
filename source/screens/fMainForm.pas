@@ -20,6 +20,7 @@ type
 {$IFDEF SRHD_ANBERNIC}
     procedure AddControlsButton;
     procedure ControlsClicked(Sender: TObjectGI);
+    procedure ShowPortChanges;
 {$ENDIF}
   public
     BackgroundTimer: PCallbackTimerGI;
@@ -303,6 +304,28 @@ begin
   Line('Start', 'pause; the cursor works while paused', 'пауза; на паузе работает курсор');
   Line('Select', 'leave the battle', 'выход из боя');
   ShowMessageBoxGI(Self, Text, mbgOK or mbgLeftAlign);
+end;
+
+// Once per port version, after the main menu has loaded: what changed.
+procedure TfMainForm.ShowPortChanges;
+begin
+  if (UserSettingsConfig.CountParams('PortVersionSeen') > 0)
+      and (UserSettingsConfig.GetParamByPathOrMarker('PortVersionSeen') = PortVersion) then
+    Exit;
+  UserSettingsConfig.SetOrAddParam('PortVersionSeen', PortVersion);
+  UserSettingsConfig.SaveTextFile(PWideChar(GetGameUserDirectory + 'CFG.TXT'), True, False);
+  ShowMessageBoxGI(
+      Self,
+      '<color=140,40,0>'
+          + ControlsText('What is new in version ', 'Что нового в версии ')
+          + PortVersion
+          + EndColorTag
+          + #13#10
+          + ' '
+          + #13#10
+          + ControlsText(PortChangesEnglish, PortChangesRussian),
+      mbgOK or mbgLeftAlign
+  );
 end;
 {$ENDIF}
 
@@ -667,6 +690,9 @@ begin
     ShowXonarWarning := False;
     ShowMessageBoxGI(Self, LocalizedColorText('Warning.XonarDetected'), mbgCancel or mbgUnused04);
   end;
+{$IFDEF SRHD_ANBERNIC}
+  ShowPortChanges;
+{$ENDIF}
 end;
 
 procedure TfMainForm.OnClose;

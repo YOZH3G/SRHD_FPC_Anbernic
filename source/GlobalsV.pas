@@ -8,6 +8,10 @@ uses
   Classes;
 
 const
+{$IFDEF SRHD_ANBERNIC}
+  // The handheld port's version and its changes; see tools/release_notes.py.
+  {$I PortRelease.inc}
+{$ENDIF}
 
   gerDefault = 0;
 

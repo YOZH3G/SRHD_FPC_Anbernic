@@ -16,6 +16,7 @@ that fits 800×600.
 
 **[⬇ Download the latest release](https://github.com/YOZH3G/SRHD_FPC_Anbernic/releases/latest)**
 · [Installation and troubleshooting](platform/linux/ANBERNIC.md)
+· [Changelog](CHANGELOG_EN.md)
 · [Build from source](BUILDING.md)
 
 </div>

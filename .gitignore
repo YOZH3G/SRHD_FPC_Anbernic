@@ -11,3 +11,5 @@ __pycache__/
 # Keep tracked documentation; ignore untracked Markdown notes.
 *.[mM][dD]
 !/DEVELOPING.md
+!/CHANGELOG.md
+!/CHANGELOG_EN.md
