@@ -196,7 +196,9 @@ var
     Clip := TObjectGI.Create(Button);
     Clip.SetPosition(Classes.Point(DestX, 0));
     Clip.SetSize(Classes.Point(Width, Button.ClientSize.Y));
+    Clip.SetDepth(1);
     Image := TImageGI.Create(Clip);
+    Image.SetSize(Button.ClientSize);
     Image.SetImagePath((GetByName('Exit') as TGraphButtonGI).ImageNormal.GetImagePath);
     Image.SetPosition(Classes.Point(-SourceX, 0));
   end;
