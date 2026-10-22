@@ -162,6 +162,9 @@ uses
   GameSystem,
   GameDiagnostics,
   GameSDLDiagnostics,
+{$IFDEF SRHD_ANBERNIC}
+  GameSystemKeys,
+{$ENDIF}
   URIParser;
 
 type
@@ -1386,6 +1389,8 @@ begin
       Exit;
     end;
 {$IFDEF SRHD_ANBERNIC}
+    if PollSystemKeys(Message) then
+      Exit;
     if PadSteering and PollPadSteering(Message) then
       Exit;
 {$ENDIF}

@@ -2115,6 +2115,9 @@ uses
   GlobalsV,
   Math,
   GameWindow,
+{$IFDEF SRHD_ANBERNIC}
+  GameSystemKeys,
+{$ENDIF}
 {$IFDEF MSWINDOWS}
   Registry,
 {$ENDIF}
@@ -4197,6 +4200,8 @@ begin
   end;
 {$IFDEF SRHD_ANBERNIC}
   ApplyAppVolume(0);
+  if GetEnvironmentVariable('SRHD_APP_VOLUME') = '1' then
+    InitializeSystemKeys;
 {$ENDIF}
   ConfigureGameUi(
       TGameUiMode(
