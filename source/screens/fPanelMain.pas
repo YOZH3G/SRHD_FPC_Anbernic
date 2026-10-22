@@ -912,24 +912,18 @@ begin
           begin
             if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead then
             begin
+              // Fade the drawn image; decoding it and uploading a new
+              // texture on every tick stalled some handheld GPUs.
               with Control as TGraphButtonGI do
               begin
-                LoadGiByPathIntoGraphBuf(
-                    'Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName,
-                    ImageNormal.GraphBufControl.GraphBuf
-                );
-                ImageNormal.GraphBufControl.GraphBuf.ScaleAlpha(
-                    Classes.Rect(0, 0, ImageNormal.GraphBufControl.GraphBuf.Width, ImageNormal.GraphBufControl.GraphBuf.Height),
-                    Alpha
-                );
+                ImageNormal.SetAlpha(Alpha);
                 Finished := False;
                 Invalidate;
               end;
             end
-            else if ((Control as TGraphButtonGI).ImageNormal <> nil)
-                and ((Control as TGraphButtonGI).ImageNormal.GraphBufControl <> nil) then
+            else if (Control as TGraphButtonGI).ImageNormal <> nil then
             begin
-              (Control as TGraphButtonGI).ImageNormal.SetImagePath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
+              (Control as TGraphButtonGI).ImageNormal.SetAlpha(255);
               (Control as TGraphButtonGI).Invalidate;
             end;
           end;
@@ -1036,20 +1030,9 @@ begin
               or (Integer(MessageEntry.Targets[1].ShipId) = GetPlayer.Id)
               or (Integer(MessageEntry.Targets[2].ShipId) = GetPlayer.Id)) then
         MessageEntry.Kind := pmRadioPlayer;
-      if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead then
-      begin
-        Button.SetImageNormalPath('GraphBuf');
-        Button.ImageNormal.GraphBufControl.SourceHasPerPixelAlpha := True;
-        LoadGiByPathIntoGraphBuf(
-            'Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName,
-            Button.ImageNormal.GraphBufControl.GraphBuf
-        );
-        Button.ImageNormal.SetSize(Button.ImageNormal.GetContentSize);
-        if MessagePulseTimer = nil then
-          MessagePulseTimer := Screen.ScheduleCallbackTimer(40, 40, PulseUnreadMessages);
-      end
-      else
-        Button.SetImageNormalPath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
+      Button.SetImageNormalPath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetNormalImageName);
+      if (MessageEntry.Kind in [pmGalaxyNews, pmTip]) and not MessageEntry.WasRead and (MessagePulseTimer = nil) then
+        MessagePulseTimer := Screen.ScheduleCallbackTimer(40, 40, PulseUnreadMessages);
       Button.SetImageNormalActivePath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetActiveImageName);
       Button.SetImageDownPath('GI,Bm.MsgPlayer.' + GiResourceSuffix + MessageEntry.GetPressedImageName);
       Button.HitKind := gbhRect;
