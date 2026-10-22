@@ -415,6 +415,7 @@ uses
   Math,
   GameInput,
   GameSystem,
+  GameWindow,
   GI_XviD,
   GI_PanelScrollBar,
   ThreadCalc,
@@ -530,14 +531,31 @@ end;
 procedure TfRuinsTalk.LayoutStationPortrait(Panel: TObjectGI);
 var
   I, HalfWidth, PortraitX, PortraitY, TableY, Bottom, DeltaX, DeltaY: Integer;
+  ScreenWidth, ScreenHeight, ExtraWidth, ExtraHeight: Integer;
   Table, Table2, Animation, HdAnimation: TObjectGI;
 begin
   if Panel = nil then
     Exit;
+  // A fitted screen is laid out on the 1024x768 canvas and then scaled; the
+  // portrait placed on opening belongs to that canvas, not to the framebuffer.
+  if GameCompactLayoutEnabled and (ContentPanel.DisplayScale < 1) then
+  begin
+    ScreenWidth := LayoutSize.X;
+    ScreenHeight := LayoutSize.Y;
+    ExtraWidth := 0;
+    ExtraHeight := 0;
+  end
+  else
+  begin
+    ScreenWidth := GameScreenWidth;
+    ScreenHeight := GameScreenHeight;
+    ExtraWidth := ExtraScreenWidth;
+    ExtraHeight := ExtraScreenHeight;
+  end;
   Panel.ReloadFromBlock;
-  Panel.SetSize(Classes.Point(GameScreenWidth, GameScreenHeight));
-  HalfWidth := Cardinal(GameScreenWidth) div 2;
-  PortraitY := Cardinal(GameScreenHeight) div 10;
+  Panel.SetSize(Classes.Point(ScreenWidth, ScreenHeight));
+  HalfWidth := Cardinal(ScreenWidth) div 2;
+  PortraitY := Cardinal(ScreenHeight) div 10;
   TableY := PortraitY + Panel.FindByNameRecursive('Panel_Anim0').ClientSize.Y div 10 * 6;
   if Panel.FindByNameRecursive('Table2') <> nil then
     Bottom :=
@@ -551,10 +569,10 @@ begin
     Bottom := TableY + Round(Panel.FindByNameRecursive('Table').ClientSize.Y * 0.95 + Panel.FindByNameRecursive('Table').LocalPosition.Y);
   DeltaX := Panel.FindByNameRecursive('Panel_Anim0').LocalPosition.X - Panel.FindByNameRecursive('Panel_Anim1').LocalPosition.X;
   DeltaY := Panel.FindByNameRecursive('Panel_Anim0').ClientSize.Y - Panel.FindByNameRecursive('Panel_Anim1').ClientSize.Y;
-  if GameScreenHeight > Bottom then
+  if ScreenHeight > Bottom then
   begin
-    PortraitY := PortraitY + GameScreenHeight - Bottom;
-    TableY := TableY + GameScreenHeight - Bottom;
+    PortraitY := PortraitY + ScreenHeight - Bottom;
+    TableY := TableY + ScreenHeight - Bottom;
   end;
   Table := Panel.FindByNameRecursive('Table');
   Table.SetPosition(
@@ -574,14 +592,14 @@ begin
   begin
     Animation := Panel.FindByNameRecursive(AnsiString('Panel_Anim' + IntToStr(I)));
     if not PortraitTableVisible then
-      Animation.SetPosition(Classes.Point(Animation.LocalPosition.X + ExtraScreenWidth, Animation.LocalPosition.Y + ExtraScreenHeight))
+      Animation.SetPosition(Classes.Point(Animation.LocalPosition.X + ExtraWidth, Animation.LocalPosition.Y + ExtraHeight))
     else
       Animation.SetPosition(Classes.Point(PortraitX - I * DeltaX, PortraitY + I * DeltaY));
     HdAnimation := Panel.FindByNameRecursive(AnsiString('PanelHD_Anim' + IntToStr(I)));
     HdAnimation.SetPosition(
         Classes.Point(
             (HalfWidth - HdAnimation.ClientSize.X) div 2 + HdAnimation.LocalPosition.X + HalfWidth,
-            HdAnimation.LocalPosition.Y + ExtraScreenHeight
+            HdAnimation.LocalPosition.Y + ExtraHeight
         )
     );
   end;
