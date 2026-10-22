@@ -111,7 +111,8 @@ The main menu's **Controls** entry shows every button, arcade combat included.
 | A / B | left / right click |
 | X / Y | Space (next turn) / Tab |
 | Start / Select | Enter / Escape: menu, back |
-| L1 / R1 | previous / next window of the bottom-right panel: ship, map, quests, and on a planet its sections |
+| L1 (hold) | slow cursor |
+| R1 | next window of the bottom-right panel: ship, map, quests, and on a planet its sections |
 | L2 | on-screen keyboard in a text field; quick load 3 (F6) in space |
 | R2 | Shift |
 | Select + Start | quit the game |
@@ -128,7 +129,7 @@ During arcade combat the buttons fly the ship and the cursor stays put:
 | --- | --- |
 | D-pad / left stick | fly in that direction |
 | Right stick | thrust/reverse and turn, like the arrow keys |
-| R1 + D-pad / left stick | the same without changing course: up/down thrust forward/back, left/right turn |
+| R1 + D-pad / left stick | fly along the heading: left/right turn on the move, down reverses |
 | A | primary weapons |
 | B / X / R2 | secondary weapons |
 | L2 | next primary weapon |

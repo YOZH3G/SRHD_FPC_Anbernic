@@ -4147,21 +4147,21 @@ begin
     Exit;
   if HeadingLockKeyDown then
   begin
-    // Keep the heading unless the stick is pushed sideways: up and down thrust
-    // forward and back, as the arrow keys do. The turn input is in degrees, so
-    // any stick X would turn at full rate; an analog stick held forward always
-    // drifts a little sideways and would keep the ship spinning.
+    // Fly along the heading: left and right turn while the ship keeps going,
+    // down reverses. The turn input is in degrees, so any stick X would turn
+    // at full rate; an analog stick held forward always drifts a little
+    // sideways and would keep the ship turning.
     if Abs(MobileAxisX) >= HeadingLockTurnThreshold then
       PlayerArcadeShip.SetTurnInput(Sign(MobileAxisX) * 100);
-    if MobileAxisY > 0 then
-    begin
-      PlayerArcadeShip.StartThrust;
-      PlayerArcadeShip.Thrust := PlayerArcadeShip.Thrust * Min(1, MobileAxisY / 100);
-    end
-    else if MobileAxisY < 0 then
+    if MobileAxisY < 0 then
     begin
       PlayerArcadeShip.StartReverseThrust;
       PlayerArcadeShip.Thrust := PlayerArcadeShip.Thrust * Min(1, -MobileAxisY / 100);
+    end
+    else
+    begin
+      PlayerArcadeShip.StartThrust;
+      PlayerArcadeShip.Thrust := PlayerArcadeShip.Thrust * Min(1, Magnitude / 100);
     end;
     Exit;
   end;
