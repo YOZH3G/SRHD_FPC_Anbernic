@@ -177,10 +177,30 @@ procedure TfMainForm.AddControlsButton;
 const
   // The original seven entries keep their span; Controls follows Settings.
   Entries: array[0..7] of WideString = ('New', 'Load', 'Settings', 'Controls', 'Score', 'Achievements', 'About', 'Exit');
+  // The entry artwork is a red band with the caption on it. Exit's caption
+  // spans only these columns, so the band elsewhere is reused around ours.
+  ExitTextLeft = 96;
+  ExitTextRight = 219;
+  BandTileLeft = 40;
 var
   Template: TGraphButtonGI;
   Button: TGraphButtonGI;
-  Top, Span, Index: Integer;
+  Top, Span, Index, X: Integer;
+
+  procedure AddBandPiece(SourceX, DestX, Width: Integer);
+  var
+    Clip: TObjectGI;
+    Image: TImageGI;
+  begin
+    // The piece's bounds clip the whole image to the wanted columns.
+    Clip := TObjectGI.Create(Button);
+    Clip.SetPosition(Classes.Point(DestX, 0));
+    Clip.SetSize(Classes.Point(Width, Button.ClientSize.Y));
+    Image := TImageGI.Create(Clip);
+    Image.SetImagePath((GetByName('Exit') as TGraphButtonGI).ImageNormal.GetImagePath);
+    Image.SetPosition(Classes.Point(-SourceX, 0));
+  end;
+
 begin
   Template := GetByName('About') as TGraphButtonGI;
   Button := TGraphButtonGI.Create(Template.Parent);
@@ -203,6 +223,14 @@ begin
   Button.CaptionColors[2] := Button.CaptionColors[1];
   Button.CaptionColors[3] := Button.CaptionColors[1];
   Button.UpdateStateVisuals(False);
+  AddBandPiece(0, 0, ExitTextLeft);
+  X := ExitTextLeft;
+  while X < ExitTextRight do
+  begin
+    AddBandPiece(BandTileLeft, X, Min(ExitTextLeft - BandTileLeft, ExitTextRight - X));
+    Inc(X, ExitTextLeft - BandTileLeft);
+  end;
+  AddBandPiece(ExitTextRight, ExitTextRight, Button.ClientSize.X - ExitTextRight);
   Top := GetByName('New').LocalPosition.Y;
   Span := GetByName('Exit').LocalPosition.Y - Top;
   for Index := 0 to High(Entries) do
