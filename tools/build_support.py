@@ -4,42 +4,15 @@ import hashlib
 import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
-import tarfile
 import time
-import urllib.request
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path, PureWindowsPath
 
 from targets import ROOT
-
-DEPENDENCY_SOURCES = {
-    "zlib": (
-        "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz",
-        "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
-    ),
-    "jpeg": (
-        "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.2/libjpeg-turbo-3.1.2.tar.gz",
-        "8f0012234b464ce50890c490f18194f913a7b1f4e6a03d6644179fa0f867d0cf",
-    ),
-    "png": (
-        "https://download.sourceforge.net/libpng/libpng-1.6.50.tar.gz",
-        "708f4398f996325819936d447f982e0db90b6b8212b7507e7672ea232210949a",
-    ),
-    "ogg": (
-        "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.xz",
-        "c4d91be36fc8e54deae7575241e03f4211eb102afb3fc0775fbbc1b740016705",
-    ),
-    "vorbis": (
-        "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz",
-        "b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b",
-    ),
-}
-
 
 def require_tool(name: str) -> Path:
     path = shutil.which(name)
@@ -208,33 +181,6 @@ class BuildStamp:
         self.previous = current
 
 
-def compile_native(
-    work: Path,
-    command: list[str | Path],
-    rebuild: bool,
-    tools: tuple[Path, ...] = (),
-) -> None:
-    target = Path(command[command.index("-o") + 1])
-    stamp = BuildStamp(work / f"{target.stem}-command.json")
-    depfile = work / f"{target.stem}.d"
-    command = [*command, "-MD", "-MF", depfile]
-    signature = json.dumps([command_signature(command), file_state(tools)])
-
-    def state() -> str:
-        dependencies = shlex.split(depfile.read_text().replace("\\\n", "").split(": ", 1)[1])
-        return json.dumps([signature, file_state([work / name for name in dependencies])])
-
-    try:
-        current = state()
-    except (FileNotFoundError, IndexError, ValueError):
-        current = ""
-    if not rebuild and stamp.matches(current, target, depfile):
-        print(f"{target.stem} is up to date.", flush=True)
-        return
-    with stamp.recording(state):
-        run_step(work, target.stem, command)
-
-
 def _cmake_tool_options(options: Iterable[str]) -> dict[str, str]:
     """Read tool paths from CMake cache entries or typed/untyped -D options."""
     tools = {}
@@ -346,30 +292,6 @@ def configure_native(work: Path, directory: Path, command: list[str | Path]) -> 
     return False
 
 
-def sdl_source(native: Path) -> Path:
-    cache = (native / "CMakeCache.txt").read_text()
-    match = re.search(r"^SDL2_SOURCE_DIR:[^=]+=(.+)$", cache, re.MULTILINE)
-    if match is None:
-        raise RuntimeError("CMake did not record SDL2_SOURCE_DIR")
-    return Path(match[1])
-
-
-def link_native(
-    work: Path,
-    command: list[str | Path],
-    inputs: list[Path],
-    outputs: list[Path],
-    rebuild: bool,
-) -> None:
-    stamp = BuildStamp(work / "link-command.json")
-    signature = json.dumps([command_signature(command), file_state(inputs)])
-    if not rebuild and stamp.matches(signature, *outputs):
-        print("Linked game is up to date.", flush=True)
-        return
-    with stamp.recording(signature):
-        run_step(work, "link", command)
-
-
 def copy_if_changed(source: Path, destination: Path) -> bool:
     if destination.is_file() and source.read_bytes() == destination.read_bytes():
         return False
@@ -377,104 +299,21 @@ def copy_if_changed(source: Path, destination: Path) -> bool:
     return True
 
 
-def dependency_source(name: str) -> Path:
-    url, checksum = DEPENDENCY_SOURCES[name]
-    # Keep the path already recorded in existing Android CMake caches.
-    source = ROOT / ".local/android-sources" / f"{name}-{checksum[:12]}"
-    if (source / ".complete").is_file():
-        return source
-    downloads = ROOT / ".local/downloads"
-    downloads.mkdir(parents=True, exist_ok=True)
-    archive = downloads / url.rsplit("/", 1)[1]
-    if not archive.is_file():
-        partial = archive.with_suffix(archive.suffix + ".partial")
-        print(f"Downloading {url}", flush=True)
-        urllib.request.urlretrieve(url, partial)
-        partial.replace(archive)
-    if hashlib.sha256(archive.read_bytes()).hexdigest() != checksum:
-        raise RuntimeError(f"Dependency checksum mismatch: {archive}")
-    source.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(archive) as contents:
-        for member in contents.getmembers():
-            parts = member.name.split("/", 1)
-            if len(parts) == 2 and parts[1]:
-                member.name = parts[1]
-                contents.extract(member, source, filter="data")
-    (source / ".complete").write_text(checksum)
-    return source
-
-
-def build_codecs(work: Path, options: list[str], rebuild: bool, *, windows: bool = False) -> None:
-    """Build pinned codec archives with the platform's CMake toolchain and prefix."""
-    dependencies = {
-        **({"zlib": ["-DZLIB_BUILD_EXAMPLES=OFF"]} if windows else {}),
-        "jpeg": [
-            "-DENABLE_SHARED=OFF",
-            "-DENABLE_STATIC=ON",
-            "-DWITH_TURBOJPEG=OFF",
-            "-DWITH_SIMD=ON",
-            "-DWITH_TOOLS=OFF",
-        ],
-        "png": [
-            "-DPNG_SHARED=OFF",
-            "-DPNG_STATIC=ON",
-            "-DPNG_FRAMEWORK=OFF",
-            "-DPNG_TESTS=OFF",
-            "-DPNG_TOOLS=OFF",
-        ],
-        "ogg": [],
-        "vorbis": [],
-    }
-    for name, extra in dependencies.items():
-        directory = work / "dependencies" / name
-        build = directory / "build"
-        directory.mkdir(parents=True, exist_ok=True)
-        changed = configure_native(directory, build, [
-            "cmake", "-S", dependency_source(name), "-B", build, "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release", *options,
-            "-DBUILD_SHARED_LIBS=" + ("ON" if windows and name in ("ogg", "vorbis") else "OFF"),
-            *extra,
-        ])  # fmt: skip
-        run_step(directory, name, [
-            "cmake", "--build", build, "--parallel", "6",
-            *(["--clean-first"] if rebuild or changed else []),
-        ])  # fmt: skip
-        # On Darwin, reinstalling also runs ranlib on the archives. Avoid
-        # changing their timestamps and forcing a game relink on every build.
-        manifest = build / "install_manifest.txt"
-        stamp = BuildStamp(directory / "install-inputs.json")
-
-        def install_state(build: Path = build, manifest: Path = manifest) -> str:
-            installed = manifest.read_text().splitlines() if manifest.is_file() else []
-            return json.dumps(file_state([
-                build / "configure-command.json", manifest, *build.rglob("*.a"),
-                *build.rglob("*.dll"), *installed,
-            ]))  # fmt: skip
-
-        if not stamp.matches(install_state(), manifest):
-            with stamp.recording(install_state):
-                run_step(directory, "install", ["cmake", "--install", build])
-
-
 def build_okgf(
     work: Path,
     release: bool,
     *options: str,
     rebuild: bool = False,
-    wasm: bool = False,
-    jobs: int | None = None,
 ) -> Path:
     directory = work / "native"
-    # Browser native dependencies use -O2 in both game profiles.
-    configuration = "Release" if release or wasm else "RelWithDebInfo"
-    # Platform options may supply their own release flags (Android retains symbols).
+    configuration = "Release" if release else "RelWithDebInfo"
+    # Platform options may supply their own release flags.
     release_flags = (
         []
         if any(option.startswith("-DCMAKE_C_FLAGS_RELEASE=") for option in options)
         else ["-DCMAKE_C_FLAGS_RELEASE=-O2 -DNDEBUG"]
     )
     compiler_changed = configure_native(work, directory, [
-        *(["emcmake"] if wasm else []),
         "cmake", "-S", ROOT / "native", "-B", directory, f"-DCMAKE_BUILD_TYPE={configuration}",
         *release_flags,
         *options,
@@ -487,7 +326,6 @@ def build_okgf(
             "--build",
             directory,
             "--parallel",
-            *([str(jobs)] if jobs is not None else []),
             *(["--clean-first"] if rebuild or compiler_changed else []),
         ],
     )
