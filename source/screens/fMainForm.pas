@@ -266,10 +266,11 @@ begin
   Line('Y', 'Tab', 'Tab');
   Line('Start', 'Enter', 'Enter');
   Line('Select', 'Escape: menu, back', 'Escape: меню, назад');
+  Line('L1', 'hold for a slow cursor', 'удерживать - медленный курсор');
   Line(
-      'L1 / R1',
-      'previous / next panel window: ship, map, quests, planet sections',
-      'предыдущее / следующее окно панели: корабль, карта, задания, разделы планеты'
+      'R1',
+      'next panel window: ship, map, quests, planet sections',
+      'следующее окно панели: корабль, карта, задания, разделы планеты'
   );
   Line(
       'L2',
@@ -296,8 +297,8 @@ begin
   );
   Line(
       'R1 + D-pad / ' + ControlsText('stick', 'стик'),
-      'keep course: up/down thrust, left/right turn',
-      'без смены курса: вверх/вниз - тяга, влево/вправо - поворот'
+      'fly along the heading: left/right turn on the move, down reverses',
+      'полёт по курсу: влево/вправо - поворот на ходу, вниз - задний ход'
   );
   Line('A', 'primary weapons', 'основное оружие');
   Line('B / X / R2', 'secondary weapons', 'дополнительное оружие');
