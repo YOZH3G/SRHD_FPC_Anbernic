@@ -4,6 +4,7 @@ PortVersion = '0.9.0';
 PortChangesRussian =
   '- ' + 'Длинные тексты на маленьких экранах стали читаемыми: диалоги, описания, вступление и окно корабля берут более крупный шрифт, если экран меньше 1024x768. Вступление прокручивается до конца текста.' + #13#10 +
   '- ' + 'На экранах 640x480 по умолчанию выбирается 800x600 вместо 1024x768, на TrimUI 1280x720 - родное разрешение экрана.' + #13#10 +
+  '- ' + 'TrimUI: текст и мобильный интерфейс крупнее с учётом плотного экрана, на Brick по умолчанию 800x600.' + #13#10 +
   '- ' + 'Стоковая прошивка Anbernic: кнопки громкости меняют громкость игры, кнопка питания переводит приставку в сон.' + #13#10 +
   '- ' + 'L1 снова включает медленный курсор, пока удерживается. R1 переключает окна панели вперёд по кругу.' + #13#10 +
   '- ' + 'Аркадный бой: R1 с крестовиной влево или вправо поворачивает корабль на ходу, а не на месте.' + #13#10 +
@@ -12,6 +13,7 @@ PortChangesRussian =
 PortChangesEnglish =
   '- ' + 'Long text is readable on small screens: dialogues, descriptions, the introduction and the ship window take a larger font below 1024x768. The introduction scrolls to the end of its text.' + #13#10 +
   '- ' + '640x480 screens choose 800x600 by default instead of 1024x768; TrimUI 1280x720 runs at the screen''s own resolution.' + #13#10 +
+  '- ' + 'TrimUI: larger text and mobile UI for the dense screens; the Brick defaults to 800x600.' + #13#10 +
   '- ' + 'Anbernic stock firmware: the volume buttons change the game''s volume, the power button puts the handheld to sleep.' + #13#10 +
   '- ' + 'L1 is the slow cursor again while held. R1 steps forward through the panel windows.' + #13#10 +
   '- ' + 'Arcade combat: R1 with left or right on the D-pad turns the ship on the move instead of in place.' + #13#10 +
