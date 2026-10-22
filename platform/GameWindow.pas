@@ -753,6 +753,10 @@ begin
   Scale := 1;
   if GameMobileUiEnabled then
     Scale := Max(1.0, Metrics.Density);
+{$IFDEF SRHD_ANBERNIC}
+  // A handheld's density describes its panel whichever UI draws on it.
+  Scale := Max(1.0, Metrics.Density);
+{$ENDIF}
   Scale := Min(Scale, Min(Width / MinWidth, Height / MinHeight));
   Width := Max(MinWidth, Round(Width / Scale));
   Height := Max(MinHeight, Round(Height / Scale));
@@ -779,6 +783,10 @@ begin
     // Keep Android's supplied density: its window points are physical pixels.
     if not FullscreenOnlyWindow then
       Result.Density := Max(1.0, Result.OutputSize.X / Max(1, Result.WindowSize.X));
+{$IFDEF SRHD_ANBERNIC}
+    // The launcher's density describes the handheld panel, not the backing scale.
+    Result.Density := Result.Density * MobileDensity;
+{$ENDIF}
   end
   else
   begin

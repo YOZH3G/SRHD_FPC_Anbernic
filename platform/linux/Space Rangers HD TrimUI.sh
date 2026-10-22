@@ -37,6 +37,24 @@ if [ -e "$system_dir/libEGL.so.1" ] && [ -e "$system_dir/libGLESv2.so.2" ]; then
     export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$system_dir/libEGL.so.1}"
     export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$system_dir/libGLESv2.so.2}"
 fi
+# The game's layouts suit the Anbernic 640x480 panels, about 200 pixels per
+# inch. The Smart Pro (S) shows 1280x720 and the Brick (Pro) 1024x768 on much
+# smaller panels; SRHD_UI_DENSITY makes the game enlarge its text and mobile UI.
+if [ -z "${SRHD_UI_DENSITY:-}" ]; then
+    sysfs="${TRIMUI_SYSFS:-/sys}"
+    panel=""
+    [ -r "$sysfs/class/graphics/fb0/virtual_size" ] && read -r panel <"$sysfs/class/graphics/fb0/virtual_size"
+    if [ -z "$panel" ]; then
+        for modes in "$sysfs"/class/drm/card*-*/modes; do
+            [ -r "$modes" ] && read -r panel <"$modes" && [ -n "$panel" ] && break
+        done
+    fi
+    case "${panel%%[,x]*}" in
+        1280) export SRHD_UI_DENSITY=1.5 ;;
+        1024) export SRHD_UI_DENSITY=2 ;;
+    esac
+fi
+echo "Panel: ${panel:-unknown}; UI density: ${SRHD_UI_DENSITY:-1}"
 # trimui_inputd presents the built-in pad as an Xbox 360 controller, which SDL
 # maps by itself; a mapping inherited from CrossMix's PortMaster is not needed.
 unset SDL_GAMECONTROLLERCONFIG
