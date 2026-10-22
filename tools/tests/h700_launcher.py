@@ -244,7 +244,7 @@ class StockLauncherTests(unittest.TestCase):
 class TrimUILauncherTests(unittest.TestCase):
     """Apps/SpaceRangersHD on TrimUI stock firmware and CrossMix-OS."""
 
-    def run_launcher(self, bits="64", assets=True, shell=("sh",), trimui_sdl=True, gpu=True):
+    def run_launcher(self, bits="64", assets=True, shell=("sh",), trimui_sdl=True, gpu=True, panel=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             system = root / "usr/lib"
@@ -255,6 +255,10 @@ class TrimUILauncherTests(unittest.TestCase):
             if gpu:
                 (system / "libEGL.so.1").touch()
                 (system / "libGLESv2.so.2").touch()
+            if panel:
+                size_file = root / "sys" / panel[0]
+                size_file.parent.mkdir(parents=True)
+                size_file.write_text(panel[1] + "\n")
             app = root / "Apps/SpaceRangersHD"
             port = app / "spacerangershd"
             (port / "game").mkdir(parents=True)
@@ -270,7 +274,8 @@ class TrimUILauncherTests(unittest.TestCase):
                 port / "gptokeyb.aarch64": '#!/bin/sh\necho "GPTOKEYB:$*"\nsleep 5\n',
                 port / "Rangers.aarch64": '#!/bin/sh\nsleep 0.2\necho "EXEC:$0"\n'
                 'echo "ARGS:$*"\necho "CONTROLS:${SDL_GAMECONTROLLERCONFIG-unset}"\n'
-                'echo "GPU:$SDL_VIDEO_EGL_DRIVER,$SDL_VIDEO_GL_DRIVER"\nexit 23\n',
+                'echo "GPU:$SDL_VIDEO_EGL_DRIVER,$SDL_VIDEO_GL_DRIVER"\n'
+                'echo "DENSITY:${SRHD_UI_DENSITY-unset}"\nexit 23\n',
             }
             for path, text in scripts.items():
                 path.write_text(text)
@@ -296,7 +301,9 @@ class TrimUILauncherTests(unittest.TestCase):
                 TRIMUI_SYSTEM_LIBRARY_DIR=str(system),
                 TRIMUI_SDL_LIBRARY_DIR=str(sdl),
                 TRIMUI_CONTROLS_DELAY="0",
+                TRIMUI_SYSFS=str(root / "sys"),
             )
+            env.pop("SRHD_UI_DENSITY", None)
             for name in ("SDL_VIDEO_EGL_DRIVER", "SDL_VIDEO_GL_DRIVER"):
                 env.pop(name, None)
             result = subprocess.run(
@@ -337,6 +344,19 @@ class TrimUILauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 23, log + result.stderr)
         self.assertIn(f"SDL: {root}/usr/lib\n", log)
         self.assertIn(f"PROBE:{root}/Apps/SpaceRangersHD/spacerangershd/lib/aarch64:{root}/usr/lib:", log)
+
+    def test_ui_density_follows_the_panel(self):
+        panels = {
+            "Smart Pro": (("class/graphics/fb0/virtual_size", "1280,1440"), "1.5"),
+            "Brick": (("class/graphics/fb0/virtual_size", "1024,768"), "2"),
+            "Smart Pro S, DRM only": (("class/drm/card0-DSI-1/modes", "1280x720"), "1.5"),
+            "unknown": (None, "unset"),
+        }
+        for name, (panel, density) in panels.items():
+            with self.subTest(panel=name):
+                result, log, _ = self.run_launcher(panel=panel)
+                self.assertEqual(result.returncode, 23, log + result.stderr)
+                self.assertIn(f"DENSITY:{density}\n", log)
 
     def test_without_gpu_libraries_sdl_chooses(self):
         result, log, _ = self.run_launcher(gpu=False)
